@@ -15,12 +15,13 @@ flyEngine is an Open Source 3D engine based on the OpenGL and Direct3D graphics 
 * [GLEW](http://glew.sourceforge.net/)
 * [Assimp](https://github.com/assimp/assimp)
 * [OpenCV](https://github.com/opencv/opencv)
+* [AntTweakBar](http://anttweakbar.sourceforge.net/doc/)
 * Qt 5.10.1 (Open Source version)
 
 DXUT, FX11, DirectXTex, and DirectXTK repositories contain solution files for Visual Studio 2017. GLM is header-only, SOIL, Assimp and OpenCV are shipped with their own CMake files. Qt offers an installer that contains pre-built binaries.
 
 ### Contributions
-Feel free to contribute if you have any ideas to improve the engine.
+Feel free to contribute if you have any ideas to enhance the engine.
 Possible improvements are:
 * Rendering API abstraction layer: Write an abstract renderer that encapsulates the logic of the rendering loop and resource allocation. Specific implementations for DirectX/OpenGL/Vulkan should be realized by C++ templates and policy-based design for maximum performance.
 * Implement different rendering paths that can be switched at runtime: Forward Renderer, Deferred Renderer, Forward+ Renderer
@@ -38,6 +39,6 @@ Possible improvements are:
 * Use Nvidia Nsight for graphics debugging.
 * Test your changes and watch for the framerate.
 
-If you have any questions (project setup, engine stuff), send me an e-mail to [p.fleissner@student.tugraz.at](p.fleissner@student.tugraz.at) or [phips10@gmx.at](phips10@gmx.at).
+If you have any questions (project setup, engine stuff), send me an e-mail to [p.fleissner@student.tugraz.at](mailto:p.fleissner@student.tugraz.at) or [phips10@gmx.at](mailto:phips10@gmx.at).
 
 Copyright 2018, phipsi f***ing fleissna
