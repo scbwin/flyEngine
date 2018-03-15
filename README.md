@@ -4,11 +4,13 @@ flyEngine is an Open Source 3D engine based on the OpenGL and Direct3D graphics 
 ![](https://github.com/fleissna/flyEngine/blob/master/screenshots/MyDX11Window%2014.03.2018%2017_28_13.png)
 ![](https://github.com/fleissna/flyEngine/blob/master/screenshots/MyDX11Window%2014.03.2018%2017_42_48.png)
 
-## Dependencies
+## Installation
+You have to download/clone and build the dependencies by yourself. Use CMake to resolve them and to generate project files for Visual Studio. flyEngine is built as a static library, make sure to link against it in your application. Two examples are included, one for OpenGL and another one for DirectX, you can switch between Crytek's Sponza scene and a terrain scene through the SPONZA preprocessor define.
+
 ### Software
 * Visual Studio 2017 Community Edition 64 Bit (2015 should work as well)
 * CMake
-### Libraries
+### Library Dependencies
 * [GLM](https://glm.g-truc.net/0.9.9/index.html)
 * [SOIL](https://github.com/kbranigan/Simple-OpenGL-Image-Library)
 * [DXUT](https://github.com/Microsoft/DXUT)
@@ -21,7 +23,7 @@ flyEngine is an Open Source 3D engine based on the OpenGL and Direct3D graphics 
 * [AntTweakBar](http://anttweakbar.sourceforge.net/doc/)
 * Qt 5.10.1 (Open Source version)
 
-DXUT, FX11, DirectXTex, and DirectXTK repositories contain solution files for Visual Studio 2017. GLM is header-only, SOIL, Assimp and OpenCV are shipped with their own CMake files. Qt offers an installer that contains pre-built binaries.
+DXUT, FX11, DirectXTex, and DirectXTK repositories contain solution files for Visual Studio 2017. GLM is header-only, SOIL, Assimp and OpenCV are shipped with their own CMake files. Qt offers an installer that contains pre-built binaries. For GLEW and AntTweakBar you can use the pre-build binaries too.
 
 ### Contributions
 Feel free to contribute if you have any ideas to enhance the engine.
