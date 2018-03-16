@@ -1,0 +1,2 @@
+set(FLY_DIRS "@CMAKE_INSTALL_PREFIX@/include;@INCLUDE_DIRS@")
+set(FLY_LIBS "@CMAKE_INSTALL_PREFIX@/lib/flyEngine.lib;${LIBRARIES}")
