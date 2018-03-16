@@ -6,6 +6,10 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # Instruct CMake to run moc automatically when needed.
 set(CMAKE_AUTOMOC ON)
 
+set(HEADER_FILES
+	include/DX11App.h
+)
+
 set(SOURCE_FILES
 	source/main.cpp
 	source/DX11App.cpp
