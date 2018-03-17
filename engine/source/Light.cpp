@@ -8,26 +8,26 @@
 
 namespace fly
 {
-  Light::Light(const glm::vec3 & color) : _color(color)
+  Light::Light(const Vec3f & color, const Vec3f& pos, const Vec3f& target) : _color(color), _pos(pos), _target(target)
   {
   }
 
-  SpotLight::SpotLight(const glm::vec3 & color, float near, float far, float penumbra_degrees, float umbra_degrees) :
-    Light(color), _zNear(near), _zFar(far), _penumbraDegrees(penumbra_degrees), _umbraDegrees(umbra_degrees)
+  SpotLight::SpotLight(const Vec3f& color, const Vec3f& pos, const Vec3f& target, float near, float far, float penumbra_degrees, float umbra_degrees) :
+    Light(color, pos, target), _zNear(near), _zFar(far), _penumbraDegrees(penumbra_degrees), _umbraDegrees(umbra_degrees)
   {
     _lensFlareWeight = 0.11f;
   }
 
-  void SpotLight::getViewProjectionMatrix(glm::mat4& view_matrix, glm::mat4& projection_matrix, const glm::vec3& pos_world) 
+  void SpotLight::getViewProjectionMatrix(glm::mat4& view_matrix, glm::mat4& projection_matrix) 
   {
     projection_matrix = glm::perspective(glm::radians(_umbraDegrees * 2.f), 1.f, _zNear, _zFar);
-    glm::vec3 direction = normalize(_target - pos_world);
+    glm::vec3 direction = normalize(_target - _pos);
     glm::vec3 up = cross(direction, normalize(direction + glm::vec3(1.f, 0.f, 0.f))); // arbitrary vector that is orthogonal to direction
-    view_matrix = glm::lookAt(pos_world, _target, up);
+    view_matrix = glm::lookAt(glm::vec3(_pos), glm::vec3(_target), up);
   }
 
-  DirectionalLight::DirectionalLight(const glm::vec3 & color, const std::vector<float>& csm_distances) : 
-    Light(color), _csmDistances(csm_distances)
+  DirectionalLight::DirectionalLight(const Vec3f& color, const Vec3f& pos, const Vec3f& target, const std::vector<float>& csm_distances) :
+    Light(color, pos, target), _csmDistances(csm_distances)
   {
     _lensFlareWeight = 2.f;
     _lensFlareRefSamplesPassed = 4000.f;
@@ -80,25 +80,25 @@ namespace fly
     }
   }
 
-  glm::mat4 DirectionalLight::getViewMatrix(const glm::vec3& pos)
+  glm::mat4 DirectionalLight::getViewMatrix()
   {
-    auto dir = normalize(_target - pos);
-    return glm::lookAt(pos, _target, normalize(glm::vec3(-dir.y, dir.x, 0.f)));
+    auto dir = normalize(_target - _pos);
+    return glm::lookAt(glm::vec3(_pos), glm::vec3(_target), normalize(glm::vec3(-dir[1], dir[0], 0.f)));
   }
 
-  PointLight::PointLight(const glm::vec3& color, float near, float far) : Light(color), _zNear(near), _zFar(far)
+  PointLight::PointLight(const Vec3f& color, const Vec3f& pos, const Vec3f& target, float near, float far) : Light(color, pos, target), _zNear(near), _zFar(far)
   {
     _lensFlareWeight = 0.15f;
   }
-  void PointLight::getViewProjectionMatrices(const glm::vec3 & pos_world_space, std::vector<glm::mat4>& vp)
+  void PointLight::getViewProjectionMatrices(std::vector<glm::mat4>& vp)
   {
     auto projection_matrix = glm::perspective(glm::radians(90.f), 1.f, _zNear, _zFar);
 
-    vp.push_back(projection_matrix * glm::lookAt(pos_world_space, pos_world_space + glm::vec3(1.f, 0.f, 0.f), glm::vec3(0.f, -1.f, 0.f)));
-    vp.push_back(projection_matrix * glm::lookAt(pos_world_space, pos_world_space + glm::vec3(-1.f, 0.f, 0.f), glm::vec3(0.f, -1.f, 0.f)));
-    vp.push_back(projection_matrix * glm::lookAt(pos_world_space, pos_world_space + glm::vec3(0.f, 1.f, 0.f), glm::vec3(0.f, 0.f, 1.f)));
-    vp.push_back(projection_matrix * glm::lookAt(pos_world_space, pos_world_space + glm::vec3(0.f, -1.f, 0.f), glm::vec3(0.f, 0.f, -1.f)));
-    vp.push_back(projection_matrix * glm::lookAt(pos_world_space, pos_world_space + glm::vec3(0.f, 0.f, 1.f), glm::vec3(0.f, -1.f, 0.f)));
-    vp.push_back(projection_matrix * glm::lookAt(pos_world_space, pos_world_space + glm::vec3(0.f, 0.f, -1.f), glm::vec3(0.f, -1.f, 0.f)));
+    vp.push_back(projection_matrix * glm::lookAt(glm::vec3(_pos), glm::vec3(_pos) + glm::vec3(1.f, 0.f, 0.f), glm::vec3(0.f, -1.f, 0.f)));
+    vp.push_back(projection_matrix * glm::lookAt(glm::vec3(_pos), glm::vec3(_pos) + glm::vec3(-1.f, 0.f, 0.f), glm::vec3(0.f, -1.f, 0.f)));
+    vp.push_back(projection_matrix * glm::lookAt(glm::vec3(_pos), glm::vec3(_pos) + glm::vec3(0.f, 1.f, 0.f), glm::vec3(0.f, 0.f, 1.f)));
+    vp.push_back(projection_matrix * glm::lookAt(glm::vec3(_pos), glm::vec3(_pos) + glm::vec3(0.f, -1.f, 0.f), glm::vec3(0.f, 0.f, -1.f)));
+    vp.push_back(projection_matrix * glm::lookAt(glm::vec3(_pos), glm::vec3(_pos) + glm::vec3(0.f, 0.f, 1.f), glm::vec3(0.f, -1.f, 0.f)));
+    vp.push_back(projection_matrix * glm::lookAt(glm::vec3(_pos), glm::vec3(_pos) + glm::vec3(0.f, 0.f, -1.f), glm::vec3(0.f, -1.f, 0.f)));
   }
 }

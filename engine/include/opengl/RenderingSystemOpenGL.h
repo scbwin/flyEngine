@@ -194,7 +194,7 @@ namespace fly
       std::array<std::shared_ptr<GLFramebuffer>, 2> _impostorFb;
       void renderImpostor(const std::shared_ptr<Model>& tree_model, const std::shared_ptr<Model>& leaf_model, const glm::mat4& transform, RenderingSystemOpenGL* rs);
 
-      glm::mat4 getWaterModelMatrix();
+      Mat4f getWaterModelMatrix();
 
       std::shared_ptr<GLBuffer> _meshVbo;
       std::shared_ptr<GLBuffer> _meshIbo;

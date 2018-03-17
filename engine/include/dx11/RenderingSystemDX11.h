@@ -93,7 +93,6 @@ namespace fly
     };
     struct DL
     {
-      std::shared_ptr<Transform> _transform;
       std::shared_ptr<DirectionalLight> _dl;
       std::unique_ptr<ShadowMap> _shadowMap;
     };

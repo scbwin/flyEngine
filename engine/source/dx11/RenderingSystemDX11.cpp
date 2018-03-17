@@ -105,9 +105,8 @@ namespace fly
       _camEulerAngles = glm::quat(_camera->_eulerAngles);
     }
 
-    if (dl && transform) {
+    if (dl) {
       _directionalLight._dl = dl;
-      _directionalLight._transform = transform;
       _directionalLight._shadowMap = std::make_unique<ShadowMap>(this);
       HR(_fxShadowMap->SetResource(_directionalLight._shadowMap->_srv));
     }
@@ -424,7 +423,7 @@ namespace fly
     HR(_fxVPInverseVPBefore->SetMatrixTranspose(vp_inv_vp_before.ptr()));
     HR(_fxTime->SetFloat(time));
     _VPBefore = _VP;
-    auto view_matrix_light = _directionalLight._dl->getViewMatrix(_directionalLight._transform->getTranslation());
+    auto view_matrix_light = _directionalLight._dl->getViewMatrix();
     _lightVP.clear();
     _directionalLight._dl->getViewProjectionMatrices(_aspectRatio, _near, _fov, v_inverse,
       view_matrix_light, static_cast<float>(_directionalLight._shadowMap->_size), _lightVP, true);
@@ -519,10 +518,10 @@ namespace fly
   void RenderingSystemDX11::renderModels()
   {
     UINT offset = 0, stride = sizeof(Vertex);
-    Vec3f light_pos_world(&_directionalLight._transform->getTranslation().r);
-    auto light_pos_view = _viewMatrix * Vec4f({ light_pos_world[0], light_pos_world[1], light_pos_world[2], 1.f });
+   // Vec3f light_pos_world(&_directionalLight._transform->getTranslation().r);
+    auto light_pos_view = _viewMatrix * Vec4f({ _directionalLight._dl->_pos[0], _directionalLight._dl->_pos[1], _directionalLight._dl->_pos[2], 1.f });
     HR(_fxLightPosView->SetFloatVector(&light_pos_view[0]));
-    HR(_fxLightColor->SetFloatVector(&_directionalLight._dl->_color.r));
+    HR(_fxLightColor->SetFloatVector(_directionalLight._dl->_color.ptr()));
     HR(_fxShadowMap->SetResource(_directionalLight._shadowMap->_srv));
     for (auto& r : _staticModelRenderables) {
       const auto& m_rdable = r.second;
@@ -574,8 +573,7 @@ namespace fly
   {
     if (_proceduralTerrainRenderable) {
       _context->IASetInputLayout(nullptr);
-      Vec3f light_pos_world = _directionalLight._transform->getTranslation();
-      HR(_fxLightPosWorldTerrain->SetFloatVector(light_pos_world.ptr()));
+      HR(_fxLightPosWorldTerrain->SetFloatVector(_directionalLight._dl->_pos.ptr()));
       const auto& ptr = _proceduralTerrainRenderable->_ptr;
       const auto& terrain = _proceduralTerrainRenderable->_terrain;
       HR(_fxCamPosWorldTerrain->SetFloatVector(_camPos.ptr()));
@@ -647,13 +645,13 @@ namespace fly
           //  _context->IASetInputLayout(nullptr);
           _context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
           auto transform = p.first->getComponent<Transform>();
-          std::vector<glm::vec3> particle_positions;
+          std::vector<Vec3f> particle_positions;
           std::vector<float> fades;
           for (const auto& p : particles) {
-            particle_positions.push_back(p._position * transform->getScale() + transform->getTranslation());
+            particle_positions.push_back(Vec3f(p._position) * transform->getScale() + transform->getTranslation());
             fades.push_back(pow(glm::smoothstep(0.f, 0.2f, p._age) * (1.f - glm::smoothstep(0.8f, 1.f, p._age)), 2.f));
           }
-          HR(_fxBillboardPosWorld->SetFloatVectorArray(&particle_positions.front().r, 0u, static_cast<unsigned>(particle_positions.size())));
+          HR(_fxBillboardPosWorld->SetFloatVectorArray(particle_positions.front().ptr(), 0u, static_cast<unsigned>(particle_positions.size())));
           HR(_fxFades->SetFloatArray(&fades.front(), 0u, static_cast<uint32_t>(fades.size())));
           auto size = p.second._billboard->getSize();
           HR(_fxBillboardSize->SetFloatVector(&size.x));
@@ -686,7 +684,7 @@ namespace fly
   void RenderingSystemDX11::renderLightsources() const
   {
     _context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-    Vec3f light_pos_world(&_directionalLight._transform->getTranslation().r);
+    const auto& light_pos_world = _directionalLight._dl->_pos;
     auto pos_view = _viewMatrix * Vec4f({ light_pos_world[0], light_pos_world[1], light_pos_world[2], 1.f });
     if (pos_view[2] < 0.f) {
       auto pos = _projectionMatrix * pos_view;
@@ -874,7 +872,7 @@ namespace fly
   RenderingSystemDX11::DX11StaticModelRenderable::DX11StaticModelRenderable(const std::shared_ptr<Model>& model,
     const std::shared_ptr<Transform>& transform, RenderingSystemDX11* rs)
     : _model(model),
-    _mvInverse(inverse(glm::mat4(rs->_viewMatrix) * transform->getModelMatrix())),
+    _mvInverse(inverse(glm::mat4(rs->_viewMatrix) * glm::mat4(transform->getModelMatrix()))),
     _modelMatrix(transform->getModelMatrix()),
     _modelData(std::make_unique<ModelData>(model, rs))
   {

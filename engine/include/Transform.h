@@ -1,7 +1,7 @@
 #ifndef TRANSFORM_H
 #define TRANSFORM_H
 
-#include <glm/glm.hpp>
+#include <math/FlyMath.h>
 #include "Component.h"
 
 namespace fly
@@ -9,14 +9,18 @@ namespace fly
   class Transform : public Component
   {
   public:
-    Transform(const glm::vec3& translation = glm::vec3(0.f), const glm::vec3& scale = glm::vec3(1.f), const glm::vec3& degrees = glm::vec3(0.f));
-    glm::mat4 getModelMatrix() const;
-    glm::vec3& getTranslation();
-    glm::vec3& getScale();
+    Transform(const Vec3f& translation = Vec3f(0.f), const Vec3f& scale = Vec3f(1.f), const Vec3f& degrees = Vec3f(0.f));
+    Mat4f getModelMatrix() const;
+    void setTranslation(const Vec3f& translation);
+    void setScale(const Vec3f& scale);
+    void setDegrees(const Vec3f& degrees);
+    const Vec3f& getTranslation() const;
+    const Vec3f& getScale() const;
+    const Vec3f& getDegrees() const;
   private:
-    glm::vec3 _translation;
-    glm::vec3 _scale;
-    glm::vec3 _degrees;
+    Vec3f _translation;
+    Vec3f _scale;
+    Vec3f _degrees;
 
 
   };

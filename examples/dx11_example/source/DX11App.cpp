@@ -250,15 +250,13 @@ void DX11App::initGame()
 
   auto dl_entity = _engine->getEntityManager()->createEntity();
   std::vector<float> csm_distances = { 5.f, 20.f };
-  dl_entity->addComponent(std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), csm_distances));
-  dl_entity->getComponent<fly::DirectionalLight>()->_target = glm::vec3(0.f, 0.f, 2.f);
 #if SPONZA
-  _dlTransform = std::make_shared<fly::Transform>(glm::vec3(30.f, 30.f, 0.f));
-#else
-  _dlTransform = std::make_shared<fly::Transform>(glm::vec3(8192.f, 1000.f, 8192.f));
+  _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(30.f, 30.f, 0.f), glm::vec3(0.f, 0.f, 2.f),  csm_distances);
+#else 
+  _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(8192.f, 1000.f, 8192.f), glm::vec3(0.f, 0.f, 2.f), csm_distances);
 #endif
-
-  dl_entity->addComponent(_dlTransform);
+  dl_entity->addComponent(_dl);
+  dl_entity->addComponent(std::shared_ptr<fly::Light>(_dl));
 
 #if !SPONZA
   auto terrain_entity = _engine->getEntityManager()->createEntity();
@@ -314,6 +312,10 @@ void DX11App::initGame()
   TwAddVarCB(bar, "Lens flare", TwType::TW_TYPE_BOOLCPP, TwSetLensflareEnabled, TwGetLensflareEnabled, _rs.get(), "group=PostProcessing");
   TwAddVarCB(bar, "Bright scale", TW_TYPE_FLOAT, TwSetBrightScale, TwGetBrightScale, _rs.get(), "group=PostProcessing min=0 step=0.005");
   TwAddVarCB(bar, "Bright bias", TW_TYPE_FLOAT, TwSetBrightBias, TwGetBrightBias, _rs.get(), "group=PostProcessing min=0 step=0.005");
+#if SPONZA
+  TwAddVarCB(bar, "Screen space reflections (SSR)", TW_TYPE_BOOLCPP, TwSetSSR, TwGetSSR, _rs.get(), "group=PostProcessing");
+  TwAddVarCB(bar, "SSR blend weight", TW_TYPE_FLOAT, TwSetSSRWeight, TwGetSSRWeight, _rs.get(), "group=PostProcessing min=0 max=1 step=0.0035");
+#endif
   TwAddVarCB(bar, "Exposure", TwType::TW_TYPE_FLOAT, TwSetExposure, TwGetExposure, _rs.get(), "group=Renderer step=0.005");
   TwAddVarRW(bar, "Cam speed", TwType::TW_TYPE_FLOAT, &_camSpeed, "min=1 group=Renderer");
   TwAddVarCB(bar, "Wireframe", TwType::TW_TYPE_BOOLCPP, TwSetWireframeCallback, TwGetWireframeCallback,_rs.get(), "Group=Renderer");
@@ -350,30 +352,16 @@ void DX11App::handleInput()
   }
   float light_speed = 10.f;
   if (keyPressed(VK_LEFT)) {
-    if (_rs->getSettings()._ssrEnabled) {
-      _rs->setSSRBlendWeight(glm::clamp(_rs->getSSRBlendWeight() - _gameTimer.getDeltaTimeSeconds(), 0.f, 1.f));
-      _dbgString = L"SSR blend weight: " + std::to_wstring(_rs->getSSRBlendWeight());
-      _dbgStringAlpha = 1.f;
-    }
-    else {
-      _dlTransform->getTranslation().z -= _gameTimer.getDeltaTimeSeconds() * light_speed;
-    }
+      _dl->_pos[2] -= _gameTimer.getDeltaTimeSeconds() * light_speed;
   }
   if (keyPressed(VK_RIGHT)) {
-    if (_rs->getSettings()._ssrEnabled) {
-      _rs->setSSRBlendWeight(glm::clamp(_rs->getSSRBlendWeight() + _gameTimer.getDeltaTimeSeconds(), 0.f, 1.f));
-      _dbgString = L"SSR blend weight: " + std::to_wstring(_rs->getSSRBlendWeight());
-      _dbgStringAlpha = 1.f;
-    }
-    else {
-      _dlTransform->getTranslation().z += _gameTimer.getDeltaTimeSeconds() * light_speed;
-    }
+      _dl->_pos[2] += _gameTimer.getDeltaTimeSeconds() * light_speed;
   }
   if (keyPressed(VK_UP)) {
-    _dlTransform->getTranslation().x += _gameTimer.getDeltaTimeSeconds() * light_speed;
+    _dl->_pos[0] += _gameTimer.getDeltaTimeSeconds() * light_speed;
   }
   if (keyPressed(VK_DOWN)) {
-    _dlTransform->getTranslation().x -= _gameTimer.getDeltaTimeSeconds() * light_speed;
+    _dl->_pos[0] -= _gameTimer.getDeltaTimeSeconds() * light_speed;
   }
 }
 
@@ -636,6 +624,29 @@ void DX11App::TwSetExposure(const void * value, void * client_data)
 void DX11App::TwGetExposure(void * value, void * client_data)
 {
   *reinterpret_cast<float*>(value) = reinterpret_cast<fly::RenderingSystemDX11*>(client_data)->getSettings()._exposure;
+}
+
+void DX11App::TwSetSSR(const void * value, void * client_data)
+{
+  auto rs = reinterpret_cast<fly::RenderingSystemDX11*>(client_data);
+  auto settings = rs->getSettings();
+  settings._ssrEnabled = *reinterpret_cast<const bool*>(value);
+  rs->setSettings(settings);
+}
+
+void DX11App::TwGetSSR(void * value, void * client_data)
+{
+  *reinterpret_cast<bool*>(value) = reinterpret_cast<fly::RenderingSystemDX11*>(client_data)->getSettings()._ssrEnabled;
+}
+
+void DX11App::TwSetSSRWeight(const void * value, void * client_data)
+{
+  reinterpret_cast<fly::RenderingSystemDX11*>(client_data)->setSSRBlendWeight(*reinterpret_cast<const float*>(value));
+}
+
+void DX11App::TwGetSSRWeight(void * value, void * client_data)
+{
+  *reinterpret_cast<float*>(value) = reinterpret_cast<fly::RenderingSystemDX11*>(client_data)->getSSRBlendWeight();
 }
 
 int DX11App::execute()

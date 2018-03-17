@@ -2,8 +2,10 @@
 #define HELPERS_H
 
 #include <math/FlyVector.h>
+#include <math/FlyMatrix.h>
 #include <math/Meta.h>
 #include <algorithm>
+#include <glm/glm.hpp>
 
 namespace fly
 {
@@ -40,6 +42,12 @@ namespace fly
   }
 
   template<unsigned Dim, typename T>
+  inline Vector<Dim, T> normalize(const Vector<Dim, T>& a)
+  {
+    return a / a.length();
+  }
+
+  template<unsigned Dim, typename T>
   inline Vector<Dim, T> round(const Vector<Dim, T>& a)
   {
     Vector<Dim, T> result;
@@ -66,6 +74,44 @@ namespace fly
       result[i] = std::ceil(a[i]);
     }
     return result;
+  }
+
+  template<unsigned Dim, typename T>
+  inline Matrix<Dim, Dim, T> identity()
+  {
+    Matrix<Dim, Dim, T> ret;
+    for (unsigned i = 0; i < Dim; i++) {
+      for (unsigned j = 0; j < Dim; j++) {
+        ret[i][j] = i == j ? static_cast<T>(1) : static_cast<T>(0);
+      }
+    }
+    return ret;
+  }
+
+  template<unsigned Dim, typename T>
+  inline Matrix<Dim, Dim, T> translate(const Vector<Dim - 1, T>& t)
+  {
+    auto ret = identity<Dim, T>();
+    for (unsigned i = 0; i < Dim - 1; i++) {
+      ret[Dim - 1][i] = t[i];
+    }
+    return ret;
+  }
+
+  template<unsigned Dim, typename T>
+  inline Matrix<Dim, Dim, T> scale(const Vector<Dim - 1, T>& s)
+  {
+    auto ret = identity<Dim, T>();
+    for (unsigned i = 0; i < Dim - 1; i++) {
+      ret[i][i] = s[i];
+    }
+    return ret;
+  }
+
+  template<unsigned Dim, typename T>
+  inline Matrix<Dim, Dim, T> inverse(const Matrix<Dim, Dim, T>& mat)
+  {
+    return glm::inverse(glm::mat<Dim, Dim, T>(mat));
   }
 }
 

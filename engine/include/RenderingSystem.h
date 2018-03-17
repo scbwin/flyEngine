@@ -37,8 +37,8 @@ namespace fly
     void getRayCast(float x, float y, float viewPortWidth, float viewPortHeight, const glm::mat4& view_matrix, glm::vec3& pos, glm::vec3& d);
     glm::mat4 getProjectionMatrix(int width, int height);
 
-    glm::mat4 _viewMatrix;
-    glm::mat4 _projectionMatrix;
+    Mat4f _viewMatrix;
+    Mat4f _projectionMatrix;
     float _zNear = 1.f;
     float _zFar = 10000.f;
     float _fov = 60.f;

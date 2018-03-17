@@ -40,7 +40,8 @@ private:
   std::unique_ptr<fly::Engine> _engine;
   std::shared_ptr<fly::RenderingSystemDX11> _rs;
   std::shared_ptr<fly::Camera> _camera;
-  std::shared_ptr<fly::Transform> _dlTransform;
+  std::shared_ptr<fly::DirectionalLight> _dl;
+ // std::shared_ptr<fly::Transform> _dlTransform;
   fly::GameTimer _gameTimer;
 #if SPONZA
   float _camSpeed = 3.f;
@@ -103,6 +104,10 @@ private:
   static void TW_CALL TwGetLensflareEnabled(void* value, void* client_data);
   static void TW_CALL TwSetExposure(const void* value, void* client_data);
   static void TW_CALL TwGetExposure(void* value, void* client_data);
+  static void TW_CALL TwSetSSR(const void* value, void* client_data);
+  static void TW_CALL TwGetSSR(void* value, void* client_data);
+  static void TW_CALL TwSetSSRWeight(const void* value, void* client_data);
+  static void TW_CALL TwGetSSRWeight(void* value, void* client_data);
 };
 
 #endif // !DX11APP_H

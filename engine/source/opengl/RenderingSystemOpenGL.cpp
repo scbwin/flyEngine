@@ -118,7 +118,7 @@ namespace fly
   bool RenderingSystemOpenGL::renderGodRaysScreenSpace(const glm::vec3 & light_pos)
   {
     glm::vec3 light_pos_screen = toScreenSpace(glm::mat4(), light_pos, _viewMatrix, _projectionMatrix);
-    glm::vec3 light_pos_view_space = _viewMatrix * glm::vec4(light_pos, 1.f);
+    glm::vec3 light_pos_view_space = glm::mat4(_viewMatrix) * glm::vec4(light_pos, 1.f);
     bool light_visible = light_pos_view_space.z < 0.f && glm::all(glm::greaterThan(light_pos_screen, glm::vec3(0.f))) && glm::all(glm::lessThan(glm::vec2(light_pos_screen), glm::vec2(1.f)));
     if (!light_visible) {
       return false;
@@ -224,7 +224,7 @@ namespace fly
       GL_CHECK(glUniform1f(shader->uniformLocation("time"), _time));
       for (auto& t : _terrainRenderables) {
         auto model_matrix = t.second->_transform->getModelMatrix();
-        auto model_view = _viewMatrix * model_matrix;
+        auto model_view = Mat4f(_viewMatrix) * model_matrix;
         GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("MV"), 1, false, &model_view[0][0]));
         GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("P"), 1, false, &_projectionMatrix[0][0]));
         for (auto& n : t.second->_visibleNodes) {
@@ -266,23 +266,11 @@ namespace fly
     bindTextureOrLoadAsync("assets/lens_flare_ring.png");
     GL_CHECK(glUniform1i(shader->uniformLocation("lensFlareSampler"), 0));
     for (auto& light : _lights) {
-      auto dl = light->getComponent<DirectionalLight>();
-      auto sl = light->getComponent<SpotLight>();
-      auto pl = light->getComponent<PointLight>();
-      float lens_flare_weight = 0.f, ref_samples_passed = 0.f;
-      if (dl) {
-        lens_flare_weight = dl->_lensFlareWeight;
-        ref_samples_passed = dl->_lensFlareRefSamplesPassed;
-      }
-      else if (sl) {
-        lens_flare_weight = sl->_lensFlareWeight;
-        ref_samples_passed = sl->_lensFlareRefSamplesPassed;
-      }
-      else if (pl) {
-        lens_flare_weight = pl->_lensFlareWeight;
-        ref_samples_passed = pl->_lensFlareRefSamplesPassed;
-      }
-      auto l_pos_screen = _VP * light->getComponent<Transform>()->getModelMatrix() * glm::vec4(glm::vec3(0.f), 1.f);
+      auto l = light->getComponent<Light>();
+      float lens_flare_weight = l->_lensFlareWeight, ref_samples_passed = l->_lensFlareRefSamplesPassed;
+      Vec3f l_pos_world = l->_pos;
+     // auto l_pos_screen = _VP * light->getComponent<Transform>()->getModelMatrix() * glm::vec4(glm::vec3(0.f), 1.f);
+      auto l_pos_screen = _VP * glm::vec4(l_pos_world[0], l_pos_world[1], l_pos_world[2], 1.f);
       l_pos_screen /= l_pos_screen.w;
       l_pos_screen = l_pos_screen * 0.5f + 0.5f;
       auto lens_end = 1.f - glm::vec3(l_pos_screen);
@@ -396,9 +384,9 @@ namespace fly
       if (directional_light) {
         std::vector<Mat4f> vp;
         auto dl = directional_light->getComponent<DirectionalLight>();
-        auto transform = directional_light->getComponent<Transform>();
+    //    auto transform = directional_light->getComponent<Transform>();
   //      auto pos_world_space = transform->getTranslation();
-        dl->getViewProjectionMatrices(_aspectRatio, _zNear, _fov, inverse(_viewMatrix), dl->getViewMatrix(transform->getTranslation()), _shadowMaps[directional_light]->width(), vp);
+        dl->getViewProjectionMatrices(_aspectRatio, _zNear, _fov, inverse(glm::mat4(_viewMatrix)), dl->getViewMatrix(), _shadowMaps[directional_light]->width(), vp);
         for (auto& n : t.second->_visibleNodes) {
           if (n->_transforms.size() && n->_lod <= 1) {
             tr->_treeVao[n]->bind();
@@ -462,7 +450,7 @@ namespace fly
               auto shader = _treeShader;
               shader->bind();
               GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("MV"), 1, false, &model_view[0][0]));
-              GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("MVInverseTranspose"), 1, true, &inverse(model_view)[0][0]));
+              GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("MVInverseTranspose"), 1, true, &inverse(glm::mat4(model_view))[0][0]));
               GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("P"), 1, false, &_projectionMatrix[0][0]));
               GL_CHECK(glUniform1i(shader->uniformLocation("diffuseEnabled"), true));
               GL_CHECK(glUniform1i(shader->uniformLocation("normalEnabled"), true));
@@ -498,7 +486,7 @@ namespace fly
               shader = _leavesShader;
               shader->bind();
               GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("MV"), 1, false, &model_view[0][0]));
-              GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("MVInverseTranspose"), 1, true, &inverse(model_view)[0][0]));
+              GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("MVInverseTranspose"), 1, true, &inverse(glm::mat4(model_view))[0][0]));
               GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("P"), 1, false, &_projectionMatrix[0][0]));
               GL_CHECK(glActiveTexture(GL_TEXTURE0));
               bindTextureOrLoadAsync(leaf_model->getMaterials()[leaf_mesh->getMaterialIndex()].getDiffusePath());
@@ -555,7 +543,7 @@ namespace fly
         const auto& transform = t.second->_transform;
         for (auto& n : t.second->_visibleNodes) {
           if (n->_transforms.size()) {
-            auto model_matrix = transform->getModelMatrix() * n->_transforms[0];
+            auto model_matrix = glm::mat4(transform->getModelMatrix()) * n->_transforms[0];
             t.second->renderImpostor(terrain->getTreeModelLod1(), terrain->getLeavesModel(), model_matrix, this);
             break;
           }
@@ -597,10 +585,11 @@ namespace fly
 
       auto light_entity = *_directionalLights.begin();
       auto dl = light_entity->getComponent<DirectionalLight>();
-      auto light_transform = light_entity->getComponent<Transform>();
-      auto light_pos_view_space = _viewMatrix * glm::vec4(light_transform->getTranslation(), 1.f);
-      GL_CHECK(glUniform3f(shader->uniformLocation("lightColor"), dl->_color.r, dl->_color.g, dl->_color.b));
-      GL_CHECK(glUniform3f(shader->uniformLocation("lightPosViewSpace"), light_pos_view_space.x, light_pos_view_space.y, light_pos_view_space.z));
+    //  auto light_transform = light_entity->getComponent<Transform>();
+      auto l_pos_world = dl->_pos;
+      auto light_pos_view_space = _viewMatrix * glm::vec4(l_pos_world[0], l_pos_world[1], l_pos_world[2], 1.f);
+      GL_CHECK(glUniform3f(shader->uniformLocation("lightColor"), dl->_color[0], dl->_color[1], dl->_color[2]));
+      GL_CHECK(glUniform3f(shader->uniformLocation("lightPosViewSpace"), light_pos_view_space[0], light_pos_view_space[1], light_pos_view_space[2]));
       GL_CHECK(glActiveTexture(GL_TEXTURE0));
       bindTextureOrLoadAsync("assets/water_normals.png");
       GL_CHECK(glUniform1i(shader->uniformLocation("normalSampler"), 0));
@@ -613,11 +602,11 @@ namespace fly
       GL_CHECK(glUniform1f(shader->uniformLocation("time"), _time));
       GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("P"), 1, false, &_projectionMatrix[0][0]));
       for (auto& t : _terrainRenderables) {
-        auto model_matrix = t.second->getWaterModelMatrix();
-        auto model_view = _viewMatrix * model_matrix;
+        Mat4f model_matrix = t.second->getWaterModelMatrix();
+        glm::mat4 model_view = _viewMatrix * model_matrix;
         GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("MV"), 1, false, &model_view[0][0]));
         glm::vec3 normal_ms(0.f, 1.f, 0.f);
-        glm::vec3 normal_cs = normalize(glm::vec3(transpose(inverse(model_view)) * glm::vec4(normal_ms, 0.f)));
+        glm::vec3 normal_cs = normalize(glm::vec3(transpose(inverse(glm::mat4(model_view))) * glm::vec4(normal_ms, 0.f)));
         GL_CHECK(glUniform3f(shader->uniformLocation("normalViewSpace"), normal_cs.x, normal_cs.y, normal_cs.z));
         glm::vec3 tangent_ms(1.f, 0.f, 0.f);
         glm::vec3 bitangent_ms(0.f, 0.f, 1.f);
@@ -637,16 +626,19 @@ namespace fly
     shader->bind();
 
     float aspect = static_cast<float>(_viewportSize.x) / static_cast<float>(_viewportSize.y);
-    auto mat = glm::scale(glm::vec3(0.03f)) * glm::scale(glm::vec3(1.f, aspect, 1.f));
+   // auto mat = glm::scale(glm::vec3(0.03f)) * glm::scale(glm::vec3(1.f, aspect, 1.f));
+    auto mat = scale<4, float>(Vec3f(0.03f)) * scale<4, float>(Vec3f({ 1.f, aspect, 1.f }));
     for (auto& l : _directionalLights) {
-      auto light_pos_cs = _viewMatrix * l->getComponent<Transform>()->getModelMatrix() * glm::vec4(0.f, 0.f, 0.f, 1.f);
-      if (light_pos_cs.z <= -_zNear) {
+      auto dl = l->getComponent<DirectionalLight>();
+      auto light_pos_cs = _viewMatrix * glm::vec4(dl->_pos[0], dl->_pos[1], dl->_pos[2], 1.f);
+      if (light_pos_cs[2] <= -_zNear) {
         auto light_pos_screen = _projectionMatrix * light_pos_cs;
-        light_pos_screen /= light_pos_screen.w;
-        auto mvp = glm::translate(glm::vec3(light_pos_screen.x, light_pos_screen.y, 1.f)) * mat;
+        light_pos_screen /= light_pos_screen[3];
+       // auto mvp = glm::translate(glm::vec3(light_pos_screen.x, light_pos_screen.y, 1.f)) * mat;
+        auto mvp = translate<4, float>(Vec3f({ light_pos_screen[0], light_pos_screen[1], 1.f })) * mat;
         GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("MVP"), 1, false, &mvp[0][0]));
-        auto col = l->getComponent<DirectionalLight>()->_color;
-        GL_CHECK(glUniform3f(shader->uniformLocation("lightColor"), col.r, col.g, col.b));
+        auto col = dl->_color;
+        GL_CHECK(glUniform3f(shader->uniformLocation("lightColor"), col[0], col[1], col[2]));
         if (_lensFlaresEnabled) {
           _lightQueries[l]->begin();
         }
@@ -844,7 +836,7 @@ namespace fly
     for (auto& t : _terrainRenderables) {
       t.second->_visibleNodes.clear();
       auto model_matrix = t.second->_transform->getModelMatrix();
-      t.second->_terrain->getTreeNodesForRendering(glm::inverse(model_matrix) * glm::vec4(_camPos, 1.f), t.second->_visibleNodes, _VP * model_matrix);
+      t.second->_terrain->getTreeNodesForRendering(glm::inverse(glm::mat4(model_matrix)) * glm::vec4(_camPos, 1.f), t.second->_visibleNodes, _VP * glm::mat4(model_matrix));
     }
 
 #if PROFILE
@@ -974,7 +966,7 @@ namespace fly
     }
     if (_motionBlurEnabled) {
       GL_CHECK(glUniform1f(shader->uniformLocation("motionBlurStrength"), _motionBlurStrength * _fpsFactor));
-      auto d_mat = glm::dmat4(_VPBefore) * glm::inverse(glm::dmat4(_viewMatrix)) * glm::inverse(glm::dmat4(_projectionMatrix));
+      auto d_mat = glm::dmat4(_VPBefore) * glm::inverse(glm::dmat4(glm::mat4(_viewMatrix))) * glm::inverse(glm::dmat4(glm::mat4(_projectionMatrix)));
       auto mat = glm::mat4(d_mat);
       GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("VPBeforeTimesVPInverse"), 1, false, &mat[0][0]));
     }
@@ -982,7 +974,7 @@ namespace fly
     for (auto& t : _terrainRenderables) {
       auto model_matrix = t.second->getWaterModelMatrix();
       auto world_height = model_matrix[3][1];
-      auto vp_inverse = glm::inverse(_viewMatrix) * glm::inverse(_projectionMatrix);
+      auto vp_inverse = inverse(_viewMatrix) * inverse(Mat4f(_projectionMatrix));
       GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("VP_inverse"), 1, false, &vp_inverse[0][0]));
       GL_CHECK(glUniform1f(shader->uniformLocation("waterHeight"), world_height));
       if (!_popupAnimate && _camPosBefore.y < world_height && _camPos.y >= world_height) {
@@ -1069,11 +1061,11 @@ namespace fly
     for (auto& m : models) {
       auto transform = m->getComponent<Transform>();
       auto model_matrix = m->getComponent<Transform>()->getModelMatrix();
-      auto model_view = _viewMatrix * model_matrix;
+      auto model_view = Mat4f(_viewMatrix) * model_matrix;
       GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("MV"), 1, false, &model_view[0][0]));
-      GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("MVInverseTranspose"), 1, true, &inverse(model_view)[0][0]));
+      GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("MVInverseTranspose"), 1, true, &inverse(glm::mat4(model_view))[0][0]));
       auto cam_pos_model_space = inverse(model_matrix) * glm::vec4(_camPos, 1.f);
-      GL_CHECK(glUniform3f(shader->uniformLocation("camPosModelSpace"), cam_pos_model_space.x, cam_pos_model_space.y, cam_pos_model_space.z));
+      GL_CHECK(glUniform3f(shader->uniformLocation("camPosModelSpace"), cam_pos_model_space[0], cam_pos_model_space[1], cam_pos_model_space[2]));
       auto model = m->getComponent<Model>();
       auto meshes = model->getMeshes();
       meshes.erase(std::remove_if(meshes.begin(), meshes.end(), [this, &model_matrix](const std::shared_ptr<Mesh>& mesh) {
@@ -1154,7 +1146,7 @@ namespace fly
         GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("MV"), 1, false, &model_view[0][0]));
       }
       else {
-        GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("MVP"), 1, false, &(_projectionMatrix * model_view)[0][0]));
+        GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("MVP"), 1, false, &(Mat4f(_projectionMatrix) * model_view)[0][0]));
       }
       GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("MVInverseTranspose"), 1, true, &inverse(model_view)[0][0]));
       if (mode == TerrainRenderMode::GRASS) {
@@ -1188,10 +1180,10 @@ namespace fly
       int blades_per_unit = 32;
       GL_CHECK(glUniform1f(shader->uniformLocation("bladesPerUnit"), blades_per_unit));
       if (mode == TerrainRenderMode::GRASS) {
-        auto cam_pos_model_space = glm::round(glm::inverse(model_matrix) * glm::vec4(_camPos, 1.f));
+        auto cam_pos_model_space = glm::round(glm::mat4(inverse(model_matrix)) * glm::vec4(_camPos, 1.f));
         float grass_distance = _grassQuadTree->getSize() * 2.f;
         GL_CHECK(glUniform1f(shader->uniformLocation("grassDistance"), grass_distance));
-        auto mvp = _projectionMatrix * model_view;
+        auto mvp = Mat4f(_projectionMatrix) * model_view;
         auto quadtree_offset = -_grassQuadTree->getSize() / 2 + glm::ivec2(cam_pos_model_space.x, cam_pos_model_space.z);
         for (auto& n : _grassQuadTree->getNodes()) {
           auto node_pos_model_space = n->_pos + quadtree_offset;
@@ -1199,7 +1191,7 @@ namespace fly
           auto node_center_model_space = node_pos_model_space + patch_size / 2;
           auto node_center_view_space = model_view * glm::vec4(node_center_model_space.x,
             terrain->getHeight(node_center_model_space.x, node_center_model_space.y), node_center_model_space.y, 1.f);
-          if (glm::length(node_center_view_space) > grass_distance * 1.5f) {
+          if (node_center_view_space.length() > grass_distance * 1.5f) {
             continue;
           }
           /* This is an approximation
@@ -1237,8 +1229,8 @@ namespace fly
       else {
         terrain_renderable->_terrainVao->bind();
         std::map<int, std::map<int, int>> lods;
-        auto cam_pos_model_space = glm::inverse(model_matrix) * glm::vec4(_camPos, 1.f);
-        terrain->getTilesForRendering(lods, cam_pos_model_space, _projectionMatrix * model_view);
+        auto cam_pos_model_space = inverse(glm::mat4(model_matrix)) * glm::vec4(_camPos, 1.f);
+        terrain->getTilesForRendering(lods, cam_pos_model_space, glm::mat4(_projectionMatrix * model_view));
         GL_CHECK(glUniform1f(shader->uniformLocation("scale"), 1.f));
         GL_CHECK(glActiveTexture(GL_TEXTURE0 + tex));
         bindTextureOrLoadAsync("assets/mountainslab01.dds");
@@ -1318,23 +1310,13 @@ namespace fly
       if (_lensFlaresEnabled) {
         _lightQueries[l]->begin();
       }
-      auto dl = l->getComponent<DirectionalLight>();
-      auto sl = l->getComponent<SpotLight>();
-      auto pl = l->getComponent<PointLight>();
-      glm::vec3 color;
-      if (dl) {
-        color = dl->_color;
-      }
-      else if (sl) {
-        color = sl->_color;
-      }
-      else if (pl) {
-        color = pl->_color;
-      }
+      auto light = l->getComponent<Light>();
+      glm::vec3 color = light->_color;
+      Vec3f pos = light->_pos;
       GL_CHECK(glUniform3f(shader->uniformLocation("diffuseColor"), color.r, color.g, color.b));
       GL_CHECK(glUniform3f(shader->uniformLocation("lightColor"), color.r, color.g, color.b));
       auto model = l->getComponent<Model>();
-      auto model_view = _viewMatrix * l->getComponent<Transform>()->getModelMatrix();
+      auto model_view = _viewMatrix * Transform(pos).getModelMatrix();
       GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("MV"), 1, false, &model_view[0][0]));
       for (auto& mesh : model->getMeshes()) {
         setupMeshBindings(mesh);
@@ -1357,13 +1339,12 @@ namespace fly
     GL_CHECK(glUniform1i(shader->uniformLocation("gBufferSampler"), 0));
 
     auto light = directional_light->getComponent<DirectionalLight>();
-    auto transform = directional_light->getComponent<Transform>();
-    auto light_pos_world = transform->getTranslation();
+    auto light_pos_world = light->_pos;
     auto csm_distances = light->_csmDistances;
     auto shadow_map = _shadowMaps[directional_light];
     std::vector<Mat4f> vp;
     std::vector<Mat4f> v_inverse_vp_light;
-    light->getViewProjectionMatrices(_aspectRatio, _zNear, _fov, inverse(_viewMatrix), light->getViewMatrix(light_pos_world), shadow_map->width(), vp);
+    light->getViewProjectionMatrices(_aspectRatio, _zNear, _fov, inverse(_viewMatrix), light->getViewMatrix(), shadow_map->width(), vp);
     for (unsigned int i = 0; i < vp.size(); i++) {
       v_inverse_vp_light.push_back(vp[i] * Mat4f(inverse(_viewMatrix)));
     }
@@ -1381,7 +1362,7 @@ namespace fly
     GL_CHECK(glUniform4f(shader->uniformLocation("csmDistance"), csm_distances[0], csm_distances[1], csm_distances[2], csm_distances[3]));
 
     GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("V_inverse"), 1, false, &inverse(_viewMatrix)[0][0]));
-    glm::vec3 light_pos_view_space = _viewMatrix * glm::vec4(light_pos_world, 1.f);
+    glm::vec3 light_pos_view_space = glm::mat4(_viewMatrix) * glm::vec4(light_pos_world[0], light_pos_world[1], light_pos_world[2], 1.f);
     GL_CHECK(glUniform3f(shader->uniformLocation("lightPosViewSpace"), light_pos_view_space.x, light_pos_view_space.y, light_pos_view_space.z));
     glm::vec3 l_color = light->_color;
     if (_gammaCorrectionEnabled) {
@@ -1497,10 +1478,10 @@ namespace fly
   void RenderingSystemOpenGL::godRayPostProcess()
   {
     for (auto& dl : _directionalLights) {
-      auto light_pos_world = dl->getComponent<Transform>()->getTranslation();
-      auto light_pos_view_space = _viewMatrix * glm::vec4(light_pos_world, 1.f);
-      auto light_pos_screen_space = _projectionMatrix * light_pos_view_space;
-      light_pos_screen_space /= light_pos_screen_space.w;
+      auto l = dl->getComponent<DirectionalLight>();
+      auto light_pos_view_space = glm::mat4(_viewMatrix) * glm::vec4(l->_pos[0], l->_pos[1], l->_pos[2], 1.f);
+      glm::vec4 light_pos_screen_space = _projectionMatrix * light_pos_view_space;
+      light_pos_screen_space /= light_pos_screen_space[3];
       light_pos_screen_space = light_pos_screen_space * 0.5f + 0.5f;
 
       _renderGodRays = _godRayEffect->render(light_pos_screen_space, light_pos_view_space, this);
@@ -1640,10 +1621,10 @@ namespace fly
   bool RenderingSystemOpenGL::renderLightVolumeSpot(Entity * light)
   {
     auto sl = light->getComponent<SpotLight>();
-    auto light_pos_world = light->getComponent<Transform>()->getTranslation();
+    auto light_pos_world = sl->_pos;
 
     glm::mat4 v, p;
-    sl->getViewProjectionMatrix(v, p, light_pos_world);
+    sl->getViewProjectionMatrix(v, p);
     //glm::mat4 vp = p * v;
 
    /* if (_frustumCullingEnabled) {
@@ -1668,7 +1649,7 @@ namespace fly
       }
     }*/
 
-    auto v_inverse_vp_light = p * v * inverse(_viewMatrix);
+    auto v_inverse_vp_light = p * v * glm::mat4(inverse(_viewMatrix));
 
     auto shader = _shaderProgramVolumeLightSpot;
     shader->bind();
@@ -1680,18 +1661,18 @@ namespace fly
     GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("V"), 1, false, &_viewMatrix[0][0]));
 
     float max_depth_view_space = -sl->_zFar * 1.5f;
-    auto point = _projectionMatrix * glm::vec4(0.f, 0.f, max_depth_view_space, 1.f);
-    point /= point.w;
+    auto point = _projectionMatrix * Vec4f({ 0.f, 0.f, max_depth_view_space, 1.f });
+    point /= point[3];
     point = point * 0.5f + 0.5f;
-    GL_CHECK(glUniform1f(shader->uniformLocation("maxDepth"), point.z));
+    GL_CHECK(glUniform1f(shader->uniformLocation("maxDepth"), point[2]));
 
     GL_CHECK(glActiveTexture(GL_TEXTURE1));
     _sceneDepthbuffer->bind();
     GL_CHECK(glUniform1i(shader->uniformLocation("samplerSceneDepth"), 1));
     GL_CHECK(glUniform1f(shader->uniformLocation("numSamples"), _volumeLightSamples));
 
-    glm::vec3 light_pos_view_space = _viewMatrix * glm::vec4(light_pos_world, 1.f);
-    glm::vec3 light_target_view_space = _viewMatrix * glm::vec4(sl->_target, 1.f);
+    glm::vec3 light_pos_view_space = glm::mat4(_viewMatrix) * glm::vec4(light_pos_world[0], light_pos_world[1], light_pos_world[2], 1.f);
+    glm::vec3 light_target_view_space = glm::mat4(_viewMatrix) * glm::vec4(glm::vec3(sl->_target), 1.f);
     glm::vec3 light_dir_view_space = glm::normalize(light_target_view_space - light_pos_view_space);
     GL_CHECK(glUniform3f(shader->uniformLocation("lightDirViewSpace"), light_dir_view_space.x, light_dir_view_space.y, light_dir_view_space.z));
     GL_CHECK(glUniform3f(shader->uniformLocation("lightPosViewSpace"), light_pos_view_space.x, light_pos_view_space.y, light_pos_view_space.z));
@@ -1708,7 +1689,7 @@ namespace fly
   void RenderingSystemOpenGL::renderLightVolumePoint(Entity* light)
   {
     auto pl = light->getComponent<PointLight>();
-    auto light_pos_world = light->getComponent<Transform>()->getTranslation();
+    auto light_pos_world = pl->_pos;
 
     auto shader = _shaderProgramVolumeLightPoint;
     shader->bind();
@@ -1718,14 +1699,14 @@ namespace fly
     GL_CHECK(glActiveTexture(GL_TEXTURE1));
     _sceneDepthbuffer->bind();
     GL_CHECK(glUniform1i(shader->uniformLocation("samplerSceneDepth"), 1));
-    GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("VP_inverse"), 1, false, &inverse(_projectionMatrix * _viewMatrix)[0][0]));
+    GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("VP_inverse"), 1, false, &inverse(Mat4f(_projectionMatrix) * _viewMatrix)[0][0]));
     float max_depth_view_space = -pl->_zFar * 1.5f;
-    auto point = _projectionMatrix * glm::vec4(0.f, 0.f, max_depth_view_space, 1.f);
-    point /= point.w;
+    auto point = _projectionMatrix * Vec4f({ 0.f, 0.f, max_depth_view_space, 1.f });
+    point /= point[3];
     point = point * 0.5f + 0.5f;
-    GL_CHECK(glUniform1f(shader->uniformLocation("maxDepth"), point.z));
+    GL_CHECK(glUniform1f(shader->uniformLocation("maxDepth"), point[2]));
     GL_CHECK(glUniform1f(shader->uniformLocation("numSamples"), _volumeLightSamples));
-    GL_CHECK(glUniform3f(shader->uniformLocation("lightPosWorldSpace"), light_pos_world.x, light_pos_world.y, light_pos_world.z));
+    GL_CHECK(glUniform3f(shader->uniformLocation("lightPosWorldSpace"), light_pos_world[0], light_pos_world[1], light_pos_world[2]));
     GL_CHECK(glUniform1f(shader->uniformLocation("near"), pl->_zNear));
     GL_CHECK(glUniform1f(shader->uniformLocation("far"), pl->_zFar));
     GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
@@ -1871,7 +1852,7 @@ namespace fly
       GL_CHECK(glActiveTexture(GL_TEXTURE0));
       _skyboxTexture->bind();
       GL_CHECK(glUniform1i(shader->uniformLocation("skyboxSampler"), 0));
-      auto view_matrix = glm::mat4(glm::mat3(_viewMatrix)); // removes the translation part of the view matrix
+      Mat4f view_matrix = glm::mat4(glm::mat3(_viewMatrix)); // removes the translation part of the view matrix
       GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("VP"), 1, false, &(_projectionMatrix * view_matrix)[0][0]));
       _skyboxVertexArray->bind();
       _skyboxIndexbuffer->bind();
@@ -1889,7 +1870,7 @@ namespace fly
       GL_CHECK(glDisable(GL_CULL_FACE));
       auto shader = _skydomeShader;
       shader->bind();
-      auto view_matrix = glm::mat4(glm::mat3(_viewMatrix)); // removes the translation part of the view matrix
+      Mat4f view_matrix = glm::mat4(glm::mat3(_viewMatrix)); // removes the translation part of the view matrix
       GL_CHECK(glActiveTexture(GL_TEXTURE0));
       bindTextureOrLoadAsync("assets/clouds.png");
       GL_CHECK(glUniform1i(shader->uniformLocation("cloudSampler"), 0));
@@ -1926,9 +1907,7 @@ namespace fly
 
     std::vector<Mat4f> vp;
     auto dl = entity->getComponent<DirectionalLight>();
-    auto transform = entity->getComponent<Transform>();
-    auto pos_world_space = transform->getTranslation();
-    dl->getViewProjectionMatrices(_aspectRatio, _zNear, _fov, inverse(_viewMatrix), dl->getViewMatrix(pos_world_space), _shadowMaps[entity]->width(), vp);
+    dl->getViewProjectionMatrices(_aspectRatio, _zNear, _fov, inverse(_viewMatrix), dl->getViewMatrix(),_shadowMaps[entity]->width(), vp);
     GL_CHECK(glUniform1i(shader->uniformLocation("numLayers"), vp.size()));
     GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("VP"), vp.size(), false, &vp[0][0][0]));
 
@@ -1974,10 +1953,9 @@ namespace fly
     shader->bind();
 
     auto sl = entity->getComponent<SpotLight>();
-    auto transform = entity->getComponent<Transform>();
     glm::mat4 v, p;
-    sl->getViewProjectionMatrix(v, p, transform->getTranslation());
-    auto vp = p * v;
+    sl->getViewProjectionMatrix(v, p);
+    Mat4f vp = p * v;
 
     for (auto& m : _models) {
       if (m != entity) { // Don't render the light itself to the shadow map
@@ -2021,11 +1999,10 @@ namespace fly
     shader->bind();
 
     auto pl = entity->getComponent<PointLight>();
-    auto pos_world_space = entity->getComponent<Transform>()->getTranslation();
     std::vector<glm::mat4> vp;
-    pl->getViewProjectionMatrices(pos_world_space, vp);
+    pl->getViewProjectionMatrices(vp);
     GL_CHECK(glUniform1i(shader->uniformLocation("numLayers"), vp.size()));
-    GL_CHECK(glUniform3f(shader->uniformLocation("lightPosWorld"), pos_world_space.x, pos_world_space.y, pos_world_space.z));
+    GL_CHECK(glUniform3f(shader->uniformLocation("lightPosWorld"), pl->_pos[0], pl->_pos[1], pl->_pos[2]));
     GL_CHECK(glUniform1f(shader->uniformLocation("near"), pl->_zNear));
     GL_CHECK(glUniform1f(shader->uniformLocation("far"), pl->_zFar));
     GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("VP"), vp.size(), false, &vp[0][0][0]));
@@ -2603,7 +2580,7 @@ namespace fly
 
     glm::vec3 min(std::numeric_limits<float>::max());
     glm::vec3 max(std::numeric_limits<float>::lowest());
-    auto model_view = rs->_viewMatrix * transform;
+    auto model_view = glm::mat4(rs->_viewMatrix) * transform;
     for (auto& v : tree_model->getMeshes()[0]->getAABB()->getVertices()) {
       glm::vec3 v_view = model_view * glm::vec4(glm::vec3(v), 1.f);
       v_view.z *= -1.f;
@@ -2652,9 +2629,9 @@ namespace fly
     GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
   }
 
-  glm::mat4 RenderingSystemOpenGL::TerrainRenderable::getWaterModelMatrix()
+  Mat4f RenderingSystemOpenGL::TerrainRenderable::getWaterModelMatrix()
   {
-    return _transform->getModelMatrix() * glm::scale(glm::vec3(_terrain->getHeightMap().cols)) * glm::translate(glm::vec3(0.f, 0.00015f, 0.f));
+    return _transform->getModelMatrix() * scale<4, float>(Vec3f(_terrain->getHeightMap().cols)) * translate<4, float>(Vec3f({ 0.f, 0.00015f, 0.f }));
   }
 
   RenderingSystemOpenGL::~RenderingSystemOpenGL()

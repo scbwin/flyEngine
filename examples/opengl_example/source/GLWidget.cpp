@@ -110,7 +110,7 @@ void GLWidget::initializeGL()
     }
   }
   auto end = std::chrono::high_resolution_clock::now();
-  std::cout << "noise generation took " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
+  std::cout << "Noise generation took " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
 
   cv::Point min_loc, max_loc;
   double min, max;
@@ -162,15 +162,6 @@ void GLWidget::initializeGL()
       }
     }
   }
-
-  /*auto remap = [](float t) {
-    return glm::smoothstep(0.f, 1.f, 1.f - t * 3.f);
-  };
-  for (int x = 0; x < splat_map.cols; x++) {
-    for (int y = 0; y < splat_map.rows; y++) {
-      splat_map.at<float>(y, x) *= remap(height_map.at<float>(y, x));
-    }
-  }*/
 
   // roads
   float lower_bound = 0.05f;
@@ -311,11 +302,13 @@ void GLWidget::initializeGL()
   _lights.push_back(_engine->getEntityManager()->createEntity());
   _sphereModel = _importer->loadModel("assets/sphere.obj");
   _rs->setSkydome(_sphereModel->getMeshes()[0]);
-  auto dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), _csmDistances);
-  auto transform = std::make_shared<fly::Transform>(glm::vec3(-1000.f, 2000.f, -1000.f), glm::vec3(200.f));
-  dl->_target = glm::vec3(0.f);
+  auto dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(-1000.f, 2000.f, -1000.f), glm::vec3(200.f), _csmDistances);
+ // auto transform = std::make_shared<fly::Transform>(glm::vec3(-1000.f, 2000.f, -1000.f), glm::vec3(200.f));
+ // dl->_target = glm::vec3(0.f);
   _lights.back()->addComponent(dl);
-  _lights.back()->addComponent(transform);
+  std::shared_ptr<fly::Light> light_base = dl;
+  _lights.back()->addComponent(light_base);
+//  _lights.back()->addComponent(transform);
  // _lights.back()->addComponent(_sphereModel);
 
   auto timer = new QTimer(this);
@@ -442,7 +435,7 @@ void GLWidget::keyReleaseEvent(QKeyEvent * e)
       auto scale_end = scale_start * 2.f;
       auto animation = std::make_shared<fly::Animation>(0.3f, _time, [scale_start, scale_end, this](float t) {
         t = t <= 0.5f ? t * 2.f : (1.f - t) * 2.f;
-        _lights.back()->getComponent<fly::Transform>()->getScale() = (1.f - t) * scale_start + t * scale_end;
+       // _lights.back()->getComponent<fly::Transform>()->getScale() = (1.f - t) * scale_start + t * scale_end;
       });
       _lights.back()->addComponent(animation);
     }
@@ -469,7 +462,7 @@ void GLWidget::mousePressEvent(QMouseEvent * e)
   if (e->button() == Qt::MouseButton::LeftButton) {
     _buttonsPressed.insert(Qt::MouseButton::LeftButton);
     if (_lights.back() != nullptr) {
-      _lightDistWhenClicked = glm::distance(_lights.back()->getComponent<fly::Transform>()->getTranslation(), _cameras.front()->getComponent<fly::Camera>()->_pos);
+      _lightDistWhenClicked = glm::distance(glm::vec3(_lights.back()->getComponent<fly::Light>()->_pos), _cameras.front()->getComponent<fly::Camera>()->_pos);
     }
   }
   if (e->button() == Qt::MouseButton::RightButton) {
@@ -852,10 +845,10 @@ void GLWidget::handleKeyEvents()
 #if !SPONZA
   auto geo_mip_map = _geoMipMapEntity->getComponent<fly::Terrain>();
   auto g_model_mat = _geoMipMapEntity->getComponent<fly::Transform>()->getModelMatrix();
-  auto cam_pos_terrain = glm::inverse(g_model_mat) * glm::vec4(cam->_pos, 1.f);
+  auto cam_pos_terrain = glm::mat4(inverse(g_model_mat)) * glm::vec4(cam->_pos, 1.f);
   if (cam_pos_terrain.x >= 0.f && cam_pos_terrain.x <= geo_mip_map->getHeightMap().cols && cam_pos_terrain.z >= 0.f && cam_pos_terrain.z <= geo_mip_map->getHeightMap().rows) {
     float height = geo_mip_map->getHeight(cam_pos_terrain.x, cam_pos_terrain.z);
-    float height_world = (g_model_mat * glm::vec4(0.f, height, 0.f, 1.f)).y;
+    float height_world = (glm::mat4(g_model_mat) * glm::vec4(0.f, height, 0.f, 1.f)).y;
     cam->_pos.y = std::max(height_world + _rs->_zNear * 2.f, cam->_pos.y);
   }
 #endif
@@ -880,23 +873,24 @@ void GLWidget::handleKeyEvents()
   cam->_eulerAngles = glm::eulerAngles(interpolated_quat);
 
   if (_lights.size() && _mode == Mode::LIGHT_MOVE) {
-    auto& light_translation = _lights.back()->getComponent<fly::Transform>()->getTranslation();
+   // auto& light_translation = _lights.back()->getComponent<fly::Transform>()->getTranslation();
+    auto light = _lights.back()->getComponent<fly::Light>();
     float light_speed = 100.f * _deltaTime;
     if (_keysPressed.find(Qt::Key_Up) != _keysPressed.end()) {
-      light_translation.x += light_speed;
+      light->_pos[0] += light_speed;
     }
     if (_keysPressed.find(Qt::Key_Down) != _keysPressed.end()) {
-      light_translation.x -= light_speed;
+      light->_pos[0] -= light_speed;
     }
     if (_keysPressed.find(Qt::Key_Right) != _keysPressed.end()) {
-      light_translation.z += light_speed;
+      light->_pos[2] += light_speed;
     }
     if (_keysPressed.find(Qt::Key_Left) != _keysPressed.end()) {
-      light_translation.z -= light_speed;
+      light->_pos[2] -= light_speed;
     }
     float alpha = 0.99f;
     if (_buttonsPressed.find(Qt::MouseButton::LeftButton) != _buttonsPressed.end()) {
-      light_translation = (1.f - alpha) * (cam->_pos + cam->_direction * _lightDistWhenClicked) + alpha * light_translation;
+      light->_pos = (1.f - alpha) * (cam->_pos + cam->_direction * _lightDistWhenClicked) + glm::vec3(light->_pos * alpha);
     }
     if (_buttonsPressed.find(Qt::MouseButton::RightButton) != _buttonsPressed.end()) {
       float scene_depth = _rs->getSceneDepth(glm::ivec2(width() / 2, height() / 2));

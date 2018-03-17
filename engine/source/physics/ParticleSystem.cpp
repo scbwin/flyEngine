@@ -56,14 +56,15 @@ namespace fly
     assert(!transformations.size());
     transformations.reserve(_particles.size());
     for (const auto& p : _particles) {
-      glm::vec3 y_vec = normalize(p._velocity);
-      glm::vec3 x_vec = normalize(glm::vec3(y_vec.y, -y_vec.x, 0.f));
-      glm::vec3 z_vec = cross(x_vec, y_vec);
+      Vec3f y_vec = normalize(p._velocity);
+      Vec3f x_vec = normalize(glm::vec3(y_vec[1], -y_vec[0], 0.f));
+      Vec3f z_vec = cross(glm::vec3(x_vec), glm::vec3(y_vec));
       //float fade = 1.f - glm::smoothstep(_particles.size() * 0.75f, _particles.size() - 1.f, index);
      // fade *= glm::smoothstep(0.f, _particles.size() * 0.1f, index);
       float fade = glm::smoothstep(0.f, 0.2f, p._age) * (1.f - glm::smoothstep(0.8f, 1.f, p._age));
-      glm::mat4 transform(glm::mat4(glm::vec4(x_vec, 0.f), glm::vec4(y_vec, 0.f), glm::vec4(z_vec, 0.f), glm::vec4(p._position, 1.f)) * glm::scale(glm::vec3(fade)));
-      transformations.push_back(Mat4f(&transform[0][0]));
+      Mat4f transform = Mat4f({ Vec4f({x_vec[0], x_vec[1], x_vec[2], 0.f}), Vec4f({ y_vec[0], y_vec[1], y_vec[2], 0.f }),
+        Vec4f({ z_vec[0], z_vec[1], z_vec[2], 0.f }), Vec4f({p._position.x, p._position.y, p._position.z, 1.f}) }) * scale<4, float>(Vec3f(fade));//* glm::scale(glm::vec3(fade)));
+      transformations.push_back(transform);
       index++;
     }
   }

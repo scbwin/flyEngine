@@ -11,6 +11,20 @@
 #include <Model.h>
 #include <GameTimer.h>
 
+void handleEvents(sf::RenderWindow& window, const std::shared_ptr<fly::RenderingSystem>& rs)
+{
+  sf::Event event;
+  while (window.pollEvent(event)) {
+    if (event.type == sf::Event::Closed) {
+      window.close();
+    }
+    else if (event.type == sf::Event::Resized) {
+      auto size = window.getSize();
+      rs->onResize(glm::ivec2(size.x, size.y));
+    }
+  }
+}
+
 int main()
 {
   sf::RenderWindow window(sf::VideoMode(1024, 768), "My window");
@@ -22,8 +36,8 @@ int main()
   cam_entity->addComponent(std::make_shared<fly::Camera>(glm::vec3(0.f, 3.f, 0.f), glm::vec3(glm::radians(270.f), 0.f, 0.f)));
   auto light = engine->getEntityManager()->createEntity();
   std::vector<float> csm_distances = { 5.f, 10.f, 20.f, 50.f };
-  light->addComponent(std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), csm_distances));
-  light->addComponent(std::make_shared <fly::Transform>(glm::vec3(10.f, 10.f, 0.f)));
+  light->addComponent(std::make_shared<fly::DirectionalLight>(fly::Vec3f(1.f), fly::Vec3f({ 10.f, 10.f, 0.f }), fly::Vec3f(0.f), csm_distances));
+  light->addComponent(std::shared_ptr<fly::Light>(light->getComponent<fly::DirectionalLight>()));
   auto importer = std::make_unique<fly::AssimpImporter>();
   auto sponza_model = importer->loadModel("assets/sponza/sponza.obj");
   auto sponza_entity = engine->getEntityManager()->createEntity();
@@ -32,16 +46,7 @@ int main()
   sponza_entity->addComponent(std::make_shared<fly::Transform>(glm::vec3(0.f), glm::vec3(0.01f)));
   fly::GameTimer timer;
   while (window.isOpen()) {
-    sf::Event event;
-    while (window.pollEvent(event)) {
-      if (event.type == sf::Event::Closed) {
-        window.close();
-      }
-      else if (event.type == sf::Event::Resized) {
-         auto size = window.getSize();
-         rs->onResize(glm::ivec2(size.x, size.y));
-      }
-    }
+    handleEvents(window, rs);
     timer.tick();
     engine->update(timer.getTimeSeconds(), timer.getDeltaTimeSeconds());
     window.display();
