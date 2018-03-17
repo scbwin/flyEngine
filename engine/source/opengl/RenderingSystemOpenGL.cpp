@@ -27,7 +27,7 @@ namespace fly
   RenderingSystemOpenGL::RenderingSystemOpenGL()
   {
   }
-  void RenderingSystemOpenGL::init()
+  void RenderingSystemOpenGL::init(const Vec2i& window_size)
   {
     glewExperimental = true;
     auto result = glewInit();
@@ -89,6 +89,8 @@ namespace fly
       cv::rectangle(mat, rect, CV_RGB(255, 255, 255));
     }
     cv::imwrite("assets/grass_quadtree_debug.png", mat);
+
+    onResize(window_size);
   }
 
   void RenderingSystemOpenGL::update(float time, float delta_time)
@@ -1117,7 +1119,7 @@ namespace fly
           GL_CHECK(glUniform3f(shader->uniformLocation("lightColor"), light_color.x, light_color.y, light_color.z));
         }
         setupMeshBindings(mesh);
-
+        //std::cout << "Draw mesh" << std::endl;
         GL_CHECK(glDrawElements(GL_TRIANGLES, mesh->getIndices().size(), GL_UNSIGNED_INT, nullptr));
         material_index = material_index_new;
       }
@@ -2084,7 +2086,8 @@ namespace fly
   void RenderingSystemOpenGL::bindTextureOrLoadAsync(const std::string & path)
   {
     if (_textures[path] == nullptr) {
-      if (!_textureFutures.count(path)) {
+      std::ifstream is(path);
+      if (is.good() && !_textureFutures.count(path)) {
         _textureFutures[path] = std::async(std::launch::async, [path, this]() {
           AsyncTextureResult result;
           result._data = SOIL_load_image(path.c_str(), &result._width, &result._height, &result._channels, SOIL_LOAD_AUTO);
@@ -3036,7 +3039,6 @@ namespace fly
       _DOFBlurBuffer[i]->addTexture(texture, GL_COLOR_ATTACHMENT0);
       _DOFBlurBuffer[i]->setDrawbuffersFromColorAttachments();
     }
-
   }
   float RenderingSystemOpenGL::getSceneDepth(const glm::ivec2 & pos)
   {

@@ -26,7 +26,7 @@ namespace fly
   {
   public:
     RenderingSystemOpenGL();
-    virtual void init() override;
+    virtual void init(const Vec2i& window_size) override;
     virtual ~RenderingSystemOpenGL();
     virtual void setSkybox(const std::array<std::string, 6u>& paths) override;
     virtual void setSkydome(const std::shared_ptr<Mesh>& mesh) override;

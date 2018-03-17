@@ -6,6 +6,7 @@
 #include "System.h"
 #include <glm/glm.hpp>
 #include <array>
+#include <math/FlyMath.h>
 
 namespace fly
 {
@@ -16,7 +17,7 @@ namespace fly
   class RenderingSystem : public System
   {
   public:
-    virtual void init() = 0;
+    virtual void init(const Vec2i& window_size) = 0;
     virtual void setSkybox(const std::array<std::string, 6u>& paths) = 0;
     virtual void setSkydome(const std::shared_ptr<Mesh>& mesh) = 0;
     virtual ~RenderingSystem();
@@ -67,7 +68,7 @@ namespace fly
     bool _eyeAdaptionEnabled = true;
     bool _lensFlaresEnabled = true;
 
-    glm::ivec2 _viewportSize;
+    glm::ivec2 _viewportSize = glm::ivec2(0);
 
     bool isBloomEnabled();
     void setBloomEnabled(bool enabled);

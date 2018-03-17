@@ -27,6 +27,6 @@ add_executable(opengl_example ${HEADER_FILES} ${SOURCE_FILES})
 
 target_link_libraries(opengl_example Qt5::Widgets Qt5::OpenGL ${FLY_LIBS})
 
-IF (WIN32)
-set_target_properties(opengl_example PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "../..")
-ENDIf()
+if (WIN32)
+set_target_properties(opengl_example PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "@CMAKE_CURRENT_LIST_DIR@/../..")
+endif()

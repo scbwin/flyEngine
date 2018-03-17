@@ -26,5 +26,5 @@ add_executable(dx11_example ${HEADER_FILES} ${SOURCE_FILES})
 target_link_libraries(dx11_example ${ANT_LIB} ${FLY_LIBS})
 
 if (WIN32)
-set_target_properties(dx11_example PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "../..")
+set_target_properties(dx11_example PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "@CMAKE_CURRENT_LIST_DIR@/../..")
 endif()

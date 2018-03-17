@@ -14,6 +14,10 @@ namespace fly
   using Vec3u = Vector<3, unsigned>;
   using Vec4u = Vector<4, unsigned>;
 
+  using Vec2i = Vector<2, int>;
+  using Vec3i = Vector<3, int>;
+  using Vec4i = Vector<4, int>;
+
   using Mat2f = Matrix<2, 2, float>;
   using Mat3f = Matrix<3, 3, float>;
   using Mat4f = Matrix<4, 4, float>;

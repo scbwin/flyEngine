@@ -44,7 +44,7 @@ GLWidget::GLWidget() : _timePointStart(std::chrono::high_resolution_clock::now()
 
 void GLWidget::initializeGL()
 {
-  _rs->init();
+  _rs->init(glm::ivec2(width(), height()));
   // _rs->setSkybox({ "assets/right.jpg", "assets/left.jpg", "assets/top.jpg", "assets/bottom.jpg", "assets/back.jpg", "assets/front.jpg" });
 #if SPONZA
   auto sponza_model_instance = _importer->loadModel("assets/sponza/sponza.obj");
