@@ -387,7 +387,7 @@ namespace fly
     //    auto transform = directional_light->getComponent<Transform>();
   //      auto pos_world_space = transform->getTranslation();
         dl->getViewProjectionMatrices(_aspectRatio, _zNear, _fov, inverse(glm::mat4(_viewMatrix)), dl->getViewMatrix(), _shadowMaps[directional_light]->width(), vp);
-        for (auto& n : t.second->_visibleNodes) {
+        for (auto& n : t.second->_visibleNodesShadowMap) {
           if (n->_transforms.size() && n->_lod <= 1) {
             tr->_treeVao[n]->bind();
             auto shader = _treeShadowMapShader;
@@ -428,12 +428,8 @@ namespace fly
         }
       }
       else {
-       // glm::vec3 min, max;
-      //  tree_mesh_lod0->getBounds(min, max);
         auto min = tree_mesh_lod0->getAABB()->getMin();
         auto max = tree_mesh_lod0->getAABB()->getMax();
-      //  glm::vec3 leaf_min, leaf_max;
-      //  leaf_mesh->getBounds(leaf_min, leaf_max);
         auto leaf_min = leaf_mesh->getAABB()->getMin();
         auto leaf_max = leaf_mesh->getAABB()->getMax();
         min = minimum(min, leaf_min);
@@ -833,10 +829,20 @@ namespace fly
     _VP = _projectionMatrix * _viewMatrix;
     _activeCamera = active_camera;
 
+    auto dl = (*_directionalLights.begin())->getComponent<DirectionalLight>();
+    auto shadow_map = _shadowMaps[*_directionalLights.begin()];
+    std::vector<Mat4f> vp;
+    dl->getViewProjectionMatrices(_aspectRatio, _zNear, _fov, inverse(_viewMatrix), dl->getViewMatrix(), shadow_map->width(), vp);
     for (auto& t : _terrainRenderables) {
       t.second->_visibleNodes.clear();
+      t.second->_visibleNodesShadowMap.clear();
       auto model_matrix = t.second->_transform->getModelMatrix();
-      t.second->_terrain->getTreeNodesForRendering(glm::inverse(glm::mat4(model_matrix)) * glm::vec4(_camPos, 1.f), t.second->_visibleNodes, _VP * glm::mat4(model_matrix));
+      t.second->_terrain->getTreeNodesForRendering(glm::inverse(glm::mat4(model_matrix)) * glm::vec4(_camPos, 1.f), t.second->_visibleNodes, _VP * glm::mat4(model_matrix), nullptr);
+      std::vector<Mat4f> light_mvps;
+      for (unsigned i = 0; i < dl->_csmDistances.size(); ++i) {
+        light_mvps.push_back(vp[i] * model_matrix);
+      }
+      t.second->_terrain->getTreeNodesForRendering(glm::inverse(glm::mat4(model_matrix)) * glm::vec4(_camPos, 1.f), t.second->_visibleNodesShadowMap, _VP * glm::mat4(model_matrix), (*_directionalLights.begin())->getComponent<DirectionalLight>().get(), light_mvps);
     }
 
 #if PROFILE

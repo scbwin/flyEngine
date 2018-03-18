@@ -216,6 +216,7 @@ namespace fly
       std::shared_ptr<GLTexture> _splatMap;
 
       std::vector<Terrain::TreeNode*> _visibleNodes;
+      std::vector<Terrain::TreeNode*> _visibleNodesShadowMap;
     };
     
     class GrassQuadTree
