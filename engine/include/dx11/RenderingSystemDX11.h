@@ -128,12 +128,9 @@ namespace fly
     };
     struct DX11StaticModelRenderable
     {
-      DX11StaticModelRenderable(const std::shared_ptr<Model>& model, const std::shared_ptr<Transform>& transform, RenderingSystemDX11* rs);
       std::shared_ptr<Model> _model;
       std::unique_ptr<ModelData> _modelData;
       Mat4f _modelMatrix;
-      Mat4f _mvInverse;
-      Mat4f _mvp;
     };
     struct DX11ProceduralTerrainRenderable
     {
@@ -159,7 +156,7 @@ namespace fly
 
     struct ParticleModelRenderable
     {
-      std::shared_ptr<DX11StaticModelRenderable> _modelRenderable;
+      DX11StaticModelRenderable _modelRenderable;
       std::shared_ptr<ParticleSystem> _particleSystem;
     };
     struct ParticleBillboardRenderable
@@ -301,7 +298,7 @@ namespace fly
     const unsigned _terrainLods = 5;
     glm::vec4 _backgroundColor = glm::pow(glm::vec4(95.f / 255.f, 137.0f / 255.f, 204.f / 255.f, 1.f), glm::vec4(2.2f));
 
-    std::map<Entity*, std::shared_ptr<DX11StaticModelRenderable>> _staticModelRenderables;
+    std::map<Entity*, DX11StaticModelRenderable> _staticModelRenderables;
     std::map<Entity*, ParticleModelRenderable> _particleModelRenderables;
     std::map<Entity*, ParticleBillboardRenderable> _particleBillboardRenderables;
 

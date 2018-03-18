@@ -87,10 +87,10 @@ namespace fly
     }
 
     if (model && transform && particle_system) {
-      _particleModelRenderables[entity] = { std::make_shared<DX11StaticModelRenderable>(model, transform, this), particle_system };
+      _particleModelRenderables[entity] = { { model, std::make_unique<ModelData>(model, this), transform->getModelMatrix() }, particle_system };
     }
     if (model && transform && smr) {
-      _staticModelRenderables[entity] = std::make_shared<DX11StaticModelRenderable>(model, transform, this);
+      _staticModelRenderables[entity] = { model, std::make_unique<ModelData>(model, this), transform->getModelMatrix() };
     }
     if (!particle_system) {
       _particleModelRenderables.erase(entity);
@@ -439,11 +439,6 @@ namespace fly
     _context->OMSetBlendState(nullptr, nullptr, 0xffffffff);
     _context->IASetInputLayout(_defaultInputLayout);
     _context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-    for (auto& r : _staticModelRenderables) {
-      r.second->_mvInverse = inverse(glm::mat4(_viewMatrix * r.second->_modelMatrix));
-      r.second->_mvp = _VP * r.second->_modelMatrix;
-    }
   }
 
   void RenderingSystemDX11::renderShadowMaps() const
@@ -458,26 +453,26 @@ namespace fly
       UINT offset = 0, stride = sizeof(Vertex);
       for (auto& r : _staticModelRenderables) {
         const auto& m_rdable = r.second;
-        auto light_mvp = _lightVP[i] * m_rdable->_modelMatrix;
+        auto light_mvp = _lightVP[i] * m_rdable._modelMatrix;
         /*#ifndef _DEBUG // frustum culling is currently too costly in debug mode
-                if (!m_rdable->_model->getAABB()->isVisible(light_mvp, true)) {
+                if (!m_rdable._model->getAABB()->isVisible(light_mvp, true)) {
                   continue;
                 }
         #endif*/
-        _context->IASetVertexBuffers(0, 1, &m_rdable->_modelData->_vertexBuffer.p, &stride, &offset);
-        _context->IASetIndexBuffer(m_rdable->_modelData->_indexBuffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
+        _context->IASetVertexBuffers(0, 1, &m_rdable._modelData->_vertexBuffer.p, &stride, &offset);
+        _context->IASetIndexBuffer(m_rdable._modelData->_indexBuffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
         HR(_fxLightMVP->SetMatrixTranspose(light_mvp.ptr()));
         int material_index = -1;
-        for (const auto& mesh_desc : m_rdable->_modelData->_meshDesc) { // For each mesh
+        for (const auto& mesh_desc : m_rdable._modelData->_meshDesc) { // For each mesh
 /*#ifndef _DEBUG
-          if (!m_rdable->_model->getMeshes()[i]->getAABB()->isVisible(light_mvp, true)) {
+          if (!m_rdable._model->getMeshes()[i]->getAABB()->isVisible(light_mvp, true)) {
             continue;
           }
 #endif*/
           int material_index_new = static_cast<int>(mesh_desc._materialIndex);
           if (material_index != material_index_new) {
-            const auto& mat_desc = m_rdable->_modelData->_materialDesc[material_index_new];
-            auto material = m_rdable->_model->getMaterials()[material_index_new];
+            const auto& mat_desc = m_rdable._modelData->_materialDesc[material_index_new];
+            auto material = m_rdable._model->getMaterials()[material_index_new];
             HR(_fxAlphaMap->SetResource(mat_desc._opacitySrv));
             if (material.hasWindX() || material.hasWindZ()) {
               const auto& aabb = mesh_desc._mesh->getAABB();
@@ -525,32 +520,34 @@ namespace fly
     HR(_fxShadowMap->SetResource(_directionalLight._shadowMap->_srv));
     for (auto& r : _staticModelRenderables) {
       const auto& m_rdable = r.second;
+      auto mvp = _VP * m_rdable._modelMatrix;
 #ifndef _DEBUG
-      if (!m_rdable->_model->getAABB()->isVisible(m_rdable->_mvp, true)) {
+      if (!m_rdable._model->getAABB()->isVisible(mvp, true)) {
         continue;
       }
 #endif
-      _context->IASetVertexBuffers(0, 1, &m_rdable->_modelData->_vertexBuffer.p, &stride, &offset);
-      _context->IASetIndexBuffer(m_rdable->_modelData->_indexBuffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
-      HR(_fxMVP->SetMatrixTranspose(m_rdable->_mvp.ptr()));
-      HR(_fxMVInverseTranspose->SetMatrix(m_rdable->_mvInverse.ptr()));
+      _context->IASetVertexBuffers(0, 1, &m_rdable._modelData->_vertexBuffer.p, &stride, &offset);
+      _context->IASetIndexBuffer(m_rdable._modelData->_indexBuffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
+      HR(_fxMVP->SetMatrixTranspose(mvp.ptr()));
+      auto mv_inverse = inverse(_viewMatrix * m_rdable._modelMatrix);
+      HR(_fxMVInverseTranspose->SetMatrix(mv_inverse.ptr()));
       int material_index = -1;
-      for (const auto& mesh_desc : m_rdable->_modelData->_meshDesc) { // For each mesh
+      for (const auto& mesh_desc : m_rdable._modelData->_meshDesc) { // For each mesh
         const auto& aabb = mesh_desc._mesh->getAABB();
 #ifndef _DEBUG
-        if (!aabb->isVisible(m_rdable->_mvp, true)) { // Frustum culling
+        if (!aabb->isVisible(mvp, true)) { // Frustum culling
           continue;
         }
 #endif
         int material_index_new = static_cast<int>(mesh_desc._materialIndex);
         // Meshes are sorted by material, the following statement helps to reduce context switches
         if (material_index != material_index_new) {
-          const auto& material = m_rdable->_model->getMaterials()[material_index_new];
+          const auto& material = m_rdable._model->getMaterials()[material_index_new];
           if (_settings._ssrEnabled) {
             _context->OMSetDepthStencilState(_dx11States->depthReadWriteStencilWrite(), material.isReflective());
             _reflectiveSurfacesVisible = _reflectiveSurfacesVisible || material.isReflective();
           }
-          const auto& mat_desc = m_rdable->_modelData->_materialDesc[material_index_new];
+          const auto& mat_desc = m_rdable._modelData->_materialDesc[material_index_new];
           HR(_fxDiffuseTex->SetResource(mat_desc._diffuseSrv));
           HR(_fxAlphaMap->SetResource(mat_desc._opacitySrv));
           HR(_fxNormalMap->SetResource(mat_desc._normalSrv));
@@ -616,19 +613,19 @@ namespace fly
         std::vector<Mat4f> particle_transforms;
         p.second._particleSystem->getParticleTransformations(particle_transforms);
         if (particle_transforms.size()) {
-          auto p_renderable = p.second._modelRenderable;
-          _context->IASetVertexBuffers(0, 1, &p_renderable->_modelData->_vertexBuffer.p, &stride, &offset);
-          _context->IASetIndexBuffer(p_renderable->_modelData->_indexBuffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
+          const auto& p_renderable = p.second._modelRenderable;
+          _context->IASetVertexBuffers(0, 1, &p_renderable._modelData->_vertexBuffer.p, &stride, &offset);
+          _context->IASetIndexBuffer(p_renderable._modelData->_indexBuffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
           std::vector<Mat4f> matrices;
           auto mvp = _VP * Mat4f(p.first->getComponent<Transform>()->getModelMatrix());
           for (const auto& m : particle_transforms) {
             matrices.push_back(mvp * m);
           }
           HR(_fxMVPs->SetMatrixTransposeArray(matrices.front().ptr(), 0, static_cast<uint32_t>(matrices.size())));
-          auto& diffuse_color = p.second._modelRenderable->_model->getMaterials().front().getDiffuseColor();
+          auto& diffuse_color = p.second._modelRenderable._model->getMaterials().front().getDiffuseColor();
           HR(_fxDiffuseColor->SetFloatVector(diffuse_color.ptr()));
           HR(_lightParticlePass->Apply(0, _context));
-          _context->DrawIndexedInstanced(p_renderable->_modelData->_meshDesc.front()._numIndices, static_cast<unsigned>(matrices.size()), 0, 0, 0);
+          _context->DrawIndexedInstanced(p_renderable._modelData->_meshDesc.front()._numIndices, static_cast<unsigned>(matrices.size()), 0, 0, 0);
         }
       }
     }
@@ -869,14 +866,13 @@ namespace fly
     _context->CopyResource(dst, src);
   }
 
-  RenderingSystemDX11::DX11StaticModelRenderable::DX11StaticModelRenderable(const std::shared_ptr<Model>& model,
+ /* RenderingSystemDX11::DX11StaticModelRenderable::DX11StaticModelRenderable(const std::shared_ptr<Model>& model,
     const std::shared_ptr<Transform>& transform, RenderingSystemDX11* rs)
     : _model(model),
-    _mvInverse(inverse(glm::mat4(rs->_viewMatrix) * glm::mat4(transform->getModelMatrix()))),
     _modelMatrix(transform->getModelMatrix()),
     _modelData(std::make_unique<ModelData>(model, rs))
   {
-  }
+  }*/
 
   RenderingSystemDX11::ShadowMap::ShadowMap(RenderingSystemDX11* rs)
   {
