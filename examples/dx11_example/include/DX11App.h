@@ -20,6 +20,7 @@
 #include <AntTweakBar.h>
 
 #define SPONZA 1
+#define SPONZA_MULTIPLE 0
 
 class DX11App
 {

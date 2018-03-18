@@ -89,7 +89,7 @@ namespace fly
     std::shared_ptr<Model> getTreeModelLod0();
     std::shared_ptr<Model> getTreeModelLod1();
     void getAllNodes(std::vector<TreeNode*>& nodes);
-    void getTreeNodesForRendering(const glm::vec3& cam_pos_model_space, std::vector<TreeNode*>& nodes, const glm::mat4& mvp);
+    void getTreeNodesForRendering(const glm::vec3& cam_pos_model_space, std::vector<TreeNode*>& nodes, const Mat4f& mvp);
     struct Tile
     {
       Tile(const glm::ivec2& pos, Terrain* g);

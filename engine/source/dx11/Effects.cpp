@@ -34,6 +34,7 @@ namespace fly
       add_line("  pass pass0");
       add_line("  {");
       add_line("    SetVertexShader(CompileShader(vs_5_0, vertexShader(" + to_str( MeshRenderFlags::WindX) + "," + to_str(MeshRenderFlags::WindZ) + ")));");
+      add_line("    SetGeometryShader(NULL);");
       add_line("    SetPixelShader(CompileShader(ps_5_0, pixelShader(" + to_str(MeshRenderFlags::Diffuse) + "," + to_str(MeshRenderFlags::Alpha) + "," + to_str(MeshRenderFlags::Normal) + ")));");
       add_line("   }");
       add_line("}");
@@ -53,6 +54,7 @@ namespace fly
       add_line("  pass pass0");
       add_line("  {");
       add_line("    SetVertexShader(CompileShader(vs_5_0, vsShadowMap(" + to_str(ShadowMapRenderFlags::ShadowWindX) + "," + to_str(ShadowMapRenderFlags::ShadowWindZ) + ")));");
+      add_line("    SetGeometryShader(CompileShader(gs_5_0, gsShadowMap()));");
       add_line("    SetPixelShader(CompileShader(ps_5_0, psShadowMap(" + to_str(ShadowMapRenderFlags::ShadowAlpha) + ")));");
       add_line("   }");
       add_line("}");

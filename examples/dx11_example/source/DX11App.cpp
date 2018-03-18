@@ -188,7 +188,6 @@ void DX11App::initGame()
 
   std::shared_ptr<fly::IImporter> importer = std::make_unique<fly::AssimpImporter>();
 #if SPONZA
-  auto sponza_entity = _engine->getEntityManager()->createEntity();
   auto model = importer->loadModel("assets/sponza/sponza.obj");
   //model->getMeshes()[model->getMeshes().size() - 28]->setMaterialIndex(20);
   //model->getMeshes()[model->getMeshes().size() - 28]->setHasWindX(true);
@@ -205,9 +204,23 @@ void DX11App::initGame()
   model->getMeshes()[model->getMeshes().size() - 28]->setMaterialIndex(model->getMaterials().size() - 1);
   model->getMaterials()[10].setIsReflective(true);
   model->sortMeshesByMaterial();
-  sponza_entity->addComponent(model);
-  sponza_entity->addComponent(std::make_shared<fly::Transform>(glm::vec3(0.f), glm::vec3(0.01f)));
-  sponza_entity->addComponent(std::make_shared<fly::StaticModelRenderable>());
+#if SPONZA_MULTIPLE
+  int width = 4;
+  int height = 3;
+  float scale = 100.f;
+  for (unsigned i = 0; i < width * height; i++) {
+#endif
+    auto sponza_entity = _engine->getEntityManager()->createEntity();
+    sponza_entity->addComponent(model);
+#if SPONZA_MULTIPLE
+    sponza_entity->addComponent(std::make_shared<fly::Transform>(glm::vec3((i % width) * scale, 0.f, i / width * scale), glm::vec3(0.01f)));
+#else
+    sponza_entity->addComponent(std::make_shared<fly::Transform>(fly::Vec3f(), fly::Vec3f(0.01f)));
+#endif
+    sponza_entity->addComponent(std::make_shared<fly::StaticModelRenderable>());
+#if SPONZA_MULTIPLE
+  }
+#endif
   auto spark_model = importer->loadModel("assets/spark_particle.obj");
   spark_model->getMaterials().front().getDiffuseColor() = glm::vec3(1.f, 0.988f, 0.721f) * 5.f;
   std::vector<glm::vec3> particle_positions = { glm::vec3(-6.215827, 1.293194, -2.191585), glm::vec3(-6.187380, 1.302527, 1.442227), glm::vec3(4.897683, 1.288674, -2.196014), glm::vec3(4.864175, 1.298548, 1.441392) };

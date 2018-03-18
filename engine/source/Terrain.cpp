@@ -312,7 +312,7 @@ namespace fly
     getAllNodes(_rootNode.get(), nodes);
   }
 
-  void Terrain::getTreeNodesForRendering(const glm::vec3 & cam_pos_model_space, std::vector<TreeNode*>& nodes, const glm::mat4& mvp)
+  void Terrain::getTreeNodesForRendering(const glm::vec3 & cam_pos_model_space, std::vector<TreeNode*>& nodes, const Mat4f& mvp)
   {
     getTreeNodesForRendering(_rootNode.get(), cam_pos_model_space, nodes, mvp);
   }
@@ -380,7 +380,7 @@ namespace fly
       getTreeNodesForRendering(node->_northEast, cam_pos_model_space, nodes, mvp);
     }
     else {
-      if ((node->_transforms.size() || node->_cloudBillboardPositionsAndScales.size()) && node->_aabb->isVisible(Mat4f(&mvp[0][0]), false)) {
+      if ((node->_transforms.size() || node->_cloudBillboardPositionsAndScales.size()) && node->_aabb->isVisible<false, false>(mvp)) {
         node->_lod = (node->_size / _minNodeSize) - 1;
         nodes.push_back(node);
       }

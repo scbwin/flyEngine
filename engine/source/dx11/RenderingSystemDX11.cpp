@@ -217,6 +217,7 @@ namespace fly
     auto pass_desc = _effects->getMeshPassDesc();
     HR(_device->CreateInputLayout(&vertex_desc.front(), static_cast<unsigned>(vertex_desc.size()), pass_desc.pIAInputSignature, pass_desc.IAInputSignatureSize, &_defaultInputLayout));
     _fxMVInverseTranspose = _effects->getEffect()->GetVariableByName("MVInvTranspose")->AsMatrix();
+    _fxM = _effects->getEffect()->GetVariableByName("M")->AsMatrix();
     _fxV = _effects->getEffect()->GetVariableByName("V")->AsMatrix();
     _fxVInverse = _effects->getEffect()->GetVariableByName("VInverse")->AsMatrix();
     _fxP = _effects->getEffect()->GetVariableByName("P")->AsMatrix();
@@ -269,6 +270,7 @@ namespace fly
     _fxBrightScale = _effects->getEffect()->GetVariableByName("brightScale")->AsScalar();
     _fxBrightBias = _effects->getEffect()->GetVariableByName("brightBias")->AsScalar();
     _fxExposure = _effects->getEffect()->GetVariableByName("exposure")->AsScalar();
+    _fxNumCascades = _effects->getEffect()->GetVariableByName("numCascades")->AsScalar();
 
     _fxMVPTerrain = _effects->getTerrainEffect()->GetVariableByName("MVP")->AsMatrix();
     _fxLightPosWorldTerrain = _effects->getTerrainEffect()->GetVariableByName("lightPosWorld")->AsVector();
@@ -407,6 +409,7 @@ namespace fly
     _camPos = glm::mix(_camera->_pos, glm::vec3(_camPos), _lerpAlpha);
     _camEulerAngles = glm::slerp(glm::quat(_camera->_eulerAngles), _camEulerAngles, _lerpAlpha);
     _fpsFactor = _deltaTimeFiltered > 0.f ? glm::mix(1.f / _deltaTimeFiltered / _targetFPS, _fpsFactor, _lerpAlpha) : 1.f;
+
     _reflectiveSurfacesVisible = false;
     HR(_fxCamPosWorld->SetFloatVector(&_camera->_pos.r));
     HR(_fxMotionBlurStrength->SetFloat(_fpsFactor));
@@ -431,6 +434,7 @@ namespace fly
     HR(_fxCascDistances->SetFloatArray(&_directionalLight._dl->_csmDistances[0], 0, _directionalLight._shadowMap->_numCascades));
     HR(_fxCamRightWorld->SetFloatVector(&_camera->_right.r));
     HR(_fxCamUpWorld->SetFloatVector(&_camera->_up.r));
+    HR(_fxNumCascades->SetInt(_directionalLight._shadowMap->_numCascades));
     _context->ClearDepthStencilView(_depthStencilView, D3D11_CLEAR_FLAG::D3D11_CLEAR_DEPTH | (_settings._ssrEnabled ? D3D11_CLEAR_FLAG::D3D11_CLEAR_STENCIL : 0), 1.f, 0);
     if (!_skyboxRenderable) {
       _context->ClearRenderTargetView(_lightingBuffer->_rtv, &_backgroundColor.r);
@@ -446,46 +450,42 @@ namespace fly
     _context->RSSetState(_rastStateShadowMap);
     _context->RSSetViewports(1, &_directionalLight._shadowMap->_viewPort);
     ID3D11RenderTargetView* rtv[1] = { nullptr };
-    for (unsigned int i = 0; i < _directionalLight._shadowMap->_numCascades; i++) {
-      _context->OMSetRenderTargets(1, rtv, _directionalLight._shadowMap->_dsv[i]);
-      _context->ClearDepthStencilView(_directionalLight._shadowMap->_dsv[i], D3D11_CLEAR_FLAG::D3D11_CLEAR_DEPTH, 1.f, 0);
-      HR(_fxCascadeIndex->SetInt(i));
-      UINT offset = 0, stride = sizeof(Vertex);
-      for (auto& r : _staticModelRenderables) {
-        const auto& m_rdable = r.second;
-        auto light_mvp = _lightVP[i] * m_rdable._modelMatrix;
-        /*#ifndef _DEBUG // frustum culling is currently too costly in debug mode
-                if (!m_rdable._model->getAABB()->isVisible(light_mvp, true)) {
-                  continue;
-                }
-        #endif*/
-        _context->IASetVertexBuffers(0, 1, &m_rdable._modelData->_vertexBuffer.p, &stride, &offset);
-        _context->IASetIndexBuffer(m_rdable._modelData->_indexBuffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
-        HR(_fxLightMVP->SetMatrixTranspose(light_mvp.ptr()));
-        int material_index = -1;
-        for (const auto& mesh_desc : m_rdable._modelData->_meshDesc) { // For each mesh
-/*#ifndef _DEBUG
-          if (!m_rdable._model->getMeshes()[i]->getAABB()->isVisible(light_mvp, true)) {
-            continue;
-          }
-#endif*/
-          int material_index_new = static_cast<int>(mesh_desc._materialIndex);
-          if (material_index != material_index_new) {
-            const auto& mat_desc = m_rdable._modelData->_materialDesc[material_index_new];
-            auto material = m_rdable._model->getMaterials()[material_index_new];
-            HR(_fxAlphaMap->SetResource(mat_desc._opacitySrv));
-            if (material.hasWindX() || material.hasWindZ()) {
-              const auto& aabb = mesh_desc._mesh->getAABB();
-              HR(_fxWindPivotMinY->SetFloat(aabb->getMin()[1]));
-              HR(_fxWindPivotMaxY->SetFloat(aabb->getMax()[1]));
-              HR(_fxWindStrength->SetFloat(material.getWindStrength()));
-              HR(_fxWindFrequency->SetFloat(material.getWindFrequency()));
-            }
-            HR(mat_desc._shadowMapPass->Apply(0, _context));
-          }
-          _context->DrawIndexed(mesh_desc._numIndices, mesh_desc._indexOffset, mesh_desc._baseVertex);
-          material_index = material_index_new;
+    _context->OMSetRenderTargets(1, rtv, _directionalLight._shadowMap->_dsv);
+    _context->ClearDepthStencilView(_directionalLight._shadowMap->_dsv, D3D11_CLEAR_FLAG::D3D11_CLEAR_DEPTH, 1.f, 0);
+    UINT offset = 0, stride = sizeof(Vertex);
+    for (auto& r : _staticModelRenderables) {
+      const auto& m_rdable = r.second;
+      std::vector<Mat4f> light_mvps;
+      for (const auto& vp : _lightVP) {
+        light_mvps.push_back(vp * m_rdable._modelMatrix);
+      }
+      if (!_directionalLight._dl->aabbVisible<true>(light_mvps, *m_rdable._model->getAABB())) {
+        continue;
+      }
+      HR(_fxM->SetMatrixTranspose(m_rdable._modelMatrix.ptr()));
+      _context->IASetVertexBuffers(0, 1, &m_rdable._modelData->_vertexBuffer.p, &stride, &offset);
+      _context->IASetIndexBuffer(m_rdable._modelData->_indexBuffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
+      int material_index = -1;
+      for (const auto& mesh_desc : m_rdable._modelData->_meshDesc) {
+        if (!_directionalLight._dl->aabbVisible<true>(light_mvps, *mesh_desc._mesh->getAABB())) {
+          continue;
         }
+        int material_index_new = static_cast<int>(mesh_desc._materialIndex);
+        if (material_index != material_index_new) {
+          const auto& mat_desc = m_rdable._modelData->_materialDesc[material_index_new];
+          auto material = m_rdable._model->getMaterials()[material_index_new];
+          HR(_fxAlphaMap->SetResource(mat_desc._opacitySrv));
+          if (material.hasWindX() || material.hasWindZ()) {
+            const auto& aabb = mesh_desc._mesh->getAABB();
+            HR(_fxWindPivotMinY->SetFloat(aabb->getMin()[1]));
+            HR(_fxWindPivotMaxY->SetFloat(aabb->getMax()[1]));
+            HR(_fxWindStrength->SetFloat(material.getWindStrength()));
+            HR(_fxWindFrequency->SetFloat(material.getWindFrequency()));
+          }
+          HR(mat_desc._shadowMapPass->Apply(0, _context));
+        }
+        _context->DrawIndexed(mesh_desc._numIndices, mesh_desc._indexOffset, mesh_desc._baseVertex);
+        material_index = material_index_new;
       }
     }
   }
@@ -513,7 +513,7 @@ namespace fly
   void RenderingSystemDX11::renderModels()
   {
     UINT offset = 0, stride = sizeof(Vertex);
-   // Vec3f light_pos_world(&_directionalLight._transform->getTranslation().r);
+    // Vec3f light_pos_world(&_directionalLight._transform->getTranslation().r);
     auto light_pos_view = _viewMatrix * Vec4f({ _directionalLight._dl->_pos[0], _directionalLight._dl->_pos[1], _directionalLight._dl->_pos[2], 1.f });
     HR(_fxLightPosView->SetFloatVector(&light_pos_view[0]));
     HR(_fxLightColor->SetFloatVector(_directionalLight._dl->_color.ptr()));
@@ -522,7 +522,7 @@ namespace fly
       const auto& m_rdable = r.second;
       auto mvp = _VP * m_rdable._modelMatrix;
 #ifndef _DEBUG
-      if (!m_rdable._model->getAABB()->isVisible(mvp, true)) {
+      if (!m_rdable._model->getAABB()->isVisible<true, false>(mvp)) {
         continue;
       }
 #endif
@@ -535,7 +535,7 @@ namespace fly
       for (const auto& mesh_desc : m_rdable._modelData->_meshDesc) { // For each mesh
         const auto& aabb = mesh_desc._mesh->getAABB();
 #ifndef _DEBUG
-        if (!aabb->isVisible(mvp, true)) { // Frustum culling
+        if (!aabb->isVisible<true, false>(mvp)) { // Frustum culling
           continue;
         }
 #endif
@@ -866,13 +866,13 @@ namespace fly
     _context->CopyResource(dst, src);
   }
 
- /* RenderingSystemDX11::DX11StaticModelRenderable::DX11StaticModelRenderable(const std::shared_ptr<Model>& model,
-    const std::shared_ptr<Transform>& transform, RenderingSystemDX11* rs)
-    : _model(model),
-    _modelMatrix(transform->getModelMatrix()),
-    _modelData(std::make_unique<ModelData>(model, rs))
-  {
-  }*/
+  /* RenderingSystemDX11::DX11StaticModelRenderable::DX11StaticModelRenderable(const std::shared_ptr<Model>& model,
+     const std::shared_ptr<Transform>& transform, RenderingSystemDX11* rs)
+     : _model(model),
+     _modelMatrix(transform->getModelMatrix()),
+     _modelData(std::make_unique<ModelData>(model, rs))
+   {
+   }*/
 
   RenderingSystemDX11::ShadowMap::ShadowMap(RenderingSystemDX11* rs)
   {
@@ -903,48 +903,48 @@ namespace fly
     srv_desc.ViewDimension = D3D11_SRV_DIMENSION::D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
     HR(rs->_device->CreateShaderResourceView(depth_tex, &srv_desc, &_srv));
 
-    _dsv.resize(_numCascades);
-    for (unsigned int i = 0; i < _numCascades; i++) {
-      D3D11_DEPTH_STENCIL_VIEW_DESC dsv_desc = {};
-      dsv_desc.Format = DXGI_FORMAT::DXGI_FORMAT_D24_UNORM_S8_UINT;
-      dsv_desc.Texture2DArray.ArraySize = 1;
-      dsv_desc.Texture2DArray.FirstArraySlice = i;
-      dsv_desc.ViewDimension = D3D11_DSV_DIMENSION::D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
-      HR(rs->_device->CreateDepthStencilView(depth_tex, &dsv_desc, &_dsv[i]));
-    }
+    //_dsv.resize(_numCascades);
+   // for (unsigned int i = 0; i < _numCascades; i++) {
+    D3D11_DEPTH_STENCIL_VIEW_DESC dsv_desc = {};
+    dsv_desc.Format = DXGI_FORMAT::DXGI_FORMAT_D24_UNORM_S8_UINT;
+    dsv_desc.Texture2DArray.ArraySize = tex_desc.ArraySize;
+    dsv_desc.Texture2DArray.FirstArraySlice = 0;
+    dsv_desc.ViewDimension = D3D11_DSV_DIMENSION::D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
+    HR(rs->_device->CreateDepthStencilView(depth_tex, &dsv_desc, &_dsv));
+    // }
 
-    /*for (unsigned int i = 0; i < _numCascades; i++) {
-      std::vector<RtvPtr> rtvs (_mips);
-      std::vector<SrvPtr> srvs (_mips);
-      std::vector <D3D11_VIEWPORT> viewports(_mips);
-      auto size = _size / 2;
-      for (unsigned int mip = 0; mip < _mips; mip++, size /= 2) {
-        tex_desc.ArraySize = 1;
-        tex_desc.BindFlags = D3D11_BIND_FLAG::D3D11_BIND_RENDER_TARGET | D3D11_BIND_FLAG::D3D11_BIND_SHADER_RESOURCE;
-        tex_desc.Format = DXGI_FORMAT::DXGI_FORMAT_R16G16_FLOAT;
-        tex_desc.Height = size;
-        tex_desc.Width = size;
-        CComPtr<ID3D11Texture2D> min_max_tex;
-        HR(rs->_device->CreateTexture2D(&tex_desc, nullptr, &min_max_tex));
-        srv_desc.Format = DXGI_FORMAT::DXGI_FORMAT_R16G16_FLOAT;
-        srv_desc.Texture2D.MipLevels = 1;
-        srv_desc.Texture2D.MostDetailedMip = 0;
-        srv_desc.ViewDimension = D3D11_SRV_DIMENSION::D3D11_SRV_DIMENSION_TEXTURE2D;
-        HR(rs->_device->CreateShaderResourceView(min_max_tex, &srv_desc, &srvs[mip]));
-        D3D11_RENDER_TARGET_VIEW_DESC rtv_desc = {};
-        rtv_desc.Format = DXGI_FORMAT_R16G16_FLOAT;
-        rtv_desc.Texture2D.MipSlice = 0;
-        rtv_desc.ViewDimension = D3D11_RTV_DIMENSION::D3D11_RTV_DIMENSION_TEXTURE2D;
-        HR(rs->_device->CreateRenderTargetView(min_max_tex, &rtv_desc, &rtvs[mip]));
-        D3D11_VIEWPORT vp = _viewPort;
-        vp.Width = size;
-        vp.Height = size;
-        viewports[mip] = vp;
-      }
-      _minMaxRtvs.push_back(rtvs);
-      _minMaxSrvs.push_back(srvs);
-      _minMaxViewports.push_back(viewports);
-    }*/
+     /*for (unsigned int i = 0; i < _numCascades; i++) {
+       std::vector<RtvPtr> rtvs (_mips);
+       std::vector<SrvPtr> srvs (_mips);
+       std::vector <D3D11_VIEWPORT> viewports(_mips);
+       auto size = _size / 2;
+       for (unsigned int mip = 0; mip < _mips; mip++, size /= 2) {
+         tex_desc.ArraySize = 1;
+         tex_desc.BindFlags = D3D11_BIND_FLAG::D3D11_BIND_RENDER_TARGET | D3D11_BIND_FLAG::D3D11_BIND_SHADER_RESOURCE;
+         tex_desc.Format = DXGI_FORMAT::DXGI_FORMAT_R16G16_FLOAT;
+         tex_desc.Height = size;
+         tex_desc.Width = size;
+         CComPtr<ID3D11Texture2D> min_max_tex;
+         HR(rs->_device->CreateTexture2D(&tex_desc, nullptr, &min_max_tex));
+         srv_desc.Format = DXGI_FORMAT::DXGI_FORMAT_R16G16_FLOAT;
+         srv_desc.Texture2D.MipLevels = 1;
+         srv_desc.Texture2D.MostDetailedMip = 0;
+         srv_desc.ViewDimension = D3D11_SRV_DIMENSION::D3D11_SRV_DIMENSION_TEXTURE2D;
+         HR(rs->_device->CreateShaderResourceView(min_max_tex, &srv_desc, &srvs[mip]));
+         D3D11_RENDER_TARGET_VIEW_DESC rtv_desc = {};
+         rtv_desc.Format = DXGI_FORMAT_R16G16_FLOAT;
+         rtv_desc.Texture2D.MipSlice = 0;
+         rtv_desc.ViewDimension = D3D11_RTV_DIMENSION::D3D11_RTV_DIMENSION_TEXTURE2D;
+         HR(rs->_device->CreateRenderTargetView(min_max_tex, &rtv_desc, &rtvs[mip]));
+         D3D11_VIEWPORT vp = _viewPort;
+         vp.Width = size;
+         vp.Height = size;
+         viewports[mip] = vp;
+       }
+       _minMaxRtvs.push_back(rtvs);
+       _minMaxSrvs.push_back(srvs);
+       _minMaxViewports.push_back(viewports);
+     }*/
   }
 
   RenderingSystemDX11::DownsampleChain::DownsampleChain(RenderingSystemDX11 * rs, unsigned int levels, const Vec2u& divisor)

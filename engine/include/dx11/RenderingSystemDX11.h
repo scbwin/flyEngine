@@ -82,9 +82,9 @@ namespace fly
     {
       ShadowMap(RenderingSystemDX11* rs);
       int _size = 1024;
-      unsigned int _numCascades = 2;
+      unsigned _numCascades = 2;
       SrvPtr _srv;
-      std::vector<DsvPtr> _dsv; // For each slice
+      DsvPtr _dsv;
       D3D11_VIEWPORT _viewPort;
       /*const unsigned _mips = 3;
       std::vector<std::vector<SrvPtr>> _minMaxSrvs; // For each slice and mip level
@@ -199,6 +199,7 @@ namespace fly
     ID3DX11EffectPass* _minMaxPass;
     ID3DX11EffectPass* _minMaxPass2;
     ID3DX11EffectMatrixVariable* _fxMVInverseTranspose;
+    ID3DX11EffectMatrixVariable* _fxM;
     ID3DX11EffectMatrixVariable* _fxV;
     ID3DX11EffectMatrixVariable* _fxVInverse;
     ID3DX11EffectMatrixVariable* _fxP;
@@ -268,6 +269,7 @@ namespace fly
     ID3DX11EffectScalarVariable* _fxBrightScale;
     ID3DX11EffectScalarVariable* _fxBrightBias;
     ID3DX11EffectScalarVariable* _fxExposure;
+    ID3DX11EffectScalarVariable* _fxNumCascades;
 
     Mat4f _viewMatrix;
     Mat4f _projectionMatrix;

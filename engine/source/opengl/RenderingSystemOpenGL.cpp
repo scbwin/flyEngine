@@ -1209,7 +1209,7 @@ namespace fly
           Vec3f bb_min({ static_cast<float>(node_pos_model_space.x),static_cast<float>(min_height), static_cast<float>(node_pos_model_space.y) });
           Vec3f bb_max({ static_cast<float>(node_pos_model_space.x + patch_size), max_height, static_cast<float>(node_pos_model_space.y + patch_size) });
 
-          if (!AABB(bb_min, bb_max).isVisible(mvp, false)) {
+          if (!AABB(bb_min, bb_max).isVisible<false, false>(mvp)) {
             continue;
           }
           GL_CHECK(glUniform2f(shader->uniformLocation("grassStart"), node_pos_model_space.x, node_pos_model_space.y));
@@ -2847,7 +2847,7 @@ namespace fly
   bool RenderingSystemOpenGL::isCulled(const std::shared_ptr<Mesh>& mesh, const glm::mat4 & model_matrix)
   {
     auto mvp = _VP * model_matrix;
-    return !mesh->getAABB()->isVisible(mvp, false);
+    return !mesh->getAABB()->isVisible<false, false>(mvp);
   }
 
   void RenderingSystemOpenGL::initFramebuffers()

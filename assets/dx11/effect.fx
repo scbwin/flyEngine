@@ -2,6 +2,7 @@ cbuffer cbModel
 {
 	float4x4 MVInvTranspose;
 	float4x4 MVP;
+	float4x4 M;
 	float3 diffuseColor;
 };
 
@@ -32,6 +33,7 @@ cbuffer cbFrame
 	float time;
 	float motionBlurStrength;
 	float3 camPosWorld;
+	int numCascades;
 };
 
 cbuffer cbShadowMap
@@ -91,12 +93,6 @@ struct VertexOut
 	float3 normal_view : NORMAL;
 	float3 tan_view : TANGENT;
 	float3 bitan_view : BITANGENT;
-};
-
-struct VertexOutShadowMap
-{
-	float4 pos : SV_POSITION;
-	float2 uv : TEXCOORD;
 };
 
 Texture2D diffuseTexture;
@@ -189,13 +185,41 @@ float3 computeWind(uniform bool wind_x, uniform bool wind_z, float3 pos_model)
 	}
 }
 
+struct VertexOutShadowMap
+{
+	float4 pos_world : POSITION;
+	float2 uv : TEXCOORD;
+};
+
+struct GSOutShadowMap
+{
+	float4 pos_h : SV_POSITION;
+	float2 uv : TEXCOORD;
+	uint slice : SV_RenderTargetArrayIndex;
+};
+
 void vsShadowMap(VertexIn vin, uniform bool use_wind_x, uniform bool use_wind_z, out VertexOutShadowMap vout)
 {
-	vout.pos = mul(lightMVP, float4(computeWind(use_wind_x, use_wind_z, vin.pos), 1.f));
+	vout.pos_world = mul(M, float4(computeWind(use_wind_x, use_wind_z, vin.pos), 1.f));
 	vout.uv = vin.uv;
 }
 
-void psShadowMap(VertexOutShadowMap pin, uniform bool useAlpha)
+[maxvertexcount(12)]
+void gsShadowMap(triangle VertexOutShadowMap gs_in [3], inout TriangleStream<GSOutShadowMap> tri_stream)
+{
+	for (int i = 0; i < numCascades; i++) {
+		for (int j = 0; j < 3; j++) {
+			GSOutShadowMap gs_out;
+			gs_out.pos_h = mul(lightVPs[i], gs_in[j].pos_world);
+			gs_out.uv = gs_in[j].uv;
+			gs_out.slice = i;
+			tri_stream.Append(gs_out);
+		}
+		tri_stream.RestartStrip();
+	}
+}
+
+void psShadowMap(GSOutShadowMap pin, uniform bool useAlpha)
 {
 	if (useAlpha) {
 		clip(alphaTexture.Sample(samplerLinear, pin.uv).r - 0.5f);

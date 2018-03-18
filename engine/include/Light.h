@@ -31,6 +31,15 @@ namespace fly
     void getViewProjectionMatrices(float aspect_ratio, float near_plane, float fov, const Mat4f& view_matrix, 
       const Mat4f& view_matrix_light, float shadow_map_size, std::vector<Mat4f>& vp, bool directx = false);
     glm::mat4 getViewMatrix();
+    template<bool directx>
+    inline bool aabbVisible(const std::vector<Mat4f>& light_mvps, const AABB& aabb) const
+    {
+      bool is_visible = false;
+      for (const auto& mvp : light_mvps) {
+        is_visible = is_visible || aabb.isVisible<directx, true>(mvp);
+      }
+      return is_visible;
+    }
   };
 
   class SpotLight : public Light
