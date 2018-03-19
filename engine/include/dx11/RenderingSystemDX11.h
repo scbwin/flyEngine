@@ -60,6 +60,9 @@ namespace fly
       float _brightBias;
       float _exposure;
       unsigned _lensflareLevels;
+      int _ssrSteps;
+      float _ssrRayLenScale;
+      float _ssrMinRayLen;
     };
     Settings _settings;
     void setSettings(const Settings& settings);
@@ -272,6 +275,9 @@ namespace fly
     ID3DX11EffectScalarVariable* _fxBrightBias;
     ID3DX11EffectScalarVariable* _fxExposure;
     ID3DX11EffectScalarVariable* _fxNumCascades;
+    ID3DX11EffectScalarVariable* _fxssrSteps;
+    ID3DX11EffectScalarVariable* _fxssrRayLenScale;
+    ID3DX11EffectScalarVariable* _fxssrMinRayLen;
 
     Mat4f _viewMatrix;
     Mat4f _projectionMatrix;

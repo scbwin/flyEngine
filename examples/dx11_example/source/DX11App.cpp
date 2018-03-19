@@ -328,6 +328,9 @@ void DX11App::initGame()
 #if SPONZA
   TwAddVarCB(bar, "Screen space reflections (SSR)", TW_TYPE_BOOLCPP, TwSetSSR, TwGetSSR, _rs.get(), "group=PostProcessing");
   TwAddVarCB(bar, "SSR blend weight", TW_TYPE_FLOAT, TwSetSSRWeight, TwGetSSRWeight, _rs.get(), "group=PostProcessing min=0 max=1 step=0.0035");
+  TwAddVarCB(bar, "SSR steps", TW_TYPE_INT32, TwSetSSRSteps, TwGetSSRSteps, _rs.get(), "group=PostProcessing min=0 max=128 step=1");
+  TwAddVarCB(bar, "SSR MinRayLen", TW_TYPE_FLOAT, TwSetSSRMinRayLen, TwGetSSRMinRayLen, _rs.get(), "group=PostProcessing min=1.0 max=1024.0 step=0.25");
+  TwAddVarCB(bar, "SSR RayLenScale", TW_TYPE_FLOAT, TwSetSSRRayLenScale, TwGetSSRRayLenScale, _rs.get(), "group=PostProcessing min=0.1 max=128.0 step=0.25");
 #endif
   TwAddVarCB(bar, "Exposure", TwType::TW_TYPE_FLOAT, TwSetExposure, TwGetExposure, _rs.get(), "group=Renderer step=0.005");
   TwAddVarRW(bar, "Cam speed", TwType::TW_TYPE_FLOAT, &_camSpeed, "min=1 group=Renderer");
@@ -660,6 +663,40 @@ void DX11App::TwSetSSRWeight(const void * value, void * client_data)
 void DX11App::TwGetSSRWeight(void * value, void * client_data)
 {
   *reinterpret_cast<float*>(value) = reinterpret_cast<fly::RenderingSystemDX11*>(client_data)->getSSRBlendWeight();
+}
+
+void DX11App::TwSetSSRSteps(const void* value, void* client_data)
+{
+  auto rs = reinterpret_cast<fly::RenderingSystemDX11*>(client_data);
+  auto settings = rs->getSettings();
+  settings._ssrSteps = *reinterpret_cast<const int*>(value);
+  rs->setSettings(settings);
+}
+void DX11App::TwGetSSRSteps(void* value, void* client_data) 
+{
+  *reinterpret_cast<int*>(value) = reinterpret_cast<fly::RenderingSystemDX11*>(client_data)->getSettings()._ssrSteps;
+}
+void DX11App::TwSetSSRMinRayLen(const void* value, void* client_data)
+{
+  auto rs = reinterpret_cast<fly::RenderingSystemDX11*>(client_data);
+  auto settings = rs->getSettings();
+  settings._ssrMinRayLen = *reinterpret_cast<const float*>(value);
+  rs->setSettings(settings);
+}
+void DX11App::TwGetSSRMinRayLen(void* value, void* client_data)
+{
+  *reinterpret_cast<float*>(value) = reinterpret_cast<fly::RenderingSystemDX11*>(client_data)->getSettings()._ssrMinRayLen;
+}
+void DX11App::TwSetSSRRayLenScale(const void* value, void* client_data)
+{
+  auto rs = reinterpret_cast<fly::RenderingSystemDX11*>(client_data);
+  auto settings = rs->getSettings();
+  settings._ssrRayLenScale = *reinterpret_cast<const float*>(value);
+  rs->setSettings(settings);
+}
+void DX11App::TwGetSSRRayLenScale(void* value, void* client_data)
+{
+  *reinterpret_cast<float*>(value) = reinterpret_cast<fly::RenderingSystemDX11*>(client_data)->getSettings()._ssrRayLenScale;
 }
 
 int DX11App::execute()

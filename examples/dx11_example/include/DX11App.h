@@ -109,6 +109,12 @@ private:
   static void TW_CALL TwGetSSR(void* value, void* client_data);
   static void TW_CALL TwSetSSRWeight(const void* value, void* client_data);
   static void TW_CALL TwGetSSRWeight(void* value, void* client_data);
+  static void TW_CALL TwSetSSRSteps(const void* value, void* client_data);
+  static void TW_CALL TwGetSSRSteps(void* value, void* client_data);
+  static void TW_CALL TwSetSSRMinRayLen(const void* value, void* client_data);
+  static void TW_CALL TwGetSSRMinRayLen(void* value, void* client_data);
+  static void TW_CALL TwSetSSRRayLenScale(const void* value, void* client_data);
+  static void TW_CALL TwGetSSRRayLenScale(void* value, void* client_data);
 };
 
 #endif // !DX11APP_H

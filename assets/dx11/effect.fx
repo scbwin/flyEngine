@@ -15,6 +15,9 @@ cbuffer cbConstant
 	float brightScale;
 	float brightBias;
 	float exposure;
+  int ssrSteps;
+  float ssrRayLenScale;
+  float ssrMinRayLen;
 };
 
 cbuffer cbFrame
@@ -429,14 +432,13 @@ float4 psSSR(VSOutQuad pin) : SV_TARGET
 	float4 pos_view_space_h = mul(PInverse, float4(float2(pin.uv.x, 1.f - pin.uv.y) * 2.f - 1.f, depthTexture.SampleLevel(samplerPointClamp, pin.uv, 0).r, 1.f));
 	float3 pos_view_space = pos_view_space_h.xyz / pos_view_space_h.w;
 	float3 ray_dir = reflect(normalize(pos_view_space), normal_view_space);
-	float ray_len = max(-pos_view_space.z * 3.f, 32.f);
+	float ray_len = max(-pos_view_space.z * ssrRayLenScale, ssrMinRayLen);
 	float3 ray = ray_dir * ray_len;
-	const int steps = 24;
-	float3 delta = ray / steps;
+  float3 delta = ray / ssrSteps;
 	float3 hit_pos_cs = pos_view_space + delta;
 	bool is_valid = true;
 	[loop]
-	for (int i = 0; i < steps && is_valid; i++, hit_pos_cs += delta) {
+	for (int i = 0; i < ssrSteps && is_valid; i++, hit_pos_cs += delta) {
 		float4 hit_pos_h = mul(P, float4(hit_pos_cs, 1.f));
 		float3 hit_pos_ndc = hit_pos_h.xyz / hit_pos_h.w;
 		float2 uv = float2(hit_pos_ndc.x * 0.5f + 0.5f, -hit_pos_ndc.y * 0.5f + 0.5f);
