@@ -118,7 +118,7 @@ namespace fly
       struct MaterialDesc
       {
         SrvPtr _diffuseSrv;
-        SrvPtr _opacitySrv;
+        SrvPtr _alphaSrv;
         SrvPtr _normalSrv;
         Vec3f _diffuseColor;
         ID3DX11EffectPass* _pass;
@@ -126,10 +126,12 @@ namespace fly
       };
       std::vector<MaterialDesc> _materialDesc;
     };
+    std::map<std::shared_ptr<Model>, std::shared_ptr<ModelData>> _modelDataCache;
+
     struct DX11StaticModelRenderable
     {
       std::shared_ptr<Model> _model;
-      std::unique_ptr<ModelData> _modelData;
+      std::shared_ptr<ModelData> _modelData;
       Mat4f _modelMatrix;
     };
     struct DX11ProceduralTerrainRenderable

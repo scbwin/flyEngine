@@ -90,7 +90,10 @@ namespace fly
       _particleModelRenderables[entity] = { { model, std::make_unique<ModelData>(model, this), transform->getModelMatrix() }, particle_system };
     }
     if (model && transform && smr) {
-      _staticModelRenderables[entity] = { model, std::make_unique<ModelData>(model, this), transform->getModelMatrix() };
+      if (!_modelDataCache.count(model)) {
+        _modelDataCache[model] = std::make_shared<ModelData>(model, this);
+      }
+      _staticModelRenderables[entity] = { model, _modelDataCache[model], transform->getModelMatrix() };
     }
     if (!particle_system) {
       _particleModelRenderables.erase(entity);
@@ -474,7 +477,7 @@ namespace fly
         if (material_index != material_index_new) {
           const auto& mat_desc = m_rdable._modelData->_materialDesc[material_index_new];
           auto material = m_rdable._model->getMaterials()[material_index_new];
-          HR(_fxAlphaMap->SetResource(mat_desc._opacitySrv));
+          HR(_fxAlphaMap->SetResource(mat_desc._alphaSrv));
           if (material.hasWindX() || material.hasWindZ()) {
             const auto& aabb = mesh_desc._mesh->getAABB();
             HR(_fxWindPivotMinY->SetFloat(aabb->getMin()[1]));
@@ -549,7 +552,7 @@ namespace fly
           }
           const auto& mat_desc = m_rdable._modelData->_materialDesc[material_index_new];
           HR(_fxDiffuseTex->SetResource(mat_desc._diffuseSrv));
-          HR(_fxAlphaMap->SetResource(mat_desc._opacitySrv));
+          HR(_fxAlphaMap->SetResource(mat_desc._alphaSrv));
           HR(_fxNormalMap->SetResource(mat_desc._normalSrv));
           HR(_fxDiffuseColor->SetFloatVector(mat_desc._diffuseColor.ptr()));
           if (material.hasWindX() || material.hasWindZ()) {
@@ -1001,7 +1004,7 @@ namespace fly
       auto opacity_path = materials[i].getOpacityPath();
       if (opacity_path != "") {
         std::wstring op_path(opacity_path.begin(), opacity_path.end());
-        rs->createTexture(op_path.c_str(), _materialDesc[i]._opacitySrv, DirectX::TEX_FILTER_FLAGS::TEX_FILTER_DEFAULT);
+        rs->createTexture(op_path.c_str(), _materialDesc[i]._alphaSrv, DirectX::TEX_FILTER_FLAGS::TEX_FILTER_DEFAULT);
         mesh_flags |= Effects::MeshRenderFlags::Alpha;
         shadow_flags |= Effects::ShadowMapRenderFlags::ShadowAlpha;
       }
