@@ -7,9 +7,19 @@
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/string_cast.hpp>
-//#include <WICTextureLoader/WICTextureLoader.h>
 #include <Material.h>
 #include <Renderables.h>
+#include <Camera.h>
+#include <Entity.h>
+#include <Light.h>
+#include <Billboard.h>
+#include <TerrainNew.h>
+#include <Mesh.h>
+#include <Model.h>
+#include <Transform.h>
+#include <physics/ParticleSystem.h>
+#include <dx11/DX11States.h>
+#include <CommonStates.h>
 
 namespace fly
 {
@@ -426,7 +436,7 @@ namespace fly
     _viewMatrix = _camera->getViewMatrix(_camPos, glm::eulerAngles(_camEulerAngles));
     _VP = _projectionMatrix * _viewMatrix;
     HR(_fxV->SetMatrixTranspose(_viewMatrix.ptr()));
-    Mat4f v_inverse(inverse(glm::mat4(_viewMatrix)));
+    Mat4f v_inverse(inverse(_viewMatrix));
     HR(_fxVInverse->SetMatrixTranspose(v_inverse.ptr()));
     HR(_fxVP->SetMatrixTranspose(_VP.ptr()));
     auto vp_inverse = v_inverse * _PInverse;
@@ -1038,21 +1048,6 @@ namespace fly
     _terrain(terrain_new),
     _ptr(ptr)
   {
-    std::vector<glm::vec2> vertices;
-    std::vector<unsigned> indices;
-    GeometryGenerator().generateGeoMipMap(_terrain->getSize(), _terrain->getSize() / rs->_terrainTessFactor, rs->_terrainLods, vertices, indices, _indexBufferInfo);
-    D3D11_BUFFER_DESC desc = {};
-    desc.BindFlags = D3D11_BIND_FLAG::D3D11_BIND_VERTEX_BUFFER;
-    desc.ByteWidth = static_cast<unsigned>(vertices.size() * sizeof(vertices.front()));
-    desc.Usage = D3D11_USAGE::D3D11_USAGE_IMMUTABLE;
-    D3D11_SUBRESOURCE_DATA data = {};
-    data.pSysMem = &vertices.front();
-    HR(rs->_device->CreateBuffer(&desc, &data, &_vertexBuffer));
-    desc.BindFlags = D3D11_BIND_FLAG::D3D11_BIND_INDEX_BUFFER;
-    desc.ByteWidth = static_cast<unsigned>(indices.size() * sizeof(indices.front()));
-    desc.Usage = D3D11_USAGE::D3D11_USAGE_IMMUTABLE;
-    data.pSysMem = &indices.front();
-    HR(rs->_device->CreateBuffer(&desc, &data, &_indexBuffer));
     _terrainSrvs.resize(terrain_new->getAlbedoPaths().size());
     unsigned i = 0;
     for (const auto& path : terrain_new->getAlbedoPaths()) {

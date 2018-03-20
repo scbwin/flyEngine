@@ -18,6 +18,7 @@
 #include <dx11/debug.h>
 #include <CommonStates.h>
 #include <AntTweakBar.h>
+#include <SpriteFont.h>
 
 #define SPONZA 1
 #define SPONZA_MULTIPLE 0

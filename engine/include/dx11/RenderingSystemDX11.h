@@ -2,33 +2,34 @@
 #define RENDERINGSYSTEMDX11_H
 
 #include <System.h>
-#include <glm/glm.hpp>
 #include <d3d11.h>
 #include <atlbase.h>
-#include <Model.h>
-#include <Transform.h>
-#include <Entity.h>
 #include <map>
-#include <Camera.h>
-#include <d3dx11effect.h>
-#include <DirectXMath.h>
-#include <Light.h>
-#include <SpriteFont.h>
-#include <DirectXTex/DirectXTex.h>
+#include <set>
+#include <array>
 #include <glm/gtc/quaternion.hpp>
 #include <dx11/Effects.h>
-#include <physics/ParticleSystem.h>
-#include <set>
-#include <Billboard.h>
-#include <CommonStates.h>
-#include <dx11/DX11States.h>
-#include <TerrainNew.h>
-#include <GeometryGenerator.h>
 #include <math/FlyMath.h>
+#include <DirectXTex/DirectXTex.h>
+
+namespace DirectX
+{
+  class CommonStates;
+}
 
 namespace fly
 {
   class ProceduralTerrainRenderable;
+  class Camera;
+  class Entity;
+  class Billboard;
+  class DirectionalLight;
+  class TerrainNew;
+  class ParticleSystem;
+  class Model;
+  class Mesh;
+  class Transform;
+  class DX11States;
 
   class RenderingSystemDX11 : public System
   {
@@ -144,9 +145,6 @@ namespace fly
       DX11ProceduralTerrainRenderable(const std::shared_ptr<TerrainNew>& terrain_new, const std::shared_ptr<ProceduralTerrainRenderable>& ptr, RenderingSystemDX11* rs);
       std::shared_ptr<TerrainNew> _terrain;
       std::shared_ptr<ProceduralTerrainRenderable> _ptr;
-      CComPtr<ID3D11Buffer> _vertexBuffer;
-      CComPtr<ID3D11Buffer> _indexBuffer;
-      std::map<unsigned, std::map<unsigned, GeometryGenerator::IndexBufferInfo>> _indexBufferInfo;
       std::vector<SrvPtr> _terrainSrvs;
       std::vector<SrvPtr> _terrainNormalSrvs;
       SrvPtr _noiseSrv;

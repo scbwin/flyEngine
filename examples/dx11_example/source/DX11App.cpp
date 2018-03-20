@@ -11,6 +11,10 @@
 #include <physics/PhysicsSystem.h>
 #include <TerrainNew.h>
 #include <NoiseGen.h>
+#include <Entity.h>
+#include <Mesh.h>
+#include <Light.h>
+#include <Billboard.h>
 
 DX11App::DX11App()
 {
