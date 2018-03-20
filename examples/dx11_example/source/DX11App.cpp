@@ -325,6 +325,8 @@ void DX11App::initGame()
   TwAddVarCB(bar, "Lens flare", TwType::TW_TYPE_BOOLCPP, TwSetLensflareEnabled, TwGetLensflareEnabled, _rs.get(), "group=PostProcessing");
   TwAddVarCB(bar, "Bright scale", TW_TYPE_FLOAT, TwSetBrightScale, TwGetBrightScale, _rs.get(), "group=PostProcessing min=0 step=0.005");
   TwAddVarCB(bar, "Bright bias", TW_TYPE_FLOAT, TwSetBrightBias, TwGetBrightBias, _rs.get(), "group=PostProcessing min=0 step=0.005");
+  TwAddVarCB(bar, "SM depth bias", TW_TYPE_INT32, TwSetSmDepthBias, TwGetSmDepthBias, _rs.get(), "group=Renderer min=0 max=2000000 step=350");
+  TwAddVarCB(bar, "SM sloped scaled bias", TW_TYPE_FLOAT, TwSetSmSlopeScaledDepthBias, TwGetSmSlopeScaledDepthBias, _rs.get(), "group=Renderer min=0 max=1000 step = 0.05");
 #if SPONZA
   TwAddVarCB(bar, "Screen space reflections (SSR)", TW_TYPE_BOOLCPP, TwSetSSR, TwGetSSR, _rs.get(), "group=PostProcessing");
   TwAddVarCB(bar, "SSR blend weight", TW_TYPE_FLOAT, TwSetSSRWeight, TwGetSSRWeight, _rs.get(), "group=PostProcessing min=0 max=1 step=0.0035");
@@ -697,6 +699,32 @@ void DX11App::TwSetSSRRayLenScale(const void* value, void* client_data)
 void DX11App::TwGetSSRRayLenScale(void* value, void* client_data)
 {
   *reinterpret_cast<float*>(value) = reinterpret_cast<fly::RenderingSystemDX11*>(client_data)->getSettings()._ssrRayLenScale;
+}
+
+void DX11App::TwSetSmDepthBias(const void * value, void * client_data)
+{
+  auto rs = reinterpret_cast<fly::RenderingSystemDX11*>(client_data);
+  auto settings = rs->getSettings();
+  settings._smDepthBias = *reinterpret_cast<const int*>(value);
+  rs->setSettings(settings);
+}
+
+void DX11App::TwGetSmDepthBias(void * value, void * client_data)
+{
+  *reinterpret_cast<int*>(value) = reinterpret_cast<fly::RenderingSystemDX11*>(client_data)->getSettings()._smDepthBias;
+}
+
+void DX11App::TwSetSmSlopeScaledDepthBias(const void * value, void * client_data)
+{
+  auto rs = reinterpret_cast<fly::RenderingSystemDX11*>(client_data);
+  auto settings = rs->getSettings();
+  settings._smSlopeScaledDepthBias = *reinterpret_cast<const float*>(value);
+  rs->setSettings(settings);
+}
+
+void DX11App::TwGetSmSlopeScaledDepthBias(void * value, void * client_data)
+{
+  *reinterpret_cast<float*>(value) = reinterpret_cast<fly::RenderingSystemDX11*>(client_data)->getSettings()._smSlopeScaledDepthBias;
 }
 
 int DX11App::execute()

@@ -63,6 +63,8 @@ namespace fly
       int _ssrSteps;
       float _ssrRayLenScale;
       float _ssrMinRayLen;
+      int _smDepthBias;
+      float _smSlopeScaledDepthBias;
     };
     Settings _settings;
     void setSettings(const Settings& settings);

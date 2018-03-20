@@ -44,18 +44,7 @@ namespace fly
 
     initEffects();
 
-    D3D11_RASTERIZER_DESC rast_desc = {};
-    rast_desc.AntialiasedLineEnable = false;
-    rast_desc.CullMode = D3D11_CULL_MODE::D3D11_CULL_BACK;
-    rast_desc.DepthBiasClamp = 0.f;
-    rast_desc.FillMode = D3D11_FILL_MODE::D3D11_FILL_SOLID;
-    rast_desc.FrontCounterClockwise = true;
-    rast_desc.DepthBias = 100000;
-    rast_desc.DepthClipEnable = false;
-    rast_desc.SlopeScaledDepthBias = 1.f;
-    HR(_device->CreateRasterizerState(&rast_desc, &_rastStateShadowMap));
-
-    setSettings({ true, true, false, false, false, false, false, glm::vec3(0.f, 4.f, 5250.f), glm::vec3(13.f, 24.f, 42.f) / 255.f, 1.9f, 3.2f, 1.f, 8, 16, 3.f, 24.f });
+    setSettings({ true, true, false, false, false, false, false, glm::vec3(0.f, 4.f, 5250.f), glm::vec3(13.f, 24.f, 42.f) / 255.f, 1.9f, 3.2f, 1.f, 8, 16, 3.f, 24.f, 10000, 1.f });
 
     _commonStates = std::make_unique<DirectX::CommonStates>(_device);
     _dx11States = std::make_unique<DX11States>(_device);
@@ -344,6 +333,18 @@ namespace fly
     HR(_fxssrSteps->SetInt(settings._ssrSteps));
     HR(_fxssrRayLenScale->SetFloat(settings._ssrRayLenScale));
     HR(_fxssrMinRayLen->SetFloat(settings._ssrMinRayLen));
+
+    D3D11_RASTERIZER_DESC rast_desc = {};
+    rast_desc.AntialiasedLineEnable = false;
+    rast_desc.CullMode = D3D11_CULL_MODE::D3D11_CULL_BACK;
+    rast_desc.DepthBiasClamp = 0.f;
+    rast_desc.FillMode = D3D11_FILL_MODE::D3D11_FILL_SOLID;
+    rast_desc.FrontCounterClockwise = true;
+    rast_desc.DepthBias = settings._smDepthBias;
+    rast_desc.DepthClipEnable = false;
+    rast_desc.SlopeScaledDepthBias = settings._smSlopeScaledDepthBias;
+    _rastStateShadowMap = nullptr;
+    HR(_device->CreateRasterizerState(&rast_desc, &_rastStateShadowMap));
 
     initAdditionalRenderTargets();
   }

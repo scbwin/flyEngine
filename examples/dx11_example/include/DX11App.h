@@ -115,6 +115,10 @@ private:
   static void TW_CALL TwGetSSRMinRayLen(void* value, void* client_data);
   static void TW_CALL TwSetSSRRayLenScale(const void* value, void* client_data);
   static void TW_CALL TwGetSSRRayLenScale(void* value, void* client_data);
+  static void TwSetSmDepthBias(const void* value, void* client_data);
+  static void TwGetSmDepthBias(void* value, void* client_data);
+  static void TwSetSmSlopeScaledDepthBias(const void* value, void* client_data);
+  static void TwGetSmSlopeScaledDepthBias(void* value, void* client_data);
 };
 
 #endif // !DX11APP_H
