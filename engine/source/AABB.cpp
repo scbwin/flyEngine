@@ -21,7 +21,7 @@ namespace fly
     for (const auto& v : aabb_local._vertices) {
       _vertices[i] = world_matrix * Vec4f({ v[0], v[1], v[2], 1.f });
       _bbMin = minimum(_bbMin, _vertices[i]);
-      _bbMax = maximum(_bbMin, _vertices[i]);
+      _bbMax = maximum(_bbMax, _vertices[i]);
       i++;
     }
   }
