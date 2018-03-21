@@ -137,6 +137,16 @@ namespace fly
       return vec;
     }
     /**
+    * Change in dimension
+    */
+    template<unsigned N>
+    inline operator Vector<N, T>() const
+    {
+      Vector<N, T> ret;
+      std::memcpy(&ret[0], _data, std::min(sizeof ret, sizeof *this));
+      return ret;
+    }
+    /**
     * Debug output
     */
     friend std::ostream& operator << (std::ostream& os, const Vector& vec)

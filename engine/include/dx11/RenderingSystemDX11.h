@@ -30,6 +30,7 @@ namespace fly
   class Mesh;
   class Transform;
   class DX11States;
+  class AABB;
 
   class RenderingSystemDX11 : public System
   {
@@ -139,6 +140,7 @@ namespace fly
       std::shared_ptr<Model> _model;
       std::shared_ptr<ModelData> _modelData;
       Mat4f _modelMatrix;
+      std::unique_ptr<AABB> _aabbWorld;
     };
     struct DX11ProceduralTerrainRenderable
     {

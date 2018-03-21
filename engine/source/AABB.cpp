@@ -13,7 +13,19 @@ namespace fly
     _vertices[6] = Vec3f({ bb_max[0], bb_min[1], bb_max[2] });
     _vertices[7] = Vec3f({ bb_max[0], bb_max[1], bb_max[2] });
   }
-  std::array<Vec3f, 8>& AABB::getVertices()
+  AABB::AABB(const AABB& aabb_local, const Mat4f & world_matrix) :
+    _bbMin(std::numeric_limits<float>::max()),
+    _bbMax(std::numeric_limits<float>::lowest())
+  {
+    unsigned i = 0;
+    for (const auto& v : aabb_local._vertices) {
+      _vertices[i] = world_matrix * Vec4f({ v[0], v[1], v[2], 1.f });
+      _bbMin = minimum(_bbMin, _vertices[i]);
+      _bbMax = maximum(_bbMin, _vertices[i]);
+      i++;
+    }
+  }
+  const std::array<Vec3f, 8>& AABB::getVertices() const
   {
     return _vertices;
   }

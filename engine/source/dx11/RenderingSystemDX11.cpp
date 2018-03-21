@@ -92,7 +92,7 @@ namespace fly
       if (!_modelDataCache.count(model)) {
         _modelDataCache[model] = std::make_shared<ModelData>(model, this);
       }
-      _staticModelRenderables[entity] = { model, _modelDataCache[model], transform->getModelMatrix() };
+      _staticModelRenderables[entity] = { model, _modelDataCache[model], transform->getModelMatrix(), std::make_unique<AABB>(*model->getAABB(), transform->getModelMatrix()) };
     }
     if (!particle_system) {
       _particleModelRenderables.erase(entity);
@@ -540,14 +540,14 @@ namespace fly
     HR(_fxShadowMap->SetResource(_directionalLight._shadowMap->_srv));
     for (auto& r : _staticModelRenderables) {
       const auto& m_rdable = r.second;
-      auto mvp = _VP * m_rdable._modelMatrix;
 #ifndef _DEBUG
-      if (!m_rdable._model->getAABB()->isVisible<true, false>(mvp)) {
+      if (!m_rdable._aabbWorld->isVisible<true, false>(_VP)) {
         continue;
       }
 #endif
       _context->IASetVertexBuffers(0, 1, &m_rdable._modelData->_vertexBuffer.p, &stride, &offset);
       _context->IASetIndexBuffer(m_rdable._modelData->_indexBuffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
+      auto mvp = _VP * m_rdable._modelMatrix;
       HR(_fxMVP->SetMatrixTranspose(mvp.ptr()));
       auto mv_inverse = inverse(_viewMatrix * m_rdable._modelMatrix);
       HR(_fxMVInverseTranspose->SetMatrix(mv_inverse.ptr()));
