@@ -31,11 +31,13 @@ namespace fly
   class Transform;
   class DX11States;
   class AABB;
+  template<class T>
+  class Quadtree;
 
   class RenderingSystemDX11 : public System
   {
   public:
-    RenderingSystemDX11(HWND window);
+    RenderingSystemDX11(HWND window, const std::array<Vec2f, 2>& quadtree_min_max);
     virtual ~RenderingSystemDX11();
     virtual void onComponentsChanged(Entity* entity) override;
     virtual void update(float time, float delta_time) override;
@@ -47,6 +49,7 @@ namespace fly
     CComPtr<ID3D11Device> getDevice() const;
     CComPtr<ID3D11DeviceContext> getContext() const;
     CComPtr<IDXGIAdapter> getAdapter() const;
+    void printQuadtree() const;
     struct Settings
     {
       bool _lensflareEnabled;
@@ -141,6 +144,7 @@ namespace fly
       std::shared_ptr<ModelData> _modelData;
       Mat4f _modelMatrix;
       std::unique_ptr<AABB> _aabbWorld;
+      AABB* getAABBWorld();
     };
     struct DX11ProceduralTerrainRenderable
     {
@@ -313,6 +317,8 @@ namespace fly
     std::map<Entity*, DX11StaticModelRenderable> _staticModelRenderables;
     std::map<Entity*, ParticleModelRenderable> _particleModelRenderables;
     std::map<Entity*, ParticleBillboardRenderable> _particleBillboardRenderables;
+
+    std::unique_ptr<Quadtree<DX11StaticModelRenderable>> _quadtree;
 
     DL _directionalLight; // only 1 directional light is supported for now
     std::unique_ptr<DownsampleChain> _lensFlareChain;

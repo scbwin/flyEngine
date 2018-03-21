@@ -20,11 +20,13 @@
 #include <physics/ParticleSystem.h>
 #include <dx11/DX11States.h>
 #include <CommonStates.h>
+#include <Quadtree.h>
 
 namespace fly
 {
-  RenderingSystemDX11::RenderingSystemDX11(HWND window)
+  RenderingSystemDX11::RenderingSystemDX11(HWND window, const std::array<Vec2f, 2>& quadtree_min_max)
   {
+    _quadtree = std::make_unique<Quadtree<DX11StaticModelRenderable>>(quadtree_min_max[0], quadtree_min_max[1]);
     D3D_FEATURE_LEVEL feature_level;
     UINT device_flags = 0;
 #if defined(DEBUG) | defined(_DEBUG)
@@ -93,6 +95,12 @@ namespace fly
         _modelDataCache[model] = std::make_shared<ModelData>(model, this);
       }
       _staticModelRenderables[entity] = { model, _modelDataCache[model], transform->getModelMatrix(), std::make_unique<AABB>(*model->getAABB(), transform->getModelMatrix()) };
+      auto temp = std::make_shared<DX11StaticModelRenderable>();
+      temp->_model = model;
+      temp->_modelData = _modelDataCache[model];
+      temp->_aabbWorld = std::make_unique<AABB>(*model->getAABB(), transform->getModelMatrix());
+      temp->_modelMatrix = transform->getModelMatrix();
+      _quadtree->insert(temp);
     }
     if (!particle_system) {
       _particleModelRenderables.erase(entity);
@@ -316,6 +324,11 @@ namespace fly
   CComPtr<IDXGIAdapter> RenderingSystemDX11::getAdapter() const
   {
     return _dxgiAdapter;
+  }
+
+  void RenderingSystemDX11::printQuadtree() const
+  {
+    _quadtree->print();
   }
 
   void RenderingSystemDX11::setSettings(const Settings& settings)
@@ -1087,5 +1100,9 @@ namespace fly
   RenderingSystemDX11::DX11SkyboxRenderable::DX11SkyboxRenderable(const std::shared_ptr<Model>& model, RenderingSystemDX11 * rs) : _model(model)
   {
     _modelData = std::make_unique<ModelData>(model, rs);
+  }
+  AABB * RenderingSystemDX11::DX11StaticModelRenderable::getAABBWorld()
+  {
+    return _aabbWorld.get();
   }
 }

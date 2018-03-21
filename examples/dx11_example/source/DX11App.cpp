@@ -185,7 +185,9 @@ void DX11App::initGame()
 #endif
 
   _engine = std::make_unique<fly::Engine>();
-  _rs = std::make_shared<fly::RenderingSystemDX11>(_window);
+  float size = 512.f;
+  std::array<fly::Vec2f, 2> quadtree_min_max = { fly::Vec2f({ -size * 0.1f, -size * 0.1f }), fly::Vec2f({ size, size }) };
+  _rs = std::make_shared<fly::RenderingSystemDX11>(_window, quadtree_min_max);
   _engine->addSystem(_rs);
   _engine->addSystem(std::make_shared<fly::AnimationSystem>());
   _engine->addSystem(std::make_shared<fly::PhysicsSystem>());
@@ -211,18 +213,21 @@ void DX11App::initGame()
 #if SPONZA_MULTIPLE
   int width = 4;
   int height = 3;
-  float scale = 100.f;
-  for (unsigned i = 0; i < width * height; i++) {
+ // float scale = 100.f;
+  for (unsigned x = 0; x < width; x++) {
+    for (unsigned y = 0; y < height; y++) {
 #endif
-    auto sponza_entity = _engine->getEntityManager()->createEntity();
-    sponza_entity->addComponent(model);
+      auto sponza_entity = _engine->getEntityManager()->createEntity();
+      sponza_entity->addComponent(model);
 #if SPONZA_MULTIPLE
-    sponza_entity->addComponent(std::make_shared<fly::Transform>(glm::vec3((i % width) * scale, 0.f, i / width * scale), glm::vec3(0.01f)));
+      fly::Vec2f uv = fly::Vec2f({ static_cast<float>(x), static_cast<float>(y) }) / fly::Vec2f({ static_cast<float>(width), static_cast<float>(height) });
+      sponza_entity->addComponent(std::make_shared<fly::Transform>(glm::vec3(uv[0] * size, 0.f, uv[1] * size), glm::vec3(0.01f)));
 #else
-    sponza_entity->addComponent(std::make_shared<fly::Transform>(fly::Vec3f(), fly::Vec3f(0.01f)));
+      sponza_entity->addComponent(std::make_shared<fly::Transform>(fly::Vec3f(), fly::Vec3f(0.01f)));
 #endif
-    sponza_entity->addComponent(std::make_shared<fly::StaticModelRenderable>());
+      sponza_entity->addComponent(std::make_shared<fly::StaticModelRenderable>());
 #if SPONZA_MULTIPLE
+    }
   }
 #endif
   auto spark_model = importer->loadModel("assets/spark_particle.obj");
@@ -350,6 +355,8 @@ void DX11App::initGame()
   settings._exposure = 0.4f;
   _rs->setSettings(settings);
 #endif
+
+  _rs->printQuadtree();
 }
 
 void DX11App::handleInput()

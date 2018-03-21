@@ -117,6 +117,45 @@ namespace fly
       return *this;
     }
     /**
+    * Comparison operators
+    */
+    inline bool operator < (const Vector& b) 
+    {
+      for (unsigned i = 0; i < Dim; i++) {
+        if (!(_data[i] < b[i])) {
+          return false;
+        }
+      }
+      return true;
+    }
+    inline bool operator > (const Vector& b)
+    {
+      for (unsigned i = 0; i < Dim; i++) {
+        if (!(_data[i] > b[i])) {
+          return false;
+        }
+      }
+      return true;
+    }
+    inline bool operator <= (const Vector& b)
+    {
+      for (unsigned i = 0; i < Dim; i++) {
+        if (!(_data[i] <= b[i])) {
+          return false;
+        }
+      }
+      return true;
+    }
+    inline bool operator >= (const Vector& b)
+    {
+      for (unsigned i = 0; i < Dim; i++) {
+        if (!(_data[i] >= b[i])) {
+          return false;
+        }
+      }
+      return true;
+    }
+    /**
     * Vector length
     */
     inline T length() const
