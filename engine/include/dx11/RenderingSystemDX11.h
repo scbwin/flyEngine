@@ -11,6 +11,7 @@
 #include <dx11/Effects.h>
 #include <math/FlyMath.h>
 #include <DirectXTex/DirectXTex.h>
+#include <Settings.h>
 
 #define DX11_STATS 1
 
@@ -53,31 +54,9 @@ namespace fly
     CComPtr<IDXGIAdapter> getAdapter() const;
     void printQuadtree() const;
     void rebuildQuadtree();
-    struct Settings
-    {
-      bool _lensflareEnabled;
-      bool _depthOfFieldEnabled;
-      bool _motionBlurEnabled;
-      bool _vsync;
-      bool _ssrEnabled;
-      bool _lightVolumesEnabled;
-      bool _wireframe;
-      Vec3f _depthOfFieldDistances;
-      Vec3f _skyColor;
-      float _brightScale;
-      float _brightBias;
-      float _exposure;
-      unsigned _lensflareLevels;
-      int _ssrSteps;
-      float _ssrRayLenScale;
-      float _ssrMinRayLen;
-      int _smDepthBias;
-      float _smSlopeScaledDepthBias;
-      float _detailCullingErrorThreshold;
-    };
     Settings _settings;
     void setSettings(const Settings& settings);
-    Settings getSettings() const;
+    const Settings& getSettings() const;
 
   private:
     using RtvPtr = CComPtr<ID3D11RenderTargetView>;

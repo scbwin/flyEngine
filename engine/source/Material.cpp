@@ -39,9 +39,13 @@ namespace fly
   {
     return _specularExponent;
   }
-  Vec3f& Material::getDiffuseColor()
+  const Vec3f& Material::getDiffuseColor() const
   {
     return _diffuseColor;
+  }
+  void Material::setDiffuseColor(const Vec3f & diffuse_color)
+  {
+    _diffuseColor = diffuse_color;
   }
   bool Material::hasWindX() const
   {

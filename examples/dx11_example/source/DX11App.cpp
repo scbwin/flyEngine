@@ -288,12 +288,21 @@ void DX11App::initGame()
   }
 #endif
   auto sphere_model = importer->loadModel("assets/sphere.obj");
+  std::vector<std::shared_ptr<fly::Model>> sphere_models;
+  for (unsigned i = 0; i < 100; i++) {
+    auto s_new = std::make_shared<fly::Model>(*sphere_model); // Copy sphere model
+    for (auto& m : s_new->getMaterials()) {
+      m.setDiffuseColor(fly::Vec3f({ dist(gen), dist(gen), dist(gen) }));
+    }
+    sphere_models.push_back(s_new);
+  }
   width = 1500;
   height = 1500;
   for (unsigned x = 0; x < width; x++) {
     for (unsigned y = 0; y < height; y++) {
       auto sphere_entity = _engine->getEntityManager()->createEntity();
-      sphere_entity->addComponent(sphere_model);
+      unsigned index = glm::clamp(dist(gen) * sphere_models.size(), 0.f, static_cast<float>( sphere_models.size() - 1));
+      sphere_entity->addComponent(sphere_models[index]);
       fly::Vec2f uv = fly::Vec2f({ static_cast<float>(x), static_cast<float>(y) }) / fly::Vec2f({ static_cast<float>(width), static_cast<float>(height) });
       sphere_entity->addComponent(std::make_shared<fly::Transform>(glm::vec3(uv[0] * extents, dist(gen) * 75.f, uv[1] * extents), glm::vec3(sphere_scale_dist(gen), sphere_scale_dist(gen), sphere_scale_dist(gen))));
       sphere_entity->addComponent(std::make_shared<fly::StaticModelRenderable>());
@@ -301,7 +310,7 @@ void DX11App::initGame()
   }
 
   auto spark_model = importer->loadModel("assets/spark_particle.obj");
-  spark_model->getMaterials().front().getDiffuseColor() = glm::vec3(1.f, 0.988f, 0.721f) * 5.f;
+  spark_model->getMaterials().front().setDiffuseColor(glm::vec3(1.f, 0.988f, 0.721f) * 5.f);
   std::vector<glm::vec3> particle_positions = { glm::vec3(-6.215827, 1.293194, -2.191585), glm::vec3(-6.187380, 1.302527, 1.442227), glm::vec3(4.897683, 1.288674, -2.196014), glm::vec3(4.864175, 1.298548, 1.441392) };
   fly::ParticleSystem::ParticleSystemDesc desc = {};
   desc._emitInterval = 0.05f;
@@ -407,6 +416,7 @@ void DX11App::initGame()
   TwAddVarCB(bar, "SM depth bias", TW_TYPE_INT32, TwSetSmDepthBias, TwGetSmDepthBias, _rs.get(), "group=Renderer min=0 max=2000000 step=350");
   TwAddVarCB(bar, "SM sloped scaled bias", TW_TYPE_FLOAT, TwSetSmSlopeScaledDepthBias, TwGetSmSlopeScaledDepthBias, _rs.get(), "group=Renderer min=0 max=1000 step = 0.05");
   TwAddVarCB(bar, "Detail culling error threshold", TW_TYPE_FLOAT, TwSetDetailCullingErrorThreshold, TwGetDetailCullingErrorThreshold, _rs.get(), "group=Renderer min=0 max=100 step = 0.01");
+  TwAddVarCB(bar, "Detail culling error exponent", TW_TYPE_FLOAT, TwSetDetailCullingErrorExponent, TwGetDetailCullingErrorExponent, _rs.get(), "group=Renderer min=0.1 max=100 step = 0.005");
 #if SPONZA
   TwAddVarCB(bar, "Screen space reflections (SSR)", TW_TYPE_BOOLCPP, TwSetSSR, TwGetSSR, _rs.get(), "group=PostProcessing");
   TwAddVarCB(bar, "SSR blend weight", TW_TYPE_FLOAT, TwSetSSRWeight, TwGetSSRWeight, _rs.get(), "group=PostProcessing min=0 max=1 step=0.0035");
@@ -813,13 +823,26 @@ void DX11App::TwSetDetailCullingErrorThreshold(const void * value, void * client
 {
   auto rs = reinterpret_cast<fly::RenderingSystemDX11*>(client_data);
   auto settings = rs->getSettings();
-  settings._detailCullingErrorThreshold = *reinterpret_cast<const float*>(value);
+  settings._detailCullingParams._errorThreshold = *reinterpret_cast<const float*>(value);
   rs->setSettings(settings);
 }
 
 void DX11App::TwGetDetailCullingErrorThreshold(void * value, void * client_data)
 {
-  *reinterpret_cast<float*>(value) = reinterpret_cast<fly::RenderingSystemDX11*>(client_data)->getSettings()._detailCullingErrorThreshold;
+  *reinterpret_cast<float*>(value) = reinterpret_cast<fly::RenderingSystemDX11*>(client_data)->getSettings()._detailCullingParams._errorThreshold;
+}
+
+void DX11App::TwSetDetailCullingErrorExponent(const void * value, void * client_data)
+{
+  auto rs = reinterpret_cast<fly::RenderingSystemDX11*>(client_data);
+  auto settings = rs->getSettings();
+  settings._detailCullingParams._errorExponent = *reinterpret_cast<const float*>(value);
+  rs->setSettings(settings);
+}
+
+void DX11App::TwGetDetailCullingErrorExponent(void * value, void * client_data)
+{
+  *reinterpret_cast<float*>(value) = reinterpret_cast<fly::RenderingSystemDX11*>(client_data)->getSettings()._detailCullingParams._errorExponent;
 }
 
 int DX11App::execute()

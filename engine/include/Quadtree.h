@@ -96,7 +96,8 @@ namespace fly
         }
       }
       template<bool directx, bool ignore_near>
-      void getVisibleElementsWithDetailCulling(const std::vector<Mat4f>& vp, const Vec3f& cam_pos, float error_thresh, std::vector<TPtr>& visible_elements) const
+      void getVisibleElementsWithDetailCulling(const std::vector<Mat4f>& vp, const Vec3f& cam_pos, 
+        const DetailCullingParams& detail_culling_params, std::vector<TPtr>& visible_elements) const
       {
         if ((hasChildren() || _elements.size()) && _aabbWorld->isVisible<directx, ignore_near>(vp)) {
           for (const auto& e : _elements) {
@@ -105,10 +106,11 @@ namespace fly
             }
           }
           float error = (_aabbWorld->getMax() - _aabbWorld->getMin()).length() / (cam_pos - _aabbWorld->center()).length();
-          if (error > error_thresh) {
+          error = pow(error, detail_culling_params._errorExponent);
+          if (error > detail_culling_params._errorThreshold) {
             for (const auto& c : _children) {
               if (c) {
-                c->getVisibleElementsWithDetailCulling<directx, ignore_near>(vp, cam_pos, error_thresh, visible_elements);
+                c->getVisibleElementsWithDetailCulling<directx, ignore_near>(vp, cam_pos, detail_culling_params, visible_elements);
               }
             }
           }
@@ -148,6 +150,7 @@ namespace fly
         max[3] = min[3] + new_size;
       }
     };
+
     Quadtree(const Vec2f& min, const Vec2f& max) : _min(min), _size(max - min)
     {
       _root = std::unique_ptr<Node>(new Node(_min, _size, Vec3f(std::numeric_limits<float>::max()), Vec3f(std::numeric_limits<float>::lowest())));
@@ -178,7 +181,7 @@ namespace fly
     std::vector<TPtr> getVisibleElementsWithDetailCulling(const std::vector<Mat4f>& vp, const Vec3f& cam_pos) const
     {
       std::vector<TPtr> visible_elements;
-      _root->getVisibleElementsWithDetailCulling<directx, ignore_near>(vp, cam_pos, _detailCullingErrorThreshold, visible_elements);
+      _root->getVisibleElementsWithDetailCulling<directx, ignore_near>(vp, cam_pos, _detailCullingParams, visible_elements);
       return visible_elements;
     }
     std::vector<TPtr> getAllElements() const
@@ -204,15 +207,16 @@ namespace fly
         insert(e);
       }
     }
-    void setDetailCullingErrorThreshold(float threshold)
+    void setDetailCullingParams(const DetailCullingParams& params)
     {
-      _detailCullingErrorThreshold = threshold;
+      _detailCullingParams = params;
+      //std::cout << params._errorExponent << " " << params._errorThreshold << std::endl;
     }
   private:
     Vec2f _min;
     Vec2f _size;
     std::unique_ptr<Node> _root;
-    float _detailCullingErrorThreshold = 1.f;
+    DetailCullingParams _detailCullingParams = { 1.f, 1.f };
   };
 }
 

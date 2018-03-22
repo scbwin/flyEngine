@@ -15,7 +15,8 @@ namespace fly
     std::string& getNormalPath();
     std::string& getOpacityPath();
     float getSpecularExponent() const;
-    Vec3f& getDiffuseColor();
+    const Vec3f& getDiffuseColor() const;
+    void setDiffuseColor(const Vec3f& diffuse_color);
     void setSpecularExponent(float specular);
     void setDiffusePath(const std::string& diffuse_path);
     void setNormalPath(const std::string& normal_path);

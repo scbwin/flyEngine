@@ -1,0 +1,38 @@
+#ifndef SETTINGS_H
+#define SETTINGS_H
+
+#include <math/FlyMath.h>
+
+namespace fly
+{
+  struct DetailCullingParams
+  {
+    float _errorThreshold;
+    float _errorExponent;
+  };
+
+  struct Settings
+  {
+    bool _lensflareEnabled;
+    bool _depthOfFieldEnabled;
+    bool _motionBlurEnabled;
+    bool _vsync;
+    bool _ssrEnabled;
+    bool _lightVolumesEnabled;
+    bool _wireframe;
+    Vec3f _depthOfFieldDistances;
+    Vec3f _skyColor;
+    float _brightScale;
+    float _brightBias;
+    float _exposure;
+    unsigned _lensflareLevels;
+    int _ssrSteps;
+    float _ssrRayLenScale;
+    float _ssrMinRayLen;
+    int _smDepthBias;
+    float _smSlopeScaledDepthBias;
+    DetailCullingParams _detailCullingParams;
+  };
+}
+
+#endif

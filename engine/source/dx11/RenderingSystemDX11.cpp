@@ -56,7 +56,7 @@ namespace fly
 
     initEffects();
 
-    setSettings({ true, true, false, false, false, false, false, glm::vec3(0.f, 4.f, 5250.f), glm::vec3(13.f, 24.f, 42.f) / 255.f, 1.9f, 3.2f, 1.f, 8, 16, 3.f, 24.f, 10000, 1.f, 0.75f });
+    setSettings({ true, true, false, false, false, false, false, glm::vec3(0.f, 4.f, 5250.f), glm::vec3(13.f, 24.f, 42.f) / 255.f, 1.9f, 3.2f, 1.f, 8, 16, 3.f, 24.f, 10000, 1.f, {1.f, 1.f} });
 
     _commonStates = std::make_unique<DirectX::CommonStates>(_device);
     _dx11States = std::make_unique<DX11States>(_device);
@@ -331,7 +331,7 @@ namespace fly
   {
   //  _quadtree->rebuild();
     _quadtree = std::unique_ptr<Quadtree<DX11StaticModelRenderable>>(new Quadtree<DX11StaticModelRenderable>(Vec2f({ _sceneMin[0], _sceneMin[2] }), Vec2f({ _sceneMax[0], _sceneMax[2] })));
-    _quadtree->setDetailCullingErrorThreshold(_settings._detailCullingErrorThreshold);
+    _quadtree->setDetailCullingParams(_settings._detailCullingParams);
     for (const auto& r : _staticModelRenderables) {
       auto temp = std::make_shared<DX11StaticModelRenderable>();
       temp->_model = r.second._model;
@@ -380,12 +380,12 @@ namespace fly
     _rastStateShadowMap = nullptr;
     HR(_device->CreateRasterizerState(&rast_desc, &_rastStateShadowMap));
 
-    _quadtree->setDetailCullingErrorThreshold(settings._detailCullingErrorThreshold);
+    _quadtree->setDetailCullingParams(settings._detailCullingParams);
 
     initAdditionalRenderTargets();
   }
 
-  RenderingSystemDX11::Settings RenderingSystemDX11::getSettings() const
+  const Settings& RenderingSystemDX11::getSettings() const
   {
     return _settings;
   }
