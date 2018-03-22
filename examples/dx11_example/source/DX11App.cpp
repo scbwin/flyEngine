@@ -185,8 +185,7 @@ void DX11App::initGame()
 #endif
 
   _engine = std::make_unique<fly::Engine>();
-  float size = 512.f;
-  std::array<fly::Vec2f, 2> quadtree_min_max = { fly::Vec2f({ -size * 0.1f, -size * 0.1f }), fly::Vec2f({ size, size }) };
+  std::array<fly::Vec2f, 2> quadtree_min_max = { fly::Vec2f(-512.f), fly::Vec2f(512.f) };
   _rs = std::make_shared<fly::RenderingSystemDX11>(_window, quadtree_min_max);
   _engine->addSystem(_rs);
   _engine->addSystem(std::make_shared<fly::AnimationSystem>());
@@ -211,9 +210,10 @@ void DX11App::initGame()
   model->getMaterials()[10].setIsReflective(true);
   model->sortMeshesByMaterial();
 #if SPONZA_MULTIPLE
-  int width = 4;
-  int height = 3;
+  int width = 10;
+  int height = 10;
  // float scale = 100.f;
+  float extents = 512.f;
   for (unsigned x = 0; x < width; x++) {
     for (unsigned y = 0; y < height; y++) {
 #endif
@@ -221,7 +221,7 @@ void DX11App::initGame()
       sponza_entity->addComponent(model);
 #if SPONZA_MULTIPLE
       fly::Vec2f uv = fly::Vec2f({ static_cast<float>(x), static_cast<float>(y) }) / fly::Vec2f({ static_cast<float>(width), static_cast<float>(height) });
-      sponza_entity->addComponent(std::make_shared<fly::Transform>(glm::vec3(uv[0] * size, 0.f, uv[1] * size), glm::vec3(0.01f)));
+      sponza_entity->addComponent(std::make_shared<fly::Transform>(glm::vec3(uv[0] * extents, 0.f, uv[1] * extents), glm::vec3(0.01f)));
 #else
       sponza_entity->addComponent(std::make_shared<fly::Transform>(fly::Vec3f(), fly::Vec3f(0.01f)));
 #endif
@@ -356,6 +356,7 @@ void DX11App::initGame()
   _rs->setSettings(settings);
 #endif
 
+  _rs->rebuildQuadtree();
   _rs->printQuadtree();
 }
 

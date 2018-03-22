@@ -50,6 +50,7 @@ namespace fly
     CComPtr<ID3D11DeviceContext> getContext() const;
     CComPtr<IDXGIAdapter> getAdapter() const;
     void printQuadtree() const;
+    void rebuildQuadtree();
     struct Settings
     {
       bool _lensflareEnabled;

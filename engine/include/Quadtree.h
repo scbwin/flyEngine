@@ -24,6 +24,7 @@ namespace fly
       const Vec2f& getMin() const { return _min; }
       Vec2f getMax() const { return _min + _size; }
       const Vec2f& getSize() const { return _size; }
+      AABB* getAABBWorld() const { return _aabbWorld.get(); }
       void insert(const TPtr& element)
       {
         AABB* aabb_el = element->getAABBWorld();
@@ -33,7 +34,7 @@ namespace fly
         std::array<Vec2f, 4> child_min, child_max;
         getChildBounds(child_min, child_max);
         for (unsigned i = 0; i < 4; i++) {
-          if ((bb_min_el >= child_min[i]) && (bb_max_el <= child_max[i])) { // The node encloses the object entirely, therefore insert it
+          if (bb_min_el >= child_min[i] && bb_max_el <= child_max[i]) { // The node encloses the object entirely, therefore insert it
             if (_children[i] == nullptr) { // Create the node if not yet constructed
               _children[i] = std::make_unique<Node>(child_min[i], _size * 0.5f, aabb_el->getMin(), aabb_el->getMax());
             }
@@ -69,6 +70,31 @@ namespace fly
           }
         }
       }
+      template<bool directx>
+      void getVisibleElements(const Mat4f& vp, std::vector<TPtr>& visible_elements) const
+      {
+        if (_aabbWorld->isVisible<directx, false>(vp)) {
+          for (const auto& e : _elements) {
+            if (e->getAABBWorld()->isVisible<directx, false>(vp)) {
+              visible_elements.push_back(e);
+            }
+          }
+          for (const auto& c : _children) {
+            if (c) {
+              c->getVisibleElements<directx>(vp, visible_elements);
+            }
+          }
+        }
+      }
+      void getAllElements(std::vector<TPtr>& all_elements) const
+      {
+        all_elements.insert(all_elements.end(), _elements.begin(), _elements.end());
+        for (const auto& c : _children) {
+          if (c) {
+            c->getAllElements(all_elements);
+          }
+        }
+      }
     private:
       /**
       * Indices: 0 = South west, 1 = South east, 2 = North east, 3 = North west
@@ -94,17 +120,54 @@ namespace fly
         max[3] = min[3] + new_size;
       }
     };
-    Quadtree(const Vec2f& min, const Vec2f& max) : _min(min), _size(max - _min)
+    Quadtree(const Vec2f& min, const Vec2f& max) : _min(min), _size(max - min)
     {
-      _root = std::unique_ptr<Node>(new Node(min, _size, Vec3f(std::numeric_limits<float>::max()), Vec3f(std::numeric_limits<float>::lowest())));
+      _root = std::unique_ptr<Node>(new Node(_min, _size, Vec3f(std::numeric_limits<float>::max()), Vec3f(std::numeric_limits<float>::lowest())));
     }
     void insert(const TPtr& element)
     {
+     /* Vec2f root_min({ _root->getAABBWorld()->getMin()[0], _root->getAABBWorld()->getMin()[2] });
+      Vec2f root_max({ _root->getAABBWorld()->getMax()[0], _root->getAABBWorld()->getMax()[2] });
+      Vec2f elem_min({ element->getAABBWorld()->getMin()[0], element->getAABBWorld()->getMin()[2] });
+      Vec2f elem_max({ element->getAABBWorld()->getMax()[0], element->getAABBWorld()->getMax()[2] });
+      if (root_min > elem_min || root_max < elem_max) { // The root node doesn't enclose the new element, we have to rebuild the whole tree
+        rebuild(minimum(elem_min, root_min), maximum(root_max, elem_max) - minimum(root_min, elem_min));
+      }*/
       _root->insert(element);
     }
     void print() const
     {
       _root->print(0);
+    }
+    template<bool directx>
+    std::vector<TPtr> getVisibleElements(const Mat4f& vp) const
+    {
+      std::vector<TPtr> visible_elements;
+      _root->getVisibleElements<directx>(vp, visible_elements);
+      return visible_elements;
+    }
+    std::vector<TPtr> getAllElements() const
+    {
+      std::vector<TPtr> all_elements;
+      _root->getAllElements(all_elements);
+      return all_elements;
+    }
+    /**
+    * Use this method as soon as all elements are added to the quadtree in order to get the tightest possible fit for the given elements.
+    */
+    void rebuild()
+    {
+      Vec2f new_min({ _root->getAABBWorld()->getMin()[0], _root->getAABBWorld()->getMin()[2] });
+      Vec2f new_size({ _root->getAABBWorld()->getMax()[0] - new_min[0], _root->getAABBWorld()->getMax()[2] - new_min[1] });
+      rebuild(new_min, new_size);
+    }
+    void rebuild(const Vec2f& new_min, const Vec2f& new_size)
+    {
+      auto all_elements = getAllElements();
+      _root = std::unique_ptr<Node>(new Node(new_min, new_size, Vec3f(std::numeric_limits<float>::max()), Vec3f(std::numeric_limits<float>::lowest())));
+      for (const auto& e : all_elements) {
+        insert(e);
+      }
     }
   private:
     Vec2f _min;

@@ -331,6 +331,11 @@ namespace fly
     _quadtree->print();
   }
 
+  void RenderingSystemDX11::rebuildQuadtree()
+  {
+    _quadtree->rebuild();
+  }
+
   void RenderingSystemDX11::setSettings(const Settings& settings)
   {
     _settings = settings;
@@ -546,26 +551,20 @@ namespace fly
   void RenderingSystemDX11::renderModels()
   {
     UINT offset = 0, stride = sizeof(Vertex);
-    // Vec3f light_pos_world(&_directionalLight._transform->getTranslation().r);
     auto light_pos_view = _viewMatrix * Vec4f({ _directionalLight._dl->_pos[0], _directionalLight._dl->_pos[1], _directionalLight._dl->_pos[2], 1.f });
     HR(_fxLightPosView->SetFloatVector(&light_pos_view[0]));
     HR(_fxLightColor->SetFloatVector(_directionalLight._dl->_color.ptr()));
     HR(_fxShadowMap->SetResource(_directionalLight._shadowMap->_srv));
-    for (auto& r : _staticModelRenderables) {
-      const auto& m_rdable = r.second;
-#ifndef _DEBUG
-      if (!m_rdable._aabbWorld->isVisible<true, false>(_VP)) {
-        continue;
-      }
-#endif
-      _context->IASetVertexBuffers(0, 1, &m_rdable._modelData->_vertexBuffer.p, &stride, &offset);
-      _context->IASetIndexBuffer(m_rdable._modelData->_indexBuffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
-      auto mvp = _VP * m_rdable._modelMatrix;
+    auto visible_elements = _quadtree->getVisibleElements<true>(_VP);
+    for (const auto& r : visible_elements) {
+      _context->IASetVertexBuffers(0, 1, &r->_modelData->_vertexBuffer.p, &stride, &offset);
+      _context->IASetIndexBuffer(r->_modelData->_indexBuffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
+      auto mvp = _VP * r->_modelMatrix;
       HR(_fxMVP->SetMatrixTranspose(mvp.ptr()));
-      auto mv_inverse = inverse(_viewMatrix * m_rdable._modelMatrix);
+      auto mv_inverse = inverse(_viewMatrix * r->_modelMatrix);
       HR(_fxMVInverseTranspose->SetMatrix(mv_inverse.ptr()));
       int material_index = -1;
-      for (const auto& mesh_desc : m_rdable._modelData->_meshDesc) { // For each mesh
+      for (const auto& mesh_desc : r->_modelData->_meshDesc) { // For each mesh
         const auto& aabb = mesh_desc._mesh->getAABB();
 #ifndef _DEBUG
         if (!aabb->isVisible<true, false>(mvp)) { // Frustum culling
@@ -575,12 +574,12 @@ namespace fly
         int material_index_new = static_cast<int>(mesh_desc._materialIndex);
         // Meshes are sorted by material, the following statement helps to reduce context switches
         if (material_index != material_index_new) {
-          const auto& material = m_rdable._model->getMaterials()[material_index_new];
+          const auto& material = r->_model->getMaterials()[material_index_new];
           if (_settings._ssrEnabled) {
             _context->OMSetDepthStencilState(_dx11States->depthReadWriteStencilWrite(), material.isReflective());
             _reflectiveSurfacesVisible = _reflectiveSurfacesVisible || material.isReflective();
           }
-          const auto& mat_desc = m_rdable._modelData->_materialDesc[material_index_new];
+          const auto& mat_desc = r->_modelData->_materialDesc[material_index_new];
           HR(_fxDiffuseTex->SetResource(mat_desc._diffuseSrv));
           HR(_fxAlphaMap->SetResource(mat_desc._alphaSrv));
           HR(_fxNormalMap->SetResource(mat_desc._normalSrv));
