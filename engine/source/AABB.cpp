@@ -12,6 +12,8 @@ namespace fly
     _vertices[5] = Vec3f({ bb_min[0], bb_max[1], bb_max[2] });
     _vertices[6] = Vec3f({ bb_max[0], bb_min[1], bb_max[2] });
     _vertices[7] = Vec3f({ bb_max[0], bb_max[1], bb_max[2] });
+
+    _center = (_bbMin + _bbMax) * 0.5f;
   }
   AABB::AABB(const AABB& aabb_local, const Mat4f & world_matrix) :
     _bbMin(std::numeric_limits<float>::max()),
@@ -24,6 +26,7 @@ namespace fly
       _bbMax = maximum(_bbMax, _vertices[i]);
       i++;
     }
+    _center = (_bbMin + _bbMax) * 0.5f;
   }
   const std::array<Vec3f, 8>& AABB::getVertices() const
   {
@@ -36,5 +39,9 @@ namespace fly
   const Vec3f& AABB::getMax() const
   {
     return _bbMax;
+  }
+  const Vec3f& AABB::center() const
+  {
+    return _center;
   }
 }

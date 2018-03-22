@@ -21,10 +21,19 @@ namespace fly
       {
         _aabbWorld = std::unique_ptr<AABB>(new AABB(bb_min, bb_max));
       }
-      const Vec2f& getMin() const { return _min; }
-      Vec2f getMax() const { return _min + _size; }
-      const Vec2f& getSize() const { return _size; }
-      AABB* getAABBWorld() const { return _aabbWorld.get(); }
+      inline const Vec2f& getMin() const { return _min; }
+      inline Vec2f getMax() const { return _min + _size; }
+      inline const Vec2f& getSize() const { return _size; }
+      inline AABB* getAABBWorld() const { return _aabbWorld.get(); }
+      inline bool hasChildren() const
+      {
+        for (const auto& c : _children) {
+          if (c) {
+            return true;
+          }
+        }
+        return false;
+      }
       void insert(const TPtr& element)
       {
         AABB* aabb_el = element->getAABBWorld();
@@ -70,18 +79,37 @@ namespace fly
           }
         }
       }
-      template<bool directx>
-      void getVisibleElements(const Mat4f& vp, std::vector<TPtr>& visible_elements) const
+      template<bool directx, bool ignore_near>
+      void getVisibleElements(const std::vector<Mat4f>& vp, std::vector<TPtr>& visible_elements) const
       {
-        if (_aabbWorld->isVisible<directx, false>(vp)) {
+        if ((hasChildren() || _elements.size()) && _aabbWorld->isVisible<directx, ignore_near>(vp)) {
           for (const auto& e : _elements) {
-            if (e->getAABBWorld()->isVisible<directx, false>(vp)) {
+            if (e->getAABBWorld()->isVisible<directx, ignore_near>(vp)) {
               visible_elements.push_back(e);
             }
           }
           for (const auto& c : _children) {
             if (c) {
-              c->getVisibleElements<directx>(vp, visible_elements);
+              c->getVisibleElements<directx, ignore_near>(vp, visible_elements);
+            }
+          }
+        }
+      }
+      template<bool directx, bool ignore_near>
+      void getVisibleElementsWithDetailCulling(const std::vector<Mat4f>& vp, const Vec3f& cam_pos, float error_thresh, std::vector<TPtr>& visible_elements) const
+      {
+        if ((hasChildren() || _elements.size()) && _aabbWorld->isVisible<directx, ignore_near>(vp)) {
+          for (const auto& e : _elements) {
+            if (e->getAABBWorld()->isVisible<directx, ignore_near>(vp)) {
+              visible_elements.push_back(e);
+            }
+          }
+          float error = (_aabbWorld->getMax() - _aabbWorld->getMin()).length() / (cam_pos - _aabbWorld->center()).length();
+          if (error > error_thresh) {
+            for (const auto& c : _children) {
+              if (c) {
+                c->getVisibleElementsWithDetailCulling<directx, ignore_near>(vp, cam_pos, error_thresh, visible_elements);
+              }
             }
           }
         }
@@ -139,11 +167,18 @@ namespace fly
     {
       _root->print(0);
     }
-    template<bool directx>
-    std::vector<TPtr> getVisibleElements(const Mat4f& vp) const
+    template<bool directx, bool ignore_near>
+    std::vector<TPtr> getVisibleElements(const std::vector<Mat4f>& vp) const
     {
       std::vector<TPtr> visible_elements;
-      _root->getVisibleElements<directx>(vp, visible_elements);
+      _root->getVisibleElements<directx, ignore_near>(vp, visible_elements);
+      return visible_elements;
+    }
+    template<bool directx, bool ignore_near>
+    std::vector<TPtr> getVisibleElementsWithDetailCulling(const std::vector<Mat4f>& vp, const Vec3f& cam_pos) const
+    {
+      std::vector<TPtr> visible_elements;
+      _root->getVisibleElementsWithDetailCulling<directx, ignore_near>(vp, cam_pos, _detailCullingErrorThreshold, visible_elements);
       return visible_elements;
     }
     std::vector<TPtr> getAllElements() const
@@ -169,10 +204,15 @@ namespace fly
         insert(e);
       }
     }
+    void setDetailCullingErrorThreshold(float threshold)
+    {
+      _detailCullingErrorThreshold = threshold;
+    }
   private:
     Vec2f _min;
     Vec2f _size;
     std::unique_ptr<Node> _root;
+    float _detailCullingErrorThreshold = 1.f;
   };
 }
 

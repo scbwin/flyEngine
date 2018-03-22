@@ -12,6 +12,8 @@
 #include <math/FlyMath.h>
 #include <DirectXTex/DirectXTex.h>
 
+#define DX11_STATS 1
+
 namespace DirectX
 {
   class CommonStates;
@@ -71,6 +73,7 @@ namespace fly
       float _ssrMinRayLen;
       int _smDepthBias;
       float _smSlopeScaledDepthBias;
+      float _detailCullingErrorThreshold;
     };
     Settings _settings;
     void setSettings(const Settings& settings);
@@ -298,6 +301,8 @@ namespace fly
     float _fov = 45.f;
     float _near = 0.1f;
     float _far = 20000.f;
+    Vec3f _sceneMin = Vec3f((std::numeric_limits<float>::max)());
+    Vec3f _sceneMax = Vec3f(std::numeric_limits<float>::lowest());
 
     std::shared_ptr<Camera> _camera;
 
@@ -327,7 +332,7 @@ namespace fly
 
     void initAdditionalRenderTargets();
     void prepareRender(float time, float delta_time);
-    void renderShadowMaps() const;
+    void renderShadowMaps();
     void renderScene();
     void renderModels();
     void renderTerrain() const;
@@ -344,6 +349,24 @@ namespace fly
     void renderBrightPass(const RTT& rtt, const SrvPtr& srv) const;
     void copy(const SrvPtr& from, const RtvPtr& to, const D3D11_VIEWPORT& vp) const;
     void copy(const SrvPtr& from, const SrvPtr& to) const;
+
+#if DX11_STATS
+      public:
+    struct Dx11Stats
+    {
+      unsigned _visibleModels;
+      unsigned _drawCalls;
+      unsigned _renderedTriangles;
+      unsigned _visibleModelsShadow;
+      unsigned _drawCallsShadow;
+      unsigned _renderedTrianglesShadow;
+    };
+    Dx11Stats _stats;
+    const Dx11Stats& getStats() const
+    {
+      return _stats;
+    }
+#endif
   };
 }
 

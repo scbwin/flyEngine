@@ -56,7 +56,7 @@ namespace fly
 
     initEffects();
 
-    setSettings({ true, true, false, false, false, false, false, glm::vec3(0.f, 4.f, 5250.f), glm::vec3(13.f, 24.f, 42.f) / 255.f, 1.9f, 3.2f, 1.f, 8, 16, 3.f, 24.f, 10000, 1.f });
+    setSettings({ true, true, false, false, false, false, false, glm::vec3(0.f, 4.f, 5250.f), glm::vec3(13.f, 24.f, 42.f) / 255.f, 1.9f, 3.2f, 1.f, 8, 16, 3.f, 24.f, 10000, 1.f, 0.75f });
 
     _commonStates = std::make_unique<DirectX::CommonStates>(_device);
     _dx11States = std::make_unique<DX11States>(_device);
@@ -95,12 +95,8 @@ namespace fly
         _modelDataCache[model] = std::make_shared<ModelData>(model, this);
       }
       _staticModelRenderables[entity] = { model, _modelDataCache[model], transform->getModelMatrix(), std::make_unique<AABB>(*model->getAABB(), transform->getModelMatrix()) };
-      auto temp = std::make_shared<DX11StaticModelRenderable>();
-      temp->_model = model;
-      temp->_modelData = _modelDataCache[model];
-      temp->_aabbWorld = std::make_unique<AABB>(*model->getAABB(), transform->getModelMatrix());
-      temp->_modelMatrix = transform->getModelMatrix();
-      _quadtree->insert(temp);
+      _sceneMin = minimum(_sceneMin, _staticModelRenderables[entity]._aabbWorld->getMin());
+      _sceneMax = maximum(_sceneMax, _staticModelRenderables[entity]._aabbWorld->getMax());
     }
     if (!particle_system) {
       _particleModelRenderables.erase(entity);
@@ -333,7 +329,17 @@ namespace fly
 
   void RenderingSystemDX11::rebuildQuadtree()
   {
-    _quadtree->rebuild();
+  //  _quadtree->rebuild();
+    _quadtree = std::unique_ptr<Quadtree<DX11StaticModelRenderable>>(new Quadtree<DX11StaticModelRenderable>(Vec2f({ _sceneMin[0], _sceneMin[2] }), Vec2f({ _sceneMax[0], _sceneMax[2] })));
+    _quadtree->setDetailCullingErrorThreshold(_settings._detailCullingErrorThreshold);
+    for (const auto& r : _staticModelRenderables) {
+      auto temp = std::make_shared<DX11StaticModelRenderable>();
+      temp->_model = r.second._model;
+      temp->_modelData = _modelDataCache[temp->_model];
+      temp->_aabbWorld = std::make_unique<AABB>(*temp->_model->getAABB(), r.second._modelMatrix);
+      temp->_modelMatrix = r.second._modelMatrix;
+      _quadtree->insert(temp);
+    }
   }
 
   void RenderingSystemDX11::setSettings(const Settings& settings)
@@ -373,6 +379,8 @@ namespace fly
     rast_desc.SlopeScaledDepthBias = settings._smSlopeScaledDepthBias;
     _rastStateShadowMap = nullptr;
     HR(_device->CreateRasterizerState(&rast_desc, &_rastStateShadowMap));
+
+    _quadtree->setDetailCullingErrorThreshold(settings._detailCullingErrorThreshold);
 
     initAdditionalRenderTargets();
   }
@@ -481,9 +489,13 @@ namespace fly
     _context->OMSetBlendState(nullptr, nullptr, 0xffffffff);
     _context->IASetInputLayout(_defaultInputLayout);
     _context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+#if DX11_STATS
+    _stats = {};
+#endif
   }
 
-  void RenderingSystemDX11::renderShadowMaps() const
+  void RenderingSystemDX11::renderShadowMaps()
   {
     _context->RSSetState(_rastStateShadowMap);
     _context->RSSetViewports(1, &_directionalLight._shadowMap->_viewPort);
@@ -491,27 +503,32 @@ namespace fly
     _context->OMSetRenderTargets(1, rtv, _directionalLight._shadowMap->_dsv);
     _context->ClearDepthStencilView(_directionalLight._shadowMap->_dsv, D3D11_CLEAR_FLAG::D3D11_CLEAR_DEPTH, 1.f, 0);
     UINT offset = 0, stride = sizeof(Vertex);
-    for (auto& r : _staticModelRenderables) {
-      const auto& m_rdable = r.second;
-      std::vector<Mat4f> light_mvps;
-      for (const auto& vp : _lightVP) {
-        light_mvps.push_back(vp * m_rdable._modelMatrix);
-      }
-      if (!_directionalLight._dl->aabbVisible<true>(light_mvps, *m_rdable._model->getAABB())) {
+    auto visible_elements = _quadtree->getVisibleElementsWithDetailCulling<true, true>(_lightVP, _camPos);
+#if DX11_STATS
+    _stats._visibleModelsShadow += visible_elements.size();
+#endif
+    for (auto& r : visible_elements) {
+      const auto& m_rdable = r;
+      //if (!_directionalLight._dl->aabbVisible<true>(light_mvps, *m_rdable._model->getAABB())) {
+      if (!m_rdable->_aabbWorld->isVisible<true, true>(_lightVP)){
         continue;
       }
-      HR(_fxM->SetMatrixTranspose(m_rdable._modelMatrix.ptr()));
-      _context->IASetVertexBuffers(0, 1, &m_rdable._modelData->_vertexBuffer.p, &stride, &offset);
-      _context->IASetIndexBuffer(m_rdable._modelData->_indexBuffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
+      std::vector<Mat4f> light_mvps;
+      for (const auto& vp : _lightVP) {
+        light_mvps.push_back(vp * m_rdable->_modelMatrix);
+      }
+      HR(_fxM->SetMatrixTranspose(m_rdable->_modelMatrix.ptr()));
+      _context->IASetVertexBuffers(0, 1, &m_rdable->_modelData->_vertexBuffer.p, &stride, &offset);
+      _context->IASetIndexBuffer(m_rdable->_modelData->_indexBuffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
       int material_index = -1;
-      for (const auto& mesh_desc : m_rdable._modelData->_meshDesc) {
-        if (!_directionalLight._dl->aabbVisible<true>(light_mvps, *mesh_desc._mesh->getAABB())) {
+      for (const auto& mesh_desc : m_rdable->_modelData->_meshDesc) {
+        if (!mesh_desc._mesh->getAABB()->isVisible<true, true>(light_mvps)) {
           continue;
         }
         int material_index_new = static_cast<int>(mesh_desc._materialIndex);
         if (material_index != material_index_new) {
-          const auto& mat_desc = m_rdable._modelData->_materialDesc[material_index_new];
-          auto material = m_rdable._model->getMaterials()[material_index_new];
+          const auto& mat_desc = m_rdable->_modelData->_materialDesc[material_index_new];
+          auto material = m_rdable->_model->getMaterials()[material_index_new];
           HR(_fxAlphaMap->SetResource(mat_desc._alphaSrv));
           if (material.hasWindX() || material.hasWindZ()) {
             const auto& aabb = mesh_desc._mesh->getAABB();
@@ -523,6 +540,10 @@ namespace fly
           HR(mat_desc._shadowMapPass->Apply(0, _context));
         }
         _context->DrawIndexed(mesh_desc._numIndices, mesh_desc._indexOffset, mesh_desc._baseVertex);
+#if DX11_STATS
+        _stats._drawCallsShadow++;
+        _stats._renderedTrianglesShadow += mesh_desc._numIndices / 3;
+#endif
         material_index = material_index_new;
       }
     }
@@ -555,7 +576,11 @@ namespace fly
     HR(_fxLightPosView->SetFloatVector(&light_pos_view[0]));
     HR(_fxLightColor->SetFloatVector(_directionalLight._dl->_color.ptr()));
     HR(_fxShadowMap->SetResource(_directionalLight._shadowMap->_srv));
-    auto visible_elements = _quadtree->getVisibleElements<true>(_VP);
+    //auto visible_elements = _quadtree->getVisibleElements<true>(_VP);
+    auto visible_elements = _quadtree->getVisibleElementsWithDetailCulling<true, false>({ _VP }, _camPos);
+#if DX11_STATS
+    _stats._visibleModels += visible_elements.size();
+#endif
     for (const auto& r : visible_elements) {
       _context->IASetVertexBuffers(0, 1, &r->_modelData->_vertexBuffer.p, &stride, &offset);
       _context->IASetIndexBuffer(r->_modelData->_indexBuffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
@@ -594,6 +619,10 @@ namespace fly
         }
         _context->DrawIndexed(mesh_desc._numIndices, mesh_desc._indexOffset, mesh_desc._baseVertex);
         material_index = material_index_new;
+#if DX11_STATS
+        _stats._drawCalls++;
+        _stats._renderedTriangles += mesh_desc._numIndices / 3;
+#endif
       }
     }
   }

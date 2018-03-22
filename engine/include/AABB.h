@@ -3,6 +3,7 @@
 
 #include <math/FlyMath.h>
 #include <array>
+#include <vector>
 
 namespace fly
 {
@@ -14,6 +15,7 @@ namespace fly
     const std::array<Vec3f, 8>& getVertices() const;
     const Vec3f& getMin() const;
     const Vec3f& getMax() const;
+    const Vec3f& center() const;
 
     template<bool directx, bool ignore_near>
     inline bool isVisible(const Mat4f& mvp) const
@@ -36,9 +38,19 @@ namespace fly
       bool is_visible = inside_left && inside_right && inside_bottom && inside_top && inside_far;
       return ignore_near ? is_visible : is_visible && inside_near;
     }
+    template<bool directx, bool ignore_near>
+    inline bool isVisible(const std::vector<Mat4f>& vps) const
+    {
+      bool visible = false;
+      for (const auto& vp : vps) {
+        visible = visible || isVisible<directx, ignore_near>(vp);
+      }
+      return visible;
+    }
   private:
     std::array<Vec3f, 8> _vertices;
     Vec3f _bbMin, _bbMax;
+    Vec3f _center;
   };
 }
 

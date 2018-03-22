@@ -246,7 +246,11 @@ float computeShadow(float3 pos_world, int cascade_index)
 	shadow_coord.xyz /= shadow_coord.w;
 	shadow_coord.x = shadow_coord.x * 0.5f + 0.5f;
 	shadow_coord.y = -shadow_coord.y * 0.5f + 0.5f;
-	return shadowMap.SampleCmpLevelZero(shadowSampler, float3(shadow_coord.xy, cascade_index), shadow_coord.z).r;
+  bool valid = shadow_coord.x >= 0.f && shadow_coord.x <= 1.f && shadow_coord.y >= 0.f && shadow_coord.y <= 1.f && shadow_coord.z >= 0.f && shadow_coord.z <= 1.f;
+  if (valid)
+    return shadowMap.SampleCmpLevelZero(shadowSampler, float3(shadow_coord.xy, cascade_index), shadow_coord.z).r;
+  else
+    return 0.f;
 }
 
 struct PSOut
@@ -289,8 +293,8 @@ PSOut pixelShader(VertexOut pin, uniform bool useDiffuseTexture, uniform bool us
 	float shadow0 = computeShadow(pos_world, 0);
 	float shadow1 = computeShadow(pos_world, 1);
 	float shadow = lerp(shadow0, shadow1, smoothstep(cascadeDistances[0] * 0.9f, cascadeDistances[0], cam_dist));
-	float visibility = 1.f - 0.7f * 
-		shadow * (1.f - smoothstep(fade_start, fade_start + 1.f, cam_dist));
+  float visibility = 1.f - 0.7f *
+    shadow;// * (1.f - smoothstep(fade_start, fade_start + 1.f, cam_dist));
 	
 	PSOut ps_out;
 	ps_out.color = float4(albedo * (diff + spec + amb) * visibility, 1.f);

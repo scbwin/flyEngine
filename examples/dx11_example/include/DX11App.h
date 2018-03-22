@@ -46,7 +46,7 @@ private:
  // std::shared_ptr<fly::Transform> _dlTransform;
   fly::GameTimer _gameTimer;
 #if SPONZA
-  float _camSpeed = 3.f;
+  float _camSpeed = 300.f;
 #else
   float _camSpeed = 300.f;
 #endif
@@ -65,7 +65,10 @@ private:
  // CComPtr<ID3D11BlendState> _textBlendState;
   std::unique_ptr<DirectX::CommonStates> _commonStates;
   bool _showGUI = true;
-
+#if DX11_STATS
+  std::wstring getStatsString();
+  std::wstring formatNumber(unsigned number);
+#endif
   void drawDebugGUI();
 
   static void TW_CALL TwSetPtrFrequCallback(const void* value, void* client_data);
@@ -120,6 +123,8 @@ private:
   static void TwGetSmDepthBias(void* value, void* client_data);
   static void TwSetSmSlopeScaledDepthBias(const void* value, void* client_data);
   static void TwGetSmSlopeScaledDepthBias(void* value, void* client_data);
+  static void TwSetDetailCullingErrorThreshold(const void* value, void* client_data);
+  static void TwGetDetailCullingErrorThreshold(void* value, void* client_data);
 };
 
 #endif // !DX11APP_H

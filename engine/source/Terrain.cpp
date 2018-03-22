@@ -387,7 +387,7 @@ namespace fly
         }
       }
       else {
-        if ((node->_transforms.size() || node->_cloudBillboardPositionsAndScales.size()) && dl->aabbVisible<false>(light_mvps, *node->_aabb)) {
+        if ((node->_transforms.size() || node->_cloudBillboardPositionsAndScales.size()) && node->_aabb->isVisible<false, true>(light_mvps)) {
           node->_lod = (node->_size / _minNodeSize) - 1;
           nodes.push_back(node);
         }

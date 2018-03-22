@@ -15,6 +15,7 @@
 #include <Mesh.h>
 #include <Light.h>
 #include <Billboard.h>
+#include <random>
 
 DX11App::DX11App()
 {
@@ -137,6 +138,54 @@ void DX11App::onMouseMove(WPARAM w_param, LPARAM l_param)
   SetCursorPos(center.x, center.y);*/
 }
 
+#if DX11_STATS
+std::wstring DX11App::getStatsString()
+{
+  std::wstring str;
+  auto stats = _rs->getStats();
+  str += L"Visible models:" + formatNumber(stats._visibleModels) + L"\n";
+  str += L"Draw calls:" + formatNumber(stats._drawCalls) + L"\n";
+  str += L"Rendered triangles:" + formatNumber(stats._renderedTriangles) + L"\n";
+  str += L"Visible models shadow map:" + formatNumber(stats._visibleModelsShadow) + L"\n";
+  str += L"Draw calls shadow map:" + formatNumber(stats._drawCallsShadow) + L"\n";
+  str += L"Rendered triangles shadow map:" + formatNumber(stats._renderedTrianglesShadow) + L"\n";
+  return str;
+}
+std::wstring DX11App::formatNumber(unsigned number)
+{
+  //std::cout << number << std::endl;
+  unsigned num = number;
+  std::wstring ret;
+  while (true) {
+    unsigned remainder = num % 1000;
+    num /= 1000;
+    wchar_t rem_str[4];
+    if (num == 0) {
+      if (remainder >= 100) {
+        swprintf_s(rem_str, L"%3u", remainder);
+      }
+      else if (remainder >= 10) {
+        swprintf_s(rem_str, L"%2u", remainder);
+      }
+      else {
+        swprintf_s(rem_str, L"%1u", remainder);
+      }
+    }
+    else {
+      swprintf_s(rem_str, L"%03u", remainder);
+    }
+    ret = rem_str + ret;
+    if (num == 0) {
+      break;
+    }
+    else {
+      ret = L"," + ret;
+    }
+  }
+  return ret;
+}
+#endif
+
 void DX11App::drawDebugGUI()
 {
   using namespace DirectX;
@@ -190,6 +239,11 @@ void DX11App::initGame()
   _engine->addSystem(_rs);
   _engine->addSystem(std::make_shared<fly::AnimationSystem>());
   _engine->addSystem(std::make_shared<fly::PhysicsSystem>());
+  
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<float> dist(0.f, 1.f);
+  std::uniform_real_distribution<float> sphere_scale_dist(0.2f, 1.f);
 
   std::shared_ptr<fly::IImporter> importer = std::make_unique<fly::AssimpImporter>();
 #if SPONZA
@@ -210,10 +264,10 @@ void DX11App::initGame()
   model->getMaterials()[10].setIsReflective(true);
   model->sortMeshesByMaterial();
 #if SPONZA_MULTIPLE
-  int width = 10;
-  int height = 10;
+  int width = 100;
+  int height = 100;
  // float scale = 100.f;
-  float extents = 512.f;
+  float extents = 512.f * 10.f;
   for (unsigned x = 0; x < width; x++) {
     for (unsigned y = 0; y < height; y++) {
 #endif
@@ -221,6 +275,9 @@ void DX11App::initGame()
       sponza_entity->addComponent(model);
 #if SPONZA_MULTIPLE
       fly::Vec2f uv = fly::Vec2f({ static_cast<float>(x), static_cast<float>(y) }) / fly::Vec2f({ static_cast<float>(width), static_cast<float>(height) });
+      if (x > 0 && y > 0) {
+        uv += (dist(gen) * 2.f - 1.f) * 0.003f;
+      }
       sponza_entity->addComponent(std::make_shared<fly::Transform>(glm::vec3(uv[0] * extents, 0.f, uv[1] * extents), glm::vec3(0.01f)));
 #else
       sponza_entity->addComponent(std::make_shared<fly::Transform>(fly::Vec3f(), fly::Vec3f(0.01f)));
@@ -230,6 +287,19 @@ void DX11App::initGame()
     }
   }
 #endif
+  auto sphere_model = importer->loadModel("assets/sphere.obj");
+  width = 1500;
+  height = 1500;
+  for (unsigned x = 0; x < width; x++) {
+    for (unsigned y = 0; y < height; y++) {
+      auto sphere_entity = _engine->getEntityManager()->createEntity();
+      sphere_entity->addComponent(sphere_model);
+      fly::Vec2f uv = fly::Vec2f({ static_cast<float>(x), static_cast<float>(y) }) / fly::Vec2f({ static_cast<float>(width), static_cast<float>(height) });
+      sphere_entity->addComponent(std::make_shared<fly::Transform>(glm::vec3(uv[0] * extents, dist(gen) * 75.f, uv[1] * extents), glm::vec3(sphere_scale_dist(gen), sphere_scale_dist(gen), sphere_scale_dist(gen))));
+      sphere_entity->addComponent(std::make_shared<fly::StaticModelRenderable>());
+    }
+  }
+
   auto spark_model = importer->loadModel("assets/spark_particle.obj");
   spark_model->getMaterials().front().getDiffuseColor() = glm::vec3(1.f, 0.988f, 0.721f) * 5.f;
   std::vector<glm::vec3> particle_positions = { glm::vec3(-6.215827, 1.293194, -2.191585), glm::vec3(-6.187380, 1.302527, 1.442227), glm::vec3(4.897683, 1.288674, -2.196014), glm::vec3(4.864175, 1.298548, 1.441392) };
@@ -271,9 +341,9 @@ void DX11App::initGame()
   cam_entity->addComponent(_camera);
 
   auto dl_entity = _engine->getEntityManager()->createEntity();
-  std::vector<float> csm_distances = { 5.f, 20.f };
+  std::vector<float> csm_distances = { 10.f, 100.f };
 #if SPONZA
-  _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(30.f, 30.f, 0.f), glm::vec3(0.f, 0.f, 2.f),  csm_distances);
+  _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(30.f, 1024.f, 0.f), glm::vec3(512.f * 5.f, 0.f, 512.f * 5.f),  csm_distances);
 #else 
   _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(8192.f, 1000.f, 8192.f), glm::vec3(0.f, 0.f, 2.f), csm_distances);
 #endif
@@ -292,7 +362,7 @@ void DX11App::initGame()
 #endif
 
   auto skydome_entity = _engine->getEntityManager()->createEntity();
-  auto sphere_model = importer->loadModel("assets/sphere.obj");
+ // auto sphere_model = importer->loadModel("assets/sphere.obj");
   skydome_entity->addComponent(sphere_model);
  // skydome_entity->addComponent(std::make_shared<fly::Transform>());
   skydome_entity->addComponent(std::make_shared<fly::SkyboxRenderable>());
@@ -336,6 +406,7 @@ void DX11App::initGame()
   TwAddVarCB(bar, "Bright bias", TW_TYPE_FLOAT, TwSetBrightBias, TwGetBrightBias, _rs.get(), "group=PostProcessing min=0 step=0.005");
   TwAddVarCB(bar, "SM depth bias", TW_TYPE_INT32, TwSetSmDepthBias, TwGetSmDepthBias, _rs.get(), "group=Renderer min=0 max=2000000 step=350");
   TwAddVarCB(bar, "SM sloped scaled bias", TW_TYPE_FLOAT, TwSetSmSlopeScaledDepthBias, TwGetSmSlopeScaledDepthBias, _rs.get(), "group=Renderer min=0 max=1000 step = 0.05");
+  TwAddVarCB(bar, "Detail culling error threshold", TW_TYPE_FLOAT, TwSetDetailCullingErrorThreshold, TwGetDetailCullingErrorThreshold, _rs.get(), "group=Renderer min=0 max=100 step = 0.01");
 #if SPONZA
   TwAddVarCB(bar, "Screen space reflections (SSR)", TW_TYPE_BOOLCPP, TwSetSSR, TwGetSSR, _rs.get(), "group=PostProcessing");
   TwAddVarCB(bar, "SSR blend weight", TW_TYPE_FLOAT, TwSetSSRWeight, TwGetSSRWeight, _rs.get(), "group=PostProcessing min=0 max=1 step=0.0035");
@@ -351,13 +422,12 @@ void DX11App::initGame()
 
 #if SPONZA
   auto settings = _rs->getSettings();
-  settings._depthOfFieldDistances = glm::vec3(0.f, 5.f, 15.f);
+  settings._depthOfFieldDistances = glm::vec3(-2000.f, 500.f, 10000.f);
   settings._exposure = 0.4f;
   _rs->setSettings(settings);
 #endif
 
   _rs->rebuildQuadtree();
-  _rs->printQuadtree();
 }
 
 void DX11App::handleInput()
@@ -739,6 +809,19 @@ void DX11App::TwGetSmSlopeScaledDepthBias(void * value, void * client_data)
   *reinterpret_cast<float*>(value) = reinterpret_cast<fly::RenderingSystemDX11*>(client_data)->getSettings()._smSlopeScaledDepthBias;
 }
 
+void DX11App::TwSetDetailCullingErrorThreshold(const void * value, void * client_data)
+{
+  auto rs = reinterpret_cast<fly::RenderingSystemDX11*>(client_data);
+  auto settings = rs->getSettings();
+  settings._detailCullingErrorThreshold = *reinterpret_cast<const float*>(value);
+  rs->setSettings(settings);
+}
+
+void DX11App::TwGetDetailCullingErrorThreshold(void * value, void * client_data)
+{
+  *reinterpret_cast<float*>(value) = reinterpret_cast<fly::RenderingSystemDX11*>(client_data)->getSettings()._detailCullingErrorThreshold;
+}
+
 int DX11App::execute()
 {
   _gameTimer = fly::GameTimer();
@@ -763,6 +846,9 @@ int DX11App::execute()
       fps++;
       if (_gameTimer.getTotalTimeSeconds() >= measure) {
         _debugString = std::to_wstring(fps) + L" FPS" + L"\n" + _adapterString;
+#if DX11_STATS
+        _debugString += L"\n" + getStatsString();
+#endif
         fps = 0;
         measure = _gameTimer.getTotalTimeSeconds() + 1.f;
       }
