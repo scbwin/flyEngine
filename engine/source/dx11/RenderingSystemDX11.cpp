@@ -87,15 +87,15 @@ namespace fly
     }
 
     if (model && transform && particle_system) {
-      _particleModelRenderables[entity] = { { model, std::make_unique<ModelData>(model, this), transform->getModelMatrix() }, particle_system };
-    }
-    if (model && transform && smr) {
       if (!_modelDataCache.count(model)) {
         _modelDataCache[model] = std::make_shared<ModelData>(model, this);
       }
-      _staticModelRenderables[entity] = { model, _modelDataCache[model], transform->getModelMatrix(), std::make_unique<AABB>(*model->getAABB(), transform->getModelMatrix()) };
-      _sceneMin = minimum(_sceneMin, _staticModelRenderables[entity]._aabbWorld->getMin());
-      _sceneMax = maximum(_sceneMax, _staticModelRenderables[entity]._aabbWorld->getMax());
+      _particleModelRenderables[entity] = { std::make_shared<DX11StaticModelRenderable>(smr, this), particle_system };
+    }
+    if (smr) {
+      _staticModelRenderables[entity] = std::make_shared<DX11StaticModelRenderable>(smr, this);
+      _sceneMin = minimum(_sceneMin, _staticModelRenderables[entity]->getAABBWorld()->getMin());
+      _sceneMax = maximum(_sceneMax, _staticModelRenderables[entity]->getAABBWorld()->getMax());
     }
     if (!particle_system) {
       _particleModelRenderables.erase(entity);
@@ -331,12 +331,12 @@ namespace fly
     _quadtree = std::make_unique<Quadtree<DX11StaticModelRenderable>>(Vec2f({ _sceneMin[0], _sceneMin[2] }), Vec2f({ _sceneMax[0], _sceneMax[2] }));
     _quadtree->setDetailCullingParams(_settings._detailCullingParams);
     for (const auto& r : _staticModelRenderables) {
-      auto temp = std::make_shared<DX11StaticModelRenderable>();
+     /* auto temp = std::make_shared<DX11StaticModelRenderable>();
       temp->_model = r.second._model;
       temp->_modelData = _modelDataCache[temp->_model];
       temp->_aabbWorld = std::make_unique<AABB>(*temp->_model->getAABB(), r.second._modelMatrix);
-      temp->_modelMatrix = r.second._modelMatrix;
-      _quadtree->insert(temp);
+      temp->_modelMatrix = r.second._modelMatrix;*/
+      _quadtree->insert(r.second);
     }
     std::cout << "Quadtree nodes:" << _quadtree->getAllNodes().size() << std::endl;
   }
@@ -511,28 +511,31 @@ namespace fly
 #if DX11_STATS
     _stats._visibleModelsShadow += visible_elements.size();
 #endif
-    for (auto& r : visible_elements) {
-      const auto& m_rdable = r;
+    for (const auto& r : visible_elements) {
       //if (!_directionalLight._dl->aabbVisible<true>(light_mvps, *m_rdable._model->getAABB())) {
-      if (!m_rdable->_aabbWorld->isVisible<true, true>(_lightVP)){
+      if (!r->getAABBWorld()->isVisible<true, true>(_lightVP)) {
         continue;
       }
       std::vector<Mat4f> light_mvps;
       for (const auto& vp : _lightVP) {
-        light_mvps.push_back(vp * m_rdable->_modelMatrix);
+        light_mvps.push_back(vp * r->getModelMatrix());
       }
-      HR(_fxM->SetMatrixTranspose(m_rdable->_modelMatrix.ptr()));
-      _context->IASetVertexBuffers(0, 1, &m_rdable->_modelData->_vertexBuffer.p, &stride, &offset);
-      _context->IASetIndexBuffer(m_rdable->_modelData->_indexBuffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
+      HR(_fxM->SetMatrixTranspose(r->getModelMatrix().ptr()));
+      unsigned lod = r->getStaticModelRenderable()->selectLod(_camPos);
+      const auto& model_data = r->getLodsModelData()[lod];
+      _context->IASetVertexBuffers(0, 1, &model_data->_vertexBuffer.p, &stride, &offset);
+      _context->IASetIndexBuffer(model_data->_indexBuffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
       int material_index = -1;
-      for (const auto& mesh_desc : m_rdable->_modelData->_meshDesc) {
-        if (!mesh_desc._mesh->getAABB()->isVisible<true, true>(light_mvps)) {
-          continue;
+      for (const auto& mesh_desc : model_data->_meshDesc) {
+        if (model_data->_meshDesc.size() > 1) { // The model is visible, only do fine-grained culling if it consists of more than one mesh.
+          if (!mesh_desc._mesh->getAABB()->isVisible<true, true>(light_mvps)) {
+            continue;
+          }
         }
         int material_index_new = static_cast<int>(mesh_desc._materialIndex);
         if (material_index != material_index_new) {
-          const auto& mat_desc = m_rdable->_modelData->_materialDesc[material_index_new];
-          auto material = m_rdable->_model->getMaterials()[material_index_new];
+          const auto& mat_desc = model_data->_materialDesc[material_index_new];
+          auto material = r->getStaticModelRenderable()->getLods()[lod]->getMaterials()[material_index_new];
           HR(_fxAlphaMap->SetResource(mat_desc._alphaSrv));
           if (material.hasWindX() || material.hasWindZ()) {
             const auto& aabb = mesh_desc._mesh->getAABB();
@@ -546,7 +549,7 @@ namespace fly
         _context->DrawIndexed(mesh_desc._numIndices, mesh_desc._indexOffset, mesh_desc._baseVertex);
 #if DX11_STATS
         _stats._drawCallsShadow++;
-        _stats._renderedTrianglesShadow += mesh_desc._numIndices / 3;
+        _stats._renderedTrianglesShadow += mesh_desc._numIndices / 3 * light_mvps.size();
 #endif
         material_index = material_index_new;
       }
@@ -586,36 +589,37 @@ namespace fly
     _stats._visibleModels += visible_elements.size();
 #endif
     for (const auto& r : visible_elements) {
-      _context->IASetVertexBuffers(0, 1, &r->_modelData->_vertexBuffer.p, &stride, &offset);
-      _context->IASetIndexBuffer(r->_modelData->_indexBuffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
-      auto mvp = _VP * r->_modelMatrix;
+      unsigned lod = r->getStaticModelRenderable()->selectLod(_camPos);
+      const auto& model_data = r->getLodsModelData()[lod];
+      _context->IASetVertexBuffers(0, 1, &model_data->_vertexBuffer.p, &stride, &offset);
+      _context->IASetIndexBuffer(model_data->_indexBuffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
+      auto mvp = _VP * r->getModelMatrix();
       HR(_fxMVP->SetMatrixTranspose(mvp.ptr()));
-      auto mv_inverse = inverse(_viewMatrix * r->_modelMatrix);
+      auto mv_inverse = inverse(_viewMatrix * r->getModelMatrix());
       HR(_fxMVInverseTranspose->SetMatrix(mv_inverse.ptr()));
       int material_index = -1;
-      for (const auto& mesh_desc : r->_modelData->_meshDesc) { // For each mesh
-        const auto& aabb = mesh_desc._mesh->getAABB();
-#ifndef _DEBUG
-        if (!aabb->isVisible<true, false>(mvp)) { // Frustum culling
-          continue;
+      for (const auto& mesh_desc : model_data->_meshDesc) {
+        if (model_data->_meshDesc.size() > 1) { // The model is visible, only do fine-grained culling if it consists of more than one mesh.
+          if (!mesh_desc._mesh->getAABB()->isVisible<true, true>(mvp)) {
+            continue;
+          }
         }
-#endif
         int material_index_new = static_cast<int>(mesh_desc._materialIndex);
         // Meshes are sorted by material, the following statement helps to reduce context switches
         if (material_index != material_index_new) {
-          const auto& material = r->_model->getMaterials()[material_index_new];
+          const auto& material = r->getStaticModelRenderable()->getLods()[lod]->getMaterials()[material_index_new];
           if (_settings._ssrEnabled) {
             _context->OMSetDepthStencilState(_dx11States->depthReadWriteStencilWrite(), material.isReflective());
             _reflectiveSurfacesVisible = _reflectiveSurfacesVisible || material.isReflective();
           }
-          const auto& mat_desc = r->_modelData->_materialDesc[material_index_new];
+          const auto& mat_desc = model_data->_materialDesc[material_index_new];
           HR(_fxDiffuseTex->SetResource(mat_desc._diffuseSrv));
           HR(_fxAlphaMap->SetResource(mat_desc._alphaSrv));
           HR(_fxNormalMap->SetResource(mat_desc._normalSrv));
           HR(_fxDiffuseColor->SetFloatVector(mat_desc._diffuseColor.ptr()));
           if (material.hasWindX() || material.hasWindZ()) {
-            HR(_fxWindPivotMinY->SetFloat(aabb->getMin()[1]));
-            HR(_fxWindPivotMaxY->SetFloat(aabb->getMax()[1]));
+            HR(_fxWindPivotMinY->SetFloat(mesh_desc._mesh->getAABB()->getMin()[1]));
+            HR(_fxWindPivotMaxY->SetFloat(mesh_desc._mesh->getAABB()->getMax()[1]));
             HR(_fxWindStrength->SetFloat(material.getWindStrength()));
             HR(_fxWindFrequency->SetFloat(material.getWindFrequency()));
           }
@@ -679,18 +683,20 @@ namespace fly
         p.second._particleSystem->getParticleTransformations(particle_transforms);
         if (particle_transforms.size()) {
           const auto& p_renderable = p.second._modelRenderable;
-          _context->IASetVertexBuffers(0, 1, &p_renderable._modelData->_vertexBuffer.p, &stride, &offset);
-          _context->IASetIndexBuffer(p_renderable._modelData->_indexBuffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
+          unsigned lod = 0;
+          const auto& model_data = p_renderable->getLodsModelData()[lod];
+          _context->IASetVertexBuffers(0, 1, &model_data->_vertexBuffer.p, &stride, &offset);
+          _context->IASetIndexBuffer(model_data->_indexBuffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
           std::vector<Mat4f> matrices;
           auto mvp = _VP * Mat4f(p.first->getComponent<Transform>()->getModelMatrix());
           for (const auto& m : particle_transforms) {
             matrices.push_back(mvp * m);
           }
           HR(_fxMVPs->SetMatrixTransposeArray(matrices.front().ptr(), 0, static_cast<uint32_t>(matrices.size())));
-          auto& diffuse_color = p.second._modelRenderable._model->getMaterials().front().getDiffuseColor();
+          auto& diffuse_color = p_renderable->getStaticModelRenderable()->getLods()[lod]->getMaterials().front().getDiffuseColor();
           HR(_fxDiffuseColor->SetFloatVector(diffuse_color.ptr()));
           HR(_lightParticlePass->Apply(0, _context));
-          _context->DrawIndexedInstanced(p_renderable._modelData->_meshDesc.front()._numIndices, static_cast<unsigned>(matrices.size()), 0, 0, 0);
+          _context->DrawIndexedInstanced(model_data->_meshDesc.front()._numIndices, static_cast<unsigned>(matrices.size()), 0, 0, 0);
         }
       }
     }
@@ -860,6 +866,10 @@ namespace fly
       std::wcout << path << L" not found" << std::endl;
       return;
     }
+    if (_textureCache.count(path)) {
+      srv = _textureCache[path];
+      return;
+    }
     wchar_t ext[_MAX_EXT];
     _wsplitpath_s(path, nullptr, 0, nullptr, 0, nullptr, 0, ext, _MAX_EXT);
     DirectX::ScratchImage image;
@@ -877,6 +887,7 @@ namespace fly
     DirectX::ScratchImage mip_chain;
     HR(DirectX::GenerateMipMaps(image.GetImages(), image.GetImageCount(), image.GetMetadata(), tex_filter, 0, mip_chain));
     HR(DirectX::CreateShaderResourceView(_device, mip_chain.GetImages(), mip_chain.GetImageCount(), mip_chain.GetMetadata(), &srv));
+    _textureCache[path] = srv;
   }
 
   void RenderingSystemDX11::gaussFilter(const PingPongBuffer& buffer, const SrvPtr& input) const
@@ -1133,8 +1144,29 @@ namespace fly
   {
     _modelData = std::make_unique<ModelData>(model, rs);
   }
-  AABB * RenderingSystemDX11::DX11StaticModelRenderable::getAABBWorld()
+  RenderingSystemDX11::DX11StaticModelRenderable::DX11StaticModelRenderable(const std::shared_ptr<StaticModelRenderable>& smr, RenderingSystemDX11* rs) : _smr(smr)
   {
-    return _aabbWorld.get();
+    for (const auto& r : smr->getLods()) {
+      if (!rs->_modelDataCache.count(r)) {
+        rs->_modelDataCache[r] = std::make_shared<ModelData>(r, rs);
+      }
+      _lodsModelData.push_back(rs->_modelDataCache[r]);
+    }
+  }
+  AABB* RenderingSystemDX11::DX11StaticModelRenderable::getAABBWorld() const
+  {
+    return _smr->getAABBWorld().get();
+  }
+  const Mat4f & RenderingSystemDX11::DX11StaticModelRenderable::getModelMatrix() const
+  {
+    return _smr->getModelMatrix();
+  }
+  const std::shared_ptr<StaticModelRenderable>& RenderingSystemDX11::DX11StaticModelRenderable::getStaticModelRenderable() const
+  {
+    return _smr;
+  }
+  const std::vector<std::shared_ptr<RenderingSystemDX11::ModelData>>& RenderingSystemDX11::DX11StaticModelRenderable::getLodsModelData() const
+  {
+    return _lodsModelData;
   }
 }

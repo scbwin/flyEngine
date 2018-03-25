@@ -16,6 +16,7 @@
 #include <Light.h>
 #include <Billboard.h>
 #include <random>
+#include <LevelOfDetail.h>
 
 DX11App::DX11App()
 {
@@ -247,23 +248,24 @@ void DX11App::initGame()
 
   std::shared_ptr<fly::IImporter> importer = std::make_unique<fly::AssimpImporter>();
 #if SPONZA
-  auto model = importer->loadModel("assets/sponza/sponza.obj");
+  auto sponza_model = importer->loadModel("assets/sponza/sponza.obj");
   //model->getMeshes()[model->getMeshes().size() - 28]->setMaterialIndex(20);
   //model->getMeshes()[model->getMeshes().size() - 28]->setHasWindX(true);
-  model->getMaterials()[16].setHasWindZ(true, 12.f, 0.005f);
-  model->getMaterials()[17].setHasWindZ(true, 12.f, 0.005f);
-  model->getMaterials()[18].setHasWindZ(true, 12.f, 0.005f);
-  model->getMaterials()[19].setHasWindZ(true, 30.f, 0.005f);
-  model->getMaterials()[20].setHasWindZ(true, 30.f, 0.005f);
-  model->getMaterials()[21].setHasWindZ(true, 30.f, 0.005f);
-  fly::Material new_material = model->getMaterials()[20];
+  sponza_model->getMaterials()[16].setHasWindZ(true, 12.f, 0.005f);
+  sponza_model->getMaterials()[17].setHasWindZ(true, 12.f, 0.005f);
+  sponza_model->getMaterials()[18].setHasWindZ(true, 12.f, 0.005f);
+  sponza_model->getMaterials()[19].setHasWindZ(true, 30.f, 0.005f);
+  sponza_model->getMaterials()[20].setHasWindZ(true, 30.f, 0.005f);
+  sponza_model->getMaterials()[21].setHasWindZ(true, 30.f, 0.005f);
+  fly::Material new_material = sponza_model->getMaterials()[20];
   new_material.setHasWindZ(false, 0.f, 0.f);
   new_material.setHasWindX(true, 250.f, 0.005f);
-  model->getMaterials().push_back(new_material);
-  model->getMeshes()[model->getMeshes().size() - 28]->setMaterialIndex(model->getMaterials().size() - 1);
-  model->getMaterials()[10].setIsReflective(true);
-  model->sortMeshesByMaterial();
-#if SPONZA_MULTIPLE
+  sponza_model->getMaterials().push_back(new_material);
+  sponza_model->getMeshes()[sponza_model->getMeshes().size() - 28]->setMaterialIndex(sponza_model->getMaterials().size() - 1);
+  sponza_model->getMaterials()[10].setIsReflective(true);
+  sponza_model->sortMeshesByMaterial();
+  auto sponza_lods = fly::LevelOfDetail().generateLODsWithDetailCulling(sponza_model, 7);
+#if SPONZA_LARGE
   int width = 100;
   int height = 100;
  // float scale = 100.f;
@@ -272,8 +274,7 @@ void DX11App::initGame()
     for (unsigned y = 0; y < height; y++) {
 #endif
       auto sponza_entity = _engine->getEntityManager()->createEntity();
-      sponza_entity->addComponent(model);
-#if SPONZA_MULTIPLE
+#if SPONZA_LARGE
       fly::Vec2f uv = fly::Vec2f({ static_cast<float>(x), static_cast<float>(y) }) / fly::Vec2f({ static_cast<float>(width), static_cast<float>(height) });
       if (x > 0 && y > 0) {
         uv += (dist(gen) * 2.f - 1.f) * 0.003f;
@@ -282,34 +283,43 @@ void DX11App::initGame()
 #else
       sponza_entity->addComponent(std::make_shared<fly::Transform>(fly::Vec3f(), fly::Vec3f(0.01f)));
 #endif
-      sponza_entity->addComponent(std::make_shared<fly::StaticModelRenderable>());
-#if SPONZA_MULTIPLE
+      sponza_entity->addComponent(std::make_shared<fly::StaticModelRenderable>(sponza_lods, sponza_entity->getComponent<fly::Transform>(), 60.f));
+#if SPONZA_LARGE
     }
   }
 #endif
-  auto sphere_model = importer->loadModel("assets/sphere.obj");
-  std::vector<std::shared_ptr<fly::Model>> sphere_models;
+  std::vector<std::shared_ptr<fly::Model>> sphere_lods = { importer->loadModel("assets/sphere_lod0.obj"),
+    importer->loadModel("assets/sphere_lod1.obj"), importer->loadModel("assets/sphere_lod2.obj") };
+#if SPONZA_LARGE
+  std::vector<std::vector<std::shared_ptr<fly::Model>>> modified_sphere_models;
+  // Generate new sphere models with color variations
   for (unsigned i = 0; i < 100; i++) {
-    auto s_new = std::make_shared<fly::Model>(*sphere_model); // Copy sphere model
-    for (auto& m : s_new->getMaterials()) {
-      m.setDiffuseColor(fly::Vec3f({ dist(gen), dist(gen), dist(gen) }));
+    std::vector<std::shared_ptr<fly::Model>> new_lods;
+    fly::Vec3f new_color({ dist(gen), dist(gen), dist(gen) });
+    for (const auto& s : sphere_lods) {
+      auto s_new = std::make_shared<fly::Model>(*s); // Copy sphere model
+      for (auto& m : s_new->getMaterials()) {
+        m.setDiffuseColor(new_color);
+      }
+      new_lods.push_back(s_new);
     }
-    sphere_models.push_back(s_new);
+    modified_sphere_models.push_back(new_lods);
   }
   width = 1500;
   height = 1500;
   for (unsigned x = 0; x < width; x++) {
     for (unsigned y = 0; y < height; y++) {
       auto sphere_entity = _engine->getEntityManager()->createEntity();
-      unsigned index = glm::clamp(dist(gen) * sphere_models.size(), 0.f, static_cast<float>( sphere_models.size() - 1));
-      sphere_entity->addComponent(sphere_models[index]);
+      unsigned index = glm::clamp(dist(gen) * modified_sphere_models.size(), 0.f, static_cast<float>( modified_sphere_models.size() - 1));
+      const auto& selected_lods = modified_sphere_models[index];
       fly::Vec2f uv = fly::Vec2f({ static_cast<float>(x), static_cast<float>(y) }) / fly::Vec2f({ static_cast<float>(width), static_cast<float>(height) });
       sphere_entity->addComponent(std::make_shared<fly::Transform>(glm::vec3(uv[0] * extents, dist(gen) * 75.f, uv[1] * extents), glm::vec3(sphere_scale_dist(gen), sphere_scale_dist(gen), sphere_scale_dist(gen))));
-      sphere_entity->addComponent(std::make_shared<fly::StaticModelRenderable>());
+      sphere_entity->addComponent(std::make_shared<fly::StaticModelRenderable>(selected_lods, sphere_entity->getComponent<fly::Transform>(), 10.f));
     }
   }
+#endif
 
-  auto spark_model = importer->loadModel("assets/spark_particle.obj");
+ /* auto spark_model = importer->loadModel("assets/spark_particle.obj");
   spark_model->getMaterials().front().setDiffuseColor(glm::vec3(1.f, 0.988f, 0.721f) * 5.f);
   std::vector<glm::vec3> particle_positions = { glm::vec3(-6.215827, 1.293194, -2.191585), glm::vec3(-6.187380, 1.302527, 1.442227), glm::vec3(4.897683, 1.288674, -2.196014), glm::vec3(4.864175, 1.298548, 1.441392) };
   fly::ParticleSystem::ParticleSystemDesc desc = {};
@@ -343,7 +353,7 @@ void DX11App::initGame()
     fire_particle_system->addComponent(std::make_shared<fly::Billboard>("assets/flames.png", 1.f, glm::vec2(0.2f)));
     fire_particle_system->addComponent(std::make_shared<fly::ParticleSystem>(desc));
     fire_particle_system->addComponent(std::make_shared<fly::Transform>(p, glm::vec3(0.02f)));
-  }
+  }*/
 #endif
   auto cam_entity = _engine->getEntityManager()->createEntity();
   _camera = std::make_shared<fly::Camera>(glm::vec3(0.f, 3.f, 0.f), glm::vec3(0.f));
@@ -372,7 +382,7 @@ void DX11App::initGame()
 
   auto skydome_entity = _engine->getEntityManager()->createEntity();
  // auto sphere_model = importer->loadModel("assets/sphere.obj");
-  skydome_entity->addComponent(sphere_model);
+  skydome_entity->addComponent(sphere_lods[0]);
  // skydome_entity->addComponent(std::make_shared<fly::Transform>());
   skydome_entity->addComponent(std::make_shared<fly::SkyboxRenderable>());
 
@@ -437,7 +447,7 @@ void DX11App::initGame()
   _rs->setSettings(settings);
 #endif
 
-//  _rs->rebuildQuadtree();
+  std::cout << "initGame() finished" << std::endl;
 }
 
 void DX11App::handleInput()

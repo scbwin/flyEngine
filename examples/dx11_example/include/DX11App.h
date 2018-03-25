@@ -21,7 +21,7 @@
 #include <SpriteFont.h>
 
 #define SPONZA 1
-#define SPONZA_MULTIPLE 1
+#define SPONZA_LARGE 1
 
 class DX11App
 {

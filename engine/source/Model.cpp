@@ -20,7 +20,7 @@ namespace fly
   {
   }
 
-  std::vector<std::shared_ptr<Mesh>>& Model::getMeshes()
+  const std::vector<std::shared_ptr<Mesh>>& Model::getMeshes() const
   {
     return _meshes;
   }

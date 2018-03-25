@@ -36,6 +36,7 @@ namespace fly
   class AABB;
   template<class T>
   class Quadtree;
+  class StaticModelRenderable;
 
   class RenderingSystemDX11 : public System
   {
@@ -119,14 +120,19 @@ namespace fly
       std::vector<MaterialDesc> _materialDesc;
     };
     std::map<std::shared_ptr<Model>, std::shared_ptr<ModelData>> _modelDataCache;
+    std::map<std::wstring, SrvPtr> _textureCache;
 
-    struct DX11StaticModelRenderable
+    class DX11StaticModelRenderable
     {
-      std::shared_ptr<Model> _model;
-      std::shared_ptr<ModelData> _modelData;
-      Mat4f _modelMatrix;
-      std::unique_ptr<AABB> _aabbWorld;
-      AABB* getAABBWorld();
+    public:
+      DX11StaticModelRenderable(const std::shared_ptr<StaticModelRenderable>& smr, RenderingSystemDX11* rs);
+      AABB* getAABBWorld() const;
+      const Mat4f& getModelMatrix() const;
+      const std::shared_ptr<StaticModelRenderable>& getStaticModelRenderable() const;
+      const std::vector<std::shared_ptr<ModelData>>& getLodsModelData() const;
+    private:
+      std::shared_ptr<StaticModelRenderable> _smr;
+      std::vector<std::shared_ptr<ModelData>> _lodsModelData;
     };
     struct DX11ProceduralTerrainRenderable
     {
@@ -149,7 +155,7 @@ namespace fly
 
     struct ParticleModelRenderable
     {
-      DX11StaticModelRenderable _modelRenderable;
+      std::shared_ptr<DX11StaticModelRenderable> _modelRenderable;
       std::shared_ptr<ParticleSystem> _particleSystem;
     };
     struct ParticleBillboardRenderable
@@ -298,7 +304,7 @@ namespace fly
     const unsigned _terrainLods = 5;
     glm::vec4 _backgroundColor = glm::pow(glm::vec4(95.f / 255.f, 137.0f / 255.f, 204.f / 255.f, 1.f), glm::vec4(2.2f));
 
-    std::map<Entity*, DX11StaticModelRenderable> _staticModelRenderables;
+    std::map<Entity*, std::shared_ptr<DX11StaticModelRenderable>> _staticModelRenderables;
     std::map<Entity*, ParticleModelRenderable> _particleModelRenderables;
     std::map<Entity*, ParticleBillboardRenderable> _particleBillboardRenderables;
 

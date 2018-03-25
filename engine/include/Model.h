@@ -16,7 +16,7 @@ namespace fly
   public:
     Model(const std::vector<std::shared_ptr<Mesh>>& meshes, const std::vector<Material>& materials);
     Model(const Model& other);
-    std::vector<std::shared_ptr<Mesh>>& getMeshes();
+    const std::vector<std::shared_ptr<Mesh>>& getMeshes() const;
     std::vector<Material>& getMaterials();
     void sortMeshesByMaterial();
     AABB* getAABB() const;
