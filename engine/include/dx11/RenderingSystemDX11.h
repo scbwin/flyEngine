@@ -53,7 +53,6 @@ namespace fly
     CComPtr<ID3D11DeviceContext> getContext() const;
     CComPtr<IDXGIAdapter> getAdapter() const;
     void printQuadtree() const;
-    void rebuildQuadtree();
     Settings _settings;
     void setSettings(const Settings& settings);
     const Settings& getSettings() const;
@@ -328,6 +327,7 @@ namespace fly
     void renderBrightPass(const RTT& rtt, const SrvPtr& srv) const;
     void copy(const SrvPtr& from, const RtvPtr& to, const D3D11_VIEWPORT& vp) const;
     void copy(const SrvPtr& from, const SrvPtr& to) const;
+    void buildQuadtree();
 
 #if DX11_STATS
       public:

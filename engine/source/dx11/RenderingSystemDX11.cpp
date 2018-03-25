@@ -26,7 +26,6 @@ namespace fly
 {
   RenderingSystemDX11::RenderingSystemDX11(HWND window, const std::array<Vec2f, 2>& quadtree_min_max)
   {
-    _quadtree = std::make_unique<Quadtree<DX11StaticModelRenderable>>(quadtree_min_max[0], quadtree_min_max[1]);
     D3D_FEATURE_LEVEL feature_level;
     UINT device_flags = 0;
 #if defined(DEBUG) | defined(_DEBUG)
@@ -327,10 +326,9 @@ namespace fly
     _quadtree->print();
   }
 
-  void RenderingSystemDX11::rebuildQuadtree()
+  void RenderingSystemDX11::buildQuadtree()
   {
-  //  _quadtree->rebuild();
-    _quadtree = std::unique_ptr<Quadtree<DX11StaticModelRenderable>>(new Quadtree<DX11StaticModelRenderable>(Vec2f({ _sceneMin[0], _sceneMin[2] }), Vec2f({ _sceneMax[0], _sceneMax[2] })));
+    _quadtree = std::make_unique<Quadtree<DX11StaticModelRenderable>>(Vec2f({ _sceneMin[0], _sceneMin[2] }), Vec2f({ _sceneMax[0], _sceneMax[2] }));
     _quadtree->setDetailCullingParams(_settings._detailCullingParams);
     for (const auto& r : _staticModelRenderables) {
       auto temp = std::make_shared<DX11StaticModelRenderable>();
@@ -340,6 +338,7 @@ namespace fly
       temp->_modelMatrix = r.second._modelMatrix;
       _quadtree->insert(temp);
     }
+    std::cout << "Quadtree nodes:" << _quadtree->getAllNodes().size() << std::endl;
   }
 
   void RenderingSystemDX11::setSettings(const Settings& settings)
@@ -380,7 +379,9 @@ namespace fly
     _rastStateShadowMap = nullptr;
     HR(_device->CreateRasterizerState(&rast_desc, &_rastStateShadowMap));
 
-    _quadtree->setDetailCullingParams(settings._detailCullingParams);
+    if (_quadtree) {
+      _quadtree->setDetailCullingParams(settings._detailCullingParams);
+    }
 
     initAdditionalRenderTargets();
   }
@@ -448,6 +449,9 @@ namespace fly
 
   void RenderingSystemDX11::prepareRender(float time, float delta_time)
   {
+    if (_quadtree == nullptr) {
+      buildQuadtree();
+    }
     // Filter out the noise
     _time = time;
     _deltaTime = delta_time;

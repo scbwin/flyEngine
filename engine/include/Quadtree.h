@@ -125,6 +125,15 @@ namespace fly
           }
         }
       }
+      void getAllNodes(std::vector<Node*>& all_nodes)
+      {
+        all_nodes.push_back(this);
+        for (const auto& c : _children) {
+          if (c) {
+            c->getAllNodes(all_nodes);
+          }
+        }
+      }
     private:
       /**
       * Indices: 0 = South west, 1 = South east, 2 = North east, 3 = North west
@@ -189,6 +198,12 @@ namespace fly
       std::vector<TPtr> all_elements;
       _root->getAllElements(all_elements);
       return all_elements;
+    }
+    std::vector<Node*> getAllNodes()
+    {
+      std::vector<Node*> all_nodes;
+      _root->getAllNodes(all_nodes);
+      return all_nodes;
     }
     /**
     * Use this method as soon as all elements are added to the quadtree in order to get the tightest possible fit for the given elements.

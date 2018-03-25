@@ -437,7 +437,7 @@ void DX11App::initGame()
   _rs->setSettings(settings);
 #endif
 
-  _rs->rebuildQuadtree();
+//  _rs->rebuildQuadtree();
 }
 
 void DX11App::handleInput()
