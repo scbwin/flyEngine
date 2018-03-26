@@ -14,10 +14,10 @@ namespace fly
   {
   public:
     Mesh();
-    Mesh(const std::vector<Vertex>& vertices, std::vector<unsigned int>& indices, unsigned int material_index);
+    Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices, unsigned int material_index);
 
-    std::vector<Vertex>& getVertices();
-    std::vector<unsigned int>& getIndices();
+    const std::vector<Vertex>& getVertices() const;
+    const std::vector<unsigned int>& getIndices() const;
     std::vector<unsigned> getAABBLineIndices();
     unsigned int getMaterialIndex() const;
     AABB* getAABB() const;

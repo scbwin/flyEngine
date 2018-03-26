@@ -13,7 +13,7 @@ namespace fly
   Mesh::Mesh()
   {
   }
-  Mesh::Mesh(const std::vector<Vertex>& vertices, std::vector<unsigned int>& indices, unsigned int material_index) :
+  Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices, unsigned int material_index) :
     _vertices(vertices), _indices(indices), _materialIndex(material_index)
   {
     Vec3f bb_min(std::numeric_limits<float>::max());
@@ -25,12 +25,12 @@ namespace fly
     _aabb = std::unique_ptr<AABB>(new AABB(bb_min, bb_max));
   }
 
-  std::vector<Vertex>& Mesh::getVertices()
+  const std::vector<Vertex>& Mesh::getVertices() const
   {
     return _vertices;
   }
 
-  std::vector<unsigned int>& Mesh::getIndices()
+  const std::vector<unsigned int>& Mesh::getIndices() const
   {
     return _indices;
   }

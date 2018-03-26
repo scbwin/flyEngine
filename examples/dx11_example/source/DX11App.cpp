@@ -128,15 +128,15 @@ void DX11App::onKeyUp(WPARAM w_param, LPARAM l_param)
 void DX11App::onMouseMove(WPARAM w_param, LPARAM l_param)
 {
   POINT pos = { GET_X_LPARAM(l_param), GET_Y_LPARAM(l_param) };
- // glm::vec2 mouse_delta = glm::vec2(pos.x, pos.y) - glm::vec2(_windowSize) / 2.f;
+  // glm::vec2 mouse_delta = glm::vec2(pos.x, pos.y) - glm::vec2(_windowSize) / 2.f;
   if ((w_param & MK_LBUTTON) != 0) {
     auto mouse_delta = glm::vec2(pos.x, pos.y) - _mousePosBefore;
     _camera->_eulerAngles -= glm::vec3(mouse_delta.x, mouse_delta.y, 0.f) * 0.005f;
   }
   _mousePosBefore = glm::vec2(pos.x, pos.y);
-/*  POINT center = { _windowSize.x / 2, _windowSize.y / 2 };
-  ClientToScreen(_window, &center);
-  SetCursorPos(center.x, center.y);*/
+  /*  POINT center = { _windowSize.x / 2, _windowSize.y / 2 };
+    ClientToScreen(_window, &center);
+    SetCursorPos(center.x, center.y);*/
 }
 
 #if DX11_STATS
@@ -240,17 +240,17 @@ void DX11App::initGame()
   _engine->addSystem(_rs);
   _engine->addSystem(std::make_shared<fly::AnimationSystem>());
   _engine->addSystem(std::make_shared<fly::PhysicsSystem>());
-  
+
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_real_distribution<float> dist(0.f, 1.f);
   std::uniform_real_distribution<float> sphere_scale_dist(0.2f, 1.f);
 
   std::shared_ptr<fly::IImporter> importer = std::make_unique<fly::AssimpImporter>();
+  std::vector<std::shared_ptr<fly::Model>> sphere_lods = { importer->loadModel("assets/sphere_lod0.obj"),
+    importer->loadModel("assets/sphere_lod1.obj"), importer->loadModel("assets/sphere_lod2.obj") };
 #if SPONZA
   auto sponza_model = importer->loadModel("assets/sponza/sponza.obj");
-  //model->getMeshes()[model->getMeshes().size() - 28]->setMaterialIndex(20);
-  //model->getMeshes()[model->getMeshes().size() - 28]->setHasWindX(true);
   sponza_model->getMaterials()[16].setHasWindZ(true, 12.f, 0.005f);
   sponza_model->getMaterials()[17].setHasWindZ(true, 12.f, 0.005f);
   sponza_model->getMaterials()[18].setHasWindZ(true, 12.f, 0.005f);
@@ -268,7 +268,6 @@ void DX11App::initGame()
 #if SPONZA_LARGE
   int width = 100;
   int height = 100;
- // float scale = 100.f;
   float extents = 512.f * 10.f;
   for (unsigned x = 0; x < width; x++) {
     for (unsigned y = 0; y < height; y++) {
@@ -288,8 +287,6 @@ void DX11App::initGame()
     }
   }
 #endif
-  std::vector<std::shared_ptr<fly::Model>> sphere_lods = { importer->loadModel("assets/sphere_lod0.obj"),
-    importer->loadModel("assets/sphere_lod1.obj"), importer->loadModel("assets/sphere_lod2.obj") };
 #if SPONZA_LARGE
   std::vector<std::vector<std::shared_ptr<fly::Model>>> modified_sphere_models;
   // Generate new sphere models with color variations
@@ -310,16 +307,17 @@ void DX11App::initGame()
   for (unsigned x = 0; x < width; x++) {
     for (unsigned y = 0; y < height; y++) {
       auto sphere_entity = _engine->getEntityManager()->createEntity();
-      unsigned index = glm::clamp(dist(gen) * modified_sphere_models.size(), 0.f, static_cast<float>( modified_sphere_models.size() - 1));
+      unsigned index = glm::clamp(dist(gen) * modified_sphere_models.size(), 0.f, static_cast<float>(modified_sphere_models.size() - 1));
       const auto& selected_lods = modified_sphere_models[index];
       fly::Vec2f uv = fly::Vec2f({ static_cast<float>(x), static_cast<float>(y) }) / fly::Vec2f({ static_cast<float>(width), static_cast<float>(height) });
       sphere_entity->addComponent(std::make_shared<fly::Transform>(glm::vec3(uv[0] * extents, dist(gen) * 75.f, uv[1] * extents), glm::vec3(sphere_scale_dist(gen), sphere_scale_dist(gen), sphere_scale_dist(gen))));
       sphere_entity->addComponent(std::make_shared<fly::StaticModelRenderable>(selected_lods, sphere_entity->getComponent<fly::Transform>(), 10.f));
     }
   }
+
 #endif
 
- /* auto spark_model = importer->loadModel("assets/spark_particle.obj");
+  /*auto spark_model = importer->loadModel("assets/spark_particle.obj");
   spark_model->getMaterials().front().setDiffuseColor(glm::vec3(1.f, 0.988f, 0.721f) * 5.f);
   std::vector<glm::vec3> particle_positions = { glm::vec3(-6.215827, 1.293194, -2.191585), glm::vec3(-6.187380, 1.302527, 1.442227), glm::vec3(4.897683, 1.288674, -2.196014), glm::vec3(4.864175, 1.298548, 1.441392) };
   fly::ParticleSystem::ParticleSystemDesc desc = {};
@@ -355,6 +353,30 @@ void DX11App::initGame()
     fire_particle_system->addComponent(std::make_shared<fly::Transform>(p, glm::vec3(0.02f)));
   }*/
 #endif
+
+#if SPONZA_LARGE
+  auto plane_entity = _engine->getEntityManager()->createEntity();
+  auto plane_model = importer->loadModel("assets/plane.obj");
+  for (auto& m : plane_model->getMaterials()) {
+    m.setNormalPath("assets/ground_normals.png");
+    m.setDiffuseColor(glm::vec3(0.654f, 0.501f, 0.164f));
+  }
+  std::vector<std::shared_ptr<fly::Mesh>> plane_meshes_new;
+  auto scale = _rs->getSceneMax() - _rs->getSceneMin();
+  for (auto mesh : plane_model->getMeshes()) {
+    auto vertices = mesh->getVertices();
+    for (auto& v : vertices) {
+      v._uv *= fly::Vec2f({ scale[0], scale[2] });
+    }
+    plane_meshes_new.push_back(std::make_shared<fly::Mesh>(vertices, mesh->getIndices(), mesh->getMaterialIndex()));
+  }
+  plane_model = std::make_shared<fly::Model>(plane_meshes_new, plane_model->getMaterials());
+
+  plane_entity->addComponent(std::make_shared<fly::Transform>(_rs->getSceneMin(), fly::Vec3f({ scale[0], 1.f, scale[2] })));
+  std::vector<std::shared_ptr<fly::Model>> plane_lods = { plane_model };
+  plane_entity->addComponent(std::make_shared<fly::StaticModelRenderable>(plane_lods, plane_entity->getComponent<fly::Transform>(), 0.f));
+#endif
+
   auto cam_entity = _engine->getEntityManager()->createEntity();
   _camera = std::make_shared<fly::Camera>(glm::vec3(0.f, 3.f, 0.f), glm::vec3(0.f));
   cam_entity->addComponent(_camera);
@@ -362,7 +384,7 @@ void DX11App::initGame()
   auto dl_entity = _engine->getEntityManager()->createEntity();
   std::vector<float> csm_distances = { 10.f, 100.f };
 #if SPONZA
-  _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(30.f, 1024.f, 0.f), glm::vec3(512.f * 5.f, 0.f, 512.f * 5.f),  csm_distances);
+  _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(30.f, 1024.f, 0.f), glm::vec3(512.f * 5.f, 0.f, 512.f * 5.f), csm_distances);
 #else 
   _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(8192.f, 1000.f, 8192.f), glm::vec3(0.f, 0.f, 2.f), csm_distances);
 #endif
@@ -372,18 +394,18 @@ void DX11App::initGame()
 #if !SPONZA
   auto terrain_entity = _engine->getEntityManager()->createEntity();
   std::vector<std::string> paths = {};
-  std::vector<std::string> normal_paths = { "assets/ground_normals.png"};
+  std::vector<std::string> normal_paths = { "assets/ground_normals.png" };
   auto terrain = std::make_shared<fly::TerrainNew>(16384, paths, normal_paths, 60.f);
   terrain_entity->addComponent(terrain);
-  auto ptr = std::make_shared<fly::ProceduralTerrainRenderable>(0.000002f, glm::vec2(0.001f), 
+  auto ptr = std::make_shared<fly::ProceduralTerrainRenderable>(0.000002f, glm::vec2(0.001f),
     fly::ProceduralTerrainRenderable::NoiseType::RidgedMultiFractal, 1000.f, 8, noise_values, 2.604f, 0.320f);
   terrain_entity->addComponent(ptr);
 #endif
 
   auto skydome_entity = _engine->getEntityManager()->createEntity();
- // auto sphere_model = importer->loadModel("assets/sphere.obj");
+  // auto sphere_model = importer->loadModel("assets/sphere.obj");
   skydome_entity->addComponent(sphere_lods[0]);
- // skydome_entity->addComponent(std::make_shared<fly::Transform>());
+  // skydome_entity->addComponent(std::make_shared<fly::Transform>());
   skydome_entity->addComponent(std::make_shared<fly::SkyboxRenderable>());
 
   _commonStates = std::make_unique<DirectX::CommonStates>(_rs->getDevice());
@@ -401,7 +423,7 @@ void DX11App::initGame()
   auto bar = TwNewBar(bar_name.c_str());
 
 #if !SPONZA
-  TwAddVarCB(bar, "Noise frequency", TwType::TW_TYPE_FLOAT, TwSetPtrFrequCallback, TwGetPtrFrequCallback, 
+  TwAddVarCB(bar, "Noise frequency", TwType::TW_TYPE_FLOAT, TwSetPtrFrequCallback, TwGetPtrFrequCallback,
     ptr.get(), "step=0.00000003 Group=Terrain");
   TwAddVarCB(bar, "Height scale", TwType::TW_TYPE_FLOAT, TwSetPtrHeightScaleCallback, TwGetPtrHeightScaleCallback,
     ptr.get(), "Group=Terrain");
@@ -436,7 +458,7 @@ void DX11App::initGame()
 #endif
   TwAddVarCB(bar, "Exposure", TwType::TW_TYPE_FLOAT, TwSetExposure, TwGetExposure, _rs.get(), "group=Renderer step=0.005");
   TwAddVarRW(bar, "Cam speed", TwType::TW_TYPE_FLOAT, &_camSpeed, "min=1 group=Renderer");
-  TwAddVarCB(bar, "Wireframe", TwType::TW_TYPE_BOOLCPP, TwSetWireframeCallback, TwGetWireframeCallback,_rs.get(), "Group=Renderer");
+  TwAddVarCB(bar, "Wireframe", TwType::TW_TYPE_BOOLCPP, TwSetWireframeCallback, TwGetWireframeCallback, _rs.get(), "Group=Renderer");
   TwAddVarCB(bar, "Skycolor", TwType::TW_TYPE_COLOR3F, TwSetSkycolor, TwGetSkycolor, _rs.get(), "group=Renderer");
   TwAddVarRW(bar, "Show gui", TwType::TW_TYPE_BOOLCPP, &_showGUI, "group=Renderer");
 
@@ -472,10 +494,10 @@ void DX11App::handleInput()
   }
   float light_speed = 10.f;
   if (keyPressed(VK_LEFT)) {
-      _dl->_pos[2] -= _gameTimer.getDeltaTimeSeconds() * light_speed;
+    _dl->_pos[2] -= _gameTimer.getDeltaTimeSeconds() * light_speed;
   }
   if (keyPressed(VK_RIGHT)) {
-      _dl->_pos[2] += _gameTimer.getDeltaTimeSeconds() * light_speed;
+    _dl->_pos[2] += _gameTimer.getDeltaTimeSeconds() * light_speed;
   }
   if (keyPressed(VK_UP)) {
     _dl->_pos[0] += _gameTimer.getDeltaTimeSeconds() * light_speed;
@@ -776,7 +798,7 @@ void DX11App::TwSetSSRSteps(const void* value, void* client_data)
   settings._ssrSteps = *reinterpret_cast<const int*>(value);
   rs->setSettings(settings);
 }
-void DX11App::TwGetSSRSteps(void* value, void* client_data) 
+void DX11App::TwGetSSRSteps(void* value, void* client_data)
 {
   *reinterpret_cast<int*>(value) = reinterpret_cast<fly::RenderingSystemDX11*>(client_data)->getSettings()._ssrSteps;
 }

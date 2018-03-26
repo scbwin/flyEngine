@@ -57,6 +57,8 @@ namespace fly
     Settings _settings;
     void setSettings(const Settings& settings);
     const Settings& getSettings() const;
+    const Vec3f& getSceneMin() const;
+    const Vec3f& getSceneMax() const;
 
   private:
     using RtvPtr = CComPtr<ID3D11RenderTargetView>;

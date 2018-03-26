@@ -21,6 +21,7 @@
 #include <dx11/DX11States.h>
 #include <CommonStates.h>
 #include <Quadtree.h>
+#include <Timing.h>
 
 namespace fly
 {
@@ -328,16 +329,13 @@ namespace fly
 
   void RenderingSystemDX11::buildQuadtree()
   {
+    Timing timing;
     _quadtree = std::make_unique<Quadtree<DX11StaticModelRenderable>>(Vec2f({ _sceneMin[0], _sceneMin[2] }), Vec2f({ _sceneMax[0], _sceneMax[2] }));
     _quadtree->setDetailCullingParams(_settings._detailCullingParams);
     for (const auto& r : _staticModelRenderables) {
-     /* auto temp = std::make_shared<DX11StaticModelRenderable>();
-      temp->_model = r.second._model;
-      temp->_modelData = _modelDataCache[temp->_model];
-      temp->_aabbWorld = std::make_unique<AABB>(*temp->_model->getAABB(), r.second._modelMatrix);
-      temp->_modelMatrix = r.second._modelMatrix;*/
       _quadtree->insert(r.second);
     }
+    std::cout << "Quadtree construction took " << timing << std::endl,
     std::cout << "Quadtree nodes:" << _quadtree->getAllNodes().size() << std::endl;
   }
 
@@ -389,6 +387,16 @@ namespace fly
   const Settings& RenderingSystemDX11::getSettings() const
   {
     return _settings;
+  }
+
+  const Vec3f & RenderingSystemDX11::getSceneMin() const
+  {
+    return _sceneMin;
+  }
+
+  const Vec3f & RenderingSystemDX11::getSceneMax() const
+  {
+    return _sceneMax;
   }
 
   RenderingSystemDX11::RTT::RTT(const Vec2u& size, RenderingSystemDX11* rs, unsigned mip_levels, bool one_channel)
@@ -876,7 +884,7 @@ namespace fly
     if (!_wcsicmp(ext, L".tga")) {
       HR(DirectX::LoadFromTGAFile(path, nullptr, image));
     }
-    if (!_wcsicmp(ext, L".png")) {
+    if (!_wcsicmp(ext, L".png") || !_wcsicmp(ext, L".jpg")) {
       HR(DirectX::LoadFromWICFile(path, 0, nullptr, image));
     }
     if (!_wcsicmp(ext, L".dds")) {
