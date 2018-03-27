@@ -1,9 +1,11 @@
-#include "Engine.h"
-#include "System.h"
-#include "EntityManager.h"
+#include <Engine.h>
+#include <System.h>
 
 namespace fly
 {
+  Engine::Engine()
+  {
+  }
   void Engine::addSystem(const std::shared_ptr<System>& system)
   {
     _systems.insert(system);
@@ -15,7 +17,7 @@ namespace fly
       s->update(time, delta_time);
     }
   }
-  EntityManager * Engine::getEntityManager() const
+  EntityManager* Engine::getEntityManager() const
   {
     return _em.get();
   }

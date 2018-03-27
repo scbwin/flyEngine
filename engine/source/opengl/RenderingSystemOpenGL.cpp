@@ -46,7 +46,7 @@ namespace fly
 
     initShaders();
 
-    _skyboxVertexArray = std::make_shared<GLVertexArray>();
+    _skyboxVertexArray = std::make_shared<GLVertexArrayOld>();
     _skyboxVertexArray->create();
     _skyboxVertexArray->bind();
     GL_CHECK(glEnableVertexAttribArray(0));
@@ -60,7 +60,7 @@ namespace fly
       glm::vec3(-1, 1, 1),
       glm::vec3(1, 1, 1) };
 
-    _skyboxVertexbuffer = std::make_shared<GLBuffer>();
+    _skyboxVertexbuffer = std::make_shared<GLBufferOld>();
     _skyboxVertexbuffer->create(GL_ARRAY_BUFFER);
     _skyboxVertexbuffer->bind();
     _skyboxVertexbuffer->setData(&skybox_vertices[0], skybox_vertices.size() * sizeof(skybox_vertices[0]));
@@ -75,7 +75,7 @@ namespace fly
       0, 1, 2, 1, 4, 2 // back
     };
 
-    _skyboxIndexbuffer = std::make_shared<GLBuffer>();
+    _skyboxIndexbuffer = std::make_shared<GLBufferOld>();
     _skyboxIndexbuffer->create(GL_ELEMENT_ARRAY_BUFFER);
     _skyboxIndexbuffer->bind();
     _skyboxIndexbuffer->setData(&_skyBoxIndices.front(), _skyBoxIndices.size() * sizeof(_skyBoxIndices.front()));
@@ -1813,7 +1813,7 @@ namespace fly
   }
 
   void RenderingSystemOpenGL::pingPongFilter(unsigned int steps, const std::array<std::shared_ptr<GLFramebuffer>, 2>& fb,
-    const std::vector<float>& kernel_horizontal, const std::vector<float>& kernel_vertical, const std::shared_ptr<GLTexture>& weight_texture, const std::shared_ptr<GLTexture>& base_texture)
+    const std::vector<float>& kernel_horizontal, const std::vector<float>& kernel_vertical, const std::shared_ptr<GLTextureOld>& weight_texture, const std::shared_ptr<GLTextureOld>& base_texture)
   {
     auto shader = weight_texture != nullptr ? _shaderProgramPingPongFilterBilateral : _shaderProgramPingPongFilter;
     shader->bind();
@@ -2049,7 +2049,7 @@ namespace fly
       if (f.second.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
         auto result = f.second.get();
         if (result._data) {
-          _textures[f.first] = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+          _textures[f.first] = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
           _textures[f.first]->create();
           // auto tex_id = SOIL_create_OGL_texture(result._data, result._width, result._height, result._channels, _textures[f.first]->id(), SOIL_FLAG_MIPMAPS | SOIL_FLAG_TEXTURE_REPEATS | SOIL_FLAG_COMPRESS_TO_DXT);
           _textures[f.first]->bind();
@@ -2094,11 +2094,11 @@ namespace fly
 
   RenderingSystemOpenGL::MeshBinding::MeshBinding(const std::shared_ptr<Mesh>& mesh)
   {
-    _vertexArray = std::make_shared<GLVertexArray>();
+    _vertexArray = std::make_shared<GLVertexArrayOld>();
     _vertexArray->create();
     _vertexArray->bind();
 
-    _vertexBuffer = std::make_shared<GLBuffer>();
+    _vertexBuffer = std::make_shared<GLBufferOld>();
     _vertexBuffer->create();
     _vertexBuffer->bind();
     auto& vertices = mesh->getVertices();
@@ -2119,7 +2119,7 @@ namespace fly
     GL_CHECK(glEnableVertexAttribArray(4));
     GL_CHECK(glVertexAttribPointer(4, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _bitangent))));
 
-    _indexBuffer = std::make_shared<GLBuffer>();
+    _indexBuffer = std::make_shared<GLBufferOld>();
     _indexBuffer->create(GL_ELEMENT_ARRAY_BUFFER);
     _indexBuffer->bind();
     auto& indices = mesh->getIndices();
@@ -2193,7 +2193,7 @@ namespace fly
       _fb[i] = std::make_shared<GLFramebuffer>();
       _fb[i]->create(size.x, size.y);
       _fb[i]->bind();
-      auto tex = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+      auto tex = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
       tex->create();
       tex->bind();
       tex->setMinificationFilter(GL_LINEAR);
@@ -2213,7 +2213,7 @@ namespace fly
         auto& fb = _upsampleFb.back();
         fb->create(size.x, size.y);
         fb->bind();
-        auto tex = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+        auto tex = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
         tex->create();
         tex->bind();
         tex->setMinificationFilter(GL_LINEAR);
@@ -2255,7 +2255,7 @@ namespace fly
       fb = std::make_shared<GLFramebuffer>();
       fb->create(size.x, size.y);
       fb->bind();
-      auto tex = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+      auto tex = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
       tex->create();
       tex->bind();
       tex->setMinificationFilter(GL_LINEAR);
@@ -2272,7 +2272,7 @@ namespace fly
     _resultFb = std::make_shared<GLFramebuffer>();
     _resultFb->create(size.x, size.y);
     _resultFb->bind();
-    auto tex = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+    auto tex = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
     tex->create();
     tex->bind();
     tex->setMinificationFilter(GL_LINEAR);
@@ -2324,12 +2324,12 @@ namespace fly
 
   RenderingSystemOpenGL::TerrainRenderable::TerrainRenderable(Entity* terrain, RenderingSystemOpenGL* rs) : _terrain(terrain->getComponent<Terrain>()), _transform(terrain->getComponent<Transform>())
   {
-    _terrainVao = std::make_shared<GLVertexArray>();
+    _terrainVao = std::make_shared<GLVertexArrayOld>();
     _terrainVao->create();
     _terrainVao->bind();
     GL_CHECK(glEnableVertexAttribArray(0));
 
-    _terrainVbo = std::make_shared<GLBuffer>();
+    _terrainVbo = std::make_shared<GLBufferOld>();
     _terrainVbo->create();
     _terrainVbo->bind();
     auto vertices = _terrain->getTileVertices();
@@ -2359,14 +2359,14 @@ namespace fly
       _impostorFb[i] = std::make_shared<GLFramebuffer>();
       _impostorFb[i]->create(256, 256);
       _impostorFb[i]->bind();
-      auto tex = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+      auto tex = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
       tex->create();
       tex->bind();
       tex->setMagnificationFilter(GL_LINEAR);
       tex->setMinificationFilter(GL_LINEAR_MIPMAP_LINEAR);
       tex->setData(_impostorFb[i]->width(), _impostorFb[i]->height(), GL_RGBA16F, GL_RGBA, GL_FLOAT, nullptr);
       _impostorFb[i]->addTexture(tex, GL_COLOR_ATTACHMENT0);
-      auto impostor_depth_buffer = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+      auto impostor_depth_buffer = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
       impostor_depth_buffer->create();
       impostor_depth_buffer->bind();
       impostor_depth_buffer->setMinificationFilter(GL_NEAREST);
@@ -2376,7 +2376,7 @@ namespace fly
       _impostorFb[i]->checkStatus();
     }
 
-    _heightMap = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+    _heightMap = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
     _heightMap->create();
     _heightMap->bind();
     _heightMap->setMagnificationFilter(GL_LINEAR);
@@ -2389,7 +2389,7 @@ namespace fly
     _heightMap->setData(height_map.cols, height_map.rows, GL_R16F, GL_RED, GL_FLOAT, height_map.data);
     GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
 
-    _splatMap = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+    _splatMap = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
     _splatMap->create();
     _splatMap->bind();
     _splatMap->setMagnificationFilter(GL_LINEAR);
@@ -2401,7 +2401,7 @@ namespace fly
 
     std::array<std::shared_ptr<GLFramebuffer>, 2> fbs_grad_x;
     for (unsigned int i = 0; i < 2; i++) {
-      auto grad_tex = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+      auto grad_tex = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
       grad_tex->create();
       grad_tex->bind();
       grad_tex->setMagnificationFilter(GL_LINEAR);
@@ -2417,7 +2417,7 @@ namespace fly
 
     std::array<std::shared_ptr<GLFramebuffer>, 2> fbs_grad_y;
     for (unsigned int i = 0; i < 2; i++) {
-      auto grad_tex = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+      auto grad_tex = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
       grad_tex->create();
       grad_tex->bind();
       grad_tex->setMagnificationFilter(GL_LINEAR);
@@ -2434,7 +2434,7 @@ namespace fly
     rs->pingPongFilter(2, fbs_grad_x, rs->_sobelKernelGradient, rs->_sobelKernelSmooth);
     rs->pingPongFilter(2, fbs_grad_y, rs->_sobelKernelSmooth, rs->_sobelKernelGradient);
 
-    _normalMap = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+    _normalMap = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
     _normalMap->create();
     _normalMap->bind();
     _normalMap->setMagnificationFilter(GL_LINEAR);
@@ -2466,7 +2466,7 @@ namespace fly
     GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
 
     {
-      _meshVbo = std::make_shared<GLBuffer>();
+      _meshVbo = std::make_shared<GLBufferOld>();
       _meshVbo->create();
       _meshVbo->bind();
       auto& trunk_vertices_lod0 = _terrain->getTreeModelLod0()->getMeshes()[0]->getVertices();
@@ -2477,7 +2477,7 @@ namespace fly
       vertices.insert(vertices.end(), leaf_vertices.begin(), leaf_vertices.end());
       _meshVbo->setData(&vertices.front(), vertices.size() * sizeof(vertices.front()));
 
-      _meshIbo = std::make_shared<GLBuffer>();
+      _meshIbo = std::make_shared<GLBufferOld>();
       _meshIbo->create(GL_ELEMENT_ARRAY_BUFFER);
       _meshIbo->bind();
       auto& trunk_indices_lod0 = _terrain->getTreeModelLod0()->getMeshes()[0]->getIndices();
@@ -2502,7 +2502,7 @@ namespace fly
       auto& scales = n->_scales;
 
       if (tree_transforms.size()) {
-        _treeVao[n] = std::make_shared<GLVertexArray>();
+        _treeVao[n] = std::make_shared<GLVertexArrayOld>();
         _treeVao[n]->create();
         _treeVao[n]->bind();
         GL_CHECK(glEnableVertexAttribArray(0));
@@ -2523,7 +2523,7 @@ namespace fly
         GL_CHECK(glVertexAttribPointer(3, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _tangent))));;
         GL_CHECK(glVertexAttribPointer(4, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _bitangent))));
 
-        _treeTransformVbo[n] = std::make_shared<GLBuffer>();
+        _treeTransformVbo[n] = std::make_shared<GLBufferOld>();
         _treeTransformVbo[n]->create(GL_ARRAY_BUFFER);
         _treeTransformVbo[n]->bind();
 
@@ -2547,12 +2547,12 @@ namespace fly
       }
 
       if (n->_cloudBillboardPositionsAndScales.size()) {
-        _cloudBillboardsVao[n] = std::make_shared<GLVertexArray>();
+        _cloudBillboardsVao[n] = std::make_shared<GLVertexArrayOld>();
         _cloudBillboardsVao[n]->create();
         _cloudBillboardsVao[n]->bind();
         GL_CHECK(glEnableVertexAttribArray(0));
 
-        _cloudBillboardsVbo[n] = std::make_shared<GLBuffer>();
+        _cloudBillboardsVbo[n] = std::make_shared<GLBufferOld>();
         _cloudBillboardsVbo[n]->create(GL_ARRAY_BUFFER);
         _cloudBillboardsVbo[n]->bind();
         auto& cloud_transforms = n->_cloudBillboardPositionsAndScales;
@@ -2565,7 +2565,7 @@ namespace fly
 
   void RenderingSystemOpenGL::TerrainRenderable::createIndexBuffer(int lod, int dir, const std::vector<unsigned>& indices)
   {
-    _terrainIbo[lod][dir] = std::make_shared<GLBuffer>();
+    _terrainIbo[lod][dir] = std::make_shared<GLBufferOld>();
     _terrainIbo[lod][dir]->create(GL_ELEMENT_ARRAY_BUFFER);
     _terrainIbo[lod][dir]->bind();
     _terrainIbo[lod][dir]->setData(&indices[0], indices.size() * sizeof(indices[0]));
@@ -2646,7 +2646,7 @@ namespace fly
 
   void RenderingSystemOpenGL::setSkybox(const std::array<std::string, 6u>& paths)
   {
-    _skyboxTexture = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+    _skyboxTexture = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
     _skyboxTexture->create();
     SOIL_load_OGL_cubemap(paths[0].c_str(), paths[1].c_str(), paths[2].c_str(), paths[3].c_str(), paths[4].c_str(), paths[5].c_str(), SOIL_LOAD_AUTO, _skyboxTexture->id(), 0);
 
@@ -2732,7 +2732,7 @@ namespace fly
 
     glm::ivec2 size(1024);
 
-    auto texture = std::make_shared<GLTexture>(GL_TEXTURE_2D_ARRAY);
+    auto texture = std::make_shared<GLTextureOld>(GL_TEXTURE_2D_ARRAY);
     texture->create();
     texture->bind();
     texture->setMagnificationFilter(GL_LINEAR);
@@ -2781,7 +2781,7 @@ namespace fly
     }
 
     glm::ivec2 size(1024);
-    auto texture = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+    auto texture = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
     texture->create();
     texture->bind();
     texture->setMagnificationFilter(GL_LINEAR);
@@ -2806,7 +2806,7 @@ namespace fly
       return;
     }
     glm::ivec2 size(1024);
-    auto texture = std::make_shared<GLTexture>(GL_TEXTURE_CUBE_MAP);
+    auto texture = std::make_shared<GLTextureOld>(GL_TEXTURE_CUBE_MAP);
     texture->create();
     texture->bind();
     texture->setMagnificationFilter(GL_LINEAR);
@@ -2879,7 +2879,7 @@ namespace fly
     _gBuffer->create(_viewportSize.x, _viewportSize.y);
     _gBuffer->bind();
 
-    auto tex_array = std::make_shared<GLTexture>(GL_TEXTURE_2D_ARRAY);
+    auto tex_array = std::make_shared<GLTextureOld>(GL_TEXTURE_2D_ARRAY);
     tex_array->create();
     tex_array->bind();
     tex_array->setMagnificationFilter(GL_NEAREST);
@@ -2893,7 +2893,7 @@ namespace fly
     }
     _gBuffer->setDrawbuffers(attachments);
 
-    _sceneDepthbuffer = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+    _sceneDepthbuffer = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
     _sceneDepthbuffer->create();
     _sceneDepthbuffer->bind();
     _sceneDepthbuffer->setMinificationFilter(GL_NEAREST);
@@ -2908,7 +2908,7 @@ namespace fly
       auto size = _viewportSize / 4;
       _framebufferQuarterSize[i]->create(size.x, size.y);
       _framebufferQuarterSize[i]->bind();
-      auto texture = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+      auto texture = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
       texture->create();
       texture->bind();
       texture->setMinificationFilter(GL_LINEAR);
@@ -2925,7 +2925,7 @@ namespace fly
       auto size = _viewportSize / 4;
       _gradientBufferXQuarterSize[i]->create(size.x, size.y);
       _gradientBufferXQuarterSize[i]->bind();
-      auto texture = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+      auto texture = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
       texture->create();
       texture->bind();
       texture->setMinificationFilter(GL_LINEAR);
@@ -2942,7 +2942,7 @@ namespace fly
       auto size = _viewportSize / 4;
       _gradientBufferYQuarterSize[i]->create(size.x, size.y);
       _gradientBufferYQuarterSize[i]->bind();
-      auto texture = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+      auto texture = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
       texture->create();
       texture->bind();
       texture->setMinificationFilter(GL_LINEAR);
@@ -2958,7 +2958,7 @@ namespace fly
     auto size = _viewportSize / 4;
     _gradientBufferQuarterSize->create(size.x, size.y);
     _gradientBufferQuarterSize->bind();
-    auto texture = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+    auto texture = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
     texture->create();
     texture->bind();
     texture->setMinificationFilter(GL_LINEAR);
@@ -2976,7 +2976,7 @@ namespace fly
       lb = std::make_shared<GLFramebuffer>();
       lb->create(_viewportSize.x, _viewportSize.y);
       lb->bind();
-      texture = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+      texture = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
       texture->create();
       texture->bind();
       texture->setMinificationFilter(GL_NEAREST);
@@ -2997,7 +2997,7 @@ namespace fly
       auto fb = std::make_shared<GLFramebuffer>();
       fb->create(1, 1);
       fb->bind();
-      texture = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+      texture = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
       texture->create();
       texture->bind();
       texture->setData(1, 1, GL_R16F, GL_RED, GL_FLOAT, &_exposure);
@@ -3011,7 +3011,7 @@ namespace fly
       _DOFBlurBuffer[i] = std::make_shared<GLFramebuffer>();
       _DOFBlurBuffer[i]->create(_viewportSize.x / 2, _viewportSize.y / 2);
       _DOFBlurBuffer[i]->bind();
-      auto texture = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+      auto texture = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
       texture->create();
       texture->bind();
       texture->setMinificationFilter(GL_LINEAR);

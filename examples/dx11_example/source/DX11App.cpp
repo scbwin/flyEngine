@@ -1,3 +1,4 @@
+#include <StaticModelRenderable.h>
 #include <Renderables.h>
 #include <AssimpImporter.h>
 #include <DX11App.h>

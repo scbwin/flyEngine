@@ -1,6 +1,5 @@
 #include <opencv2/opencv.hpp>
 #include <dx11/RenderingSystemDX11.h>
-#include <dx11/debug.h>
 #include <dx11/DXUtils.h>
 #include <d3dcompiler.h>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -9,6 +8,7 @@
 #include <glm/gtx/string_cast.hpp>
 #include <Material.h>
 #include <Renderables.h>
+#include <StaticModelRenderable.h>
 #include <Camera.h>
 #include <Entity.h>
 #include <Light.h>

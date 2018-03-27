@@ -20,6 +20,20 @@ namespace fly
     {
       std::memcpy(_data, values.begin(), sizeof *this);
     }
+    template<typename T1>
+    Vector(const std::initializer_list<T1>& values)
+    {
+      for (unsigned i = 0; i < Dim; i++) {
+        _data[i] = static_cast<T>(*(values.begin() + i));
+      }
+    }
+    template<typename T1>
+    Vector(const Vector<Dim, T1>& other)
+    {
+      for (unsigned i = 0; i < Dim; i++) {
+        _data[i] = static_cast<T>(other[i]);
+      }
+    }
     Vector(const T* ptr)
     {
       std::memcpy(_data, ptr, sizeof(T) * Dim);

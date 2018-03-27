@@ -142,11 +142,11 @@ namespace fly
 
     std::vector<std::array<std::shared_ptr<GLFramebuffer>, 2>> _bloomFramebuffers;
 
-    std::shared_ptr<GLTexture> _sceneDepthbuffer;
+    std::shared_ptr<GLTextureOld> _sceneDepthbuffer;
 
     unsigned int _defaultFramebufferId = 0;
 
-    std::map<std::string, std::shared_ptr<GLTexture>> _textures;
+    std::map<std::string, std::shared_ptr<GLTextureOld>> _textures;
     std::shared_ptr<GLFramebuffer> _gBuffer; // used for deferred shading
 
     std::map<Entity*, std::shared_ptr<GLFramebuffer>> _shadowMaps;
@@ -173,9 +173,9 @@ namespace fly
     struct MeshBinding
     {
       MeshBinding(const std::shared_ptr<Mesh>& mesh);
-      std::shared_ptr<GLVertexArray> _vertexArray;
-      std::shared_ptr<GLBuffer> _vertexBuffer;
-      std::shared_ptr<GLBuffer> _indexBuffer;
+      std::shared_ptr<GLVertexArrayOld> _vertexArray;
+      std::shared_ptr<GLBufferOld> _vertexBuffer;
+      std::shared_ptr<GLBufferOld> _indexBuffer;
     };
     std::map<std::shared_ptr<Mesh>, std::shared_ptr<MeshBinding>> _meshBindings;
 
@@ -186,9 +186,9 @@ namespace fly
       std::shared_ptr<Terrain> _terrain;
       std::shared_ptr<Transform> _transform;
 
-      std::shared_ptr<GLVertexArray> _terrainVao;
-      std::shared_ptr<GLBuffer> _terrainVbo;
-      std::map<int, std::map<int, std::shared_ptr<GLBuffer>>> _terrainIbo;
+      std::shared_ptr<GLVertexArrayOld> _terrainVao;
+      std::shared_ptr<GLBufferOld> _terrainVbo;
+      std::map<int, std::map<int, std::shared_ptr<GLBufferOld>>> _terrainIbo;
       std::map<int, std::map<int, unsigned>> _terrainNumIndices;
       void createIndexBuffer(int lod, int dir, const std::vector<unsigned>& indices);
       std::array<std::shared_ptr<GLFramebuffer>, 2> _impostorFb;
@@ -196,8 +196,8 @@ namespace fly
 
       Mat4f getWaterModelMatrix();
 
-      std::shared_ptr<GLBuffer> _meshVbo;
-      std::shared_ptr<GLBuffer> _meshIbo;
+      std::shared_ptr<GLBufferOld> _meshVbo;
+      std::shared_ptr<GLBufferOld> _meshIbo;
 
       GLint _trunkLod1BaseVertex;
       GLvoid* _trunkLod1IdxOffset;
@@ -205,15 +205,15 @@ namespace fly
       GLint _leafsBaseVert;
       GLvoid* _leafsIdxOffs;
 
-      std::map<Terrain::TreeNode*, std::shared_ptr<GLVertexArray>> _treeVao;
-      std::map<Terrain::TreeNode*, std::shared_ptr<GLBuffer>> _treeTransformVbo;
+      std::map<Terrain::TreeNode*, std::shared_ptr<GLVertexArrayOld>> _treeVao;
+      std::map<Terrain::TreeNode*, std::shared_ptr<GLBufferOld>> _treeTransformVbo;
 
-      std::map<Terrain::TreeNode*, std::shared_ptr<GLVertexArray>> _cloudBillboardsVao;
-      std::map<Terrain::TreeNode*, std::shared_ptr<GLBuffer>> _cloudBillboardsVbo;
+      std::map<Terrain::TreeNode*, std::shared_ptr<GLVertexArrayOld>> _cloudBillboardsVao;
+      std::map<Terrain::TreeNode*, std::shared_ptr<GLBufferOld>> _cloudBillboardsVbo;
 
-      std::shared_ptr<GLTexture> _heightMap;
-      std::shared_ptr<GLTexture> _normalMap;
-      std::shared_ptr<GLTexture> _splatMap;
+      std::shared_ptr<GLTextureOld> _heightMap;
+      std::shared_ptr<GLTextureOld> _normalMap;
+      std::shared_ptr<GLTextureOld> _splatMap;
 
       std::vector<Terrain::TreeNode*> _visibleNodes;
       std::vector<Terrain::TreeNode*> _visibleNodesShadowMap;
@@ -256,7 +256,7 @@ namespace fly
 
       std::array<std::shared_ptr<GLFramebuffer>, 2> _fb;
       std::vector<std::shared_ptr<GLFramebuffer>> _upsampleFb;
-      std::shared_ptr<GLTexture> _result;
+      std::shared_ptr<GLTextureOld> _result;
     };
 
     class GodRayEffect
@@ -278,10 +278,10 @@ namespace fly
 
     std::map<Entity*, std::shared_ptr<TerrainRenderable> > _terrainRenderables;
 
-    std::shared_ptr<GLTexture> _skyboxTexture;
-    std::shared_ptr<GLVertexArray> _skyboxVertexArray;
-    std::shared_ptr<GLBuffer> _skyboxVertexbuffer;
-    std::shared_ptr<GLBuffer> _skyboxIndexbuffer;
+    std::shared_ptr<GLTextureOld> _skyboxTexture;
+    std::shared_ptr<GLVertexArrayOld> _skyboxVertexArray;
+    std::shared_ptr<GLBufferOld> _skyboxVertexbuffer;
+    std::shared_ptr<GLBufferOld> _skyboxIndexbuffer;
     std::vector<unsigned int> _skyBoxIndices;
 
     std::shared_ptr<Mesh> _skydomeMesh;
@@ -331,7 +331,7 @@ namespace fly
     void depthOfFieldPostProcess();
     void computeGradient();
     void pingPongFilter(unsigned int steps, const std::array<std::shared_ptr<GLFramebuffer>, 2>& fb,
-      const std::vector<float>& kernel_horizontal, const std::vector<float>& kernel_vertical, const std::shared_ptr<GLTexture>& weight_texture = nullptr, const std::shared_ptr<GLTexture>& base_texture = nullptr);
+      const std::vector<float>& kernel_horizontal, const std::vector<float>& kernel_vertical, const std::shared_ptr<GLTextureOld>& weight_texture = nullptr, const std::shared_ptr<GLTextureOld>& base_texture = nullptr);
     void renderSkybox();
     void renderSkydome();
     void renderShadowMapsDirectional(Entity* entity);

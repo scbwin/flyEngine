@@ -26,7 +26,7 @@ namespace fly
     if (_listeners.size()) {
       for (const auto& l : _listeners) {
         auto listener = l.lock();
-        if (listener != nullptr) {
+        if (listener) {
           listener->onComponentsChanged(entity);
         }
         else {

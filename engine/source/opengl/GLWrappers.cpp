@@ -6,17 +6,17 @@
 
 namespace fly
 {
-  void GLVertexArray::create()
+  void GLVertexArrayOld::create()
   {
     GL_CHECK(glGenVertexArrays(1, &_id));
   }
 
-  void GLVertexArray::bind()
+  void GLVertexArrayOld::bind()
   {
     GL_CHECK(glBindVertexArray(_id));
   }
 
-  GLVertexArray::~GLVertexArray()
+  GLVertexArrayOld::~GLVertexArrayOld()
   {
     GL_CHECK(glDeleteVertexArrays(1, &_id));
   }
@@ -119,110 +119,118 @@ namespace fly
   {
     return _id;
   }
-  GLint GLShaderProgram::uniformLocation(const std::string & name)
+  GLint GLShaderProgram::uniformLocation(const std::string& name)
   {
-    if (!_uniformLocations.count(name)) {
-      _uniformLocations[name] = glGetUniformLocation(_id, name.c_str());
+    auto it = _uniformLocations.find(name);
+    if (it == _uniformLocations.end()) {
+      auto loc = glGetUniformLocation(_id, name.c_str());
+      if (loc == -1) {
+        std::cout << "No valid uniform location for name: " << name << std::endl;
+      }
+      else {
+        _uniformLocations[name] = loc;
+      }
+      return loc;
     }
-    return _uniformLocations[name];
+    return it->second;
   }
   GLShaderProgram::~GLShaderProgram()
   {
     GL_CHECK(glDeleteProgram(_id));
   }
 
-  void GLBuffer::create(GLenum target)
+  void GLBufferOld::create(GLenum target)
   {
     //std::cout << "GLVertexBuffer::create" << std::endl;
     _target = target;
     GL_CHECK(glGenBuffers(1, &_id));
   }
-  void GLBuffer::setData(const void* data, size_t size_in_bytes)
+  void GLBufferOld::setData(const void* data, size_t size_in_bytes)
   {
     GL_CHECK(glBufferData(_target, size_in_bytes, data, GL_STATIC_DRAW));
   }
-  void GLBuffer::bind()
+  void GLBufferOld::bind()
   {
     GL_CHECK(glBindBuffer(_target, _id));
   }
-  GLBuffer::~GLBuffer()
+  GLBufferOld::~GLBufferOld()
   {
     
     GL_CHECK(glDeleteBuffers(1, &_id));
   }
  
-  GLTexture::GLTexture(GLuint id, GLenum target) : _id(id), _target(target)
+  GLTextureOld::GLTextureOld(GLuint id, GLenum target) : _id(id), _target(target)
   {
   }
 
-  GLTexture::GLTexture(GLenum target) : _target(target)
+  GLTextureOld::GLTextureOld(GLenum target) : _target(target)
   {
   }
-  void GLTexture::create()
+  void GLTextureOld::create()
   {
     GL_CHECK(glGenTextures(1, &_id));
   }
-  void GLTexture::bind()
+  void GLTextureOld::bind()
   {
     GL_CHECK(glBindTexture(_target, _id));
   }
-  GLuint GLTexture::id()
+  GLuint GLTextureOld::id()
   {
     return _id;
   }
-  void GLTexture::setMinificationFilter(GLint filter)
+  void GLTextureOld::setMinificationFilter(GLint filter)
   {
     GL_CHECK(glTexParameteri(_target, GL_TEXTURE_MIN_FILTER, filter));
   }
-  void GLTexture::setMagnificationFilter(GLint filter)
+  void GLTextureOld::setMagnificationFilter(GLint filter)
   {
     GL_CHECK(glTexParameteri(_target, GL_TEXTURE_MAG_FILTER, filter));
   }
-  void GLTexture::setCompareMode(GLenum mode, GLenum func)
+  void GLTextureOld::setCompareMode(GLenum mode, GLenum func)
   {
     GL_CHECK(glTexParameteri(_target, GL_TEXTURE_COMPARE_MODE, mode));
     GL_CHECK(glTexParameteri(_target, GL_TEXTURE_COMPARE_FUNC, func));
   }
-  void GLTexture::setData(int width, int height, GLint internal_format, GLenum format, GLenum type, void * data)
+  void GLTextureOld::setData(int width, int height, GLint internal_format, GLenum format, GLenum type, void * data)
   {
     _width = width;
     _height = height;
     GL_CHECK(glTexImage2D(_target, 0, internal_format, width, height, 0, format, type, data));
   }
-  void GLTexture::setData(int width, int height, int depth, GLint internal_format, GLenum format, GLenum type, void * data)
+  void GLTextureOld::setData(int width, int height, int depth, GLint internal_format, GLenum format, GLenum type, void * data)
   {
     _width = width;
     _height = height;
     _depth = depth;
     GL_CHECK(glTexImage3D(_target, 0, internal_format, width, height, depth, 0, format, type, data));
   }
-  void GLTexture::texStorage2D(int width, int height, GLint internal_format, int levels)
+  void GLTextureOld::texStorage2D(int width, int height, GLint internal_format, int levels)
   {
     _width = width;
     _height = height;
     GL_CHECK(glTexStorage2D(_target, levels, internal_format, width, height));
   }
-  void GLTexture::texStorage3D(int width, int height, int depth, GLint internal_format, int levels)
+  void GLTextureOld::texStorage3D(int width, int height, int depth, GLint internal_format, int levels)
   {
     _width = width;
     _height = height;
     _depth = depth;
     GL_CHECK(glTexStorage3D(_target, levels, internal_format, width, height, depth));
   }
-  GLTexture::~GLTexture()
+  GLTextureOld::~GLTextureOld()
   {
  //   std::cout << "delete texture" << std::endl;
     GL_CHECK(glDeleteTextures(1, &_id));
   }
-  int GLTexture::width()
+  int GLTextureOld::width()
   {
     return _width;
   }
-  int GLTexture::height()
+  int GLTextureOld::height()
   {
     return _height;
   }
-  int GLTexture::depth()
+  int GLTextureOld::depth()
   {
     return _depth;
   }
@@ -252,19 +260,19 @@ namespace fly
   {
     GL_CHECK(glViewport(0, 0, _width, _height));
   }
-  void GLFramebuffer::setDepthTexture(const std::shared_ptr<GLTexture>& depth_texture)
+  void GLFramebuffer::setDepthTexture(const std::shared_ptr<GLTextureOld>& depth_texture)
   {
     _depthBuffer = depth_texture;
     GL_CHECK(glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depth_texture != nullptr ? depth_texture->id() : 0, 0));
   }
-  void GLFramebuffer::addTexture(const std::shared_ptr<GLTexture>& texture, GLenum attachment)
+  void GLFramebuffer::addTexture(const std::shared_ptr<GLTextureOld>& texture, GLenum attachment)
   {
     _textures.push_back(texture);
     _colorAttachments.push_back(attachment);
     GL_CHECK(glFramebufferTexture(GL_FRAMEBUFFER, attachment, texture->id(), 0));
 
   }
-  void GLFramebuffer::addTextureLayer(const std::shared_ptr<GLTexture>& texture, GLenum attachment, int layer)
+  void GLFramebuffer::addTextureLayer(const std::shared_ptr<GLTextureOld>& texture, GLenum attachment, int layer)
   {
     bool found = false;
     for (auto& t : _textures) {
@@ -297,7 +305,7 @@ namespace fly
       std::cout << "Framebuffer " << _id << " incomplete" << std::endl;
     }
   }
-  std::vector<std::shared_ptr<GLTexture>>& GLFramebuffer::textures()
+  std::vector<std::shared_ptr<GLTextureOld>>& GLFramebuffer::textures()
   {
     return _textures;
   }
