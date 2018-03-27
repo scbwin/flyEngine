@@ -6,6 +6,7 @@
 #include <AABB.h>
 #include <memory>
 #include <sstream>
+#include <Settings.h>
 
 namespace fly
 {
@@ -57,6 +58,7 @@ namespace fly
         else {
           std::stringstream ss;
           ss << "Could not add element. Child bounds:" << bb_min_el << " " << bb_max_el << ", node bounds:" << _min << " " << getMax() << ". Check the bounds of the quadtree.";
+          std::cout << ss.str() << std::endl;
           throw std::exception(ss.str().c_str());
         }
       }

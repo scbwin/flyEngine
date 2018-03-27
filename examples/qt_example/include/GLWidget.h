@@ -15,6 +15,8 @@ namespace fly
   class CameraController;
 }
 
+struct CTwBar;
+
 class GLWidget : public QOpenGLWidget
 {
 public:
@@ -31,13 +33,22 @@ protected:
   virtual void mouseReleaseEvent(QMouseEvent* e) override;
   virtual void wheelEvent(QWheelEvent* e) override;
   std::set<int> _keysPressed;
-  inline bool keyPressed(int key) { return _keysPressed.find(key) != _keysPressed.end(); }
+  //std::set<int> _buttonsPressed;
+  template<typename T>
+  inline bool contains(const std::set<T>& set, const T& t) 
+  {
+    return set.find(t) != set.end();
+  }
 private:
   std::unique_ptr<fly::Engine> _engine;
   std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>> _renderer;
   std::unique_ptr<fly::GameTimer> _gameTimer;
   std::unique_ptr<fly::CameraController> _camController;
   void initGame();
+  float _measure = 0.f;
+  unsigned _fps = 0;
+  CTwBar* _bar;
+  const char* _fpsButtonName = "FPS";
 };
 
 #endif

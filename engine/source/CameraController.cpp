@@ -35,11 +35,11 @@ namespace fly
     _mousePos = mouse_pos;
     _pressed = true;
   }
-  void CameraController::mouseMove(float delta_time, const Vec3f& mouse_pos)
+  void CameraController::mouseMove(const Vec3f& mouse_pos)
   {
     if (_pressed) {
       auto delta = mouse_pos - _mousePos;
-      _camera->_eulerAngles -= glm::vec3(delta) * delta_time;
+      _camera->_eulerAngles -= glm::vec3(delta) * 0.01f;
     }
     _mousePos = mouse_pos;
   }
@@ -50,5 +50,17 @@ namespace fly
   void CameraController::setSpeed(float speed)
   {
     _speed = speed;
+  }
+  bool CameraController::isPressed() const
+  {
+    return _pressed;
+  }
+  float CameraController::getMouseSpeed() const
+  {
+    return _mouseSpeed;
+  }
+  void CameraController::setMouseSpeed(float speed)
+  {
+    _mouseSpeed = speed;
   }
 }

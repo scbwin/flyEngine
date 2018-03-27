@@ -8,10 +8,9 @@ in vec2 uv_out;
 in vec3 tangent_out;
 in vec3 bitangent_out;
 
-uniform sampler2D ts;
+uniform vec3 color;
 
 void main()
 {	
-	fragmentColor = pos_out;
-	fragmentColor = texture(ts, uv_out).rgb;
+	fragmentColor = color;
 }

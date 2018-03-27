@@ -20,13 +20,17 @@ namespace fly
     void stepUp(float delta_time) const;
     void stepDown(float delta_time) const;
     void mousePress(const Vec3f& mouse_pos);
-    void mouseMove(float delta_time, const Vec3f& mouse_pos);
+    void mouseMove(const Vec3f& mouse_pos);
     void mouseRelease();
     void setSpeed(float speed);
+    bool isPressed() const;
+    float getMouseSpeed() const;
+    void setMouseSpeed(float speed);
   private:
     std::shared_ptr<Camera> _camera;
     bool _pressed = false;
     float _speed;
+    float _mouseSpeed;
     Vec3f _mousePos = Vec3f(0.f);
   };
 }

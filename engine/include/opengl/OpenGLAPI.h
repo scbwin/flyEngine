@@ -7,6 +7,7 @@
 #include <renderer/RenderParams.h>
 #include <memory>
 #include <vector>
+#include <map>
 
 namespace fly
 {
@@ -17,6 +18,7 @@ namespace fly
   class Model;
   class StaticModelRenderable;
   class GLTexture;
+  class AABB;
 
   class OpenGLAPI
   {
@@ -27,7 +29,8 @@ namespace fly
     void initShaders();
     void setViewport(const Vec2u& size) const;
     void renderFullScreenQuad() const;
-    static inline constexpr bool isDirectX() { return _directx; }
+    void clearRendertargetColor(const Vec4f& color) const;
+    static inline constexpr bool isDirectX() { return false; }
     template<bool enable>
     inline void setDepthEnabled() const
     {
@@ -62,12 +65,15 @@ namespace fly
     {
       std::vector<std::shared_ptr<ModelData>> _modelLods;
       std::shared_ptr<fly::StaticModelRenderable> _smr;
+      AABB* getAABBWorld() const;
     };
     void renderModel(const StaticModelRenderable& smr, const Mat4f& mvp, unsigned lod) const;
   private:
     std::shared_ptr<GLShaderProgram> _simpleFullscreenQuadShader;
-    std::shared_ptr<GLShaderProgram> _simpleShader;
-    static const bool _directx = false;
+    std::shared_ptr<GLShaderProgram> _simpleShaderTextured;
+    std::shared_ptr<GLShaderProgram> _simpleShaderColored;
+    std::map<std::string, std::shared_ptr<GLTexture>> _textureCache;
+    std::shared_ptr<GLTexture> createTexture(const std::string& path);
   };
 }
 

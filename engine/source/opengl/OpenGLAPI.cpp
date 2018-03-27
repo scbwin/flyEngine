@@ -42,11 +42,17 @@ namespace fly
     _simpleFullscreenQuadShader->addShaderFromFile("assets/opengl/fs_simple.glsl", GLShaderProgram::ShaderType::FRAGMENT);
     _simpleFullscreenQuadShader->link();
 
-    _simpleShader = std::make_shared<GLShaderProgram>();
-    _simpleShader->create();
-    _simpleShader->addShaderFromFile("assets/opengl/vs_simple.glsl", GLShaderProgram::ShaderType::VERTEX);
-    _simpleShader->addShaderFromFile("assets/opengl/fs_simple.glsl", GLShaderProgram::ShaderType::FRAGMENT);
-    _simpleShader->link();
+    _simpleShaderTextured = std::make_shared<GLShaderProgram>();
+    _simpleShaderTextured->create();
+    _simpleShaderTextured->addShaderFromFile("assets/opengl/vs_simple.glsl", GLShaderProgram::ShaderType::VERTEX);
+    _simpleShaderTextured->addShaderFromFile("assets/opengl/fs_simple_textured.glsl", GLShaderProgram::ShaderType::FRAGMENT);
+    _simpleShaderTextured->link();
+
+    _simpleShaderColored = std::make_shared<GLShaderProgram>();
+    _simpleShaderColored->create();
+    _simpleShaderColored->addShaderFromFile("assets/opengl/vs_simple.glsl", GLShaderProgram::ShaderType::VERTEX);
+    _simpleShaderColored->addShaderFromFile("assets/opengl/fs_simple_color.glsl", GLShaderProgram::ShaderType::FRAGMENT);
+    _simpleShaderColored->link();
   }
   void OpenGLAPI::setViewport(const Vec2u & size) const
   {
@@ -57,20 +63,46 @@ namespace fly
     _simpleFullscreenQuadShader->bind();
     GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
   }
+  void OpenGLAPI::clearRendertargetColor(const Vec4f & color) const
+  {
+    GL_CHECK(glClearColor(color[0], color[1], color[2], color[3]));
+    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
+  }
   void OpenGLAPI::renderModel(const StaticModelRenderable& smr, const Mat4f& mvp, unsigned lod) const
   {
-    smr._modelLods[lod]->_vao->bind();
-    _simpleShader->bind();
-    GL_CHECK(glUniformMatrix4fv(_simpleShader->uniformLocation("MVP"), 1, false, mvp.ptr()));
+    const auto& model = smr._modelLods[lod];
+    model->_vao->bind();
     for (const auto& mesh_desc : smr._modelLods[lod]->_meshDesc) {
-      GL_CHECK(glActiveTexture(GL_TEXTURE0));
-      const auto& diffuse_tex = smr._modelLods[lod]->_materialDesc[mesh_desc._materialIndex]._diffuseTexture;
+      const auto& mat_desc = model->_materialDesc[mesh_desc._materialIndex];
+      auto shader = mat_desc._diffuseTexture ? _simpleShaderTextured : _simpleShaderColored;
+      shader->bind();
+      GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("MVP"), 1, false, mvp.ptr()));
+      const auto& diffuse_tex = mat_desc._diffuseTexture;
       if (diffuse_tex) {
+        GL_CHECK(glActiveTexture(GL_TEXTURE0));
         diffuse_tex->bind();
+        GL_CHECK(glUniform1i(shader->uniformLocation("ts"), 0));
       }
-      GL_CHECK(glUniform1i(_simpleShader->uniformLocation("ts"), 0));
+      else {
+        GL_CHECK(glUniform3f(shader->uniformLocation("color"), mat_desc._diffuseColor[0], mat_desc._diffuseColor[1], mat_desc._diffuseColor[2]));
+      }
+
       GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_desc._numIndices, GL_UNSIGNED_INT, mesh_desc._indexOffset, mesh_desc._baseVertex));
     }
+  }
+  std::shared_ptr<GLTexture> OpenGLAPI::createTexture(const std::string & path)
+  {
+    if (path == "") {
+      return nullptr;
+    }
+    auto it = _textureCache.find(path);
+    if (it != _textureCache.end()) {
+      return it->second;
+    }
+    auto tex = SOIL_load_OGL_texture(path.c_str(), SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_TEXTURE_REPEATS | SOIL_FLAG_COMPRESS_TO_DXT);
+    auto ret = std::make_shared<GLTexture>(tex, GL_TEXTURE_2D);
+    _textureCache[path] = ret;
+    return ret;
   }
   OpenGLAPI::ModelData::ModelData(const std::shared_ptr<Model>& model, OpenGLAPI* api)
   {
@@ -90,12 +122,8 @@ namespace fly
     _materialDesc.resize(model->getMaterials().size());
     for (unsigned i = 0; i < model->getMaterials().size(); i++) {
       auto m = model->getMaterials()[i];
-      if (m.getDiffusePath() != "") {
-        auto tex = SOIL_load_OGL_texture(m.getDiffusePath().c_str(), SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_TEXTURE_REPEATS | SOIL_FLAG_COMPRESS_TO_DXT);
-        if (tex) {
-          _materialDesc[i]._diffuseTexture = std::make_shared<GLTexture>(tex, GL_TEXTURE_2D);
-        }
-      }
+      _materialDesc[i]._diffuseTexture = api->createTexture(m.getDiffusePath());
+      _materialDesc[i]._diffuseColor = m.getDiffuseColor();
     }
     _vao = std::make_shared<GLVertexArray>();
     _vao->bind();
@@ -111,5 +139,9 @@ namespace fly
     GL_CHECK(glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _uv))));
     GL_CHECK(glVertexAttribPointer(3, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _tangent))));
     GL_CHECK(glVertexAttribPointer(4, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _bitangent))));
+  }
+  AABB* OpenGLAPI::StaticModelRenderable::getAABBWorld() const
+  {
+    return _smr->getAABBWorld().get();
   }
 }
