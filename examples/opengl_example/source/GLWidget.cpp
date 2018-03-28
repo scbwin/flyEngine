@@ -48,7 +48,9 @@ void GLWidget::initializeGL()
   // _rs->setSkybox({ "assets/right.jpg", "assets/left.jpg", "assets/top.jpg", "assets/bottom.jpg", "assets/back.jpg", "assets/front.jpg" });
 #if SPONZA
   auto sponza_model_instance = _importer->loadModel("assets/sponza/sponza.obj");
-  sponza_model_instance->getMeshes().erase(sponza_model_instance->getMeshes().end() - 28);
+  auto meshes = sponza_model_instance->getMeshes();
+  meshes.erase(meshes.end() - 28);
+  sponza_model_instance->setMeshes(meshes);
    _rs->_zNear = 0.1f;
  #if MANY_OBJECTS
 
@@ -77,8 +79,8 @@ void GLWidget::initializeGL()
  #else
        sponza_entity->addComponent(std::make_shared<fly::Transform>(glm::vec3(0.f), glm::vec3(0.01f)));
  #endif
-       for (auto& m : sponza_model->getMaterials()) {
-         m.setSpecularExponent(64.f);
+       for (const auto& m : sponza_model->getMaterials()) {
+         m->setSpecularExponent(64.f);
        }
  #if MANY_OBJECTS
      }

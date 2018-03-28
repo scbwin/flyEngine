@@ -543,14 +543,14 @@ namespace fly
         int material_index_new = static_cast<int>(mesh_desc._materialIndex);
         if (material_index != material_index_new) {
           const auto& mat_desc = model_data->_materialDesc[material_index_new];
-          auto material = r->getStaticModelRenderable()->getLods()[lod]->getMaterials()[material_index_new];
+          const auto& material = r->getStaticModelRenderable()->getLods()[lod]->getMaterials()[material_index_new];
           HR(_fxAlphaMap->SetResource(mat_desc._alphaSrv));
-          if (material.hasWindX() || material.hasWindZ()) {
+          if (material->hasWindX() || material->hasWindZ()) {
             const auto& aabb = mesh_desc._mesh->getAABB();
             HR(_fxWindPivotMinY->SetFloat(aabb->getMin()[1]));
             HR(_fxWindPivotMaxY->SetFloat(aabb->getMax()[1]));
-            HR(_fxWindStrength->SetFloat(material.getWindStrength()));
-            HR(_fxWindFrequency->SetFloat(material.getWindFrequency()));
+            HR(_fxWindStrength->SetFloat(material->getWindStrength()));
+            HR(_fxWindFrequency->SetFloat(material->getWindFrequency()));
           }
           HR(mat_desc._shadowMapPass->Apply(0, _context));
         }
@@ -617,19 +617,19 @@ namespace fly
         if (material_index != material_index_new) {
           const auto& material = r->getStaticModelRenderable()->getLods()[lod]->getMaterials()[material_index_new];
           if (_settings._ssrEnabled) {
-            _context->OMSetDepthStencilState(_dx11States->depthReadWriteStencilWrite(), material.isReflective());
-            _reflectiveSurfacesVisible = _reflectiveSurfacesVisible || material.isReflective();
+            _context->OMSetDepthStencilState(_dx11States->depthReadWriteStencilWrite(), material->isReflective());
+            _reflectiveSurfacesVisible = _reflectiveSurfacesVisible || material->isReflective();
           }
           const auto& mat_desc = model_data->_materialDesc[material_index_new];
           HR(_fxDiffuseTex->SetResource(mat_desc._diffuseSrv));
           HR(_fxAlphaMap->SetResource(mat_desc._alphaSrv));
           HR(_fxNormalMap->SetResource(mat_desc._normalSrv));
           HR(_fxDiffuseColor->SetFloatVector(mat_desc._diffuseColor.ptr()));
-          if (material.hasWindX() || material.hasWindZ()) {
+          if (material->hasWindX() || material->hasWindZ()) {
             HR(_fxWindPivotMinY->SetFloat(mesh_desc._mesh->getAABB()->getMin()[1]));
             HR(_fxWindPivotMaxY->SetFloat(mesh_desc._mesh->getAABB()->getMax()[1]));
-            HR(_fxWindStrength->SetFloat(material.getWindStrength()));
-            HR(_fxWindFrequency->SetFloat(material.getWindFrequency()));
+            HR(_fxWindStrength->SetFloat(material->getWindStrength()));
+            HR(_fxWindFrequency->SetFloat(material->getWindFrequency()));
           }
           HR(mat_desc._pass->Apply(0, _context));
         }
@@ -701,7 +701,7 @@ namespace fly
             matrices.push_back(mvp * m);
           }
           HR(_fxMVPs->SetMatrixTransposeArray(matrices.front().ptr(), 0, static_cast<uint32_t>(matrices.size())));
-          auto& diffuse_color = p_renderable->getStaticModelRenderable()->getLods()[lod]->getMaterials().front().getDiffuseColor();
+          auto& diffuse_color = p_renderable->getStaticModelRenderable()->getLods()[lod]->getMaterials().front()->getDiffuseColor();
           HR(_fxDiffuseColor->SetFloatVector(diffuse_color.ptr()));
           HR(_lightParticlePass->Apply(0, _context));
           _context->DrawIndexedInstanced(model_data->_meshDesc.front()._numIndices, static_cast<unsigned>(matrices.size()), 0, 0, 0);
@@ -1075,31 +1075,31 @@ namespace fly
     for (unsigned int i = 0; i < materials.size(); i++) {
       unsigned mesh_flags = 0;
       unsigned shadow_flags = 0;
-      _materialDesc[i]._diffuseColor = materials[i].getDiffuseColor();
-      auto diffuse_path = materials[i].getDiffusePath();
+      _materialDesc[i]._diffuseColor = materials[i]->getDiffuseColor();
+      auto diffuse_path = materials[i]->getDiffusePath();
       if (diffuse_path != "") {
         std::wstring diff_path(diffuse_path.begin(), diffuse_path.end());
         rs->createTexture(diff_path.c_str(), _materialDesc[i]._diffuseSrv, DirectX::TEX_FILTER_FLAGS::TEX_FILTER_SRGB);
         mesh_flags |= Effects::MeshRenderFlags::Diffuse;
       }
-      auto opacity_path = materials[i].getOpacityPath();
+      auto opacity_path = materials[i]->getOpacityPath();
       if (opacity_path != "") {
         std::wstring op_path(opacity_path.begin(), opacity_path.end());
         rs->createTexture(op_path.c_str(), _materialDesc[i]._alphaSrv, DirectX::TEX_FILTER_FLAGS::TEX_FILTER_DEFAULT);
         mesh_flags |= Effects::MeshRenderFlags::Alpha;
         shadow_flags |= Effects::ShadowMapRenderFlags::ShadowAlpha;
       }
-      auto normal_path = materials[i].getNormalPath();
+      auto normal_path = materials[i]->getNormalPath();
       if (normal_path != "") {
         std::wstring n_path(normal_path.begin(), normal_path.end());
         rs->createTexture(n_path.c_str(), _materialDesc[i]._normalSrv, DirectX::TEX_FILTER_FLAGS::TEX_FILTER_DEFAULT);
         mesh_flags |= Effects::MeshRenderFlags::Normal;
       }
-      if (materials[i].hasWindX()) {
+      if (materials[i]->hasWindX()) {
         mesh_flags |= Effects::MeshRenderFlags::WindX;
         shadow_flags |= Effects::ShadowMapRenderFlags::ShadowWindX;
       }
-      if (materials[i].hasWindZ()) {
+      if (materials[i]->hasWindZ()) {
         mesh_flags |= Effects::MeshRenderFlags::WindZ;
         shadow_flags |= Effects::ShadowMapRenderFlags::ShadowWindZ;
       }

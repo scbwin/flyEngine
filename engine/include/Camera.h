@@ -1,7 +1,7 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include "glm/glm.hpp"
+#include <math/FlyMath.h>
 #include "Component.h"
 
 namespace fly

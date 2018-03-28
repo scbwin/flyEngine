@@ -12,6 +12,7 @@ namespace fly
   public:
     AABB(const Vec3f& bb_min, const Vec3f& bb_max);
     AABB(const AABB& aabb_local, const Mat4f& world_matrix);
+    AABB(const AABB& other);
     const std::array<Vec3f, 8>& getVertices() const;
     const Vec3f& getMin() const;
     const Vec3f& getMax() const;

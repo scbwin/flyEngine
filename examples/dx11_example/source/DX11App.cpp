@@ -252,18 +252,20 @@ void DX11App::initGame()
     importer->loadModel("assets/sphere_lod1.obj"), importer->loadModel("assets/sphere_lod2.obj") };
 #if SPONZA
   auto sponza_model = importer->loadModel("assets/sponza/sponza.obj");
-  sponza_model->getMaterials()[16].setHasWindZ(true, 12.f, 0.005f);
-  sponza_model->getMaterials()[17].setHasWindZ(true, 12.f, 0.005f);
-  sponza_model->getMaterials()[18].setHasWindZ(true, 12.f, 0.005f);
-  sponza_model->getMaterials()[19].setHasWindZ(true, 30.f, 0.005f);
-  sponza_model->getMaterials()[20].setHasWindZ(true, 30.f, 0.005f);
-  sponza_model->getMaterials()[21].setHasWindZ(true, 30.f, 0.005f);
-  fly::Material new_material = sponza_model->getMaterials()[20];
-  new_material.setHasWindZ(false, 0.f, 0.f);
-  new_material.setHasWindX(true, 250.f, 0.005f);
-  sponza_model->getMaterials().push_back(new_material);
+  sponza_model->getMaterials()[16]->setHasWindZ(true, 12.f, 0.005f);
+  sponza_model->getMaterials()[17]->setHasWindZ(true, 12.f, 0.005f);
+  sponza_model->getMaterials()[18]->setHasWindZ(true, 12.f, 0.005f);
+  sponza_model->getMaterials()[19]->setHasWindZ(true, 30.f, 0.005f);
+  sponza_model->getMaterials()[20]->setHasWindZ(true, 30.f, 0.005f);
+  sponza_model->getMaterials()[21]->setHasWindZ(true, 30.f, 0.005f);
+  auto new_material = std::make_shared<fly::Material>(*sponza_model->getMaterials()[20]);
+  new_material->setHasWindZ(false, 0.f, 0.f);
+  new_material->setHasWindX(true, 250.f, 0.005f);
+  auto materials_new = sponza_model->getMaterials();
+  materials_new.push_back(new_material);
+  sponza_model->setMaterials(materials_new);
   sponza_model->getMeshes()[sponza_model->getMeshes().size() - 28]->setMaterialIndex(sponza_model->getMaterials().size() - 1);
-  sponza_model->getMaterials()[10].setIsReflective(true);
+  sponza_model->getMaterials()[10]->setIsReflective(true);
   sponza_model->sortMeshesByMaterial();
   auto sponza_lods = fly::LevelOfDetail().generateLODsWithDetailCulling(sponza_model, 7);
 #if SPONZA_LARGE
@@ -296,9 +298,11 @@ void DX11App::initGame()
     fly::Vec3f new_color({ dist(gen), dist(gen), dist(gen) });
     for (const auto& s : sphere_lods) {
       auto s_new = std::make_shared<fly::Model>(*s); // Copy sphere model
-      for (auto& m : s_new->getMaterials()) {
-        m.setDiffuseColor(new_color);
+      auto materials_copy = s->copyMaterials();
+      for (const auto& m : materials_copy) {
+        m->setDiffuseColor(new_color);
       }
+      s_new->setMaterials(materials_copy);
       new_lods.push_back(s_new);
     }
     modified_sphere_models.push_back(new_lods);
@@ -358,9 +362,9 @@ void DX11App::initGame()
 #if SPONZA_LARGE
   auto plane_entity = _engine->getEntityManager()->createEntity();
   auto plane_model = importer->loadModel("assets/plane.obj");
-  for (auto& m : plane_model->getMaterials()) {
-    m.setNormalPath("assets/ground_normals.png");
-    m.setDiffuseColor(glm::vec3(0.654f, 0.501f, 0.164f));
+  for (const auto& m : plane_model->getMaterials()) {
+    m->setNormalPath("assets/ground_normals.png");
+    m->setDiffuseColor(glm::vec3(0.654f, 0.501f, 0.164f));
   }
   std::vector<std::shared_ptr<fly::Mesh>> plane_meshes_new;
   auto scale = _rs->getSceneMax() - _rs->getSceneMin();

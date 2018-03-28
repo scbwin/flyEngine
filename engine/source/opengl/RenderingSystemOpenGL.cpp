@@ -412,7 +412,7 @@ namespace fly
             GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("VP"), vp.size(), false, &vp[0][0][0]));
             GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("M"), 1, false, &model_matrix[0][0]));
             GL_CHECK(glActiveTexture(GL_TEXTURE1));
-            bindTextureOrLoadAsync(leaf_model->getMaterials()[leaf_mesh->getMaterialIndex()].getDiffusePath());
+            bindTextureOrLoadAsync(leaf_model->getMaterials()[leaf_mesh->getMaterialIndex()]->getDiffusePath());
             GL_CHECK(glUniform1i(shader->uniformLocation("samplerDiffuse"), 1));
             GL_CHECK(glUniform1f(shader->uniformLocation("time"), _time));
             GL_CHECK(glUniform2f(shader->uniformLocation("windDir"), wind_prm._dir.x, wind_prm._dir.y));
@@ -436,7 +436,7 @@ namespace fly
         max = maximum(max, leaf_max);
         Vec3f scale = (max - min) * transform->getScale();
         auto& materials = tree_model_lod0->getMaterials();
-        auto diffuse_color = tree_model_lod0->getMaterials()[tree_mesh_lod0->getMaterialIndex()].getDiffuseColor();
+        auto diffuse_color = tree_model_lod0->getMaterials()[tree_mesh_lod0->getMaterialIndex()]->getDiffuseColor();
         auto model_view = _viewMatrix * model_matrix;
         for (auto& n : t.second->_visibleNodes) {
           if (n->_transforms.size()) {
@@ -456,11 +456,11 @@ namespace fly
               GL_CHECK(glUniform3f(shader->uniformLocation("diffuseColor"), diffuse_color[0], diffuse_color[1], diffuse_color[2]));
               int tex = 0;
               GL_CHECK(glActiveTexture(GL_TEXTURE0 + tex));
-              bindTextureOrLoadAsync(materials[tree_mesh_lod0->getMaterialIndex()].getDiffusePath());
+              bindTextureOrLoadAsync(materials[tree_mesh_lod0->getMaterialIndex()]->getDiffusePath());
               GL_CHECK(glUniform1i(shader->uniformLocation("samplerDiffuse"), tex));
               tex++;
               GL_CHECK(glActiveTexture(GL_TEXTURE0 + tex));
-              bindTextureOrLoadAsync(materials[tree_mesh_lod0->getMaterialIndex()].getNormalPath());
+              bindTextureOrLoadAsync(materials[tree_mesh_lod0->getMaterialIndex()]->getNormalPath());
               GL_CHECK(glUniform1i(shader->uniformLocation("samplerNormal"), tex));
               GL_CHECK(glUniform1f(shader->uniformLocation("time"), _time));
               GL_CHECK(glUniform2f(shader->uniformLocation("windDir"), wind_prm._dir.x, wind_prm._dir.y));
@@ -485,7 +485,7 @@ namespace fly
               GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("MVInverseTranspose"), 1, true, &inverse(glm::mat4(model_view))[0][0]));
               GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("P"), 1, false, &_projectionMatrix[0][0]));
               GL_CHECK(glActiveTexture(GL_TEXTURE0));
-              bindTextureOrLoadAsync(leaf_model->getMaterials()[leaf_mesh->getMaterialIndex()].getDiffusePath());
+              bindTextureOrLoadAsync(leaf_model->getMaterials()[leaf_mesh->getMaterialIndex()]->getDiffusePath());
               GL_CHECK(glUniform1i(shader->uniformLocation("samplerDiffuse"), 0));
               GL_CHECK(glUniform1f(shader->uniformLocation("time"), _time));
               GL_CHECK(glUniform2f(shader->uniformLocation("windDir"), wind_prm._dir.x, wind_prm._dir.y));
@@ -1084,34 +1084,34 @@ namespace fly
         if (material_index != material_index_new) {
           int tex = 0;
           auto material = materials[material_index_new];
-          auto& diffuse_path = material.getDiffusePath();
+          auto& diffuse_path = material->getDiffusePath();
           if (diffuse_path != "") {
             GL_CHECK(glActiveTexture(GL_TEXTURE0 + tex));
             bindTextureOrLoadAsync(diffuse_path);
             GL_CHECK(glUniform1i(shader->uniformLocation("samplerDiffuse"), tex));
             tex++;
           }
-          auto& opacity_path = material.getOpacityPath();
+          auto& opacity_path = material->getOpacityPath();
           if (opacity_path != "") {
             GL_CHECK(glActiveTexture(GL_TEXTURE0 + tex));
             bindTextureOrLoadAsync(opacity_path);
             GL_CHECK(glUniform1i(shader->uniformLocation("samplerOpacity"), tex));
             tex++;
           }
-          auto& normal_path = material.getNormalPath();
+          auto& normal_path = material->getNormalPath();
           if (normal_path != "") {
             GL_CHECK(glActiveTexture(GL_TEXTURE0 + tex));
             bindTextureOrLoadAsync(normal_path);
             GL_CHECK(glUniform1i(shader->uniformLocation("samplerNormal"), tex));
             tex++;
           }
-          GL_CHECK(glUniform1f(shader->uniformLocation("specularExponent"), material.getSpecularExponent()));
+          GL_CHECK(glUniform1f(shader->uniformLocation("specularExponent"), material->getSpecularExponent()));
           GL_CHECK(glUniform1i(shader->uniformLocation("diffuseEnabled"), diffuse_path != "" && _textures[diffuse_path] != nullptr));
           GL_CHECK(glUniform1i(shader->uniformLocation("opacityEnabled"), opacity_path != "" && _textures[opacity_path] != nullptr));
           GL_CHECK(glUniform1i(shader->uniformLocation("normalEnabled"), _normalMappingEnabled && normal_path != "" && _textures[normal_path] != nullptr));
           GL_CHECK(glUniform1i(shader->uniformLocation("parallaxEnabled"), false));
 
-          auto& diffuse_color = material.getDiffuseColor();
+          auto& diffuse_color = material->getDiffuseColor();
           glm::vec3 light_color(0.f);
           GL_CHECK(glUniform3f(shader->uniformLocation("diffuseColor"), diffuse_color[0], diffuse_color[1], diffuse_color[2]));
           GL_CHECK(glUniform3f(shader->uniformLocation("lightColor"), light_color.x, light_color.y, light_color.z));
@@ -1933,7 +1933,7 @@ namespace fly
        //  }
         unsigned int material_index_new = mesh->getMaterialIndex();
         if (material_index != material_index_new) {
-          auto& opacity_path = materials[material_index_new].getOpacityPath();
+          auto& opacity_path = materials[material_index_new]->getOpacityPath();
           if (opacity_path != "") {
             GL_CHECK(glActiveTexture(GL_TEXTURE0));
             bindTextureOrLoadAsync(opacity_path);
@@ -1978,7 +1978,7 @@ namespace fly
          //   }
           auto material_index_new = mesh->getMaterialIndex();
           if (material_index != material_index_new) {
-            auto& opacity_path = materials[material_index_new].getOpacityPath();
+            auto& opacity_path = materials[material_index_new]->getOpacityPath();
             if (opacity_path != "") {
               GL_CHECK(glActiveTexture(GL_TEXTURE0));
               bindTextureOrLoadAsync(opacity_path);
@@ -2026,7 +2026,7 @@ namespace fly
            //  }
           unsigned int material_index_new = mesh->getMaterialIndex();
           if (material_index != material_index_new) {
-            auto& opacity_path = materials[material_index_new].getOpacityPath();
+            auto& opacity_path = materials[material_index_new]->getOpacityPath();
             if (opacity_path != "") {
               GL_CHECK(glActiveTexture(GL_TEXTURE0));
               bindTextureOrLoadAsync(opacity_path);
@@ -2610,7 +2610,7 @@ namespace fly
         GL_CHECK(glViewport(x * _impostorFb[1]->width() / 2, y * _impostorFb[1]->height() / 2, _impostorFb[1]->width() / 2, _impostorFb[1]->height() / 2));
         for (auto& mesh : tree_model->getMeshes()) {
           GL_CHECK(glActiveTexture(GL_TEXTURE0));
-          rs->bindTextureOrLoadAsync(tree_model->getMaterials()[mesh->getMaterialIndex()].getDiffusePath());
+          rs->bindTextureOrLoadAsync(tree_model->getMaterials()[mesh->getMaterialIndex()]->getDiffusePath());
           GL_CHECK(glUniform1i(shader->uniformLocation("diffuseSampler"), 0));
           rs->setupMeshBindings(mesh);
           GL_CHECK(glDrawElements(GL_TRIANGLES, mesh->getIndices().size(), GL_UNSIGNED_INT, nullptr));
@@ -2623,7 +2623,7 @@ namespace fly
         GL_CHECK(glDisable(GL_CULL_FACE));
         for (auto& mesh : leaf_model->getMeshes()) {
           GL_CHECK(glActiveTexture(GL_TEXTURE0));
-          rs->bindTextureOrLoadAsync(leaf_model->getMaterials()[mesh->getMaterialIndex()].getDiffusePath());
+          rs->bindTextureOrLoadAsync(leaf_model->getMaterials()[mesh->getMaterialIndex()]->getDiffusePath());
           GL_CHECK(glUniform1i(shader->uniformLocation("diffuseSampler"), 0));
           rs->setupMeshBindings(mesh);
           GL_CHECK(glDrawElements(GL_TRIANGLES, mesh->getIndices().size(), GL_UNSIGNED_INT, nullptr));

@@ -16,7 +16,7 @@ namespace fly
     Assimp::Importer importer;
     auto scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_CalcTangentSpace | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_FlipUVs);
     std::vector<std::shared_ptr<Mesh>> meshes(scene->mNumMeshes);
-    std::vector<Material> materials(scene->mNumMaterials);
+    std::vector<std::shared_ptr<Material>> materials(scene->mNumMaterials);
     for (unsigned int i = 0; i < scene->mNumMeshes; i++) {
       meshes[i] = processMesh(scene->mMeshes[i]);
     }
@@ -47,7 +47,7 @@ namespace fly
     }
     return std::make_shared<Mesh>(vertices, indices, mesh->mMaterialIndex);
   }
-  Material AssimpImporter::processMaterial(aiMaterial * material, const std::string & path)
+  std::shared_ptr<Material> AssimpImporter::processMaterial(aiMaterial * material, const std::string & path)
   {
 #ifdef _WINDOWS
     char dir[_MAX_DIR];
@@ -77,6 +77,6 @@ namespace fly
     float s;
     material->Get(AI_MATKEY_SHININESS, s);
 
-    return Material(Vec3f({ diff.r, diff.g, diff.b }), s, diffuse_path, normal_path, opacity_path);
+    return std::make_shared<Material>(Vec3f({ diff.r, diff.g, diff.b }), s, diffuse_path, normal_path, opacity_path);
   }
 }

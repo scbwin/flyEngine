@@ -14,16 +14,19 @@ namespace fly
   class Model : public Component
   {
   public:
-    Model(const std::vector<std::shared_ptr<Mesh>>& meshes, const std::vector<Material>& materials);
+    Model(const std::vector<std::shared_ptr<Mesh>>& meshes, const std::vector<std::shared_ptr<Material>>& materials);
     Model(const Model& other);
     const std::vector<std::shared_ptr<Mesh>>& getMeshes() const;
-    std::vector<Material>& getMaterials();
+    const std::vector<std::shared_ptr<Material>>& getMaterials() const;
+    std::vector<std::shared_ptr<Material>> copyMaterials() const;
+    void setMeshes(const std::vector<std::shared_ptr<Mesh>>& meshes);
+    void setMaterials(const std::vector<std::shared_ptr<Material>>& materials);
     void sortMeshesByMaterial();
     AABB* getAABB() const;
 
   private:
     std::vector<std::shared_ptr<Mesh>> _meshes;
-    std::vector<Material> _materials;
+    std::vector<std::shared_ptr<Material>> _materials;
     std::unique_ptr<AABB> _aabb;
   };
 }

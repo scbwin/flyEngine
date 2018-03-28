@@ -28,6 +28,13 @@ namespace fly
     }
     _center = (_bbMin + _bbMax) * 0.5f;
   }
+  AABB::AABB(const AABB & other) : 
+    _vertices(other._vertices), 
+    _bbMin(other._bbMin), 
+    _bbMax(other._bbMax), 
+    _center(other._center)
+  {
+  }
   const std::array<Vec3f, 8>& AABB::getVertices() const
   {
     return _vertices;

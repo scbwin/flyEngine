@@ -20,7 +20,7 @@ namespace fly
 
   private:
     std::shared_ptr<Mesh> processMesh(aiMesh* mesh);
-    Material processMaterial(aiMaterial* material, const std::string& path);
+    std::shared_ptr<Material> processMaterial(aiMaterial* material, const std::string& path);
   };
 }
 

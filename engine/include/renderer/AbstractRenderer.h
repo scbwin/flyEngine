@@ -56,8 +56,8 @@ namespace fly
             }
             model_data->_materialDesc.resize(lod->getMaterials().size());
             for (unsigned i = 0; i < lod->getMaterials().size(); i++) {
-              model_data->_materialDesc[i]._diffuseTexture = createTexture(lod->getMaterials()[i].getDiffusePath());
-              model_data->_materialDesc[i]._diffuseColor = lod->getMaterials()[i].getDiffuseColor();
+              model_data->_materialDesc[i]._diffuseTexture = createTexture(lod->getMaterials()[i]->getDiffusePath());
+              model_data->_materialDesc[i]._diffuseColor = lod->getMaterials()[i]->getDiffuseColor();
             }
             model_data_lods.push_back(model_data);
             _modelDataCache[lod] = model_data;
