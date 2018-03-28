@@ -5,7 +5,7 @@ flyEngine is an Open Source 3D engine based on the OpenGL and Direct3D graphics 
 ![](https://github.com/fleissna/flyEngine/blob/master/screenshots/MyDX11Window%2014.03.2018%2017_42_48.png)
 
 ## Installation
-You have to download/clone and build the dependencies by yourself. Use CMake to resolve them and to generate project files for Visual Studio. flyEngine is built as a static library, make sure to link against it in your application. Two examples are included that demonstrate how to integrate the library, one for OpenGL and another one for DirectX. You can switch between Crytek's Sponza scene and a terrain scene through the SPONZA preprocessor define.
+You have to download/clone and build the dependencies by yourself. Use CMake to resolve them and to generate project files for Visual Studio. flyEngine is built as a static library, make sure to <s>link against it in your application</s> include it with CMake's ```find_package```. Two examples are included that demonstrate how to integrate the library, one for OpenGL and another one for DirectX. You can switch between Crytek's Sponza scene and a terrain scene through the SPONZA preprocessor define.
 
 ### Software
 * Visual Studio 2017 Community Edition 64 Bit (2015 should work as well)
@@ -28,12 +28,12 @@ DXUT, FX11, DirectXTex, and DirectXTK repositories contain solution files for Vi
 ### Contributions
 Feel free to contribute if you have any ideas to enhance the engine.
 Possible improvements are:
-* Rendering API abstraction layer: Write an abstract renderer that encapsulates the logic of the rendering loop and resource allocation. Specific implementations for DirectX/OpenGL/Vulkan should be realized by C++ templates and policy-based design for maximum performance.
+* <s>Rendering API abstraction layer: Write an abstract renderer that encapsulates the logic of the rendering loop and resource allocation. Specific implementations for DirectX/OpenGL/Vulkan should be realized by C++ templates and policy-based design for maximum performance.</s>
 * Implement different rendering paths that can be switched at runtime: Forward Renderer, Deferred Renderer, Forward+ Renderer
 * Multithreading support
 * Physics engine integration (e.g. [Bullet Physics Engine](https://github.com/bulletphysics/bullet3))
 * Character animations
-* Spatial data structures: The engine should be capable of rendering large outdoor environments for open world games. Possible candidates are Octrees/Quadtrees for static objects and regular grids for dynamic objects. Implement all of them and see what fits best for the application.
+* Spatial data structures: The engine should be capable of rendering large outdoor environments for open world games. Possible candidates are Octrees/<s>Quadtrees</s> for static objects and regular grids for dynamic objects. Implement all of them and see what fits best for the application.
 * Tessellation for arbitrary objects, not only terrain
 * Level of detail system
 #### Guidelines
