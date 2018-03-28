@@ -68,62 +68,57 @@ namespace fly
     GL_CHECK(glClearColor(color[0], color[1], color[2], color[3]));
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
   }
-  void OpenGLAPI::renderModel(const StaticModelRenderable& smr, const Mat4f& mvp, unsigned lod) const
+  void OpenGLAPI::bindGeometryData(const GeometryData & data)
   {
-    const auto& model = smr._modelLods[lod];
-    model->_vao->bind();
-    for (const auto& mesh_desc : smr._modelLods[lod]->_meshDesc) {
-      const auto& mat_desc = model->_materialDesc[mesh_desc._materialIndex];
-      auto shader = mat_desc._diffuseTexture ? _simpleShaderTextured : _simpleShaderColored;
-      shader->bind();
-      GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("MVP"), 1, false, mvp.ptr()));
-      const auto& diffuse_tex = mat_desc._diffuseTexture;
-      if (diffuse_tex) {
-        GL_CHECK(glActiveTexture(GL_TEXTURE0));
-        diffuse_tex->bind();
-        GL_CHECK(glUniform1i(shader->uniformLocation("ts"), 0));
-      }
-      else {
-        GL_CHECK(glUniform3f(shader->uniformLocation("color"), mat_desc._diffuseColor[0], mat_desc._diffuseColor[1], mat_desc._diffuseColor[2]));
-      }
-
-      GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_desc._numIndices, GL_UNSIGNED_INT, mesh_desc._indexOffset, mesh_desc._baseVertex));
+    data._vao->bind();
+  }
+  void OpenGLAPI::setupMaterial(const std::shared_ptr<Texture>& diffuse_tex, const Vec3f & diffuse_color)
+  {
+    _activeShader = diffuse_tex ? _simpleShaderTextured : _simpleShaderColored;
+    _activeShader->bind();
+    if (diffuse_tex) {
+      GL_CHECK(glActiveTexture(GL_TEXTURE0));
+      diffuse_tex->bind();
+      GL_CHECK(glUniform1i(_activeShader->uniformLocation("ts"), 0));
+    }
+    else {
+      GL_CHECK(glUniform3f(_activeShader->uniformLocation("color"), diffuse_color[0], diffuse_color[1], diffuse_color[2]));
     }
   }
-  std::shared_ptr<GLTexture> OpenGLAPI::createTexture(const std::string & path)
+  void OpenGLAPI::renderMesh(const MeshDesc& mesh_desc, const Mat4f& mvp) const
+  {
+    GL_CHECK(glUniformMatrix4fv(_activeShader->uniformLocation("MVP"), 1, false, mvp.ptr()));
+    GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_desc._numIndices, GL_UNSIGNED_INT, mesh_desc._indexOffset, mesh_desc._baseVertex));
+  }
+  void OpenGLAPI::renderMeshBatch(const BatchDesc & batch_desc, const Mat4f & mvp) const
+  {
+    GL_CHECK(glUniformMatrix4fv(_activeShader->uniformLocation("MVP"), 1, false, mvp.ptr()));
+    GL_CHECK(glMultiDrawElementsBaseVertex(GL_TRIANGLES, const_cast<GLsizei*>(batch_desc._count.data()), GL_UNSIGNED_INT,
+      const_cast<GLvoid**>(batch_desc._indices.data()), static_cast<GLsizei>(batch_desc._count.size()), const_cast<GLint*>(batch_desc._baseVertex.data())));
+  }
+  std::shared_ptr<GLTexture> OpenGLAPI::createTexture(const std::string & path) const
   {
     if (path == "") {
       return nullptr;
     }
-    auto it = _textureCache.find(path);
-    if (it != _textureCache.end()) {
-      return it->second;
-    }
     auto tex = SOIL_load_OGL_texture(path.c_str(), SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_TEXTURE_REPEATS | SOIL_FLAG_COMPRESS_TO_DXT);
-    auto ret = std::make_shared<GLTexture>(tex, GL_TEXTURE_2D);
-    _textureCache[path] = ret;
-    return ret;
+    if (tex == 0) {
+      return nullptr;
+    }
+    return std::make_shared<GLTexture>(tex, GL_TEXTURE_2D);
   }
-  OpenGLAPI::ModelData::ModelData(const std::shared_ptr<Model>& model, OpenGLAPI* api)
+  OpenGLAPI::GeometryData::GeometryData(const std::vector<std::shared_ptr<Mesh>>& meshes, OpenGLAPI * api, std::vector<OpenGLAPI::MeshDesc>& mesh_descs)
   {
-    _meshDesc.resize(model->getMeshes().size());
+    mesh_descs.resize(meshes.size());
     std::vector<Vertex> vertices;
     std::vector<unsigned> indices;
-    for (unsigned i = 0; i < _meshDesc.size(); i++) {
-      auto m = model->getMeshes()[i];
-      _meshDesc[i]._baseVertex = static_cast<unsigned>( vertices.size());
-      _meshDesc[i]._indexOffset = reinterpret_cast<void*>(indices.size() * sizeof(indices.front()));
-      _meshDesc[i]._materialIndex = m->getMaterialIndex();
-      _meshDesc[i]._mesh = m.get();
-      _meshDesc[i]._numIndices = static_cast<unsigned>(m->getIndices().size());
+    for (unsigned i = 0; i < meshes.size(); i++) {
+      const auto& m = meshes[i];
+      mesh_descs[i]._baseVertex = static_cast<GLint>(vertices.size());
+      mesh_descs[i]._indexOffset = reinterpret_cast<GLvoid*>(indices.size() * sizeof(indices.front()));
+      mesh_descs[i]._numIndices = static_cast<GLsizei>(m->getIndices().size());
       vertices.insert(vertices.end(), m->getVertices().begin(), m->getVertices().end());
       indices.insert(indices.end(), m->getIndices().begin(), m->getIndices().end());
-    }
-    _materialDesc.resize(model->getMaterials().size());
-    for (unsigned i = 0; i < model->getMaterials().size(); i++) {
-      auto m = model->getMaterials()[i];
-      _materialDesc[i]._diffuseTexture = api->createTexture(m.getDiffusePath());
-      _materialDesc[i]._diffuseColor = m.getDiffuseColor();
     }
     _vao = std::make_shared<GLVertexArray>();
     _vao->bind();
@@ -140,8 +135,10 @@ namespace fly
     GL_CHECK(glVertexAttribPointer(3, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _tangent))));
     GL_CHECK(glVertexAttribPointer(4, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _bitangent))));
   }
-  AABB* OpenGLAPI::StaticModelRenderable::getAABBWorld() const
+  void OpenGLAPI::BatchDesc::addMeshDesc(const MeshDesc & mesh_desc)
   {
-    return _smr->getAABBWorld().get();
+    _count.push_back(mesh_desc._numIndices);
+    _indices.push_back(mesh_desc._indexOffset);
+    _baseVertex.push_back(mesh_desc._baseVertex);
   }
 }

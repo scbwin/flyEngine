@@ -30,7 +30,7 @@ namespace fly
     std::shared_ptr<Camera> _camera;
     bool _pressed = false;
     float _speed;
-    float _mouseSpeed;
+    float _mouseSpeed = 0.01f;
     Vec3f _mousePos = Vec3f(0.f);
   };
 }

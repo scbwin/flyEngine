@@ -26,7 +26,7 @@ namespace fly
     GL_CHECK(_id = glCreateProgram());
   }
 
-  void GLShaderProgram::addShaderFromFile(std::string fname, ShaderType type, const std::map<std::string, std::regex>& replacements)
+  void GLShaderProgram::addShaderFromFile(const std::string& fname, ShaderType type, const std::map<std::string, std::regex>& replacements)
   {
     _fnames.push_back(fname);
 
@@ -62,8 +62,6 @@ namespace fly
       shader_code_str = std::regex_replace(shader_code_str, r.second, r.first.c_str());
     }
 
-    //shader_code_str = std::regex_replace(shader_code_str, std::regex("LOCALSIZE"), "8");
-
     const char* code_str_ptr = shader_code_str.c_str();
     GL_CHECK(glShaderSource(shader_id, 1, &code_str_ptr, NULL));
     GL_CHECK(glCompileShader(shader_id));
@@ -73,16 +71,13 @@ namespace fly
     GL_CHECK(glGetShaderiv(shader_id, GL_COMPILE_STATUS, &compile_status));
     GL_CHECK(glGetShaderiv(shader_id, GL_INFO_LOG_LENGTH, &log_length));
     if (compile_status == GL_FALSE) {
-      std::cout << log_length << std::endl;
-      std::vector<char> message(log_length + 1);
+      std::string message(log_length + 1, ' ');
       GL_CHECK(glGetShaderInfoLog(shader_id, log_length, NULL, &message[0]));
       std::cout << "Error in " << fname << std::endl;
       std::cout << shader_code_str << std::endl;
-      printf("%s\n", &message[0]);
-   //   printf("Error in %s: %s\n", fname.c_str(), &message[0]);
+      std::cout << message << std::endl;
       return;
     }
-
     GL_CHECK(glAttachShader(_id, shader_id));
   }
 
@@ -97,18 +92,16 @@ namespace fly
       int maxLength;
       int infologLength;
       glGetProgramiv(_id, GL_INFO_LOG_LENGTH, &maxLength);
-      char* infoLog = new char[maxLength];
-      glGetProgramInfoLog(_id, maxLength, &infologLength, infoLog);
+      std::string message(maxLength + 1, ' ');
+      glGetProgramInfoLog(_id, maxLength, &infologLength, &message[0]);
       if (infologLength > 0) {
-        std::cerr << "failed to link _program: " << infoLog << std::endl;
+        std::cout << "failed to link _program: " << message << std::endl;
         for (auto& f : _fnames) {
-          std::cerr << f << std::endl;
+          std::cout << f << std::endl;
         }
       }
 
-      std::cerr << "failed to link _program but error log is empty" << std::endl;
-
-      delete[] infoLog;
+      std::cout << "failed to link _program but error log is empty" << std::endl;
     }
   }
   void GLShaderProgram::bind()

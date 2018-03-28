@@ -32,48 +32,41 @@ namespace fly
     void clearRendertargetColor(const Vec4f& color) const;
     static inline constexpr bool isDirectX() { return false; }
     template<bool enable>
-    inline void setDepthEnabled() const
+    inline void setDepthTestEnabled() const
     {
       GL_CHECK(enable ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST));
     }
+    using Texture = GLTexture;
     struct MeshDesc
     {
-      void* _indexOffset;
-      unsigned _baseVertex;
-      unsigned _numIndices;
-      unsigned _materialIndex;
-      Mesh* _mesh;
+      GLsizei _numIndices;
+      GLvoid* _indexOffset;
+      GLint _baseVertex;
     };
-    struct MaterialDesc
+    struct BatchDesc
     {
-      std::shared_ptr<GLTexture> _diffuseTexture;
-      std::shared_ptr<GLTexture> _normalTexture;
-      std::shared_ptr<GLTexture> _alphaTexture;
-      Vec3f _diffuseColor;
+      std::vector<GLsizei> _count; // Primitive counts
+      std::vector<GLvoid*> _indices; // Pointers into the index buffer
+      std::vector<GLint> _baseVertex; // Offset that is added to the indices
+      void addMeshDesc(const MeshDesc& mesh_desc);
     };
-    struct ModelData
+    struct GeometryData
     {
-      ModelData(const std::shared_ptr<Model>& model, OpenGLAPI* api);
+      GeometryData(const std::vector<std::shared_ptr<Mesh>>& meshes, OpenGLAPI* api, std::vector<MeshDesc>& mesh_descs);
       std::shared_ptr<GLVertexArray> _vao;
       std::shared_ptr<GLBuffer> _vbo;
       std::shared_ptr<GLBuffer> _ibo;
-      std::vector<MeshDesc> _meshDesc; // For each mesh
-      std::vector<MaterialDesc> _materialDesc; // For each material
     };
-    // OpenGL wrapper for StaticModelRenderable
-    struct StaticModelRenderable
-    {
-      std::vector<std::shared_ptr<ModelData>> _modelLods;
-      std::shared_ptr<fly::StaticModelRenderable> _smr;
-      AABB* getAABBWorld() const;
-    };
-    void renderModel(const StaticModelRenderable& smr, const Mat4f& mvp, unsigned lod) const;
+    void bindGeometryData(const GeometryData& data);
+    void setupMaterial(const std::shared_ptr<Texture>& diffuse_tex, const Vec3f& diffuse_color);
+    void renderMesh(const MeshDesc& mesh_desc, const Mat4f& mvp) const;
+    void renderMeshBatch(const BatchDesc& batch_desc, const Mat4f& mvp) const;
+    std::shared_ptr<GLTexture> createTexture(const std::string& path) const;
   private:
     std::shared_ptr<GLShaderProgram> _simpleFullscreenQuadShader;
     std::shared_ptr<GLShaderProgram> _simpleShaderTextured;
     std::shared_ptr<GLShaderProgram> _simpleShaderColored;
-    std::map<std::string, std::shared_ptr<GLTexture>> _textureCache;
-    std::shared_ptr<GLTexture> createTexture(const std::string& path);
+    std::shared_ptr<GLShaderProgram> _activeShader;
   };
 }
 

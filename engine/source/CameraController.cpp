@@ -39,7 +39,7 @@ namespace fly
   {
     if (_pressed) {
       auto delta = mouse_pos - _mousePos;
-      _camera->_eulerAngles -= glm::vec3(delta) * 0.01f;
+      _camera->_eulerAngles -= glm::vec3(delta) * _mouseSpeed;
     }
     _mousePos = mouse_pos;
   }

@@ -31,7 +31,7 @@ namespace fly
       VERTEX, FRAGMENT, COMPUTE, GEOMETRY
     };
     void create();
-    void addShaderFromFile(std::string fname, ShaderType type, const std::map<std::string, std::regex>& replacements = std::map<std::string, std::regex>());
+    void addShaderFromFile(const std::string& fname, ShaderType type, const std::map<std::string, std::regex>& replacements = std::map<std::string, std::regex>());
     void link();
     void bind();
     GLuint id();
