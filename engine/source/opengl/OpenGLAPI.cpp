@@ -45,7 +45,7 @@ namespace fly
   }
   void OpenGLAPI::setupMaterial(const MaterialDesc & desc, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix)
   {
-    _activeShader = desc.getShader();
+    _activeShader = desc.getShader().get();
     _activeShader->bind();
     GL_CHECK(glUniformMatrix4fv(_activeShader->uniformLocation("P"), 1, false, projection_matrix.ptr()));
     GL_CHECK(glUniform3f(_activeShader->uniformLocation("lpos_cs"), dl_pos_view_space[0], dl_pos_view_space[1], dl_pos_view_space[2]));
@@ -100,8 +100,11 @@ namespace fly
     return ret;
   }
   OpenGLAPI::MeshGeometryStorage::MeshGeometryStorage() : 
-    _vboAppend(std::make_shared<GLAppendBuffer>(GL_ARRAY_BUFFER)),
-    _iboAppend(std::make_shared<GLAppendBuffer>(GL_ELEMENT_ARRAY_BUFFER))
+    _vboAppend(std::make_unique<GLAppendBuffer>(GL_ARRAY_BUFFER)),
+    _iboAppend(std::make_unique<GLAppendBuffer>(GL_ELEMENT_ARRAY_BUFFER))
+  {
+  }
+  OpenGLAPI::MeshGeometryStorage::~MeshGeometryStorage()
   {
   }
   void OpenGLAPI::MeshGeometryStorage::bind() const
@@ -122,7 +125,7 @@ namespace fly
     _baseVertex += mesh->getVertices().size();
     _vboAppend->appendData(mesh->getVertices().data(), mesh->getVertices().size());
     _iboAppend->appendData(mesh->getIndices().data(), mesh->getIndices().size());
-    _vao = std::make_shared<GLVertexArray>();
+    _vao = std::make_unique<GLVertexArray>();
     _vao->bind();
     _vboAppend->getBuffer()->bind();
     _iboAppend->getBuffer()->bind();
@@ -145,34 +148,34 @@ namespace fly
     std::string vertex_file = "assets/opengl/vs_simple.glsl";
     std::string fragment_file = "assets/opengl/fs_simple";
     if (_diffuseMap && _alphaMap && _normalMap) {
-      _materialSetup = std::make_shared<SetupDiffuseAlphaNormalMap>();
+      _materialSetup = std::make_unique<SetupDiffuseAlphaNormalMap>();
       fragment_file += "_textured_alpha_normal";
     }
     else if (_diffuseMap && _normalMap) {
-      _materialSetup = std::make_shared<SetupDiffuseNormalMap>();
+      _materialSetup = std::make_unique<SetupDiffuseNormalMap>();
       fragment_file += "_textured_normal";
     }
     else if (_diffuseMap && _alphaMap) {
-      _materialSetup = std::make_shared<SetupDiffuseAlphaMap>();
+      _materialSetup = std::make_unique<SetupDiffuseAlphaMap>();
       fragment_file += "_textured_alpha";
     }
     else if (_diffuseMap) {
-      _materialSetup = std::make_shared<SetupDiffuseMap>();
+      _materialSetup = std::make_unique<SetupDiffuseMap>();
       fragment_file += "_textured";
     }
     else if (_alphaMap) {
-      _materialSetup = std::make_shared<SetupAlphaMap>();
+      _materialSetup = std::make_unique<SetupAlphaMap>();
       std::string err = "Unsupported material type.";
       throw std::exception(err.c_str());
     }
     else {
-      _materialSetup = std::make_shared<SetupDiffuseColor>();
+      _materialSetup = std::make_unique<SetupDiffuseColor>();
       fragment_file += "_color";
     }
     fragment_file += ".glsl";
     _shader = api->createShader(vertex_file, fragment_file);
   }
-  const std::shared_ptr<GLMaterialSetup>& OpenGLAPI::MaterialDesc::getMaterialSetup() const
+  const std::unique_ptr<GLMaterialSetup>& OpenGLAPI::MaterialDesc::getMaterialSetup() const
   {
     return _materialSetup;
   }

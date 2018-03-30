@@ -15,14 +15,11 @@ namespace fly
   class GLVertexArray;
   class GLShaderProgram;
   class Mesh;
-  class Model;
-  class StaticModelRenderable;
   class GLTexture;
   class AABB;
   class GLAppendBuffer;
   class GLMaterialSetup;
   class Material;
-  class DirectionalLight;
 
   class OpenGLAPI
   {
@@ -38,7 +35,6 @@ namespace fly
     {
       GL_CHECK(enable ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST));
     }
-    using Texture = GLTexture;
     class MeshGeometryStorage
     {
     public:
@@ -49,12 +45,13 @@ namespace fly
         GLint _baseVertex;
       };
       MeshGeometryStorage();
+      ~MeshGeometryStorage();
       void bind() const;
       MeshData addMesh(const std::shared_ptr<Mesh>& mesh);
     private:
-      std::shared_ptr<GLVertexArray> _vao;
-      std::shared_ptr<GLAppendBuffer> _vboAppend;
-      std::shared_ptr<GLAppendBuffer> _iboAppend;
+      std::unique_ptr<GLVertexArray> _vao;
+      std::unique_ptr<GLAppendBuffer> _vboAppend;
+      std::unique_ptr<GLAppendBuffer> _iboAppend;
       std::map<std::shared_ptr<Mesh>, MeshData> _meshDataCache;
       size_t _indices = 0;
       size_t _baseVertex = 0;
@@ -63,7 +60,7 @@ namespace fly
     {
     public:
       MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI* api);
-      const std::shared_ptr<GLMaterialSetup>& getMaterialSetup() const;
+      const std::unique_ptr<GLMaterialSetup>& getMaterialSetup() const;
       const std::shared_ptr<GLShaderProgram>& getShader() const;
       const std::shared_ptr<Material>& getMaterial() const;
       const std::shared_ptr<GLTexture>& getDiffuseMap() const;
@@ -71,7 +68,7 @@ namespace fly
       const std::shared_ptr<GLTexture>& getAlphaMap() const;
     private:
       std::shared_ptr<Material> _material;
-      std::shared_ptr<GLMaterialSetup> _materialSetup;
+      std::unique_ptr<GLMaterialSetup> _materialSetup;
       std::shared_ptr<GLShaderProgram> _shader;
       std::shared_ptr<GLTexture> _diffuseMap;
       std::shared_ptr<GLTexture> _normalMap;
@@ -83,7 +80,7 @@ namespace fly
     std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material);
     std::shared_ptr<GLShaderProgram> createShader(const std::string& vertex_file, const std::string& fragment_file);
   private:
-    std::shared_ptr<GLShaderProgram> _activeShader;
+    GLShaderProgram* _activeShader;
     std::map<std::string, std::shared_ptr<GLTexture>> _textureCache;
     std::map<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>> _matDescCache;
     std::map<std::string, std::shared_ptr<GLShaderProgram>> _shaderCache;

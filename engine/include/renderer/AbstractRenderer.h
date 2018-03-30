@@ -101,7 +101,6 @@ namespace fly
     Vec3f _sceneMin = Vec3f(std::numeric_limits<float>::max());
     Vec3f _sceneMax = Vec3f(std::numeric_limits<float>::lowest());
 
-
     // Wrapper for StaticMeshRenderable
     struct StaticMeshRenderable
     {
@@ -112,7 +111,6 @@ namespace fly
     };
     typename API::MeshGeometryStorage _meshGeometryStorage;
     std::map<Entity*, std::shared_ptr<StaticMeshRenderable>> _staticMeshRenderables;
-    std::map<std::string, std::shared_ptr<typename API::Texture>> _textureCache;
     std::unique_ptr<Quadtree<StaticMeshRenderable>> _quadtree;
 
     void buildQuadtree()
@@ -121,18 +119,6 @@ namespace fly
       for (const auto& e : _staticMeshRenderables) {
         _quadtree->insert(e.second.get());
       }
-    }
-    std::shared_ptr<typename API::Texture> createTexture(const std::string& path)
-    {
-      auto it = _textureCache.find(path);
-      if (it != _textureCache.end()) {
-        return it->second;
-      }
-      auto tex = _api.createTexture(path);
-      if (tex) {
-        _textureCache[path] = tex;
-      }
-      return tex;
     }
   };
 }
