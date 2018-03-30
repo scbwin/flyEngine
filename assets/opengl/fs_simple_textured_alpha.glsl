@@ -17,7 +17,7 @@ void main()
 	if (texture(ts_alpha, uv_out).r < 0.5) {
 		discard;
 	}
-	vec3 l = normalize(pos_view - lpos_cs);
+	vec3 l = normalize(lpos_cs - pos_view);
 	float diffuse = clamp(dot(l, normal_view), 0.f, 1.f);
 	fragmentColor = texture(ts_diff, uv_out).rgb * diffuse;
 }

@@ -14,7 +14,7 @@ uniform vec3 lpos_cs; // light position view space
 
 void main()
 {	
-	vec3 l = normalize(pos_view - lpos_cs);
+	vec3 l = normalize(lpos_cs - pos_view);
 	mat3 TBN = mat3(tangent_view, bitangent_view, normal_view);
 	vec3 normal_view_new = normalize(TBN * (texture(ts_norm, uv_out).xyz * 2.f - 1.f));
 	float diffuse = clamp(dot(l, normal_view_new), 0.f, 1.f);

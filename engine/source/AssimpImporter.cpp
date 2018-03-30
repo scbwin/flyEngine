@@ -35,7 +35,7 @@ namespace fly
         vertices[i]._uv = FLY_VEC2(mesh->mTextureCoords[0][i]);
         vertices[i]._tangent = FLY_VEC3(mesh->mTangents[i]);
         vertices[i]._bitangent = FLY_VEC3(mesh->mBitangents[i]);
-      //  vertices[i]._bitangent *= -1.f;
+        vertices[i]._bitangent *= -1.f;
       }
     }
 

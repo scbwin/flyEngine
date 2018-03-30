@@ -13,7 +13,7 @@ uniform vec3 lpos_cs; // light position view space
 
 void main()
 {	
-	vec3 l = normalize(pos_view - lpos_cs);
+	vec3 l = normalize(lpos_cs - pos_view);
 	float diffuse = clamp(dot(l, normal_view), 0.f, 1.f);
 	fragmentColor = d_col * diffuse;
 }
