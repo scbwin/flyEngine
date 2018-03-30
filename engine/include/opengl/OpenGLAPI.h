@@ -22,6 +22,7 @@ namespace fly
   class GLAppendBuffer;
   class GLMaterialSetup;
   class Material;
+  class DirectionalLight;
 
   class OpenGLAPI
   {
@@ -45,7 +46,7 @@ namespace fly
     public:
       struct MeshData
       {
-        size_t _count;
+        GLsizei _count;
         GLvoid* _indices;
         GLint _baseVertex;
       };
@@ -78,8 +79,8 @@ namespace fly
       std::shared_ptr<GLTexture> _normalMap;
       std::shared_ptr<GLTexture> _alphaMap;
     };
-    void setupMaterial(const MaterialDesc& desc);
-    void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mvp);
+    void setupMaterial(const MaterialDesc& desc, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix);
+    void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mv);
     std::shared_ptr<GLTexture> createTexture(const std::string& path);
     std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material);
   private:

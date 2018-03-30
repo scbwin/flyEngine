@@ -119,7 +119,10 @@ namespace fly
       auto loc = glGetUniformLocation(_id, name.c_str());
       if (loc == -1) {
 #if _DEBUG
-        std::cout << "No valid uniform location for name: " << name << std::endl;
+        for (const auto& f : _fnames) {
+          std::cout << f << ",";
+        }
+        std::cout << " No valid uniform location for name: " << name << std::endl;
 #endif
       }
       else {

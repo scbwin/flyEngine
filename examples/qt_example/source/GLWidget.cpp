@@ -144,5 +144,9 @@ void GLWidget::initGame()
   auto cam_entity = _engine->getEntityManager()->createEntity();
   cam_entity->addComponent(std::make_shared<fly::Camera>(glm::vec3(0.f, 0.f, -100.f), glm::vec3(0.f)));
   
+  auto dl_entity = _engine->getEntityManager()->createEntity();
+  std::vector<float> csm_distances = { 10.f, 50.f, 200.f };
+  dl_entity->addComponent(std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(30.f, 50.f, 0.f), glm::vec3(0.f), csm_distances));
+  
   _camController = std::unique_ptr<fly::CameraController>(new fly::CameraController(cam_entity->getComponent<fly::Camera>(), 20.f));
 }

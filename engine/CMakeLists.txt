@@ -4,11 +4,13 @@ project (flyEngine)
 set (IDIR include)
 set (SDIR source)
 
+set(BUILD_DX11 "" CACHE BOOL "")
+
 set (HEADER_FILES
 	${IDIR}/AABB.h ${IDIR}/Animation.h ${IDIR}/AnimationSystem.h ${IDIR}/AssimpImporter.h ${IDIR}/Billboard.h ${IDIR}/Camera.h ${IDIR}/Component.h ${IDIR}/Engine.h ${IDIR}/Entity.h ${IDIR}/EntityManager.h ${IDIR}/FixedTimestepSystem.h
 	${IDIR}/GameTimer.h ${IDIR}/GeometryGenerator.h ${IDIR}/IImporter.h ${IDIR}/Light.h ${IDIR}/Material.h ${IDIR}/Mesh.h ${IDIR}/Model.h ${IDIR}/NoiseGen.h ${IDIR}/Renderables.h ${IDIR}/RenderingSystem.h
 	${IDIR}/System.h ${IDIR}/Terrain.h ${IDIR}/TerrainNew.h ${IDIR}/Transform.h ${IDIR}/Vertex.h
-	${IDIR}/Leakcheck.h ${IDIR}/dx11/DX11States.h ${IDIR}/dx11/DXUtils.h ${IDIR}/dx11/Effects.h ${IDIR}/dx11/RenderingSystemDX11.h
+	${IDIR}/Leakcheck.h
 	${IDIR}/math/FlyMath.h ${IDIR}/math/FlyMatrix.h ${IDIR}/math/FlyVector.h ${IDIR}/math/Helpers.h ${IDIR}/math/Meta.h
 	${IDIR}/opengl/GLVertexArray.h ${IDIR}/opengl/GLBuffer.h ${IDIR}/opengl/GLTexture.h ${IDIR}/opengl/GLAppendBuffer.h
 	${IDIR}/opengl/GLWrappers.h ${IDIR}/opengl/OpenGLUtils.h ${IDIR}/opengl/RenderingSystemOpenGL.h ${IDIR}/opengl/OpenGLAPI.h ${IDIR}/renderer/ProjectionParams.h ${IDIR}/renderer/RenderParams.h
@@ -16,16 +18,23 @@ set (HEADER_FILES
 	${IDIR}/StaticModelRenderable.h ${IDIR}/CameraController.h ${IDIR}/StaticMeshRenderable.h ${IDIR}/opengl/GLMaterialSetup.h
 )
 
+if(${BUILD_DX11})
+	set(HEADER_FILES ${HEADER_FILES} ${IDIR}/dx11/DX11States.h ${IDIR}/dx11/DXUtils.h ${IDIR}/dx11/Effects.h ${IDIR}/dx11/RenderingSystemDX11.h)
+endif()
+
 set (SOURCE_FILES
 	${SDIR}/AABB.cpp ${SDIR}/Animation.cpp ${SDIR}/AnimationSystem.cpp ${SDIR}/AssimpImporter.cpp ${SDIR}/Billboard.cpp ${SDIR}/Camera.cpp ${SDIR}/Component.cpp ${SDIR}/Engine.cpp ${SDIR}/Entity.cpp ${SDIR}/EntityManager.cpp ${SDIR}/FixedTimestepSystem.cpp
 	${SDIR}/GameTimer.cpp ${SDIR}/GeometryGenerator.cpp ${SDIR}/Light.cpp ${SDIR}/Material.cpp ${SDIR}/Mesh.cpp ${SDIR}/Model.cpp ${SDIR}/NoiseGen.cpp ${SDIR}/Renderables.cpp ${SDIR}/RenderingSystem.cpp
 	${SDIR}/System.cpp ${SDIR}/Terrain.cpp ${SDIR}/TerrainNew.cpp ${SDIR}/Transform.cpp 
-	${SDIR}/dx11/DX11States.cpp ${SDIR}/dx11/Effects.cpp ${SDIR}/dx11/RenderingSystemDX11.cpp
 	${SDIR}/opengl/GLWrappers.cpp ${SDIR}/opengl/OpenGLUtils.cpp ${SDIR}/opengl/RenderingSystemOpenGL.cpp ${SDIR}/opengl/GLTexture.cpp
 	${SDIR}/physics/ParticleSystem.cpp ${SDIR}/physics/PhysicsSystem.cpp ${SDIR}/LevelOfDetail.cpp ${SDIR}/Timing.cpp ${SDIR}/opengl/OpenGLAPI.cpp
 	${SDIR}/opengl/GLVertexArray.cpp ${SDIR}/opengl/GLBuffer.cpp ${SDIR}/opengl/GLAppendBuffer.cpp
 	${SDIR}/StaticModelRenderable.cpp ${SDIR}/CameraController.cpp ${SDIR}/StaticMeshRenderable.cpp ${SDIR}/opengl/GLMaterialSetup.cpp
 )
+
+if(${BUILD_DX11})
+	set(SOURCE_FILES ${SOURCE_FILES} ${SDIR}/dx11/DX11States.cpp ${SDIR}/dx11/Effects.cpp ${SDIR}/dx11/RenderingSystemDX11.cpp)
+endif()
 
 set(GLM_DIR "" CACHE PATH "")
 set(SOIL_DIR "" CACHE PATH "")
@@ -52,12 +61,12 @@ ${SOIL_DIR}
 ${GLM_DIR} 
 ${GLEW_INCLUDE_DIRS} 
 ${ASSIMP_INCLUDE_DIRS} 
-${OpenCV_DIRS} 
-${DXUT_DIR} 
-${FX11_DIR} 
-${DXTEX_DIR} 
-${DXTK_DIR}
+${OpenCV_DIRS}
 )
+
+if(${BUILD_DX11})
+	set(INCLUDE_DIRS ${INCLUDE_DIRS} ${DXUT_DIR} ${FX11_DIR} ${DXTEX_DIR} ${DXTK_DIR})
+endif()
 
 set(LIBRARIES
 ${SOIL_LIB} 
@@ -65,14 +74,12 @@ ${GLEW_LIBRARIES}
 ${GLFW_LIB} 
 ${OPENGL_gl_LIBRARY} 
 ${ASSIMP_LIBRARY_DIRS}/${ASSIMP_LIBRARIES}.lib 
-${OpenCV_LIBRARIES} 
-${DXUT_LIB} 
-${FX11_LIB} 
-${DXTEX_LIB} 
-${DXTK_LIB}
-d3d11.lib 
-comctl32.lib
+${OpenCV_LIBRARIES}
 )
+
+if(${BUILD_DX11})
+	set(LIBRARIES ${LIBRARIES} ${DXUT_LIB} ${FX11_LIB} ${DXTEX_LIB} ${DXTK_LIB} d3d11.lib comctl32.lib)
+endif()
 
 include_directories(${INCLUDE_DIRS} )
 add_library(flyEngine STATIC ${HEADER_FILES} ${SOURCE_FILES})

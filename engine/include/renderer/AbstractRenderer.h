@@ -39,8 +39,6 @@ namespace fly
       auto mr = entity->getComponent<fly::StaticMeshRenderable>();
       if (mr) {
         auto mesh_renderable = std::make_shared<StaticMeshRenderable>();
-      //  mesh_renderable->_materialDesc._material = mr->getMaterial();
-       // mesh_renderable->_materialDesc._diffuseTexture = createTexture(mr->getMaterial()->getDiffusePath());
         mesh_renderable->_materialDesc = _api.createMaterial(mr->getMaterial());
         mesh_renderable->_meshData = _meshGeometryStorage.addMesh(mr->getMesh());
         mesh_renderable->_smr = mr;
@@ -65,11 +63,12 @@ namespace fly
         buildQuadtree();
       }
       _api.clearRendertargetColor(Vec4f({ 0.149f, 0.509f, 0.929f, 1.f }));
-      if (_camera) {
+      if (_camera && _directionalLight) {
         _rp._viewMatrix = _camera->getViewMatrix(_camera->_pos, _camera->_eulerAngles);
         _rp._VP = _rp._projectionMatrix * _rp._viewMatrix;
         _api.setViewport(_viewPortSize);
         _api.setDepthTestEnabled<true>();
+        Vec3f light_pos_view = _rp._viewMatrix * Vec4f({ _directionalLight->_pos[0], _directionalLight->_pos[1], _directionalLight->_pos[2], 1.f });
         _meshGeometryStorage.bind();
         auto visible_elements = _quadtree->getVisibleElements<API::isDirectX(), false>({ _rp._VP });
         std::map<std::shared_ptr<typename API::MaterialDesc>, std::vector<StaticMeshRenderable*>> display_list;
@@ -77,9 +76,9 @@ namespace fly
           display_list[e->_materialDesc].push_back(e);
         }
         for (const auto& e : display_list) {
-          _api.setupMaterial(*e.first);
+          _api.setupMaterial(*e.first, light_pos_view, _rp._projectionMatrix);
           for (const auto& smr : e.second) {
-            _api.renderMesh(smr->_meshData, _rp._VP * smr->_smr->getModelMatrix());
+            _api.renderMesh(smr->_meshData, _rp._viewMatrix * smr->_smr->getModelMatrix());
           }
         }
       }

@@ -6,20 +6,22 @@ layout (location = 2) in vec2 uv;
 layout (location = 3) in vec3 tangent;
 layout (location = 4) in vec3 bitangent;
 
-uniform mat4 MVP;
+uniform mat4 MV;
+uniform mat4 MV_i;
+uniform mat4 P;
 
-out vec3 pos_out;
-out vec3 normal_out;
+out vec3 pos_view;
+out vec3 normal_view;
 out vec2 uv_out;
-out vec3 tangent_out;
-out vec3 bitangent_out;
+out vec3 tangent_view;
+out vec3 bitangent_view;
 
 void main()
 {
-	gl_Position = MVP * vec4(position, 1.f);
-	pos_out = position;
-	normal_out = normal;
+	pos_view = (MV * vec4(position, 1.f)).xyz;
+	gl_Position = P * vec4(pos_view, 1.f);
+	normal_view = normalize((MV_i * vec4(normal, 0.f)).xyz);
 	uv_out = uv;
-	tangent_out = tangent;
-	bitangent_out = bitangent;
+	tangent_view = tangent;
+	bitangent_view = bitangent;
 }

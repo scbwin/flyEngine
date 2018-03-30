@@ -77,15 +77,18 @@ namespace fly
     GL_CHECK(glClearColor(color[0], color[1], color[2], color[3]));
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
   }
-  void OpenGLAPI::setupMaterial(const MaterialDesc & desc)
+  void OpenGLAPI::setupMaterial(const MaterialDesc & desc, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix)
   {
     _activeShader = desc.getShader();
     _activeShader->bind();
+    GL_CHECK(glUniformMatrix4fv(_activeShader->uniformLocation("P"), 1, false, projection_matrix.ptr()));
+    GL_CHECK(glUniform3f(_activeShader->uniformLocation("lpos_cs"), dl_pos_view_space[0], dl_pos_view_space[1], dl_pos_view_space[2]));
     desc.getMaterialSetup()->setup(desc);
   }
-  void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & mvp)
+  void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & mv)
   {
-    GL_CHECK(glUniformMatrix4fv(_activeShader->uniformLocation("MVP"), 1, false, mvp.ptr()));
+    GL_CHECK(glUniformMatrix4fv(_activeShader->uniformLocation("MV"), 1, false, mv.ptr()));
+    GL_CHECK(glUniformMatrix4fv(_activeShader->uniformLocation("MV_i"), 1, true, inverse(mv).ptr()));
     GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, GL_UNSIGNED_INT, mesh_data._indices, mesh_data._baseVertex));
   }
   std::shared_ptr<GLTexture> OpenGLAPI::createTexture(const std::string & path)
@@ -131,8 +134,8 @@ namespace fly
       return it->second;
     }
     MeshData data;
-    data._count = mesh->getIndices().size();
-    data._baseVertex = _baseVertex;
+    data._count = static_cast<GLsizei>(mesh->getIndices().size());
+    data._baseVertex = static_cast<GLint>(_baseVertex);
     data._indices = reinterpret_cast<GLvoid*>(_indices);
     _indices += mesh->getIndices().size() * sizeof(mesh->getIndices().front());
     _baseVertex += mesh->getVertices().size();
