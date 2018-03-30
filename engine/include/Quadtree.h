@@ -13,7 +13,8 @@ namespace fly
   template<typename T>
   class Quadtree
   {
-    using TPtr = std::shared_ptr<T>;
+   // using TPtr = std::shared_ptr<T>;
+    using TPtr = T* ;
   public:
     class Node
     {

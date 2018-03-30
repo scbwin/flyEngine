@@ -39,8 +39,9 @@ namespace fly
       auto mr = entity->getComponent<fly::StaticMeshRenderable>();
       if (mr) {
         auto mesh_renderable = std::make_shared<StaticMeshRenderable>();
-        mesh_renderable->_materialDesc._material = mr->getMaterial();
-        mesh_renderable->_materialDesc._diffuseTexture = createTexture(mr->getMaterial()->getDiffusePath());
+      //  mesh_renderable->_materialDesc._material = mr->getMaterial();
+       // mesh_renderable->_materialDesc._diffuseTexture = createTexture(mr->getMaterial()->getDiffusePath());
+        mesh_renderable->_materialDesc = _api.createMaterial(mr->getMaterial());
         mesh_renderable->_meshData = _meshGeometryStorage.addMesh(mr->getMesh());
         mesh_renderable->_smr = mr;
         _staticMeshRenderables[entity] = mesh_renderable;
@@ -71,12 +72,12 @@ namespace fly
         _api.setDepthTestEnabled<true>();
         _meshGeometryStorage.bind();
         auto visible_elements = _quadtree->getVisibleElements<API::isDirectX(), false>({ _rp._VP });
-        std::map<std::shared_ptr<Material>, std::vector<std::shared_ptr<StaticMeshRenderable>>> display_list;
+        std::map<std::shared_ptr<typename API::MaterialDesc>, std::vector<StaticMeshRenderable*>> display_list;
         for (const auto& e : visible_elements) {
-          display_list[e->_materialDesc._material].push_back(e);
+          display_list[e->_materialDesc].push_back(e);
         }
         for (const auto& e : display_list) {
-          _api.setupMaterial(e.second[0]->_materialDesc._diffuseTexture, e.first->getDiffuseColor());
+          _api.setupMaterial(*e.first);
           for (const auto& smr : e.second) {
             _api.renderMesh(smr->_meshData, _rp._VP * smr->_smr->getModelMatrix());
           }
@@ -101,17 +102,11 @@ namespace fly
     Vec3f _sceneMin = Vec3f(std::numeric_limits<float>::max());
     Vec3f _sceneMax = Vec3f(std::numeric_limits<float>::lowest());
 
-    struct MaterialDesc
-    {
-      std::shared_ptr<Material> _material;
-      std::shared_ptr<typename API::Texture> _diffuseTexture;
-      std::shared_ptr<typename API::Texture> _normalTexture;
-      std::shared_ptr<typename API::Texture> _alphaTexture;
-    };
+
     // Wrapper for StaticMeshRenderable
     struct StaticMeshRenderable
     {
-      MaterialDesc _materialDesc;
+      std::shared_ptr<typename API::MaterialDesc> _materialDesc;
       typename API::MeshGeometryStorage::MeshData _meshData;
       std::shared_ptr<fly::StaticMeshRenderable> _smr;
       inline AABB* getAABBWorld() const { return _smr->getAABBWorld(); }
@@ -125,7 +120,7 @@ namespace fly
     {
       _quadtree = std::make_unique<Quadtree<StaticMeshRenderable>>(Vec2f({ _sceneMin[0], _sceneMin[2] }), Vec2f({ _sceneMax[0], _sceneMax[2] }));
       for (const auto& e : _staticMeshRenderables) {
-        _quadtree->insert(e.second);
+        _quadtree->insert(e.second.get());
       }
     }
     std::shared_ptr<typename API::Texture> createTexture(const std::string& path)

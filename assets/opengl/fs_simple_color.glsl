@@ -8,9 +8,9 @@ in vec2 uv_out;
 in vec3 tangent_out;
 in vec3 bitangent_out;
 
-uniform vec3 color;
+uniform vec3 d_col;
 
 void main()
 {	
-	fragmentColor = color;
+	fragmentColor = d_col;
 }

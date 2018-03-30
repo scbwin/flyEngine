@@ -333,7 +333,7 @@ namespace fly
     _quadtree = std::make_unique<Quadtree<DX11StaticModelRenderable>>(Vec2f({ _sceneMin[0], _sceneMin[2] }), Vec2f({ _sceneMax[0], _sceneMax[2] }));
     _quadtree->setDetailCullingParams(_settings._detailCullingParams);
     for (const auto& r : _staticModelRenderables) {
-      _quadtree->insert(r.second);
+      _quadtree->insert(r.second.get());
     }
     std::cout << "Quadtree construction took " << timing << std::endl,
     std::cout << "Quadtree nodes:" << _quadtree->getAllNodes().size() << std::endl;

@@ -11,6 +11,8 @@
 #include <SOIL/SOIL.h>
 #include <opengl/GLTexture.h>
 #include <opengl/GLAppendBuffer.h>
+#include <Material.h>
+#include <opengl/GLMaterialSetup.h>
 
 namespace fly
 {
@@ -43,17 +45,23 @@ namespace fly
     _simpleFullscreenQuadShader->addShaderFromFile("assets/opengl/fs_simple.glsl", GLShaderProgram::ShaderType::FRAGMENT);
     _simpleFullscreenQuadShader->link();
 
-    _simpleShaderTextured = std::make_shared<GLShaderProgram>();
-    _simpleShaderTextured->create();
-    _simpleShaderTextured->addShaderFromFile("assets/opengl/vs_simple.glsl", GLShaderProgram::ShaderType::VERTEX);
-    _simpleShaderTextured->addShaderFromFile("assets/opengl/fs_simple_textured.glsl", GLShaderProgram::ShaderType::FRAGMENT);
-    _simpleShaderTextured->link();
+    _diffuseShader = std::make_shared<GLShaderProgram>();
+    _diffuseShader->create();
+    _diffuseShader->addShaderFromFile("assets/opengl/vs_simple.glsl", GLShaderProgram::ShaderType::VERTEX);
+    _diffuseShader->addShaderFromFile("assets/opengl/fs_simple_textured.glsl", GLShaderProgram::ShaderType::FRAGMENT);
+    _diffuseShader->link();
 
-    _simpleShaderColored = std::make_shared<GLShaderProgram>();
-    _simpleShaderColored->create();
-    _simpleShaderColored->addShaderFromFile("assets/opengl/vs_simple.glsl", GLShaderProgram::ShaderType::VERTEX);
-    _simpleShaderColored->addShaderFromFile("assets/opengl/fs_simple_color.glsl", GLShaderProgram::ShaderType::FRAGMENT);
-    _simpleShaderColored->link();
+    _alphaShader = std::make_shared<GLShaderProgram>();
+    _alphaShader->create();
+    _alphaShader->addShaderFromFile("assets/opengl/vs_simple.glsl", GLShaderProgram::ShaderType::VERTEX);
+    _alphaShader->addShaderFromFile("assets/opengl/fs_simple_textured_alpha.glsl", GLShaderProgram::ShaderType::FRAGMENT);
+    _alphaShader->link();
+
+    _colorShader = std::make_shared<GLShaderProgram>();
+    _colorShader->create();
+    _colorShader->addShaderFromFile("assets/opengl/vs_simple.glsl", GLShaderProgram::ShaderType::VERTEX);
+    _colorShader->addShaderFromFile("assets/opengl/fs_simple_color.glsl", GLShaderProgram::ShaderType::FRAGMENT);
+    _colorShader->link();
   }
   void OpenGLAPI::setViewport(const Vec2u & size) const
   {
@@ -69,34 +77,43 @@ namespace fly
     GL_CHECK(glClearColor(color[0], color[1], color[2], color[3]));
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
   }
-  void OpenGLAPI::setupMaterial(const std::shared_ptr<Texture>& diffuse_tex, const Vec3f & diffuse_color)
+  void OpenGLAPI::setupMaterial(const MaterialDesc & desc)
   {
-    _activeShader = diffuse_tex ? _simpleShaderTextured : _simpleShaderColored;
+    _activeShader = desc.getShader();
     _activeShader->bind();
-    if (diffuse_tex) {
-      GL_CHECK(glActiveTexture(GL_TEXTURE0));
-      diffuse_tex->bind();
-      GL_CHECK(glUniform1i(_activeShader->uniformLocation("ts"), 0));
-    }
-    else {
-      GL_CHECK(glUniform3f(_activeShader->uniformLocation("color"), diffuse_color[0], diffuse_color[1], diffuse_color[2]));
-    }
+    desc.getMaterialSetup()->setup(desc);
   }
   void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & mvp)
   {
     GL_CHECK(glUniformMatrix4fv(_activeShader->uniformLocation("MVP"), 1, false, mvp.ptr()));
     GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, GL_UNSIGNED_INT, mesh_data._indices, mesh_data._baseVertex));
   }
-  std::shared_ptr<GLTexture> OpenGLAPI::createTexture(const std::string & path) const
+  std::shared_ptr<GLTexture> OpenGLAPI::createTexture(const std::string & path)
   {
     if (path == "") {
       return nullptr;
+    }
+    auto it = _textureCache.find(path);
+    if (it != _textureCache.end()) {
+      return it->second;
     }
     auto tex = SOIL_load_OGL_texture(path.c_str(), SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_TEXTURE_REPEATS | SOIL_FLAG_COMPRESS_TO_DXT);
     if (tex == 0) {
       return nullptr;
     }
-    return std::make_shared<GLTexture>(tex, GL_TEXTURE_2D);
+    auto ret = std::make_shared<GLTexture>(tex, GL_TEXTURE_2D);
+    _textureCache[path] = ret;
+    return ret;
+  }
+  std::shared_ptr<OpenGLAPI::MaterialDesc> OpenGLAPI::createMaterial(const std::shared_ptr<Material>& material)
+  {
+    auto it = _matDescCache.find(material);
+    if (it != _matDescCache.end()) {
+      return it->second;
+    }
+    auto ret = std::make_shared<MaterialDesc>(material, this);
+    _matDescCache[material] = ret;
+    return ret;
   }
   OpenGLAPI::MeshGeometryStorage::MeshGeometryStorage() : 
     _vboAppend(std::make_shared<GLAppendBuffer>(GL_ARRAY_BUFFER)),
@@ -135,5 +152,48 @@ namespace fly
     GL_CHECK(glVertexAttribPointer(4, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _bitangent))));
     _meshDataCache[mesh] = data;
     return data;
+  }
+  OpenGLAPI::MaterialDesc::MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI * api) : _material(material)
+  {
+    _diffuseMap = api->createTexture(material->getDiffusePath());
+    _normalMap = api->createTexture(material->getNormalPath());
+    _alphaMap = api->createTexture(material->getOpacityPath());
+
+    if (_diffuseMap && _alphaMap) {
+      _materialSetup = std::make_shared<SetupAlphaMap>();
+      _shader = api->_alphaShader;
+    }
+    else if (_diffuseMap) {
+      _materialSetup = std::make_shared<SetupDiffuseMap>();
+      _shader = api->_diffuseShader;
+    }
+    else {
+      _materialSetup = std::make_shared<SetupDiffuseColor>();
+      _shader = api->_colorShader;
+    }
+  }
+  const std::shared_ptr<GLMaterialSetup>& OpenGLAPI::MaterialDesc::getMaterialSetup() const
+  {
+    return _materialSetup;
+  }
+  const std::shared_ptr<GLShaderProgram>& OpenGLAPI::MaterialDesc::getShader() const
+  {
+    return _shader;
+  }
+  const std::shared_ptr<Material>& OpenGLAPI::MaterialDesc::getMaterial() const
+  {
+    return _material;
+  }
+  const std::shared_ptr<GLTexture>& OpenGLAPI::MaterialDesc::getDiffuseMap() const
+  {
+    return _diffuseMap;
+  }
+  const std::shared_ptr<GLTexture>& OpenGLAPI::MaterialDesc::getNormalMap() const
+  {
+    return _normalMap;
+  }
+  const std::shared_ptr<GLTexture>& OpenGLAPI::MaterialDesc::getAlphaMap() const
+  {
+    return _alphaMap;
   }
 }

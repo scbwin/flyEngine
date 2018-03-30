@@ -20,6 +20,8 @@ namespace fly
   class GLTexture;
   class AABB;
   class GLAppendBuffer;
+  class GLMaterialSetup;
+  class Material;
 
   class OpenGLAPI
   {
@@ -38,12 +40,6 @@ namespace fly
       GL_CHECK(enable ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST));
     }
     using Texture = GLTexture;
-    struct MeshDesc
-    {
-      GLsizei _numIndices;
-      GLvoid* _indexOffset;
-      GLint _baseVertex;
-    };
     class MeshGeometryStorage
     {
     public:
@@ -64,14 +60,36 @@ namespace fly
       size_t _indices = 0;
       size_t _baseVertex = 0;
     };
-    void setupMaterial(const std::shared_ptr<Texture>& diffuse_tex, const Vec3f& diffuse_color);
+    class MaterialDesc
+    {
+    public:
+      MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI* api);
+      const std::shared_ptr<GLMaterialSetup>& getMaterialSetup() const;
+      const std::shared_ptr<GLShaderProgram>& getShader() const;
+      const std::shared_ptr<Material>& getMaterial() const;
+      const std::shared_ptr<GLTexture>& getDiffuseMap() const;
+      const std::shared_ptr<GLTexture>& getNormalMap() const;
+      const std::shared_ptr<GLTexture>& getAlphaMap() const;
+    private:
+      std::shared_ptr<Material> _material;
+      std::shared_ptr<GLMaterialSetup> _materialSetup;
+      std::shared_ptr<GLShaderProgram> _shader;
+      std::shared_ptr<GLTexture> _diffuseMap;
+      std::shared_ptr<GLTexture> _normalMap;
+      std::shared_ptr<GLTexture> _alphaMap;
+    };
+    void setupMaterial(const MaterialDesc& desc);
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mvp);
-    std::shared_ptr<GLTexture> createTexture(const std::string& path) const;
+    std::shared_ptr<GLTexture> createTexture(const std::string& path);
+    std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material);
   private:
     std::shared_ptr<GLShaderProgram> _simpleFullscreenQuadShader;
-    std::shared_ptr<GLShaderProgram> _simpleShaderTextured;
-    std::shared_ptr<GLShaderProgram> _simpleShaderColored;
+    std::shared_ptr<GLShaderProgram> _alphaShader;
+    std::shared_ptr<GLShaderProgram> _diffuseShader;
+    std::shared_ptr<GLShaderProgram> _colorShader;
     std::shared_ptr<GLShaderProgram> _activeShader;
+    std::map<std::string, std::shared_ptr<GLTexture>> _textureCache;
+    std::map<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>> _matDescCache;
   };
 }
 
