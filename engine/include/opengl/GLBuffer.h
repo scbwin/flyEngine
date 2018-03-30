@@ -12,6 +12,7 @@ namespace fly
     GLBuffer(GLenum target);
     ~GLBuffer();
     void bind() const;
+    void bind(GLenum target) const;
     template<typename T>
     void setData(const T* data, size_t num_elements, GLenum usage = GL_STATIC_DRAW) const
     {

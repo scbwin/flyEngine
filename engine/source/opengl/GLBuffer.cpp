@@ -14,4 +14,8 @@ namespace fly
   {
     GL_CHECK(glBindBuffer(_target, _id));
   }
+  void GLBuffer::bind(GLenum target) const
+  {
+    GL_CHECK(glBindBuffer(target, _id));
+  }
 }

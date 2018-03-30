@@ -1,6 +1,7 @@
 #ifndef ABSTRACTRENDERER_H
 #define ABSTRACTRENDERER_H
 
+#include <StaticMeshRenderable.h>
 #include <StaticModelRenderable.h>
 #include <System.h>
 #include <renderer/ProjectionParams.h>
@@ -33,48 +34,22 @@ namespace fly
     virtual ~AbstractRenderer() = default;
     virtual void onComponentsChanged(Entity* entity) override
     {
-      auto smr = entity->getComponent<fly::StaticModelRenderable>();
       auto camera = entity->getComponent<Camera>();
       auto dl = entity->getComponent<DirectionalLight>();
-      if (smr) {
-        std::vector<std::shared_ptr<ModelData>> model_data_lods;
-        for (const auto& lod : smr->getLods()) {
-          auto it = _modelDataCache.find(lod);
-          if (it == _modelDataCache.end()) {
-            auto model_data = std::make_shared<ModelData>();
-            std::vector<typename API::MeshDesc> mesh_descs;
-            model_data->_geometryData = std::make_shared<typename API::GeometryData>(lod->getMeshes(), &_api, mesh_descs);
-            int material_index = -1;
-            for (unsigned i = 0; i < lod->getMeshes().size(); i++) {
-              const auto& mesh = lod->getMeshes()[i];
-              if (mesh->getMaterialIndex() != material_index) { // Material has changed -> append a new batch
-                model_data->_batchDescs.resize(model_data->_batchDescs.size() + 1);
-                model_data->_batchDescs.back()._materialIndex = mesh->getMaterialIndex();
-              }
-              material_index = mesh->getMaterialIndex();
-              model_data->_batchDescs.back()._batchDesc.addMeshDesc(mesh_descs[i]);
-            }
-            model_data->_materialDesc.resize(lod->getMaterials().size());
-            for (unsigned i = 0; i < lod->getMaterials().size(); i++) {
-              model_data->_materialDesc[i]._diffuseTexture = createTexture(lod->getMaterials()[i]->getDiffusePath());
-              model_data->_materialDesc[i]._diffuseColor = lod->getMaterials()[i]->getDiffuseColor();
-            }
-            model_data_lods.push_back(model_data);
-            _modelDataCache[lod] = model_data;
-          }
-          else {
-            model_data_lods.push_back(it->second);
-          }
-        }
-        // _staticModelRenderables[entity] = std::shared_ptr<API::StaticModelRenderable>(new API::StaticModelRenderable({ lods, smr }));
-        _staticModelRenderables[entity] = std::make_shared<StaticModelRenderable>();
-        _staticModelRenderables[entity]->_modelLods = model_data_lods;
-        _staticModelRenderables[entity]->_smr = smr;
-        _sceneMin = minimum(_sceneMin, smr->getAABBWorld()->getMin());
-        _sceneMax = maximum(_sceneMax, smr->getAABBWorld()->getMax());
+      auto mr = entity->getComponent<fly::StaticMeshRenderable>();
+      if (mr) {
+        auto mesh_renderable = std::make_shared<StaticMeshRenderable>();
+        mesh_renderable->_materialDesc._material = mr->getMaterial();
+        mesh_renderable->_materialDesc._diffuseTexture = createTexture(mr->getMaterial()->getDiffusePath());
+        mesh_renderable->_meshData = _meshGeometryStorage.addMesh(mr->getMesh());
+        mesh_renderable->_smr = mr;
+        _staticMeshRenderables[entity] = mesh_renderable;
+        _sceneMin = minimum(_sceneMin, mr->getAABBWorld()->getMin());
+        _sceneMax = maximum(_sceneMax, mr->getAABBWorld()->getMax());
       }
       else {
-        _staticModelRenderables.erase(entity);
+        _staticMeshRenderables.erase(entity);
+        // TODO: erase the renderable from the quadtree as well
       }
       if (camera) {
         _camera = camera;
@@ -94,14 +69,16 @@ namespace fly
         _rp._VP = _rp._projectionMatrix * _rp._viewMatrix;
         _api.setViewport(_viewPortSize);
         _api.setDepthTestEnabled<true>();
+        _meshGeometryStorage.bind();
         auto visible_elements = _quadtree->getVisibleElements<API::isDirectX(), false>({ _rp._VP });
+        std::map<std::shared_ptr<Material>, std::vector<std::shared_ptr<StaticMeshRenderable>>> display_list;
         for (const auto& e : visible_elements) {
-          const auto& model_data = e->_modelLods[e->_smr->selectLod(_camera->_pos)];
-          _api.bindGeometryData(*model_data->_geometryData);
-          for (const auto& batch : model_data->_batchDescs) {
-            const auto& mat_desc = model_data->_materialDesc[batch._materialIndex];
-            _api.setupMaterial(mat_desc._diffuseTexture, mat_desc._diffuseColor);
-            _api.renderMeshBatch(batch._batchDesc, _rp._VP * e->_smr->getModelMatrix());
+          display_list[e->_materialDesc._material].push_back(e);
+        }
+        for (const auto& e : display_list) {
+          _api.setupMaterial(e.second[0]->_materialDesc._diffuseTexture, e.first->getDiffuseColor());
+          for (const auto& smr : e.second) {
+            _api.renderMesh(smr->_meshData, _rp._VP * smr->_smr->getModelMatrix());
           }
         }
       }
@@ -124,45 +101,30 @@ namespace fly
     Vec3f _sceneMin = Vec3f(std::numeric_limits<float>::max());
     Vec3f _sceneMax = Vec3f(std::numeric_limits<float>::lowest());
 
-    /**
-    * Meshes that share the same material are rendered in a single batch, no need to expensively switch materials between them.
-    */
-    struct BatchDesc
-    {
-      typename API::BatchDesc _batchDesc;
-      int _materialIndex;
-    };
     struct MaterialDesc
     {
+      std::shared_ptr<Material> _material;
       std::shared_ptr<typename API::Texture> _diffuseTexture;
       std::shared_ptr<typename API::Texture> _normalTexture;
       std::shared_ptr<typename API::Texture> _alphaTexture;
-      Vec3f _diffuseColor;
-      Vec3f _specularColor;
-      Vec3f _ambientColor;
     };
-    struct ModelData
+    // Wrapper for StaticMeshRenderable
+    struct StaticMeshRenderable
     {
-      std::shared_ptr<typename API::GeometryData> _geometryData;
-      std::vector<BatchDesc> _batchDescs;
-      std::vector<MaterialDesc> _materialDesc;
+      MaterialDesc _materialDesc;
+      typename API::MeshGeometryStorage::MeshData _meshData;
+      std::shared_ptr<fly::StaticMeshRenderable> _smr;
+      inline AABB* getAABBWorld() const { return _smr->getAABBWorld(); }
     };
-    struct StaticModelRenderable
-    {
-      std::vector<std::shared_ptr<ModelData>> _modelLods;
-      std::shared_ptr<fly::StaticModelRenderable> _smr;
-      inline AABB* getAABBWorld() const { return _smr->getAABBWorld().get(); }
-    };
-
-    std::map<std::shared_ptr<Model>, std::shared_ptr<ModelData>> _modelDataCache;
+    typename API::MeshGeometryStorage _meshGeometryStorage;
+    std::map<Entity*, std::shared_ptr<StaticMeshRenderable>> _staticMeshRenderables;
     std::map<std::string, std::shared_ptr<typename API::Texture>> _textureCache;
-    std::map<Entity*, std::shared_ptr<StaticModelRenderable>> _staticModelRenderables;
-    std::unique_ptr<Quadtree<StaticModelRenderable>> _quadtree;
+    std::unique_ptr<Quadtree<StaticMeshRenderable>> _quadtree;
 
     void buildQuadtree()
     {
-      _quadtree = std::make_unique<Quadtree<StaticModelRenderable>>(Vec2f({ _sceneMin[0], _sceneMin[2] }), Vec2f({ _sceneMax[0], _sceneMax[2] }));
-      for (const auto& e : _staticModelRenderables) {
+      _quadtree = std::make_unique<Quadtree<StaticMeshRenderable>>(Vec2f({ _sceneMin[0], _sceneMin[2] }), Vec2f({ _sceneMax[0], _sceneMax[2] }));
+      for (const auto& e : _staticMeshRenderables) {
         _quadtree->insert(e.second);
       }
     }

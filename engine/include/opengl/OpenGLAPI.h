@@ -19,6 +19,7 @@ namespace fly
   class StaticModelRenderable;
   class GLTexture;
   class AABB;
+  class GLAppendBuffer;
 
   class OpenGLAPI
   {
@@ -43,24 +44,28 @@ namespace fly
       GLvoid* _indexOffset;
       GLint _baseVertex;
     };
-    struct BatchDesc
+    class MeshGeometryStorage
     {
-      std::vector<GLsizei> _count; // Primitive counts
-      std::vector<GLvoid*> _indices; // Pointers into the index buffer
-      std::vector<GLint> _baseVertex; // Offset that is added to the indices
-      void addMeshDesc(const MeshDesc& mesh_desc);
-    };
-    struct GeometryData
-    {
-      GeometryData(const std::vector<std::shared_ptr<Mesh>>& meshes, OpenGLAPI* api, std::vector<MeshDesc>& mesh_descs);
+    public:
+      struct MeshData
+      {
+        size_t _count;
+        GLvoid* _indices;
+        GLint _baseVertex;
+      };
+      MeshGeometryStorage();
+      void bind() const;
+      MeshData addMesh(const std::shared_ptr<Mesh>& mesh);
+    private:
       std::shared_ptr<GLVertexArray> _vao;
-      std::shared_ptr<GLBuffer> _vbo;
-      std::shared_ptr<GLBuffer> _ibo;
+      std::shared_ptr<GLAppendBuffer> _vboAppend;
+      std::shared_ptr<GLAppendBuffer> _iboAppend;
+      std::map<std::shared_ptr<Mesh>, MeshData> _meshDataCache;
+      size_t _indices = 0;
+      size_t _baseVertex = 0;
     };
-    void bindGeometryData(const GeometryData& data);
     void setupMaterial(const std::shared_ptr<Texture>& diffuse_tex, const Vec3f& diffuse_color);
-    void renderMesh(const MeshDesc& mesh_desc, const Mat4f& mvp) const;
-    void renderMeshBatch(const BatchDesc& batch_desc, const Mat4f& mvp) const;
+    void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mvp);
     std::shared_ptr<GLTexture> createTexture(const std::string& path) const;
   private:
     std::shared_ptr<GLShaderProgram> _simpleFullscreenQuadShader;

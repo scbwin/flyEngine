@@ -10,6 +10,7 @@
 #include <StaticModelRenderable.h>
 #include <SOIL/SOIL.h>
 #include <opengl/GLTexture.h>
+#include <opengl/GLAppendBuffer.h>
 
 namespace fly
 {
@@ -68,10 +69,6 @@ namespace fly
     GL_CHECK(glClearColor(color[0], color[1], color[2], color[3]));
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
   }
-  void OpenGLAPI::bindGeometryData(const GeometryData & data)
-  {
-    data._vao->bind();
-  }
   void OpenGLAPI::setupMaterial(const std::shared_ptr<Texture>& diffuse_tex, const Vec3f & diffuse_color)
   {
     _activeShader = diffuse_tex ? _simpleShaderTextured : _simpleShaderColored;
@@ -85,16 +82,10 @@ namespace fly
       GL_CHECK(glUniform3f(_activeShader->uniformLocation("color"), diffuse_color[0], diffuse_color[1], diffuse_color[2]));
     }
   }
-  void OpenGLAPI::renderMesh(const MeshDesc& mesh_desc, const Mat4f& mvp) const
+  void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & mvp)
   {
     GL_CHECK(glUniformMatrix4fv(_activeShader->uniformLocation("MVP"), 1, false, mvp.ptr()));
-    GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_desc._numIndices, GL_UNSIGNED_INT, mesh_desc._indexOffset, mesh_desc._baseVertex));
-  }
-  void OpenGLAPI::renderMeshBatch(const BatchDesc & batch_desc, const Mat4f & mvp) const
-  {
-    GL_CHECK(glUniformMatrix4fv(_activeShader->uniformLocation("MVP"), 1, false, mvp.ptr()));
-    GL_CHECK(glMultiDrawElementsBaseVertex(GL_TRIANGLES, const_cast<GLsizei*>(batch_desc._count.data()), GL_UNSIGNED_INT,
-      const_cast<GLvoid**>(batch_desc._indices.data()), static_cast<GLsizei>(batch_desc._count.size()), const_cast<GLint*>(batch_desc._baseVertex.data())));
+    GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, GL_UNSIGNED_INT, mesh_data._indices, mesh_data._baseVertex));
   }
   std::shared_ptr<GLTexture> OpenGLAPI::createTexture(const std::string & path) const
   {
@@ -107,25 +98,33 @@ namespace fly
     }
     return std::make_shared<GLTexture>(tex, GL_TEXTURE_2D);
   }
-  OpenGLAPI::GeometryData::GeometryData(const std::vector<std::shared_ptr<Mesh>>& meshes, OpenGLAPI * api, std::vector<OpenGLAPI::MeshDesc>& mesh_descs)
+  OpenGLAPI::MeshGeometryStorage::MeshGeometryStorage() : 
+    _vboAppend(std::make_shared<GLAppendBuffer>(GL_ARRAY_BUFFER)),
+    _iboAppend(std::make_shared<GLAppendBuffer>(GL_ELEMENT_ARRAY_BUFFER))
   {
-    mesh_descs.resize(meshes.size());
-    std::vector<Vertex> vertices;
-    std::vector<unsigned> indices;
-    for (unsigned i = 0; i < meshes.size(); i++) {
-      const auto& m = meshes[i];
-      mesh_descs[i]._baseVertex = static_cast<GLint>(vertices.size());
-      mesh_descs[i]._indexOffset = reinterpret_cast<GLvoid*>(indices.size() * sizeof(indices.front()));
-      mesh_descs[i]._numIndices = static_cast<GLsizei>(m->getIndices().size());
-      vertices.insert(vertices.end(), m->getVertices().begin(), m->getVertices().end());
-      indices.insert(indices.end(), m->getIndices().begin(), m->getIndices().end());
+  }
+  void OpenGLAPI::MeshGeometryStorage::bind() const
+  {
+    _vao->bind();
+  }
+  OpenGLAPI::MeshGeometryStorage::MeshData OpenGLAPI::MeshGeometryStorage::addMesh(const std::shared_ptr<Mesh>& mesh)
+  {
+    auto it = _meshDataCache.find(mesh);
+    if (it != _meshDataCache.end()) { // Mesh is already in the cache
+      return it->second;
     }
+    MeshData data;
+    data._count = mesh->getIndices().size();
+    data._baseVertex = _baseVertex;
+    data._indices = reinterpret_cast<GLvoid*>(_indices);
+    _indices += mesh->getIndices().size() * sizeof(mesh->getIndices().front());
+    _baseVertex += mesh->getVertices().size();
+    _vboAppend->appendData(mesh->getVertices().data(), mesh->getVertices().size());
+    _iboAppend->appendData(mesh->getIndices().data(), mesh->getIndices().size());
     _vao = std::make_shared<GLVertexArray>();
     _vao->bind();
-    _vbo = std::make_shared<GLBuffer>(GL_ARRAY_BUFFER);
-    _vbo->setData(&vertices.front(), vertices.size());
-    _ibo = std::make_shared<GLBuffer>(GL_ELEMENT_ARRAY_BUFFER);
-    _ibo->setData(&indices.front(), indices.size());
+    _vboAppend->getBuffer()->bind();
+    _iboAppend->getBuffer()->bind();
     for (unsigned i = 0; i < 5; i++) {
       GL_CHECK(glEnableVertexAttribArray(i));
     }
@@ -134,11 +133,7 @@ namespace fly
     GL_CHECK(glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _uv))));
     GL_CHECK(glVertexAttribPointer(3, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _tangent))));
     GL_CHECK(glVertexAttribPointer(4, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _bitangent))));
-  }
-  void OpenGLAPI::BatchDesc::addMeshDesc(const MeshDesc & mesh_desc)
-  {
-    _count.push_back(mesh_desc._numIndices);
-    _indices.push_back(mesh_desc._indexOffset);
-    _baseVertex.push_back(mesh_desc._baseVertex);
+    _meshDataCache[mesh] = data;
+    return data;
   }
 }

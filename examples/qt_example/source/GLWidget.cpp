@@ -11,6 +11,7 @@
 #include <CameraController.h>
 #include <AntTweakBar.h>
 #include <LevelOfDetail.h>
+#include <StaticMeshRenderable.h>
 
 GLWidget::GLWidget()
 {
@@ -123,15 +124,22 @@ void GLWidget::wheelEvent(QWheelEvent * e)
 void GLWidget::initGame()
 {
   auto importer = std::make_shared<fly::AssimpImporter>();
-  auto sponza_lods = fly::LevelOfDetail().generateLODsWithDetailCulling(importer->loadModel("assets/sponza/sponza.obj"), 5);
-  auto sponza_entity = _engine->getEntityManager()->createEntity();
-  sponza_entity->addComponent(std::make_shared<fly::Transform>(fly::Vec3f(0.f), fly::Vec3f(0.01f)));
-  sponza_entity->addComponent(std::make_shared<fly::StaticModelRenderable>(sponza_lods, sponza_entity->getComponent<fly::Transform>(), 60.f));
+ // auto sponza_lods = fly::LevelOfDetail().generateLODsWithDetailCulling(importer->loadModel("assets/sponza/sponza.obj"), 5);
+ // auto sponza_entity = _engine->getEntityManager()->createEntity();
+ // sponza_entity->addComponent(std::make_shared<fly::Transform>(fly::Vec3f(0.f), fly::Vec3f(0.01f)));
+  //sponza_entity->addComponent(std::make_shared<fly::StaticModelRenderable>(sponza_lods, sponza_entity->getComponent<fly::Transform>(), 60.f));
 
-  std::vector<std::shared_ptr<fly::Model>> sphere_models = { importer->loadModel("assets/sphere_lod0.obj"),
+  auto sponza_model = importer->loadModel("assets/sponza/sponza.obj");
+  for (const auto& mesh : sponza_model->getMeshes()) {
+    auto entity = _engine->getEntityManager()->createEntity();
+    entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(mesh, 
+      sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(0.f), fly::Vec3f(0.01f)).getModelMatrix()));
+  }
+
+  /*std::vector<std::shared_ptr<fly::Model>> sphere_models = { importer->loadModel("assets/sphere_lod0.obj"),
     importer->loadModel("assets/sphere_lod1.obj"), importer->loadModel("assets/sphere_lod2.obj") };
   auto sphere_entity = _engine->getEntityManager()->createEntity();
-  sphere_entity->addComponent(std::make_shared<fly::StaticModelRenderable>(sphere_models, std::make_shared<fly::Transform>(glm::vec3(50.f, 0.f, 0.f)), 5.f));
+  sphere_entity->addComponent(std::make_shared<fly::StaticModelRenderable>(sphere_models, std::make_shared<fly::Transform>(glm::vec3(50.f, 0.f, 0.f)), 5.f));*/
 
   auto cam_entity = _engine->getEntityManager()->createEntity();
   cam_entity->addComponent(std::make_shared<fly::Camera>(glm::vec3(0.f, 0.f, -100.f), glm::vec3(0.f)));
