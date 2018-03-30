@@ -22,6 +22,6 @@ void main()
 	gl_Position = P * vec4(pos_view, 1.f);
 	normal_view = normalize((MV_i * vec4(normal, 0.f)).xyz);
 	uv_out = uv;
-	tangent_view = tangent;
-	bitangent_view = bitangent;
+	tangent_view = normalize((MV_i * vec4(tangent, 0.f)).xyz);
+	bitangent_view = normalize((MV_i * vec4(bitangent, 0.f)).xyz);
 }

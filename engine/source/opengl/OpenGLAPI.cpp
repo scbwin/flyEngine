@@ -29,48 +29,14 @@ namespace fly
     else {
       std::cout << "OpenGLAPI::OpenGLAPI() Failed to initialized GLEW: " << glewGetErrorString(result) << std::endl;
     }
-    Timing timing;
-    initShaders();
-    std::cout << "OpenGLAPI::initShaders() took " << timing << std::endl;
   }
   ZNearMapping OpenGLAPI::getZNearMapping() const
   {
     return ZNearMapping::MINUS_ONE;
   }
-  void OpenGLAPI::initShaders()
-  {
-    _simpleFullscreenQuadShader = std::make_shared<GLShaderProgram>();
-    _simpleFullscreenQuadShader->create();
-    _simpleFullscreenQuadShader->addShaderFromFile("assets/opengl/vs_screen.glsl", GLShaderProgram::ShaderType::VERTEX);
-    _simpleFullscreenQuadShader->addShaderFromFile("assets/opengl/fs_simple.glsl", GLShaderProgram::ShaderType::FRAGMENT);
-    _simpleFullscreenQuadShader->link();
-
-    _diffuseShader = std::make_shared<GLShaderProgram>();
-    _diffuseShader->create();
-    _diffuseShader->addShaderFromFile("assets/opengl/vs_simple.glsl", GLShaderProgram::ShaderType::VERTEX);
-    _diffuseShader->addShaderFromFile("assets/opengl/fs_simple_textured.glsl", GLShaderProgram::ShaderType::FRAGMENT);
-    _diffuseShader->link();
-
-    _alphaShader = std::make_shared<GLShaderProgram>();
-    _alphaShader->create();
-    _alphaShader->addShaderFromFile("assets/opengl/vs_simple.glsl", GLShaderProgram::ShaderType::VERTEX);
-    _alphaShader->addShaderFromFile("assets/opengl/fs_simple_textured_alpha.glsl", GLShaderProgram::ShaderType::FRAGMENT);
-    _alphaShader->link();
-
-    _colorShader = std::make_shared<GLShaderProgram>();
-    _colorShader->create();
-    _colorShader->addShaderFromFile("assets/opengl/vs_simple.glsl", GLShaderProgram::ShaderType::VERTEX);
-    _colorShader->addShaderFromFile("assets/opengl/fs_simple_color.glsl", GLShaderProgram::ShaderType::FRAGMENT);
-    _colorShader->link();
-  }
   void OpenGLAPI::setViewport(const Vec2u & size) const
   {
     GL_CHECK(glViewport(0, 0, size[0], size[1]));
-  }
-  void OpenGLAPI::renderFullScreenQuad() const
-  {
-    _simpleFullscreenQuadShader->bind();
-    GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
   }
   void OpenGLAPI::clearRendertargetColor(const Vec4f & color) const
   {
@@ -118,6 +84,21 @@ namespace fly
     _matDescCache[material] = ret;
     return ret;
   }
+  std::shared_ptr<GLShaderProgram> OpenGLAPI::createShader(const std::string & vertex_file, const std::string & fragment_file)
+  {
+    std::string key = vertex_file + fragment_file;
+    auto it = _shaderCache.find(key);
+    if (it != _shaderCache.end()) {
+      return it->second;
+    }
+    auto ret = std::make_shared<GLShaderProgram>();
+    ret->create();
+    ret->addShaderFromFile(vertex_file, GLShaderProgram::ShaderType::VERTEX);
+    ret->addShaderFromFile(fragment_file, GLShaderProgram::ShaderType::FRAGMENT);
+    ret->link();
+    _shaderCache[key] = ret;
+    return ret;
+  }
   OpenGLAPI::MeshGeometryStorage::MeshGeometryStorage() : 
     _vboAppend(std::make_shared<GLAppendBuffer>(GL_ARRAY_BUFFER)),
     _iboAppend(std::make_shared<GLAppendBuffer>(GL_ELEMENT_ARRAY_BUFFER))
@@ -161,19 +142,35 @@ namespace fly
     _diffuseMap = api->createTexture(material->getDiffusePath());
     _normalMap = api->createTexture(material->getNormalPath());
     _alphaMap = api->createTexture(material->getOpacityPath());
-
-    if (_diffuseMap && _alphaMap) {
-      _materialSetup = std::make_shared<SetupAlphaMap>();
-      _shader = api->_alphaShader;
+    std::string vertex_file = "assets/opengl/vs_simple.glsl";
+    std::string fragment_file = "assets/opengl/fs_simple";
+    if (_diffuseMap && _alphaMap && _normalMap) {
+      _materialSetup = std::make_shared<SetupDiffuseAlphaNormalMap>();
+      fragment_file += "_textured_alpha_normal";
+    }
+    else if (_diffuseMap && _normalMap) {
+      _materialSetup = std::make_shared<SetupDiffuseNormalMap>();
+      fragment_file += "_textured_normal";
+    }
+    else if (_diffuseMap && _alphaMap) {
+      _materialSetup = std::make_shared<SetupDiffuseAlphaMap>();
+      fragment_file += "_textured_alpha";
     }
     else if (_diffuseMap) {
       _materialSetup = std::make_shared<SetupDiffuseMap>();
-      _shader = api->_diffuseShader;
+      fragment_file += "_textured";
+    }
+    else if (_alphaMap) {
+      _materialSetup = std::make_shared<SetupAlphaMap>();
+      std::string err = "Unsupported material type.";
+      throw std::exception(err.c_str());
     }
     else {
       _materialSetup = std::make_shared<SetupDiffuseColor>();
-      _shader = api->_colorShader;
+      fragment_file += "_color";
     }
+    fragment_file += ".glsl";
+    _shader = api->createShader(vertex_file, fragment_file);
   }
   const std::shared_ptr<GLMaterialSetup>& OpenGLAPI::MaterialDesc::getMaterialSetup() const
   {

@@ -30,9 +30,7 @@ namespace fly
     OpenGLAPI();
     virtual ~OpenGLAPI() = default;
     ZNearMapping getZNearMapping() const;
-    void initShaders();
     void setViewport(const Vec2u& size) const;
-    void renderFullScreenQuad() const;
     void clearRendertargetColor(const Vec4f& color) const;
     static inline constexpr bool isDirectX() { return false; }
     template<bool enable>
@@ -83,14 +81,12 @@ namespace fly
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mv);
     std::shared_ptr<GLTexture> createTexture(const std::string& path);
     std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material);
+    std::shared_ptr<GLShaderProgram> createShader(const std::string& vertex_file, const std::string& fragment_file);
   private:
-    std::shared_ptr<GLShaderProgram> _simpleFullscreenQuadShader;
-    std::shared_ptr<GLShaderProgram> _alphaShader;
-    std::shared_ptr<GLShaderProgram> _diffuseShader;
-    std::shared_ptr<GLShaderProgram> _colorShader;
     std::shared_ptr<GLShaderProgram> _activeShader;
     std::map<std::string, std::shared_ptr<GLTexture>> _textureCache;
     std::map<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>> _matDescCache;
+    std::map<std::string, std::shared_ptr<GLShaderProgram>> _shaderCache;
   };
 }
 

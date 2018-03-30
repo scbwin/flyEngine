@@ -23,9 +23,30 @@ namespace fly
   }
   void SetupAlphaMap::setup(const OpenGLAPI::MaterialDesc & desc)
   {
-    SetupDiffuseMap::setup(desc);
     GL_CHECK(glActiveTexture(GL_TEXTURE1));
     desc.getAlphaMap()->bind();
     GL_CHECK(glUniform1i(desc.getShader()->uniformLocation("ts_alpha"), 1));
+  }
+  void SetupNormalMap::setup(const OpenGLAPI::MaterialDesc & desc)
+  {
+    GL_CHECK(glActiveTexture(GL_TEXTURE2));
+    desc.getNormalMap()->bind();
+    GL_CHECK(glUniform1i(desc.getShader()->uniformLocation("ts_norm"), 2));
+  }
+  void SetupDiffuseAlphaMap::setup(const OpenGLAPI::MaterialDesc & desc)
+  {
+    SetupDiffuseMap::setup(desc);
+    SetupAlphaMap::setup(desc);
+  }
+  void SetupDiffuseNormalMap::setup(const OpenGLAPI::MaterialDesc & desc)
+  {
+    SetupDiffuseMap::setup(desc);
+    SetupNormalMap::setup(desc);
+  }
+  void SetupDiffuseAlphaNormalMap::setup(const OpenGLAPI::MaterialDesc & desc)
+  {
+    SetupDiffuseMap::setup(desc);
+    SetupAlphaMap::setup(desc);
+    SetupNormalMap::setup(desc);
   }
 }
