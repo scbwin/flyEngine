@@ -16,17 +16,20 @@ namespace fly
     * Constructors
     */
     Vector() = default;
-    Vector(const std::initializer_list<T>& values)
-    {
-      std::memcpy(_data, values.begin(), sizeof *this);
-    }
-    template<typename T1>
-    Vector(const std::initializer_list<T1>& values)
+    Vector(const T& value)
     {
       for (unsigned i = 0; i < Dim; i++) {
-        _data[i] = static_cast<T>(*(values.begin() + i));
+        _data[i] = value;
       }
     }
+    template<typename ...Args>
+    Vector(Args... args) : _data{args...}
+    {
+    }
+    /**
+    * Copy constructors
+    */
+    Vector(const Vector& other) = default;
     template<typename T1>
     Vector(const Vector<Dim, T1>& other)
     {
@@ -34,20 +37,13 @@ namespace fly
         _data[i] = static_cast<T>(other[i]);
       }
     }
-    Vector(const T* ptr)
+    Vector(const Vector<Dim - 1, T>& other, T val)
     {
-      std::memcpy(_data, ptr, sizeof(T) * Dim);
-    }
-    Vector(const T& value)
-    {
-      for (unsigned i = 0; i < Dim; i++) {
-        _data[i] = value;
+      for (unsigned i = 0; i < Dim - 1; i++) {
+        _data[i] = other[i];
       }
+      _data[Dim - 1] = val;
     }
-    /**
-    * Copy constructor
-    */
-    Vector(const Vector& other) = default;
     /**
     * Destructor
     */
@@ -66,6 +62,11 @@ namespace fly
     inline const T* ptr() const
     {
       return _data;
+    }
+    inline Vector<3, T> xyz() const
+    {
+      static_assert(Dim >= 3, "Vector dimension too small");
+      return Vector<3, T>(_data[0], _data[1], _data[2]);
     }
     /**
     * Vector/vector calculations
@@ -181,7 +182,7 @@ namespace fly
     */
     inline Vector(const glm::vec<Dim, T>& vec)
     {
-      std::memcpy(_data, &vec[0], sizeof *this);
+      std::memcpy(_data, &vec[0], sizeof vec);
     }
     inline operator glm::vec<Dim, T>() const
     {
@@ -215,7 +216,7 @@ namespace fly
       return os;
     }
   private:
-    T _data[Dim];
+   T _data [Dim];
   };
 }
 

@@ -40,7 +40,7 @@ void GLWidget::initializeGL()
 
 void GLWidget::resizeGL(int width, int height)
 {
-  _renderer->onResize(fly::Vec2u({ width, height }));
+  _renderer->onResize(fly::Vec2i( width, height ));
   TwWindowSize(width, height);
 }
 

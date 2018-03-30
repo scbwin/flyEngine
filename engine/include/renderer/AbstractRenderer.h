@@ -68,7 +68,7 @@ namespace fly
         _rp._VP = _rp._projectionMatrix * _rp._viewMatrix;
         _api.setViewport(_viewPortSize);
         _api.setDepthTestEnabled<true>();
-        Vec3f light_pos_view = _rp._viewMatrix * Vec4f({ _directionalLight->_pos[0], _directionalLight->_pos[1], _directionalLight->_pos[2], 1.f });
+        Vec3f light_pos_view = (_rp._viewMatrix * Vec4f(_directionalLight->_pos, 1.f )).xyz();
         _meshGeometryStorage.bind();
         auto visible_elements = _quadtree->getVisibleElements<API::isDirectX(), false>({ _rp._VP });
         std::map<std::shared_ptr<typename API::MaterialDesc>, std::vector<StaticMeshRenderable*>> display_list;

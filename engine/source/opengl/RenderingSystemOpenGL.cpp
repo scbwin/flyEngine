@@ -2637,7 +2637,7 @@ namespace fly
 
   Mat4f RenderingSystemOpenGL::TerrainRenderable::getWaterModelMatrix()
   {
-    return _transform->getModelMatrix() * scale<4, float>(Vec3f(_terrain->getHeightMap().cols)) * translate<4, float>(Vec3f({ 0.f, 0.00015f, 0.f }));
+    return _transform->getModelMatrix() * scale<4, float>(Vec3f(static_cast<float>(_terrain->getHeightMap().cols))) * translate<4, float>(Vec3f( 0.f, 0.00015f, 0.f ));
   }
 
   RenderingSystemOpenGL::~RenderingSystemOpenGL()

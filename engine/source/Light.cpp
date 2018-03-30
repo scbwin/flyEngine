@@ -44,8 +44,8 @@ namespace fly
       Mat4f p_inverse = inverse(projection_matrix);
       auto vp_inverse_v_light = view_matrix_light * view_matrix_inverse * p_inverse;
 
-      std::array<Vec3f, 8> cube_ndc = { Vec3f({-1.f, -1.f, directx ? 0.f : -1.f}), Vec3f({1.f, -1.f, directx ? 0.f : -1.f}), Vec3f({-1.f, 1.f, directx ? 0.f : -1.f}), Vec3f({-1.f, -1.f, 1.f}),
-        Vec3f({1.f, 1.f, directx ? 0.f : -1.f}), Vec3f({1.f, -1.f, 1.f}), Vec3f({-1.f, 1.f, 1.f}), Vec3f({1.f, 1.f, 1.f}) };
+      std::array<Vec3f, 8> cube_ndc = { Vec3f(-1.f, -1.f, directx ? 0.f : -1.f), Vec3f(1.f, -1.f, directx ? 0.f : -1.f), Vec3f(-1.f, 1.f, directx ? 0.f : -1.f), Vec3f(-1.f, -1.f, 1.f),
+        Vec3f(1.f, 1.f, directx ? 0.f : -1.f), Vec3f(1.f, -1.f, 1.f), Vec3f(-1.f, 1.f, 1.f), Vec3f(1.f, 1.f, 1.f) };
 
       std::vector<Vec3f> cam_frustum_light_space, cam_frustum_view_space;
       Vec3f light_space_frustum_center(0.f);
