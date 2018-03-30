@@ -104,7 +104,7 @@ namespace fly
       std::cout << "failed to link _program but error log is empty" << std::endl;
     }
   }
-  void GLShaderProgram::bind()
+  void GLShaderProgram::bind() const
   {
     GL_CHECK(glUseProgram(_id));
   }

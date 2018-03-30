@@ -33,7 +33,7 @@ namespace fly
     void create();
     void addShaderFromFile(const std::string& fname, ShaderType type, const std::map<std::string, std::regex>& replacements = std::map<std::string, std::regex>());
     void link();
-    void bind();
+    void bind() const;
     GLuint id();
     GLint uniformLocation(const std::string& name);
     virtual ~GLShaderProgram();

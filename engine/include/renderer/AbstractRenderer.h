@@ -17,6 +17,7 @@
 #include <Light.h>
 #include <iostream>
 #include <Quadtree.h>
+#include <Settings.h>
 
 namespace fly
 {
@@ -68,19 +69,37 @@ namespace fly
         _rp._VP = _rp._projectionMatrix * _rp._viewMatrix;
         _api.setViewport(_viewPortSize);
         _api.setDepthTestEnabled<true>();
-        Vec3f light_pos_view = (_rp._viewMatrix * Vec4f(_directionalLight->_pos, 1.f )).xyz();
+        Vec3f light_pos_view = (_rp._viewMatrix * Vec4f(_directionalLight->_pos, 1.f)).xyz();
         _meshGeometryStorage.bind();
         auto visible_elements = _quadtree->getVisibleElements<API::isDirectX(), false>({ _rp._VP });
-        std::map<std::shared_ptr<typename API::MaterialDesc>, std::vector<StaticMeshRenderable*>> display_list;
-        for (const auto& e : visible_elements) {
-          display_list[e->_materialDesc].push_back(e);
-        }
-        for (const auto& e : display_list) {
-          _api.setupMaterial(*e.first, light_pos_view, _rp._projectionMatrix);
-          for (const auto& smr : e.second) {
-            _api.renderMesh(smr->_meshData, _rp._viewMatrix * smr->_smr->getModelMatrix());
+        if (_settings._dlSortMode == DisplayListSortMode::SHADER_AND_MATERIAL) {
+          std::map<std::shared_ptr<typename API::MaterialDesc::ShaderProgram>, std::map<std::shared_ptr<typename API::MaterialDesc>, std::vector<StaticMeshRenderable*>>> display_list;
+          for (const auto& e : visible_elements) {
+            display_list[e->_materialDesc->getShader()][e->_materialDesc].push_back(e);
+          }
+          for (const auto& e : display_list) {
+            _api.setupShader(e.first, light_pos_view, _rp._projectionMatrix);
+            for (const auto& e1 : e.second) {
+              _api.setupMaterial(*e1.first);
+              for (const auto& smr : e1.second) {
+                _api.renderMesh(smr->_meshData, _rp._viewMatrix * smr->_smr->getModelMatrix());
+              }
+            }
           }
         }
+        else {
+          std::map<std::shared_ptr<typename API::MaterialDesc>, std::vector<StaticMeshRenderable*>> display_list;
+          for (const auto& e : visible_elements) {
+            display_list[e->_materialDesc].push_back(e);
+          }
+          for (const auto& e : display_list) {
+            _api.setupMaterial(*e.first, light_pos_view, _rp._projectionMatrix);
+            for (const auto& smr : e.second) {
+              _api.renderMesh(smr->_meshData, _rp._viewMatrix * smr->_smr->getModelMatrix());
+            }
+          }
+        }
+
       }
     }
     void onResize(const Vec2u& window_size)
@@ -100,6 +119,7 @@ namespace fly
     std::shared_ptr<DirectionalLight> _directionalLight;
     Vec3f _sceneMin = Vec3f(std::numeric_limits<float>::max());
     Vec3f _sceneMax = Vec3f(std::numeric_limits<float>::lowest());
+    Settings _settings;
 
     // Wrapper for StaticMeshRenderable
     struct StaticMeshRenderable

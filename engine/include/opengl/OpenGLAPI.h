@@ -66,14 +66,17 @@ namespace fly
       const std::shared_ptr<GLTexture>& getDiffuseMap() const;
       const std::shared_ptr<GLTexture>& getNormalMap() const;
       const std::shared_ptr<GLTexture>& getAlphaMap() const;
+      using ShaderProgram = GLShaderProgram;
     private:
       std::shared_ptr<Material> _material;
       std::unique_ptr<GLMaterialSetup> _materialSetup;
-      std::shared_ptr<GLShaderProgram> _shader;
+      std::shared_ptr<ShaderProgram> _shader;
       std::shared_ptr<GLTexture> _diffuseMap;
       std::shared_ptr<GLTexture> _normalMap;
       std::shared_ptr<GLTexture> _alphaMap;
     };
+    void setupShader(const std::shared_ptr<GLShaderProgram>& shader, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix);
+    void setupMaterial(const MaterialDesc& desc);
     void setupMaterial(const MaterialDesc& desc, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix);
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mv);
     std::shared_ptr<GLTexture> createTexture(const std::string& path);

@@ -11,6 +11,12 @@ namespace fly
     float _errorExponent;
   };
 
+  enum class DisplayListSortMode
+  {
+    MATERIAL,
+    SHADER_AND_MATERIAL
+  };
+
   struct Settings
   {
     bool _lensflareEnabled;
@@ -32,6 +38,7 @@ namespace fly
     int _smDepthBias;
     float _smSlopeScaledDepthBias;
     DetailCullingParams _detailCullingParams;
+    DisplayListSortMode _dlSortMode = DisplayListSortMode::SHADER_AND_MATERIAL;
   };
 }
 

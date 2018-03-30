@@ -43,6 +43,17 @@ namespace fly
     GL_CHECK(glClearColor(color[0], color[1], color[2], color[3]));
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
   }
+  void OpenGLAPI::setupShader(const std::shared_ptr<GLShaderProgram>& shader, const Vec3f & dl_pos_view_space, const Mat4f & projection_matrix)
+  {
+    shader->bind();
+    GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("P"), 1, false, projection_matrix.ptr()));
+    GL_CHECK(glUniform3f(shader->uniformLocation("lpos_cs"), dl_pos_view_space[0], dl_pos_view_space[1], dl_pos_view_space[2]));
+    _activeShader = shader.get();
+  }
+  void OpenGLAPI::setupMaterial(const MaterialDesc & desc)
+  {
+    desc.getMaterialSetup()->setup(desc);
+  }
   void OpenGLAPI::setupMaterial(const MaterialDesc & desc, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix)
   {
     _activeShader = desc.getShader().get();
