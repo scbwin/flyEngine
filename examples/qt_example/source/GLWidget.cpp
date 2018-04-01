@@ -36,6 +36,14 @@ void GLWidget::initializeGL()
   TwInit(TwGraphAPI::TW_OPENGL_CORE, nullptr);
   _bar = TwNewBar("Stats");
   TwAddButton(_bar, _fpsButtonName, nullptr, nullptr, nullptr);
+
+  auto debug_bar = TwNewBar("Debug");
+  TwAddVarCB(debug_bar, "Quadtree AABBs", TwType::TW_TYPE_BOOLCPP, cbSetDebugQuadtreeAABBs, cbGetDebugQuadtreeAABBs, &_renderer, nullptr);
+  TwAddVarCB(debug_bar, "Object AABBs", TwType::TW_TYPE_BOOLCPP, cbSetDebugObjectAABBs, cbGetDebugObjectAABBs, &_renderer, nullptr);
+
+  auto settings_bar = TwNewBar("Settings");
+  TwAddVarCB(settings_bar, "Group by material", TwType::TW_TYPE_BOOLCPP, cbSetSortModeMaterial, cbGetSortModeMaterial, &_renderer, nullptr);
+  TwAddVarCB(settings_bar, "Group by shader and material", TwType::TW_TYPE_BOOLCPP, cbSetSortModeShaderMaterial, cbGetSortModeShaderMaterial, &_renderer, nullptr);
 }
 
 void GLWidget::resizeGL(int width, int height)
@@ -120,15 +128,54 @@ void GLWidget::mouseReleaseEvent(QMouseEvent * e)
 void GLWidget::wheelEvent(QWheelEvent * e)
 {
 }
+void GLWidget::cbSetDebugQuadtreeAABBs(const void * value, void * clientData)
+{
+  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings();
+  settings._debugQuadtreeNodeAABBs = *reinterpret_cast<const bool*>(value);
+  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->setSettings(settings);
+}
+void GLWidget::cbGetDebugQuadtreeAABBs(void * value, void * clientData)
+{
+  *reinterpret_cast<bool*>(value) =  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings()._debugQuadtreeNodeAABBs;
+}
+void GLWidget::cbSetDebugObjectAABBs(const void * value, void * clientData)
+{
+  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings();
+  settings._debugObjectAABBs = *reinterpret_cast<const bool*>(value);
+  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->setSettings(settings);
+}
+void GLWidget::cbGetDebugObjectAABBs(void * value, void * clientData)
+{
+  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings()._debugObjectAABBs;
+}
+void GLWidget::cbSetSortModeMaterial(const void * value, void * clientData)
+{
+  if (*reinterpret_cast<const bool*>(value)) {
+    fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings();
+    settings._dlSortMode = fly::DisplayListSortMode::MATERIAL;
+    (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->setSettings(settings);
+  }
+}
+void GLWidget::cbGetSortModeMaterial(void * value, void* clientData)
+{
+  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings()._dlSortMode == fly::DisplayListSortMode::MATERIAL;
+}
+void GLWidget::cbGetSortModeShaderMaterial(void * value, void* clientData)
+{
+  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings()._dlSortMode == fly::DisplayListSortMode::SHADER_AND_MATERIAL;
+}
+void GLWidget::cbSetSortModeShaderMaterial(const void * value, void * clientData)
+{
+  if (*reinterpret_cast<const bool*>(value)) {
+    fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings();
+    settings._dlSortMode = fly::DisplayListSortMode::SHADER_AND_MATERIAL;
+    (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->setSettings(settings);
+  }
+}
 
 void GLWidget::initGame()
 {
   auto importer = std::make_shared<fly::AssimpImporter>();
- // auto sponza_lods = fly::LevelOfDetail().generateLODsWithDetailCulling(importer->loadModel("assets/sponza/sponza.obj"), 5);
- // auto sponza_entity = _engine->getEntityManager()->createEntity();
- // sponza_entity->addComponent(std::make_shared<fly::Transform>(fly::Vec3f(0.f), fly::Vec3f(0.01f)));
-  //sponza_entity->addComponent(std::make_shared<fly::StaticModelRenderable>(sponza_lods, sponza_entity->getComponent<fly::Transform>(), 60.f));
-
   auto sponza_model = importer->loadModel("assets/sponza/sponza.obj");
   for (const auto& mesh : sponza_model->getMeshes()) {
     auto entity = _engine->getEntityManager()->createEntity();

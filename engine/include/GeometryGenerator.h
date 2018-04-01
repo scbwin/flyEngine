@@ -1,9 +1,10 @@
 #ifndef GEOMETRYGENERATOR_H
 #define GEOMETRYGENERATOR_H
 
-#include <glm/glm.hpp>
+#include <math/FlyMath.h>
 #include <vector>
 #include <map>
+#include <array>
 
 namespace fly
 {
@@ -20,6 +21,7 @@ namespace fly
       West = 8u
     };
     void generateGrid(int size, std::vector<glm::vec2>& vertices, std::vector<unsigned>& indices);
+    std::vector<unsigned> getCubeLineIndices() const;
     struct IndexBufferInfo
     {
       unsigned _numIndices;

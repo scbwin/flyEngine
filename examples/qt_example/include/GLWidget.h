@@ -22,6 +22,8 @@ class GLWidget : public QOpenGLWidget
 public:
   GLWidget();
   ~GLWidget();
+
+
 protected:
   virtual void initializeGL() override;
   virtual void resizeGL(int width, int height) override;
@@ -39,6 +41,14 @@ protected:
   {
     return set.find(t) != set.end();
   }
+  static void cbSetDebugQuadtreeAABBs(const void *value, void *clientData);
+  static void cbGetDebugQuadtreeAABBs(void *value, void *clientData);
+  static void cbSetDebugObjectAABBs(const void *value, void *clientData);
+  static void cbGetDebugObjectAABBs(void *value, void *clientData);
+  static void cbSetSortModeMaterial(const void *value, void *clientData);
+  static void cbGetSortModeMaterial(void *value, void* clientData);
+  static void cbSetSortModeShaderMaterial(const void *value, void *clientData);
+  static void cbGetSortModeShaderMaterial(void *value, void* clientData);
 private:
   std::unique_ptr<fly::Engine> _engine;
   std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>> _renderer;

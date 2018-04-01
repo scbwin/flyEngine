@@ -1,10 +1,10 @@
 #version 330
  
-layout (location = 0) out vec3 color;
+layout (location = 0) out vec3 fragment_color;
 
-uniform vec3 col;
+uniform vec3 c;
 
 void main()
 {
-	color = col;
+	fragment_color = c;
 }

@@ -18,7 +18,6 @@ namespace fly
 
     const std::vector<Vertex>& getVertices() const;
     const std::vector<unsigned int>& getIndices() const;
-    std::vector<unsigned> getAABBLineIndices();
     unsigned int getMaterialIndex() const;
     AABB* getAABB() const;
     void setMaterialIndex(unsigned material_index);
@@ -32,4 +31,4 @@ namespace fly
   };
 }
 
-#endif // !MESH_H
+#endif

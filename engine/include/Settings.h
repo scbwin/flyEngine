@@ -39,6 +39,8 @@ namespace fly
     float _smSlopeScaledDepthBias;
     DetailCullingParams _detailCullingParams;
     DisplayListSortMode _dlSortMode = DisplayListSortMode::SHADER_AND_MATERIAL;
+    bool _debugQuadtreeNodeAABBs = false;
+    bool _debugObjectAABBs = false;
   };
 }
 

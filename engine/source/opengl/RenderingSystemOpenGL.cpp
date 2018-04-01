@@ -2701,7 +2701,7 @@ namespace fly
     createShader(_shaderProgramDOFRefDepth, "assets/opengl/vs_screen.glsl", "assets/opengl/fs_DOF_ref_depth.glsl");
     createShader(_shaderProgramSkybox, "assets/opengl/vs_skybox.glsl", "assets/opengl/fs_skybox.glsl");
     createShader(_shaderProgramWaterForward, "assets/opengl/vs_water_forward.glsl", "assets/opengl/fs_water_forward.glsl");
-    createShader(_aabbShader, "assets/opengl/vs_aabb.glsl", "assets/opengl/fs_aabb.glsl");
+    //createShader(_aabbShader, "assets/opengl/vs_aabb.glsl", "assets/opengl/fs_aabb.glsl");
     createShader(_lensFlareShader, "assets/opengl/vs_lens_flare.glsl", "assets/opengl/fs_lens_flare.glsl");
     createShader(_lensFlareCombineShader, "assets/opengl/vs_screen.glsl", "assets/opengl/fs_lens_flare_combine.glsl");
     createShader(_skydomeShader, "assets/opengl/vs_skybox.glsl", "assets/opengl/fs_skydome.glsl");

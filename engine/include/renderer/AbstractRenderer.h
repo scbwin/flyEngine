@@ -10,6 +10,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/transform.hpp>
 #include <map>
+#include <unordered_map>
 #include <Model.h>
 #include <memory>
 #include <Entity.h>
@@ -33,6 +34,14 @@ namespace fly
       _pp._fieldOfView = glm::radians(45.f);
     }
     virtual ~AbstractRenderer() = default;
+    void setSettings(const Settings& settings)
+    {
+      _settings = settings;
+    }
+    const Settings& getSettings() const
+    {
+      return _settings;
+    }
     virtual void onComponentsChanged(Entity* entity) override
     {
       auto camera = entity->getComponent<Camera>();
@@ -71,11 +80,11 @@ namespace fly
         _api.setDepthTestEnabled<true>();
         Vec3f light_pos_view = (_rp._viewMatrix * Vec4f(_directionalLight->_pos, 1.f)).xyz();
         _meshGeometryStorage.bind();
-        auto visible_elements = _quadtree->getVisibleElements<API::isDirectX(), false>({ _rp._VP });
+        std::vector<StaticMeshRenderable*> visible_elements = _quadtree->getVisibleElements<API::isDirectX()>(_rp._VP);
         if (_settings._dlSortMode == DisplayListSortMode::SHADER_AND_MATERIAL) {
-          std::map<std::shared_ptr<typename API::MaterialDesc::ShaderProgram>, std::map<std::shared_ptr<typename API::MaterialDesc>, std::vector<StaticMeshRenderable*>>> display_list;
+          std::unordered_map<typename API::MaterialDesc::ShaderProgram*, std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> display_list;
           for (const auto& e : visible_elements) {
-            display_list[e->_materialDesc->getShader()][e->_materialDesc].push_back(e);
+            display_list[e->_materialDesc->getShader().get()][e->_materialDesc.get()].push_back(e);
           }
           for (const auto& e : display_list) {
             _api.setupShader(e.first, light_pos_view, _rp._projectionMatrix);
@@ -88,9 +97,9 @@ namespace fly
           }
         }
         else {
-          std::map<std::shared_ptr<typename API::MaterialDesc>, std::vector<StaticMeshRenderable*>> display_list;
+          std::unordered_map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>> display_list;
           for (const auto& e : visible_elements) {
-            display_list[e->_materialDesc].push_back(e);
+            display_list[e->_materialDesc.get()].push_back(e);
           }
           for (const auto& e : display_list) {
             _api.setupMaterial(*e.first, light_pos_view, _rp._projectionMatrix);
@@ -99,7 +108,23 @@ namespace fly
             }
           }
         }
-
+        if (_settings._debugQuadtreeNodeAABBs) {
+          auto visible_nodes = _quadtree->getVisibleNodes(_rp._VP);
+          if (visible_nodes.size()) {
+            std::vector<AABB*> aabbs;
+            for (const auto& n : visible_nodes) {
+              aabbs.push_back(n->getAABBWorld());
+            }
+            _api.renderAABBs(aabbs, _rp._VP, Vec3f(1.f, 0.f, 0.f));
+          }
+        }
+        if (_settings._debugObjectAABBs && visible_elements.size()) {
+          std::vector<AABB*> aabbs;
+          for (const auto& e : visible_elements) {
+            aabbs.push_back(e->getAABBWorld());
+          }
+          _api.renderAABBs(aabbs, _rp._VP, Vec3f(0.f, 1.f, 0.f));
+        }
       }
     }
     void onResize(const Vec2u& window_size)

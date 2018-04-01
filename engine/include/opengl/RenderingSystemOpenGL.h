@@ -109,7 +109,7 @@ namespace fly
     std::shared_ptr<GLShaderProgram> _shaderProgramDOF;
     std::shared_ptr<GLShaderProgram> _shaderProgramDOFGather;
     std::shared_ptr<GLShaderProgram> _shaderProgramDOFRefDepth;
-    std::shared_ptr<GLShaderProgram> _aabbShader;
+   // std::shared_ptr<GLShaderProgram> _aabbShader;
     std::shared_ptr<GLShaderProgram> _lensFlareShader;
     std::shared_ptr<GLShaderProgram> _lensFlareCombineShader;
     std::shared_ptr<GLShaderProgram> _skydomeShader;

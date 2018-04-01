@@ -82,18 +82,28 @@ namespace fly
           }
         }
       }
-      template<bool directx, bool ignore_near>
-      void getVisibleElements(const std::vector<Mat4f>& vp, std::vector<TPtr>& visible_elements) const
+      template<bool directx>
+      void getVisibleElements(const Mat4f& vp, std::vector<TPtr>& visible_elements) const
       {
-        if ((hasChildren() || _elements.size()) && _aabbWorld->isVisible<directx, ignore_near>(vp)) {
-          for (const auto& e : _elements) {
-            if (e->getAABBWorld()->isVisible<directx, ignore_near>(vp)) {
-              visible_elements.push_back(e);
+        if (hasChildren() || _elements.size()) {
+          if (_aabbWorld->isFullyVisible<directx>(vp)) {
+            visible_elements.insert(visible_elements.end(), _elements.begin(), _elements.end());
+            for (const auto& c : _children) {
+              if (c) {
+                c->getAllElements(visible_elements);
+              }
             }
           }
-          for (const auto& c : _children) {
-            if (c) {
-              c->getVisibleElements<directx, ignore_near>(vp, visible_elements);
+          else if (_aabbWorld->intersectsFrustum<directx>(vp)) {
+            for (const auto& e : _elements) {
+              if (e->getAABBWorld()->intersectsFrustum<directx>(vp)) {
+                visible_elements.push_back(e);
+              }
+            }
+            for (const auto& c : _children) {
+              if (c) {
+                c->getVisibleElements<directx>(vp, visible_elements);
+              }
             }
           }
         }
@@ -134,6 +144,26 @@ namespace fly
         for (const auto& c : _children) {
           if (c) {
             c->getAllNodes(all_nodes);
+          }
+        }
+      }
+      template<bool directx>
+      void getVisibleNodes(std::vector<Node*>& visible_nodes, const Mat4f& vp)
+      {
+        if (_aabbWorld->isFullyVisible<directx>(vp)) {
+          visible_nodes.push_back(this);
+          for (const auto& c : _children) {
+            if (c) {
+              c->getAllNodes(visible_nodes);
+            }
+          }
+        }
+        else if (_aabbWorld->intersectsFrustum<directx>(vp)) {
+          visible_nodes.push_back(this);
+          for (const auto& c : _children) {
+            if (c) {
+              c->getVisibleNodes<directx>(visible_nodes, vp);
+            }
           }
         }
       }
@@ -182,11 +212,11 @@ namespace fly
     {
       _root->print(0);
     }
-    template<bool directx, bool ignore_near>
-    std::vector<TPtr> getVisibleElements(const std::vector<Mat4f>& vp) const
+    template<bool directx = false>
+    std::vector<TPtr> getVisibleElements(const Mat4f& vp) const
     {
       std::vector<TPtr> visible_elements;
-      _root->getVisibleElements<directx, ignore_near>(vp, visible_elements);
+      _root->getVisibleElements<directx>(vp, visible_elements);
       return visible_elements;
     }
     template<bool directx, bool ignore_near>
@@ -207,6 +237,13 @@ namespace fly
       std::vector<Node*> all_nodes;
       _root->getAllNodes(all_nodes);
       return all_nodes;
+    }
+    template<bool directx = false>
+    std::vector<Node*> getVisibleNodes(const Mat4f& vp)
+    {
+      std::vector<Node*> visible_nodes;
+      _root->getVisibleNodes<directx>(visible_nodes, vp);
+      return visible_nodes;
     }
     /**
     * Use this method as soon as all elements are added to the quadtree in order to get the tightest possible fit for the given elements.

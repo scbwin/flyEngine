@@ -75,18 +75,22 @@ namespace fly
       std::shared_ptr<GLTexture> _normalMap;
       std::shared_ptr<GLTexture> _alphaMap;
     };
-    void setupShader(const std::shared_ptr<GLShaderProgram>& shader, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix);
+    void setupShader(GLShaderProgram* shader, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix);
     void setupMaterial(const MaterialDesc& desc);
     void setupMaterial(const MaterialDesc& desc, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix);
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mv);
+    void renderAABBs(const std::vector<AABB*>& aabbs, const Mat4f& transform, const Vec3f& col);
     std::shared_ptr<GLTexture> createTexture(const std::string& path);
     std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material);
-    std::shared_ptr<GLShaderProgram> createShader(const std::string& vertex_file, const std::string& fragment_file);
+    std::shared_ptr<GLShaderProgram> createShader(const std::string& vertex_file, const std::string& fragment_file, const std::string& geometry_file = "");
   private:
     GLShaderProgram* _activeShader;
     std::map<std::string, std::shared_ptr<GLTexture>> _textureCache;
     std::map<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>> _matDescCache;
     std::map<std::string, std::shared_ptr<GLShaderProgram>> _shaderCache;
+    std::shared_ptr<GLShaderProgram> _aabbShader;
+    std::shared_ptr<GLVertexArray> _vaoAABB;
+    std::shared_ptr<GLBuffer> _vboAABB;
   };
 }
 

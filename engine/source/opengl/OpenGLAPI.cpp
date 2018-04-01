@@ -29,6 +29,17 @@ namespace fly
     else {
       std::cout << "OpenGLAPI::OpenGLAPI() Failed to initialized GLEW: " << glewGetErrorString(result) << std::endl;
     }
+    _aabbShader = createShader("assets/opengl/vs_aabb.glsl", "assets/opengl/fs_aabb.glsl", "assets/opengl/gs_aabb.glsl");
+    _vaoAABB = std::make_shared<GLVertexArray>();
+    _vaoAABB->bind();
+    _vboAABB = std::make_shared<GLBuffer>(GL_ARRAY_BUFFER);
+    _vboAABB->bind();
+    for (unsigned i = 0; i < 2; i++) {
+      GL_CHECK(glEnableVertexAttribArray(i));
+      GL_CHECK(glVertexAttribDivisor(i, 1));
+    }
+    GL_CHECK(glVertexAttribPointer(0, 3, GL_FLOAT, false, 2 * sizeof(Vec3f), 0));
+    GL_CHECK(glVertexAttribPointer(1, 3, GL_FLOAT, false, 2 * sizeof(Vec3f), reinterpret_cast<const void*>(sizeof(Vec3f))));
   }
   ZNearMapping OpenGLAPI::getZNearMapping() const
   {
@@ -43,12 +54,12 @@ namespace fly
     GL_CHECK(glClearColor(color[0], color[1], color[2], color[3]));
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
   }
-  void OpenGLAPI::setupShader(const std::shared_ptr<GLShaderProgram>& shader, const Vec3f & dl_pos_view_space, const Mat4f & projection_matrix)
+  void OpenGLAPI::setupShader(GLShaderProgram* shader, const Vec3f & dl_pos_view_space, const Mat4f & projection_matrix)
   {
     shader->bind();
     GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("P"), 1, false, projection_matrix.ptr()));
     GL_CHECK(glUniform3f(shader->uniformLocation("lpos_cs"), dl_pos_view_space[0], dl_pos_view_space[1], dl_pos_view_space[2]));
-    _activeShader = shader.get();
+    _activeShader = shader;
   }
   void OpenGLAPI::setupMaterial(const MaterialDesc & desc)
   {
@@ -67,6 +78,21 @@ namespace fly
     GL_CHECK(glUniformMatrix4fv(_activeShader->uniformLocation("MV"), 1, false, mv.ptr()));
     GL_CHECK(glUniformMatrix4fv(_activeShader->uniformLocation("MV_i"), 1, true, inverse(mv).ptr()));
     GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, GL_UNSIGNED_INT, mesh_data._indices, mesh_data._baseVertex));
+  }
+  void OpenGLAPI::renderAABBs(const std::vector<AABB*>& aabbs, const Mat4f& transform, const Vec3f& col)
+  {
+    _vaoAABB->bind();
+    _activeShader = _aabbShader.get();
+    _activeShader->bind();
+    GL_CHECK(glUniformMatrix4fv(_activeShader->uniformLocation("VP"), 1, false, transform.ptr()));
+    std::vector<Vec3f> bb_buffer;
+    for (const auto& aabb : aabbs) {
+      bb_buffer.push_back(aabb->getMin());
+      bb_buffer.push_back(aabb->getMax());
+    }
+    GL_CHECK(glUniform3f(_activeShader->uniformLocation("c"), col[0], col[1], col[2]));
+    _vboAABB->setData(bb_buffer.data(), bb_buffer.size(), GL_DYNAMIC_COPY);
+    GL_CHECK(glDrawArraysInstanced(GL_POINTS, 0, 1, aabbs.size()));
   }
   std::shared_ptr<GLTexture> OpenGLAPI::createTexture(const std::string & path)
   {
@@ -95,7 +121,7 @@ namespace fly
     _matDescCache[material] = ret;
     return ret;
   }
-  std::shared_ptr<GLShaderProgram> OpenGLAPI::createShader(const std::string & vertex_file, const std::string & fragment_file)
+  std::shared_ptr<GLShaderProgram> OpenGLAPI::createShader(const std::string & vertex_file, const std::string & fragment_file, const std::string& geometry_file)
   {
     std::string key = vertex_file + fragment_file;
     auto it = _shaderCache.find(key);
@@ -105,6 +131,9 @@ namespace fly
     auto ret = std::make_shared<GLShaderProgram>();
     ret->create();
     ret->addShaderFromFile(vertex_file, GLShaderProgram::ShaderType::VERTEX);
+    if (geometry_file != "") {
+      ret->addShaderFromFile(geometry_file, GLShaderProgram::ShaderType::GEOMETRY);
+    }
     ret->addShaderFromFile(fragment_file, GLShaderProgram::ShaderType::FRAGMENT);
     ret->link();
     _shaderCache[key] = ret;
@@ -148,6 +177,7 @@ namespace fly
     GL_CHECK(glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _uv))));
     GL_CHECK(glVertexAttribPointer(3, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _tangent))));
     GL_CHECK(glVertexAttribPointer(4, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _bitangent))));
+    GL_CHECK(glBindVertexArray(0));
     _meshDataCache[mesh] = data;
     return data;
   }

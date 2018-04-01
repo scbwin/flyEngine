@@ -26,6 +26,10 @@ namespace fly
       }
     }
   }
+  std::vector<unsigned> GeometryGenerator::getCubeLineIndices() const
+  {
+    return { 0, 1, 1, 6, 6, 3, 3, 0,   0, 2, 2, 4, 4, 1,   2, 5, 5, 7, 7, 4,   7, 6, 5, 3 };
+  }
   void GeometryGenerator::generateGeoMipMap(int size, int tile_size, unsigned num_lods, std::vector<glm::vec2>& vertices, std::vector<unsigned>& indices, std::map<unsigned, std::map<unsigned, IndexBufferInfo>>& index_offsets)
   {
     assert(!vertices.size() && !indices.size() && size % tile_size == 0);
