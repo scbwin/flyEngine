@@ -44,6 +44,7 @@ void GLWidget::initializeGL()
   auto settings_bar = TwNewBar("Settings");
   TwAddVarCB(settings_bar, "Group by material", TwType::TW_TYPE_BOOLCPP, cbSetSortModeMaterial, cbGetSortModeMaterial, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Group by shader and material", TwType::TW_TYPE_BOOLCPP, cbSetSortModeShaderMaterial, cbGetSortModeShaderMaterial, &_renderer, nullptr);
+  TwAddVarCB(settings_bar, "Light intensity", TwType::TW_TYPE_COLOR3F, cbSetLightIntensity, cbGetLightIntensity, &_dl, nullptr);
 
   TwSetTopBar(_bar);
 }
@@ -166,6 +167,15 @@ void GLWidget::cbGetSortModeShaderMaterial(void * value, void* clientData)
 {
   *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings()._dlSortMode == fly::DisplayListSortMode::SHADER_AND_MATERIAL;
 }
+void GLWidget::cbSetLightIntensity(const void * value, void * clientData)
+{
+  //*reinterpret_cast<const fly::Vec3f*>(value) = (*reinterpret_cast<std::shared_ptr<fly::DirectionalLight>*>(clientData))->getIntensity();
+  (*reinterpret_cast<std::shared_ptr<fly::DirectionalLight>*>(clientData))->setIntensity(*reinterpret_cast<const fly::Vec3f*>(value));
+}
+void GLWidget::cbGetLightIntensity(void * value, void * clientData)
+{
+  *reinterpret_cast<fly::Vec3f*>(value) = (*reinterpret_cast<std::shared_ptr<fly::DirectionalLight>*>(clientData))->getIntensity();
+}
 void GLWidget::cbSetSortModeShaderMaterial(const void * value, void * clientData)
 {
   if (*reinterpret_cast<const bool*>(value)) {
@@ -185,17 +195,13 @@ void GLWidget::initGame()
       sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(0.f), fly::Vec3f(0.01f)).getModelMatrix()));
   }
 
-  /*std::vector<std::shared_ptr<fly::Model>> sphere_models = { importer->loadModel("assets/sphere_lod0.obj"),
-    importer->loadModel("assets/sphere_lod1.obj"), importer->loadModel("assets/sphere_lod2.obj") };
-  auto sphere_entity = _engine->getEntityManager()->createEntity();
-  sphere_entity->addComponent(std::make_shared<fly::StaticModelRenderable>(sphere_models, std::make_shared<fly::Transform>(glm::vec3(50.f, 0.f, 0.f)), 5.f));*/
-
   auto cam_entity = _engine->getEntityManager()->createEntity();
   cam_entity->addComponent(std::make_shared<fly::Camera>(glm::vec3(0.f, 0.f, -100.f), glm::vec3(0.f)));
   
   auto dl_entity = _engine->getEntityManager()->createEntity();
   std::vector<float> csm_distances = { 10.f, 50.f, 200.f };
-  dl_entity->addComponent(std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(30.f, 50.f, 0.f), glm::vec3(0.f), csm_distances));
+  _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(30.f, 50.f, 0.f), glm::vec3(0.f), csm_distances);
+  dl_entity->addComponent(_dl);
   
   _camController = std::unique_ptr<fly::CameraController>(new fly::CameraController(cam_entity->getComponent<fly::Camera>(), 20.f));
 }

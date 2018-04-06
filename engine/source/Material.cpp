@@ -21,7 +21,7 @@ namespace fly
   }
   void Material::setSpecularExponent(float specular)
   {
-    _specularExponent = specular;
+    _specularExponent = std::max(1.f, specular);
   }
   void Material::setDiffusePath(const std::string & diffuse_path)
   {
@@ -82,5 +82,29 @@ namespace fly
   bool Material::isReflective() const
   {
     return _isReflective;
+  }
+  float Material::getKa() const
+  {
+    return _ka;
+  }
+  float Material::getKd() const
+  {
+    return _kd;
+  }
+  float Material::getKs() const
+  {
+    return _ks;
+  }
+  void Material::setKa(float ka)
+  {
+    _ka = ka;
+  }
+  void Material::setKd(float kd)
+  {
+    _kd = kd;
+  }
+  void Material::setKs(float ks)
+  {
+    _ks = ks;
   }
 }

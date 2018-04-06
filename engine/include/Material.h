@@ -29,6 +29,12 @@ namespace fly
     float getWindFrequency() const;
     void setIsReflective(bool reflective);
     bool isReflective() const;
+    float getKa() const;
+    float getKd() const;
+    float getKs() const;
+    void setKa(float ka);
+    void setKd(float kd);
+    void setKs(float ks);
 
   private:
     Vec3f _diffuseColor;
@@ -36,12 +42,15 @@ namespace fly
     std::string _diffusePath;
     std::string _normalPath;
     std::string _opacityPath;
-    float _specularExponent;
+    float _specularExponent = 48.f;
     bool _hasWindX = false;
     bool _hasWindZ = false;
     float _windStrength;
     float _windFrequency;
     bool _isReflective = false;
+    float _ka = 0.025f;
+    float _kd = 1.f;
+    float _ks = 1.f;
   };
 }
 

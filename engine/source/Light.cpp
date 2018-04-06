@@ -12,6 +12,16 @@ namespace fly
   {
   }
 
+  const Vec3f& Light::getIntensity() const
+  {
+    return _intensity;
+  }
+
+  void Light::setIntensity(const Vec3f& i)
+  {
+    _intensity = i;
+  }
+
   SpotLight::SpotLight(const Vec3f& color, const Vec3f& pos, const Vec3f& target, float near, float far, float penumbra_degrees, float umbra_degrees) :
     Light(color, pos, target), _zNear(near), _zFar(far), _penumbraDegrees(penumbra_degrees), _umbraDegrees(umbra_degrees)
   {

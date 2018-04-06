@@ -75,9 +75,12 @@ namespace fly
       std::shared_ptr<GLTexture> _normalMap;
       std::shared_ptr<GLTexture> _alphaMap;
     };
-    void setupShader(GLShaderProgram* shader, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix);
+    void setupShader(GLShaderProgram* shader, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix, const Vec3f& light_intensity);
     void setupMaterial(const MaterialDesc& desc);
-    void setupMaterial(const MaterialDesc& desc, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix);
+    void setupMaterial(const MaterialDesc& desc, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix, const Vec3f& light_intensity);
+    void setupShaderConstants(const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix, const Vec3f& light_intensity);
+    void setupMaterialConstants(const std::shared_ptr<Material>& material);
+
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mv);
     void renderAABBs(const std::vector<AABB*>& aabbs, const Mat4f& transform, const Vec3f& col);
     std::shared_ptr<GLTexture> createTexture(const std::string& path);

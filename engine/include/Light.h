@@ -20,6 +20,10 @@ namespace fly
     Vec3f _pos;
     float _lensFlareWeight = 1.f;
     float _lensFlareRefSamplesPassed = 100.f;
+    const Vec3f& getIntensity() const;
+    void setIntensity(const Vec3f& i);
+  private:
+    Vec3f _intensity = Vec3f(1.f);
   };
 
   class DirectionalLight : public Light

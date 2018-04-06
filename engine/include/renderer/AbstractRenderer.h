@@ -82,12 +82,12 @@ namespace fly
         _meshGeometryStorage.bind();
         std::vector<StaticMeshRenderable*> visible_elements = _quadtree->getVisibleElements<API::isDirectX()>(_rp._VP);
         if (_settings._dlSortMode == DisplayListSortMode::SHADER_AND_MATERIAL) {
-          std::unordered_map<typename API::MaterialDesc::ShaderProgram*, std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> display_list;
+          std::unordered_map<typename API::MaterialDesc::ShaderProgram*, std::unordered_map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> display_list;
           for (const auto& e : visible_elements) {
             display_list[e->_materialDesc->getShader().get()][e->_materialDesc.get()].push_back(e);
           }
           for (const auto& e : display_list) {
-            _api.setupShader(e.first, light_pos_view, _rp._projectionMatrix);
+            _api.setupShader(e.first, light_pos_view, _rp._projectionMatrix, _directionalLight->getIntensity());
             for (const auto& e1 : e.second) {
               _api.setupMaterial(*e1.first);
               for (const auto& smr : e1.second) {
@@ -102,7 +102,7 @@ namespace fly
             display_list[e->_materialDesc.get()].push_back(e);
           }
           for (const auto& e : display_list) {
-            _api.setupMaterial(*e.first, light_pos_view, _rp._projectionMatrix);
+            _api.setupMaterial(*e.first, light_pos_view, _rp._projectionMatrix, _directionalLight->getIntensity());
             for (const auto& smr : e.second) {
               _api.renderMesh(smr->_meshData, _rp._viewMatrix * smr->_smr->getModelMatrix());
             }

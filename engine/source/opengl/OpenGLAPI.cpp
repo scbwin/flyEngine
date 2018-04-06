@@ -13,6 +13,7 @@
 #include <opengl/GLAppendBuffer.h>
 #include <Material.h>
 #include <opengl/GLMaterialSetup.h>
+#include <opengl/GLShaderInterface.h>
 
 namespace fly
 {
@@ -54,29 +55,42 @@ namespace fly
     GL_CHECK(glClearColor(color[0], color[1], color[2], color[3]));
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
   }
-  void OpenGLAPI::setupShader(GLShaderProgram* shader, const Vec3f & dl_pos_view_space, const Mat4f & projection_matrix)
+  void OpenGLAPI::setupShader(GLShaderProgram* shader, const Vec3f & dl_pos_view_space, const Mat4f & projection_matrix, const Vec3f& light_intensity)
   {
-    shader->bind();
-    GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("P"), 1, false, projection_matrix.ptr()));
-    GL_CHECK(glUniform3f(shader->uniformLocation("lpos_cs"), dl_pos_view_space[0], dl_pos_view_space[1], dl_pos_view_space[2]));
     _activeShader = shader;
+    _activeShader->bind();
+    setupShaderConstants(dl_pos_view_space, projection_matrix, light_intensity);
+  }
+  void OpenGLAPI::setupShaderConstants(const Vec3f & dl_pos_view_space, const Mat4f & projection_matrix, const Vec3f& light_intensity)
+  {
+    setMatrix(_activeShader->uniformLocation("P"), projection_matrix);
+    setVector(_activeShader->uniformLocation("lpos_cs"), dl_pos_view_space);
+    setVector(_activeShader->uniformLocation("I_in"), light_intensity);
+  }
+  void OpenGLAPI::setupMaterialConstants(const std::shared_ptr<Material>& material)
+  {
+    setScalar(_activeShader->uniformLocation("ka"), material->getKa());
+    setScalar(_activeShader->uniformLocation("kd"), material->getKd());
+    setScalar(_activeShader->uniformLocation("ks"), material->getKs());
+    setScalar(_activeShader->uniformLocation("s_e"), material->getSpecularExponent());
   }
   void OpenGLAPI::setupMaterial(const MaterialDesc & desc)
   {
     desc.getMaterialSetup()->setup(desc);
+    setupMaterialConstants(desc.getMaterial());
   }
-  void OpenGLAPI::setupMaterial(const MaterialDesc & desc, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix)
+  void OpenGLAPI::setupMaterial(const MaterialDesc & desc, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix, const Vec3f& light_intensity)
   {
     _activeShader = desc.getShader().get();
     _activeShader->bind();
-    GL_CHECK(glUniformMatrix4fv(_activeShader->uniformLocation("P"), 1, false, projection_matrix.ptr()));
-    GL_CHECK(glUniform3f(_activeShader->uniformLocation("lpos_cs"), dl_pos_view_space[0], dl_pos_view_space[1], dl_pos_view_space[2]));
+    setupShaderConstants(dl_pos_view_space, projection_matrix, light_intensity);
+    setupMaterialConstants(desc.getMaterial());
     desc.getMaterialSetup()->setup(desc);
   }
   void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & mv)
   {
-    GL_CHECK(glUniformMatrix4fv(_activeShader->uniformLocation("MV"), 1, false, mv.ptr()));
-    GL_CHECK(glUniformMatrix4fv(_activeShader->uniformLocation("MV_i"), 1, true, inverse(mv).ptr()));
+    setMatrix(_activeShader->uniformLocation("MV"), mv);
+    setMatrixTranspose(_activeShader->uniformLocation("MV_i"), inverse(mv));
     GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, GL_UNSIGNED_INT, mesh_data._indices, mesh_data._baseVertex));
   }
   void OpenGLAPI::renderAABBs(const std::vector<AABB*>& aabbs, const Mat4f& transform, const Vec3f& col)
@@ -84,13 +98,13 @@ namespace fly
     _vaoAABB->bind();
     _activeShader = _aabbShader.get();
     _activeShader->bind();
-    GL_CHECK(glUniformMatrix4fv(_activeShader->uniformLocation("VP"), 1, false, transform.ptr()));
+    setMatrix(_activeShader->uniformLocation("VP"), transform);
     std::vector<Vec3f> bb_buffer;
     for (const auto& aabb : aabbs) {
       bb_buffer.push_back(aabb->getMin());
       bb_buffer.push_back(aabb->getMax());
     }
-    GL_CHECK(glUniform3f(_activeShader->uniformLocation("c"), col[0], col[1], col[2]));
+    setVector(_activeShader->uniformLocation("c"), col);
     _vboAABB->setData(bb_buffer.data(), bb_buffer.size(), GL_DYNAMIC_COPY);
     GL_CHECK(glDrawArraysInstanced(GL_POINTS, 0, 1, aabbs.size()));
   }
