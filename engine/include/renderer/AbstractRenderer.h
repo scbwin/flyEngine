@@ -109,21 +109,10 @@ namespace fly
           }
         }
         if (_settings._debugQuadtreeNodeAABBs) {
-          auto visible_nodes = _quadtree->getVisibleNodes(_rp._VP);
-          if (visible_nodes.size()) {
-            std::vector<AABB*> aabbs;
-            for (const auto& n : visible_nodes) {
-              aabbs.push_back(n->getAABBWorld());
-            }
-            _api.renderAABBs(aabbs, _rp._VP, Vec3f(1.f, 0.f, 0.f));
-          }
+          renderQuadtreeAABBs();
         }
-        if (_settings._debugObjectAABBs && visible_elements.size()) {
-          std::vector<AABB*> aabbs;
-          for (const auto& e : visible_elements) {
-            aabbs.push_back(e->getAABBWorld());
-          }
-          _api.renderAABBs(aabbs, _rp._VP, Vec3f(0.f, 1.f, 0.f));
+        if (_settings._debugObjectAABBs) {
+          renderObjectAABBs(visible_elements);
         }
       }
     }
@@ -163,6 +152,27 @@ namespace fly
       _quadtree = std::make_unique<Quadtree<StaticMeshRenderable>>(Vec2f({ _sceneMin[0], _sceneMin[2] }), Vec2f({ _sceneMax[0], _sceneMax[2] }));
       for (const auto& e : _staticMeshRenderables) {
         _quadtree->insert(e.second.get());
+      }
+    }
+    void renderQuadtreeAABBs()
+    {
+      auto visible_nodes = _quadtree->getVisibleNodes(_rp._VP);
+      if (visible_nodes.size()) {
+        std::vector<AABB*> aabbs;
+        for (const auto& n : visible_nodes) {
+          aabbs.push_back(n->getAABBWorld());
+        }
+        _api.renderAABBs(aabbs, _rp._VP, Vec3f(1.f, 0.f, 0.f));
+      }
+    }
+    void renderObjectAABBs(const std::vector<StaticMeshRenderable*>& visible_elements)
+    {
+      if (visible_elements.size()) {
+        std::vector<AABB*> aabbs;
+        for (const auto& e : visible_elements) {
+          aabbs.push_back(e->getAABBWorld());
+        }
+        _api.renderAABBs(aabbs, _rp._VP, Vec3f(0.f, 1.f, 0.f));
       }
     }
   };

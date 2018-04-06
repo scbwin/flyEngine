@@ -37,12 +37,16 @@ namespace fly
         _data[i] = static_cast<T>(other[i]);
       }
     }
-    Vector(const Vector<Dim - 1, T>& other, T val)
+    Vector(const Vector<Dim - 1, T>& other, T scalar)
     {
-      for (unsigned i = 0; i < Dim - 1; i++) {
-        _data[i] = other[i];
-      }
-      _data[Dim - 1] = val;
+      std::memcpy(_data, &other[0], sizeof(other));
+      _data[Dim - 1] = scalar;
+    }
+    template<unsigned Dim1>
+    Vector(const Vector<Dim1, T>& v1, const Vector<Dim - Dim1, T>& v2)
+    {
+      std::memcpy(_data, &v1[0], sizeof(v1));
+      std::memcpy(_data + Dim1, &v2[0], sizeof(v2));
     }
     /**
     * Destructor

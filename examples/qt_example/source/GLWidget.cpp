@@ -44,6 +44,8 @@ void GLWidget::initializeGL()
   auto settings_bar = TwNewBar("Settings");
   TwAddVarCB(settings_bar, "Group by material", TwType::TW_TYPE_BOOLCPP, cbSetSortModeMaterial, cbGetSortModeMaterial, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Group by shader and material", TwType::TW_TYPE_BOOLCPP, cbSetSortModeShaderMaterial, cbGetSortModeShaderMaterial, &_renderer, nullptr);
+
+  TwSetTopBar(_bar);
 }
 
 void GLWidget::resizeGL(int width, int height)

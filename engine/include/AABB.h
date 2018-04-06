@@ -25,12 +25,12 @@ namespace fly
       for (const auto& v : _vertices) {
         auto pos_h = transform * Vec4f(v, 1.f);
         for (unsigned i = 0; i < 3; i++) {
-          if (!(pos_h[i] <= pos_h[3])) {
+          if (pos_h[i] > pos_h[3]) {
             return false;
           }
         }
         for (unsigned i = 0; i < 3; i++) {
-          if (!(pos_h[i] >= (directx && i == 2 ? 0.f : -pos_h[3]))) {
+          if (pos_h[i] < (directx && i == 2 ? 0.f : -pos_h[3])) {
             return false;
           }
         }
