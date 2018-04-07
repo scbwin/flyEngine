@@ -26,59 +26,11 @@ namespace fly
     GL_CHECK(_id = glCreateProgram());
   }
 
-  void GLShaderProgram::addShaderFromFile(const std::string& fname, ShaderType type, const std::map<std::string, std::regex>& replacements)
+  void GLShaderProgram::addShaderFromFile(const std::string& fname, ShaderType type)
   {
     _fnames.push_back(fname);
-
-    GLenum shader_type;
-    switch (type)
-    {
-    case ShaderType::VERTEX:
-      shader_type = GL_VERTEX_SHADER;
-      break;
-    case ShaderType::FRAGMENT:
-      shader_type = GL_FRAGMENT_SHADER;
-      break;
-    case ShaderType::COMPUTE:
-      shader_type = GL_COMPUTE_SHADER;
-      break;
-    case ShaderType::GEOMETRY:
-      shader_type = GL_GEOMETRY_SHADER;
-      break;
-    }
-    GLuint shader_id;
-    GL_CHECK(shader_id = glCreateShader(shader_type));
-
-    std::string shader_code_str;
-    std::ifstream is(fname);
-    std::string line;
-    while (std::getline(is, line)) {
-      shader_code_str += line + "\n";
-    }
-
-    is.close();
-
-    for (auto& r : replacements) {
-      shader_code_str = std::regex_replace(shader_code_str, r.second, r.first.c_str());
-    }
-
-    const char* code_str_ptr = shader_code_str.c_str();
-    GL_CHECK(glShaderSource(shader_id, 1, &code_str_ptr, NULL));
-    GL_CHECK(glCompileShader(shader_id));
-
-    GLint compile_status;
-    int log_length;
-    GL_CHECK(glGetShaderiv(shader_id, GL_COMPILE_STATUS, &compile_status));
-    GL_CHECK(glGetShaderiv(shader_id, GL_INFO_LOG_LENGTH, &log_length));
-    if (compile_status == GL_FALSE) {
-      std::string message(log_length + 1, ' ');
-      GL_CHECK(glGetShaderInfoLog(shader_id, log_length, NULL, &message[0]));
-      std::cout << "Error in " << fname << std::endl;
-      std::cout << shader_code_str << std::endl;
-      std::cout << message << std::endl;
-      return;
-    }
-    GL_CHECK(glAttachShader(_id, shader_id));
+    _types.push_back(type);
+    add(fname, type);
   }
 
   void GLShaderProgram::link()
@@ -100,7 +52,6 @@ namespace fly
           std::cout << f << std::endl;
         }
       }
-
       std::cout << "failed to link _program but error log is empty" << std::endl;
     }
   }
@@ -135,6 +86,68 @@ namespace fly
   GLShaderProgram::~GLShaderProgram()
   {
     GL_CHECK(glDeleteProgram(_id));
+  }
+
+  void GLShaderProgram::reload()
+  {
+    if (_id) {
+      GL_CHECK(glDeleteProgram(_id));
+    }
+    _uniformLocations.clear();
+    create();
+    for (unsigned int i = 0; i < _fnames.size(); i++) {
+      add(_fnames[i], _types[i]);
+    }
+    link();
+  }
+
+  void GLShaderProgram::add(const std::string & fname, ShaderType type)
+  {
+    GLenum shader_type;
+    switch (type)
+    {
+    case ShaderType::VERTEX:
+      shader_type = GL_VERTEX_SHADER;
+      break;
+    case ShaderType::FRAGMENT:
+      shader_type = GL_FRAGMENT_SHADER;
+      break;
+    case ShaderType::COMPUTE:
+      shader_type = GL_COMPUTE_SHADER;
+      break;
+    case ShaderType::GEOMETRY:
+      shader_type = GL_GEOMETRY_SHADER;
+      break;
+    }
+    GLuint shader_id;
+    GL_CHECK(shader_id = glCreateShader(shader_type));
+
+    std::string shader_code_str;
+    std::ifstream is(fname);
+    std::string line;
+    while (std::getline(is, line)) {
+      shader_code_str += line + "\n";
+    }
+
+    is.close();
+
+    const char* code_str_ptr = shader_code_str.c_str();
+    GL_CHECK(glShaderSource(shader_id, 1, &code_str_ptr, NULL));
+    GL_CHECK(glCompileShader(shader_id));
+
+    GLint compile_status;
+    int log_length;
+    GL_CHECK(glGetShaderiv(shader_id, GL_COMPILE_STATUS, &compile_status));
+    GL_CHECK(glGetShaderiv(shader_id, GL_INFO_LOG_LENGTH, &log_length));
+    if (compile_status == GL_FALSE) {
+      std::string message(log_length + 1, ' ');
+      GL_CHECK(glGetShaderInfoLog(shader_id, log_length, NULL, &message[0]));
+      std::cout << "Error in " << fname << std::endl;
+      std::cout << shader_code_str << std::endl;
+      std::cout << message << std::endl;
+      return;
+    }
+    GL_CHECK(glAttachShader(_id, shader_id));
   }
 
   void GLBufferOld::create(GLenum target)

@@ -32,7 +32,7 @@ namespace fly
     DirectionalLight(const Vec3f& color, const Vec3f& pos, const Vec3f& target, const std::vector<float>& csm_distances);
     std::vector<float> _csmDistances;
     float _ambientPower = 0.3f;
-    void getViewProjectionMatrices(float aspect_ratio, float near_plane, float fov, const Mat4f& view_matrix, 
+    void getViewProjectionMatrices(float aspect_ratio, float near_plane, float fov, const Mat4f& view_matrix_inverse,
       const Mat4f& view_matrix_light, float shadow_map_size, std::vector<Mat4f>& vp, bool directx = false);
     glm::mat4 getViewMatrix();
   };

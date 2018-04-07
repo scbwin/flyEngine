@@ -40,6 +40,7 @@ void GLWidget::initializeGL()
   auto debug_bar = TwNewBar("Debug");
   TwAddVarCB(debug_bar, "Quadtree AABBs", TwType::TW_TYPE_BOOLCPP, cbSetDebugQuadtreeAABBs, cbGetDebugQuadtreeAABBs, &_renderer, nullptr);
   TwAddVarCB(debug_bar, "Object AABBs", TwType::TW_TYPE_BOOLCPP, cbSetDebugObjectAABBs, cbGetDebugObjectAABBs, &_renderer, nullptr);
+  TwAddButton(debug_bar, "Reload shaders", cbReloadShaders, &_renderer, nullptr);
 
   auto settings_bar = TwNewBar("Settings");
   TwAddVarCB(settings_bar, "Group by material", TwType::TW_TYPE_BOOLCPP, cbSetSortModeMaterial, cbGetSortModeMaterial, &_renderer, nullptr);
@@ -47,6 +48,7 @@ void GLWidget::initializeGL()
   TwAddVarCB(settings_bar, "Light intensity", TwType::TW_TYPE_COLOR3F, cbSetLightIntensity, cbGetLightIntensity, &_dl, nullptr);
   TwAddVarCB(settings_bar, "Post processing", TwType::TW_TYPE_BOOLCPP, cbSetPostProcessing, cbGetPostProcessing, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Sponza specular", TwType::TW_TYPE_FLOAT, cbSetSpec, cbGetSpec, &_sponzaModel, "step=0.2");
+  TwAddVarCB(settings_bar, "Shadows", TwType::TW_TYPE_BOOLCPP, cbSetShadows, cbGetShadows, &_renderer, nullptr);
 
   TwSetTopBar(_bar);
 }
@@ -200,6 +202,20 @@ void GLWidget::cbGetSpec(void * value, void * clientData)
   auto sponza_model = *reinterpret_cast<std::shared_ptr<fly::Model>*>(clientData);
   *reinterpret_cast<float*>(value) = sponza_model->getMaterials().front()->getSpecularExponent();
 }
+void GLWidget::cbSetShadows(const void * value, void * clientData)
+{
+  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings();
+  settings._shadows = *reinterpret_cast<const bool*>(value);
+  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->setSettings(settings);
+}
+void GLWidget::cbGetShadows(void * value, void * clientData)
+{
+  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings()._shadows;
+}
+void GLWidget::cbReloadShaders(void * client_data)
+{
+  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->reloadShaders();
+}
 void GLWidget::cbSetSortModeShaderMaterial(const void * value, void * clientData)
 {
   if (*reinterpret_cast<const bool*>(value)) {
@@ -216,23 +232,33 @@ void GLWidget::initGame()
   for (const auto& m : _sponzaModel->getMaterials()) {
     m->setSpecularExponent(32.f);
   }
- // for (int x = 0; x < 10; x++) {
-   // for (int y = 0; y < 10; y++) {
+  //for (int x = 0; x < 10; x++) {
+  //  for (int y = 0; y < 10; y++) {
       for (const auto& mesh : _sponzaModel->getMeshes()) {
         auto entity = _engine->getEntityManager()->createEntity();
         entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(mesh,
-       //   sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(x * 60.f, 0.f, y * 60.f), fly::Vec3f(0.01f)).getModelMatrix()));
+       //   _sponzaModel->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(x * 60.f, 0.f, y * 60.f), fly::Vec3f(0.01f)).getModelMatrix()));
           _sponzaModel->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(0.f), fly::Vec3f(0.01f)).getModelMatrix()));
       }
    // }
  // }
 
+/*  auto plane_model = importer->loadModel("assets/plane.obj");
+  for (const auto& m : plane_model->getMaterials()) {
+    m->setNormalPath("assets/ground_normals.png");
+  }
+  for (const auto& m : plane_model->getMeshes()) {
+    auto entity = _engine->getEntityManager()->createEntity();
+    entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(m, 
+      plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(fly::Vec3f(0.f), fly::Vec3f(600.f, 1.f, 600.f)).getModelMatrix()));
+  }*/
+
   auto cam_entity = _engine->getEntityManager()->createEntity();
   cam_entity->addComponent(std::make_shared<fly::Camera>(glm::vec3(0.f, 0.f, -100.f), glm::vec3(0.f)));
   
   auto dl_entity = _engine->getEntityManager()->createEntity();
-  std::vector<float> csm_distances = { 10.f, 50.f, 200.f };
-  _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(30.f, 50.f, 0.f), glm::vec3(0.f), csm_distances);
+  std::vector<float> csm_distances = { 30.f, 50.f, 200.f };
+  _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(-1000.f, 2000.f, -1000.f), glm::vec3(200.f), csm_distances);
   dl_entity->addComponent(_dl);
   
   _camController = std::make_unique<fly::CameraController>(cam_entity->getComponent<fly::Camera>(), 20.f);

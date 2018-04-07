@@ -10,6 +10,7 @@
 #include "OpenGLUtils.h"
 #include <map>
 #include <regex>
+#include <unordered_map>
 
 namespace fly
 {
@@ -31,17 +32,19 @@ namespace fly
       VERTEX, FRAGMENT, COMPUTE, GEOMETRY
     };
     void create();
-    void addShaderFromFile(const std::string& fname, ShaderType type, const std::map<std::string, std::regex>& replacements = std::map<std::string, std::regex>());
+    void addShaderFromFile(const std::string& fname, ShaderType type);
     void link();
     void bind() const;
     GLuint id();
     GLint uniformLocation(const std::string& name);
     virtual ~GLShaderProgram();
     std::vector<std::string> _fnames;
-    std::map<std::string, GLint> _uniformLocations;
-
+    std::vector<ShaderType> _types;
+    std::unordered_map<std::string, GLint> _uniformLocations;
+    void reload();
   private:
     GLuint _id;
+    void add(const std::string& fname, ShaderType type);
   };
 
   class GLBufferOld

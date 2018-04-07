@@ -57,6 +57,9 @@ protected:
   static void cbGetPostProcessing(void* value, void* clientData);
   static void cbSetSpec(const void* value, void* clientData);
   static void cbGetSpec(void* value, void* clientData);
+  static void cbSetShadows(const void* value, void* clientData);
+  static void cbGetShadows(void* value, void* clientData);
+  static void cbReloadShaders(void* client_data);
 private:
   std::unique_ptr<fly::Engine> _engine;
   std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>> _renderer;

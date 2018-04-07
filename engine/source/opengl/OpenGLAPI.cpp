@@ -57,10 +57,16 @@ namespace fly
   {
     GL_CHECK(glViewport(0, 0, size[0], size[1]));
   }
-  void OpenGLAPI::clearRendertargetColor(const Vec4f & color) const
+  void OpenGLAPI::reloadShaders()
   {
-    GL_CHECK(glClearColor(color[0], color[1], color[2], color[3]));
-    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+    for (const auto& e : _shaderCache) {
+      e.second->reload();
+    }
+  }
+  void OpenGLAPI::setupShader(GLShaderProgram * shader)
+  {
+    _activeShader = shader;
+    _activeShader->bind();
   }
   void OpenGLAPI::setupShader(GLShaderProgram* shader, const Vec3f & dl_pos_view_space, const Mat4f & projection_matrix, const Vec3f& light_intensity)
   {
@@ -68,11 +74,26 @@ namespace fly
     _activeShader->bind();
     setupShaderConstants(dl_pos_view_space, projection_matrix, light_intensity);
   }
+  void OpenGLAPI::setupShader(GLShaderProgram * shader, const Vec3f & dl_pos_view_space, const Mat4f & projection_matrix, 
+    const Vec3f & light_intensity, const std::shared_ptr<Depthbuffer>& shadow_map, const Mat4f& view_to_light)
+  {
+    _activeShader = shader;
+    _activeShader->bind();
+    setupShaderConstants(dl_pos_view_space, projection_matrix, light_intensity, shadow_map, view_to_light);
+  }
   void OpenGLAPI::setupShaderConstants(const Vec3f & dl_pos_view_space, const Mat4f & projection_matrix, const Vec3f& light_intensity)
   {
     setMatrix(_activeShader->uniformLocation("P"), projection_matrix);
     setVector(_activeShader->uniformLocation("lpos_cs"), dl_pos_view_space);
     setVector(_activeShader->uniformLocation("I_in"), light_intensity);
+  }
+  void OpenGLAPI::setupShaderConstants(const Vec3f & dl_pos_view_space, const Mat4f & projection_matrix, const Vec3f & light_intensity, const std::shared_ptr<Depthbuffer>& shadow_map, const Mat4f& view_to_light)
+  {
+    setupShaderConstants(dl_pos_view_space, projection_matrix, light_intensity);
+    GL_CHECK(glActiveTexture(GL_TEXTURE3));
+    shadow_map->bind();
+    setScalar(_activeShader->uniformLocation("ts_sm"), 3);
+    setMatrix(_activeShader->uniformLocation("v_to_l"), view_to_light);
   }
   void OpenGLAPI::setupMaterialConstants(const std::shared_ptr<Material>& material)
   {
@@ -86,6 +107,15 @@ namespace fly
     desc.getMaterialSetup()->setup(desc);
     setupMaterialConstants(desc.getMaterial());
   }
+  void OpenGLAPI::setupMaterial(const MaterialDesc & desc, const Vec3f & dl_pos_view_space, const Mat4f & projection_matrix,
+    const Vec3f & light_intensity, const std::shared_ptr<Depthbuffer>& shadow_map, const Mat4f& view_to_light)
+  {
+    _activeShader = desc.getShader().get();
+    _activeShader->bind();
+    setupShaderConstants(dl_pos_view_space, projection_matrix, light_intensity, shadow_map, view_to_light);
+    setupMaterialConstants(desc.getMaterial());
+    desc.getMaterialSetup()->setup(desc);
+  }
   void OpenGLAPI::setupMaterial(const MaterialDesc & desc, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix, const Vec3f& light_intensity)
   {
     _activeShader = desc.getShader().get();
@@ -98,6 +128,11 @@ namespace fly
   {
     setMatrix(_activeShader->uniformLocation("MV"), mv);
     setMatrixTranspose(_activeShader->uniformLocation("MV_i"), inverse(mv));
+    GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, GL_UNSIGNED_INT, mesh_data._indices, mesh_data._baseVertex));
+  }
+  void OpenGLAPI::renderMeshMVP(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & mvp)
+  {
+    setMatrix(_activeShader->uniformLocation("MVP"), mvp);
     GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, GL_UNSIGNED_INT, mesh_data._indices, mesh_data._baseVertex));
   }
   void OpenGLAPI::renderAABBs(const std::vector<AABB*>& aabbs, const Mat4f& transform, const Vec3f& col)
@@ -118,15 +153,25 @@ namespace fly
   void OpenGLAPI::setRendertargets(const std::vector<std::shared_ptr<RTT>>& rtts, const std::shared_ptr<Depthbuffer>& depth_buffer)
   {
     _offScreenFramebuffer->bind();
-    unsigned i = 0;
-    std::vector<GLenum> draw_buffers (rtts.size());
-    for (const auto& rtt : rtts) {
-      draw_buffers[i] = GL_COLOR_ATTACHMENT0 + i;
-      _offScreenFramebuffer->texture2D(draw_buffers.back(), *rtt, 0);
-      i++;
+    _offScreenFramebuffer->clearAttachments();
+    std::vector<GLenum> draw_buffers;
+    if (rtts.size()) {
+      unsigned i = 0;
+      for (const auto& rtt : rtts) {
+        draw_buffers.push_back(GL_COLOR_ATTACHMENT0 + i);
+        _offScreenFramebuffer->texture(draw_buffers.back(), rtt, 0);
+        i++;
+      }
     }
+    else {
+      draw_buffers.push_back(GL_NONE);
+    }
+    _offScreenFramebuffer->texture(GL_DEPTH_ATTACHMENT, depth_buffer, 0);
     GL_CHECK(glDrawBuffers(draw_buffers.size(), draw_buffers.data()));
-    _offScreenFramebuffer->texture2D(GL_DEPTH_ATTACHMENT, *depth_buffer, 0);
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+      std::cout << "Framebuffer imcomplete" << std::endl;
+    }
   }
   void OpenGLAPI::bindBackbuffer(unsigned id) const
   {
@@ -283,6 +328,7 @@ namespace fly
     }
     fragment_file += ".glsl";
     _shader = api->createShader(vertex_file, fragment_file);
+    _smShader = api->createShader("assets/opengl/vs_shadow.glsl", "assets/opengl/fs_shadow.glsl");
   }
   const std::unique_ptr<GLMaterialSetup>& OpenGLAPI::MaterialDesc::getMaterialSetup() const
   {
@@ -291,6 +337,10 @@ namespace fly
   const std::shared_ptr<GLShaderProgram>& OpenGLAPI::MaterialDesc::getShader() const
   {
     return _shader;
+  }
+  const std::shared_ptr<GLShaderProgram>& OpenGLAPI::MaterialDesc::getSMShader() const
+  {
+    return _smShader;
   }
   const std::shared_ptr<Material>& OpenGLAPI::MaterialDesc::getMaterial() const
   {

@@ -42,6 +42,8 @@ namespace fly
     bool _debugQuadtreeNodeAABBs = false;
     bool _debugObjectAABBs = false;
     bool _postProcessing = true;
+    unsigned _shadowMapSize = 1024;
+    bool _shadows = true;
   };
 }
 

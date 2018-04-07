@@ -30,6 +30,14 @@ namespace fly
     bind();
     GL_CHECK(glTexParameteri(_target, name, val));
   }
+  unsigned GLTexture::width() const
+  {
+    return _width;
+  }
+  unsigned GLTexture::height() const
+  {
+    return _height;
+  }
   GLTexture::~GLTexture()
   {
     GL_CHECK(glDeleteTextures(1, &_id));

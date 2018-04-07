@@ -2,6 +2,8 @@
 #define GLFRAMEBUFFER_H
 
 #include <GL/glew.h>
+#include <memory>
+#include <unordered_set>
 
 namespace fly
 {
@@ -13,9 +15,11 @@ namespace fly
     GLFramebuffer();
     ~GLFramebuffer();
     void bind() const;
-    void texture2D(GLenum attachment, const GLTexture& tex, GLint level) const;
+    void texture(GLenum attachment, const std::shared_ptr<GLTexture>& tex, GLint level);
+    void clearAttachments();
   private:
     GLuint _id;
+    std::unordered_set<GLenum> _attachments;
   };
 }
 

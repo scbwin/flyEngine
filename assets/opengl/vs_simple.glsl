@@ -6,9 +6,12 @@ layout (location = 2) in vec2 uv;
 layout (location = 3) in vec3 tangent;
 layout (location = 4) in vec3 bitangent;
 
+// Shader constant
+uniform mat4 P;
+
+// Model constants
 uniform mat4 MV;
 uniform mat4 MV_i;
-uniform mat4 P;
 
 out vec3 pos_view;
 out vec3 normal_view;

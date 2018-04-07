@@ -16,8 +16,18 @@ namespace fly
   {
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, _id));
   }
-  void GLFramebuffer::texture2D(GLenum attachment, const GLTexture & tex, GLint level) const
+  void GLFramebuffer::texture(GLenum attachment, const std::shared_ptr<GLTexture>& tex, GLint level)
   {
-    GL_CHECK(glFramebufferTexture(GL_FRAMEBUFFER, attachment, tex.id(), level));
+    if (tex) {
+      _attachments.insert(attachment);
+    }
+    GL_CHECK(glFramebufferTexture(GL_FRAMEBUFFER, attachment, tex ? tex->id() : 0, level));
+  }
+  void GLFramebuffer::clearAttachments()
+  {
+    for (const auto& a : _attachments) {
+      GL_CHECK(glFramebufferTexture(GL_FRAMEBUFFER, a, 0, 0));
+    }
+    _attachments.clear();
   }
 }

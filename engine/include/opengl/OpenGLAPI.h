@@ -29,12 +29,30 @@ namespace fly
     virtual ~OpenGLAPI();
     ZNearMapping getZNearMapping() const;
     void setViewport(const Vec2u& size) const;
-    void clearRendertargetColor(const Vec4f& color) const;
+    template<bool color, bool depth, bool stencil>
+    void clearRendertarget(const Vec4f& clear_color) const
+    {
+      GLbitfield flag = 0;
+      if (color) {
+        GL_CHECK(glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]));
+        flag |= GL_COLOR_BUFFER_BIT;
+      }
+      if (depth) {
+        flag |= GL_DEPTH_BUFFER_BIT;
+      }
+      if (stencil) {
+        flag |= GL_STENCIL_BUFFER_BIT;
+      }
+      GL_CHECK(glClear(flag));
+    }
     static inline constexpr bool isDirectX() { return false; }
     template<bool enable>
     inline void setDepthTestEnabled() const { GL_CHECK(enable ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST)); }
     template<bool enable>
     inline void setFaceCullingEnabled() const { GL_CHECK(enable ? glEnable(GL_CULL_FACE) : glDisable(GL_CULL_FACE)); }
+    template<bool enable>
+    inline void setDepthClampEnabled() const { GL_CHECK(enable ? glEnable(GL_DEPTH_CLAMP) : glDisable(GL_DEPTH_CLAMP)); }
+    void reloadShaders();
     using RTT = GLTexture;
     using Depthbuffer = GLTexture;
     class MeshGeometryStorage
@@ -64,6 +82,7 @@ namespace fly
       MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI* api);
       const std::unique_ptr<GLMaterialSetup>& getMaterialSetup() const;
       const std::shared_ptr<GLShaderProgram>& getShader() const;
+      const std::shared_ptr<GLShaderProgram>& getSMShader() const;
       const std::shared_ptr<Material>& getMaterial() const;
       const std::shared_ptr<GLTexture>& getDiffuseMap() const;
       const std::shared_ptr<GLTexture>& getNormalMap() const;
@@ -73,16 +92,22 @@ namespace fly
       std::shared_ptr<Material> _material;
       std::unique_ptr<GLMaterialSetup> _materialSetup;
       std::shared_ptr<ShaderProgram> _shader;
+      std::shared_ptr<ShaderProgram> _smShader;
       std::shared_ptr<GLTexture> _diffuseMap;
       std::shared_ptr<GLTexture> _normalMap;
       std::shared_ptr<GLTexture> _alphaMap;
     };
+    void setupShader(GLShaderProgram* shader);
     void setupShader(GLShaderProgram* shader, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix, const Vec3f& light_intensity);
+    void setupShader(GLShaderProgram* shader, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix, const Vec3f& light_intensity, const std::shared_ptr<Depthbuffer>& shadow_map, const Mat4f& view_to_light);
     void setupMaterial(const MaterialDesc& desc);
     void setupMaterial(const MaterialDesc& desc, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix, const Vec3f& light_intensity);
+    void setupMaterial(const MaterialDesc& desc, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix, const Vec3f& light_intensity, const std::shared_ptr<Depthbuffer>& shadow_map, const Mat4f& view_to_light);
     void setupShaderConstants(const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix, const Vec3f& light_intensity);
+    void setupShaderConstants(const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix, const Vec3f& light_intensity, const std::shared_ptr<Depthbuffer>& shadow_map, const Mat4f& view_to_light);
     void setupMaterialConstants(const std::shared_ptr<Material>& material);
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mv);
+    void renderMeshMVP(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mvp);
     void renderAABBs(const std::vector<AABB*>& aabbs, const Mat4f& transform, const Vec3f& col);
     void setRendertargets(const std::vector<std::shared_ptr<RTT>>& rtts, const std::shared_ptr<Depthbuffer>& depth_buffer);
     void bindBackbuffer(unsigned id) const;
