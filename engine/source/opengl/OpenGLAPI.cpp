@@ -15,6 +15,7 @@
 #include <opengl/GLMaterialSetup.h>
 #include <opengl/GLShaderInterface.h>
 #include <opengl/GLFramebuffer.h>
+#include <opengl/GLSLShaderGenerator.h>
 
 namespace fly
 {
@@ -202,13 +203,14 @@ namespace fly
     _textureCache[path] = ret;
     return ret;
   }
-  std::shared_ptr<OpenGLAPI::MaterialDesc> OpenGLAPI::createMaterial(const std::shared_ptr<Material>& material)
+  std::shared_ptr<OpenGLAPI::MaterialDesc> OpenGLAPI::createMaterial(const std::shared_ptr<Material>& material, bool shadows)
   {
+  //  std::cout << "mat desc cache size:" << _matDescCache.size() << std::endl;
     auto it = _matDescCache.find(material);
     if (it != _matDescCache.end()) {
       return it->second;
     }
-    auto ret = std::make_shared<MaterialDesc>(material, this);
+    auto ret = std::make_shared<MaterialDesc>(material, this, shadows);
     _matDescCache[material] = ret;
     return ret;
   }
@@ -294,28 +296,25 @@ namespace fly
     _meshDataCache[mesh] = data;
     return data;
   }
-  OpenGLAPI::MaterialDesc::MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI * api) : _material(material)
+  OpenGLAPI::MaterialDesc::MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI * api, bool shadows) : _material(material)
   {
     _diffuseMap = api->createTexture(material->getDiffusePath());
     _normalMap = api->createTexture(material->getNormalPath());
     _alphaMap = api->createTexture(material->getOpacityPath());
+    using FLAG = GLSLShaderGenerator::MeshRenderFlag;
+    unsigned flag = FLAG::NONE;
     std::string vertex_file = "assets/opengl/vs_simple.glsl";
-    std::string fragment_file = "assets/opengl/fs_simple";
     if (_diffuseMap && _alphaMap && _normalMap) {
       _materialSetup = std::make_unique<SetupDiffuseAlphaNormalMap>();
-      fragment_file += "_textured_alpha_normal";
     }
     else if (_diffuseMap && _normalMap) {
       _materialSetup = std::make_unique<SetupDiffuseNormalMap>();
-      fragment_file += "_textured_normal";
     }
     else if (_diffuseMap && _alphaMap) {
       _materialSetup = std::make_unique<SetupDiffuseAlphaMap>();
-      fragment_file += "_textured_alpha";
     }
     else if (_diffuseMap) {
       _materialSetup = std::make_unique<SetupDiffuseMap>();
-      fragment_file += "_textured";
     }
     else if (_alphaMap) {
       _materialSetup = std::make_unique<SetupAlphaMap>();
@@ -324,10 +323,17 @@ namespace fly
     }
     else {
       _materialSetup = std::make_unique<SetupDiffuseColor>();
-      fragment_file += "_color";
     }
-    fragment_file += ".glsl";
-    _shader = api->createShader(vertex_file, fragment_file);
+    if (_diffuseMap) {
+      flag |= FLAG::DIFFUSE_MAP;
+    }
+    if (_alphaMap) {
+      flag |= FLAG::ALPHA_MAP;
+    }
+    if (_normalMap) {
+      flag |= FLAG::NORMAL_MAP;
+    }
+    _shader = api->createShader(vertex_file, GLSLShaderGenerator().createMeshFragmentShaderFile(flag, shadows));
     _smShader = api->createShader("assets/opengl/vs_shadow.glsl", "assets/opengl/fs_shadow.glsl");
   }
   const std::unique_ptr<GLMaterialSetup>& OpenGLAPI::MaterialDesc::getMaterialSetup() const

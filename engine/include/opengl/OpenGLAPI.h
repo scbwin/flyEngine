@@ -79,7 +79,7 @@ namespace fly
     class MaterialDesc
     {
     public:
-      MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI* api);
+      MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI* api, bool shadows);
       const std::unique_ptr<GLMaterialSetup>& getMaterialSetup() const;
       const std::shared_ptr<GLShaderProgram>& getShader() const;
       const std::shared_ptr<GLShaderProgram>& getSMShader() const;
@@ -113,7 +113,7 @@ namespace fly
     void bindBackbuffer(unsigned id) const;
     void composite(const std::shared_ptr<RTT>& lighting_buffer);
     std::shared_ptr<GLTexture> createTexture(const std::string& path);
-    std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material);
+    std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material, bool shadows);
     std::shared_ptr<GLShaderProgram> createShader(const std::string& vertex_file, const std::string& fragment_file, const std::string& geometry_file = "");
     std::shared_ptr<RTT> createRenderToTexture(const Vec2u& size);
     std::shared_ptr<Depthbuffer> createDepthbuffer(const Vec2u& size);

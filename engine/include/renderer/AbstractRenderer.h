@@ -57,7 +57,7 @@ namespace fly
       auto mr = entity->getComponent<fly::StaticMeshRenderable>();
       if (mr) {
         auto mesh_renderable = std::make_shared<StaticMeshRenderable>();
-        mesh_renderable->_materialDesc = _api.createMaterial(mr->getMaterial());
+        mesh_renderable->_materialDesc = _api.createMaterial(mr->getMaterial(), _settings._shadows);
         mesh_renderable->_meshData = _meshGeometryStorage.addMesh(mr->getMesh());
         mesh_renderable->_smr = mr;
         _staticMeshRenderables[entity] = mesh_renderable;
