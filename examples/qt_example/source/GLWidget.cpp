@@ -15,8 +15,8 @@
 
 GLWidget::GLWidget()
 {
-  _engine = std::unique_ptr<fly::Engine>(new fly::Engine());
-  _gameTimer = std::unique_ptr<fly::GameTimer>(new fly::GameTimer());
+  _engine = std::make_unique<fly::Engine>();
+  _gameTimer = std::make_unique<fly::GameTimer>();
   setMouseTracking(true);
 }
 
@@ -45,6 +45,8 @@ void GLWidget::initializeGL()
   TwAddVarCB(settings_bar, "Group by material", TwType::TW_TYPE_BOOLCPP, cbSetSortModeMaterial, cbGetSortModeMaterial, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Group by shader and material", TwType::TW_TYPE_BOOLCPP, cbSetSortModeShaderMaterial, cbGetSortModeShaderMaterial, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Light intensity", TwType::TW_TYPE_COLOR3F, cbSetLightIntensity, cbGetLightIntensity, &_dl, nullptr);
+  TwAddVarCB(settings_bar, "Post processing", TwType::TW_TYPE_BOOLCPP, cbSetPostProcessing, cbGetPostProcessing, &_renderer, nullptr);
+  TwAddVarCB(settings_bar, "Sponza specular", TwType::TW_TYPE_FLOAT, cbSetSpec, cbGetSpec, &_sponzaModel, "step=0.2");
 
   TwSetTopBar(_bar);
 }
@@ -58,6 +60,7 @@ void GLWidget::resizeGL(int width, int height)
 void GLWidget::paintGL()
 {
   _gameTimer->tick();
+  _renderer->setDefaultRendertarget(defaultFramebufferObject());
   _engine->update(_gameTimer->getTimeSeconds(), _gameTimer->getDeltaTimeSeconds());
   if (contains<int>(_keysPressed, 'W')) {
     _camController->stepForward(_gameTimer->getDeltaTimeSeconds());
@@ -169,12 +172,33 @@ void GLWidget::cbGetSortModeShaderMaterial(void * value, void* clientData)
 }
 void GLWidget::cbSetLightIntensity(const void * value, void * clientData)
 {
-  //*reinterpret_cast<const fly::Vec3f*>(value) = (*reinterpret_cast<std::shared_ptr<fly::DirectionalLight>*>(clientData))->getIntensity();
   (*reinterpret_cast<std::shared_ptr<fly::DirectionalLight>*>(clientData))->setIntensity(*reinterpret_cast<const fly::Vec3f*>(value));
 }
 void GLWidget::cbGetLightIntensity(void * value, void * clientData)
 {
   *reinterpret_cast<fly::Vec3f*>(value) = (*reinterpret_cast<std::shared_ptr<fly::DirectionalLight>*>(clientData))->getIntensity();
+}
+void GLWidget::cbSetPostProcessing(const void * value, void * clientData)
+{
+  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings();
+  settings._postProcessing = *reinterpret_cast<const bool*>(value);
+  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->setSettings(settings);
+}
+void GLWidget::cbGetPostProcessing(void * value, void * clientData)
+{
+  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings()._postProcessing;
+}
+void GLWidget::cbSetSpec(const void * value, void * clientData)
+{
+  auto sponza_model = *reinterpret_cast<std::shared_ptr<fly::Model>*>(clientData);
+  for (const auto& m : sponza_model->getMaterials()) {
+    m->setSpecularExponent(*reinterpret_cast<const float*>(value));
+  }
+}
+void GLWidget::cbGetSpec(void * value, void * clientData)
+{
+  auto sponza_model = *reinterpret_cast<std::shared_ptr<fly::Model>*>(clientData);
+  *reinterpret_cast<float*>(value) = sponza_model->getMaterials().front()->getSpecularExponent();
 }
 void GLWidget::cbSetSortModeShaderMaterial(const void * value, void * clientData)
 {
@@ -188,12 +212,20 @@ void GLWidget::cbSetSortModeShaderMaterial(const void * value, void * clientData
 void GLWidget::initGame()
 {
   auto importer = std::make_shared<fly::AssimpImporter>();
-  auto sponza_model = importer->loadModel("assets/sponza/sponza.obj");
-  for (const auto& mesh : sponza_model->getMeshes()) {
-    auto entity = _engine->getEntityManager()->createEntity();
-    entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(mesh, 
-      sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(0.f), fly::Vec3f(0.01f)).getModelMatrix()));
+  _sponzaModel = importer->loadModel("assets/sponza/sponza.obj");
+  for (const auto& m : _sponzaModel->getMaterials()) {
+    m->setSpecularExponent(32.f);
   }
+ // for (int x = 0; x < 10; x++) {
+   // for (int y = 0; y < 10; y++) {
+      for (const auto& mesh : _sponzaModel->getMeshes()) {
+        auto entity = _engine->getEntityManager()->createEntity();
+        entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(mesh,
+       //   sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(x * 60.f, 0.f, y * 60.f), fly::Vec3f(0.01f)).getModelMatrix()));
+          _sponzaModel->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(0.f), fly::Vec3f(0.01f)).getModelMatrix()));
+      }
+   // }
+ // }
 
   auto cam_entity = _engine->getEntityManager()->createEntity();
   cam_entity->addComponent(std::make_shared<fly::Camera>(glm::vec3(0.f, 0.f, -100.f), glm::vec3(0.f)));
@@ -203,5 +235,5 @@ void GLWidget::initGame()
   _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(30.f, 50.f, 0.f), glm::vec3(0.f), csm_distances);
   dl_entity->addComponent(_dl);
   
-  _camController = std::unique_ptr<fly::CameraController>(new fly::CameraController(cam_entity->getComponent<fly::Camera>(), 20.f));
+  _camController = std::make_unique<fly::CameraController>(cam_entity->getComponent<fly::Camera>(), 20.f);
 }

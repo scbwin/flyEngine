@@ -232,45 +232,45 @@ namespace fly
   {
     return _depth;
   }
-  void GLFramebuffer::create(int width, int height)
+  void GLFramebufferOld::create(int width, int height)
   {
     _width = width;
     _height = height;
     GL_CHECK(glGenFramebuffers(1, &_id));
   }
-  void GLFramebuffer::bind()
+  void GLFramebufferOld::bind()
   {
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, _id));
   }
-  GLuint GLFramebuffer::id()
+  GLuint GLFramebufferOld::id()
   {
     return _id;
   }
-  int GLFramebuffer::width()
+  int GLFramebufferOld::width()
   {
     return _width;
   }
-  int GLFramebuffer::height()
+  int GLFramebufferOld::height()
   {
     return _height;
   }
-  void GLFramebuffer::setViewport()
+  void GLFramebufferOld::setViewport()
   {
     GL_CHECK(glViewport(0, 0, _width, _height));
   }
-  void GLFramebuffer::setDepthTexture(const std::shared_ptr<GLTextureOld>& depth_texture)
+  void GLFramebufferOld::setDepthTexture(const std::shared_ptr<GLTextureOld>& depth_texture)
   {
     _depthBuffer = depth_texture;
     GL_CHECK(glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depth_texture != nullptr ? depth_texture->id() : 0, 0));
   }
-  void GLFramebuffer::addTexture(const std::shared_ptr<GLTextureOld>& texture, GLenum attachment)
+  void GLFramebufferOld::addTexture(const std::shared_ptr<GLTextureOld>& texture, GLenum attachment)
   {
     _textures.push_back(texture);
     _colorAttachments.push_back(attachment);
     GL_CHECK(glFramebufferTexture(GL_FRAMEBUFFER, attachment, texture->id(), 0));
 
   }
-  void GLFramebuffer::addTextureLayer(const std::shared_ptr<GLTextureOld>& texture, GLenum attachment, int layer)
+  void GLFramebufferOld::addTextureLayer(const std::shared_ptr<GLTextureOld>& texture, GLenum attachment, int layer)
   {
     bool found = false;
     for (auto& t : _textures) {
@@ -284,30 +284,30 @@ namespace fly
 
     GL_CHECK(glFramebufferTextureLayer(GL_FRAMEBUFFER, attachment, texture->id(), 0, layer));
   }
-  void GLFramebuffer::setRenderbuffer(const std::shared_ptr<GLRenderbuffer>& renderbuffer, GLenum attachment)
+  void GLFramebufferOld::setRenderbuffer(const std::shared_ptr<GLRenderbuffer>& renderbuffer, GLenum attachment)
   {
     _renderbuffer = renderbuffer;
     GL_CHECK(glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, renderbuffer->_id));
   }
-  void GLFramebuffer::setDrawbuffers(const std::vector<GLenum>& draw_buffers)
+  void GLFramebufferOld::setDrawbuffers(const std::vector<GLenum>& draw_buffers)
   {
     GL_CHECK(glDrawBuffers(draw_buffers.size(), &draw_buffers[0]));
   }
-  void GLFramebuffer::setDrawbuffersFromColorAttachments()
+  void GLFramebufferOld::setDrawbuffersFromColorAttachments()
   {
     setDrawbuffers(_colorAttachments);
   }
-  void GLFramebuffer::checkStatus()
+  void GLFramebufferOld::checkStatus()
   {
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
       std::cout << "Framebuffer " << _id << " incomplete" << std::endl;
     }
   }
-  std::vector<std::shared_ptr<GLTextureOld>>& GLFramebuffer::textures()
+  std::vector<std::shared_ptr<GLTextureOld>>& GLFramebufferOld::textures()
   {
     return _textures;
   }
-  GLFramebuffer::~GLFramebuffer()
+  GLFramebufferOld::~GLFramebufferOld()
   {
   //  std::cout << "delete fb:" << _width << " " << _height << std::endl;
     GL_CHECK(glDeleteFramebuffers(1, &_id));

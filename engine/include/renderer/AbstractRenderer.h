@@ -9,7 +9,6 @@
 #include <math/FlyMath.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/transform.hpp>
-#include <map>
 #include <unordered_map>
 #include <Model.h>
 #include <memory>
@@ -28,7 +27,6 @@ namespace fly
   public:
     AbstractRenderer() : _api()
     {
-      _pp._aspectRatio = 16.f / 9.f;
       _pp._near = 0.1f;
       _pp._far = 1000.f;
       _pp._fieldOfView = glm::radians(45.f);
@@ -37,6 +35,14 @@ namespace fly
     void setSettings(const Settings& settings)
     {
       _settings = settings;
+      if (settings._postProcessing) {
+        _lightingBuffer = _api.createRenderToTexture(_viewPortSize);
+        _depthBuffer = _api.createDepthbuffer(_viewPortSize);
+      }
+      else {
+        _lightingBuffer = nullptr;
+        _depthBuffer = nullptr;
+      }
     }
     const Settings& getSettings() const
     {
@@ -72,12 +78,16 @@ namespace fly
       if (_quadtree == nullptr) {
         buildQuadtree();
       }
-      _api.clearRendertargetColor(Vec4f({ 0.149f, 0.509f, 0.929f, 1.f }));
+      if (_settings._postProcessing) {
+        _api.setRendertargets({ _lightingBuffer }, _depthBuffer);
+      }
+      _api.clearRendertargetColor(Vec4f(0.149f, 0.509f, 0.929f, 1.f));
       if (_camera && _directionalLight) {
         _rp._viewMatrix = _camera->getViewMatrix(_camera->_pos, _camera->_eulerAngles);
         _rp._VP = _rp._projectionMatrix * _rp._viewMatrix;
         _api.setViewport(_viewPortSize);
         _api.setDepthTestEnabled<true>();
+        _api.setFaceCullingEnabled<true>();
         Vec3f light_pos_view = (_rp._viewMatrix * Vec4f(_directionalLight->_pos, 1.f)).xyz();
         _meshGeometryStorage.bind();
         std::vector<StaticMeshRenderable*> visible_elements = _quadtree->getVisibleElements<API::isDirectX()>(_rp._VP);
@@ -114,15 +124,26 @@ namespace fly
         if (_settings._debugObjectAABBs) {
           renderObjectAABBs(visible_elements);
         }
+        if (_settings._postProcessing) {
+          _api.setDepthTestEnabled<false>();
+          _api.bindBackbuffer(_defaultRenderTarget);
+          _api.composite(_lightingBuffer);
+        }
       }
     }
     void onResize(const Vec2u& window_size)
     {
       _viewPortSize = window_size;
-      _pp._aspectRatio = _viewPortSize[0] / _viewPortSize[1];
+      float aspect_ratio = _viewPortSize[0] / _viewPortSize[1];
       _rp._projectionMatrix = _api.getZNearMapping() == ZNearMapping::ZERO ?
-        glm::perspectiveRH_ZO(_pp._fieldOfView, _pp._aspectRatio, _pp._near, _pp._far) :
-        glm::perspectiveRH_NO(_pp._fieldOfView, _pp._aspectRatio, _pp._near, _pp._far);
+        glm::perspectiveRH_ZO(_pp._fieldOfView, aspect_ratio, _pp._near, _pp._far) :
+        glm::perspectiveRH_NO(_pp._fieldOfView, aspect_ratio, _pp._near, _pp._far);
+
+      setSettings(_settings);
+    }
+    void setDefaultRendertarget(unsigned rt)
+    {
+      _defaultRenderTarget = rt;
     }
   private:
     API _api;
@@ -134,6 +155,9 @@ namespace fly
     Vec3f _sceneMin = Vec3f(std::numeric_limits<float>::max());
     Vec3f _sceneMax = Vec3f(std::numeric_limits<float>::lowest());
     Settings _settings;
+    std::shared_ptr<typename API::RTT> _lightingBuffer;
+    std::shared_ptr<typename API::Depthbuffer> _depthBuffer;
+    unsigned _defaultRenderTarget = 0;
 
     // Wrapper for StaticMeshRenderable
     struct StaticMeshRenderable
@@ -144,7 +168,7 @@ namespace fly
       inline AABB* getAABBWorld() const { return _smr->getAABBWorld(); }
     };
     typename API::MeshGeometryStorage _meshGeometryStorage;
-    std::map<Entity*, std::shared_ptr<StaticMeshRenderable>> _staticMeshRenderables;
+    std::unordered_map<Entity*, std::shared_ptr<StaticMeshRenderable>> _staticMeshRenderables;
     std::unique_ptr<Quadtree<StaticMeshRenderable>> _quadtree;
 
     void buildQuadtree()

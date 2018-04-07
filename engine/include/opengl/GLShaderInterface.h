@@ -7,6 +7,7 @@
 
 namespace fly
 {
+  static inline void setScalar(int loc, int s) { GL_CHECK(glUniform1i(loc, s)); }
   static inline void setScalar(int loc, float s) { GL_CHECK(glUniform1f(loc, s)); }
   static inline void setVector(int loc, const Vec2f& v) { GL_CHECK(glUniform2f(loc, v[0], v[1])); }
   static inline void setVector(int loc, const Vec3f& v) { GL_CHECK(glUniform3f(loc, v[0], v[1], v[2])); }

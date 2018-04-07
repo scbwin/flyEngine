@@ -14,6 +14,7 @@ namespace fly
   class GameTimer;
   class CameraController;
   class DirectionalLight;
+  class Model;
 }
 
 struct CTwBar;
@@ -52,12 +53,17 @@ protected:
   static void cbGetSortModeShaderMaterial(void *value, void* clientData);
   static void cbSetLightIntensity(const void* value, void* clientData);
   static void cbGetLightIntensity(void* value, void* clientData);
+  static void cbSetPostProcessing(const void* value, void* clientData);
+  static void cbGetPostProcessing(void* value, void* clientData);
+  static void cbSetSpec(const void* value, void* clientData);
+  static void cbGetSpec(void* value, void* clientData);
 private:
   std::unique_ptr<fly::Engine> _engine;
   std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>> _renderer;
   std::unique_ptr<fly::GameTimer> _gameTimer;
   std::unique_ptr<fly::CameraController> _camController;
   std::shared_ptr<fly::DirectionalLight> _dl;
+  std::shared_ptr<fly::Model> _sponzaModel;
   void initGame();
   float _measure = 0.f;
   unsigned _fps = 0;

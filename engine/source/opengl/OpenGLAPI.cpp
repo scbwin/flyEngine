@@ -14,6 +14,7 @@
 #include <Material.h>
 #include <opengl/GLMaterialSetup.h>
 #include <opengl/GLShaderInterface.h>
+#include <opengl/GLFramebuffer.h>
 
 namespace fly
 {
@@ -31,6 +32,7 @@ namespace fly
       std::cout << "OpenGLAPI::OpenGLAPI() Failed to initialized GLEW: " << glewGetErrorString(result) << std::endl;
     }
     _aabbShader = createShader("assets/opengl/vs_aabb.glsl", "assets/opengl/fs_aabb.glsl", "assets/opengl/gs_aabb.glsl");
+    _compositeShader = createShader("assets/opengl/vs_screen.glsl", "assets/opengl/fs_composite.glsl");
     _vaoAABB = std::make_shared<GLVertexArray>();
     _vaoAABB->bind();
     _vboAABB = std::make_shared<GLBuffer>(GL_ARRAY_BUFFER);
@@ -41,6 +43,11 @@ namespace fly
     }
     GL_CHECK(glVertexAttribPointer(0, 3, GL_FLOAT, false, 2 * sizeof(Vec3f), 0));
     GL_CHECK(glVertexAttribPointer(1, 3, GL_FLOAT, false, 2 * sizeof(Vec3f), reinterpret_cast<const void*>(sizeof(Vec3f))));
+
+    _offScreenFramebuffer = std::make_unique<GLFramebuffer>();
+  }
+  OpenGLAPI::~OpenGLAPI()
+  {
   }
   ZNearMapping OpenGLAPI::getZNearMapping() const
   {
@@ -53,7 +60,7 @@ namespace fly
   void OpenGLAPI::clearRendertargetColor(const Vec4f & color) const
   {
     GL_CHECK(glClearColor(color[0], color[1], color[2], color[3]));
-    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
+    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
   }
   void OpenGLAPI::setupShader(GLShaderProgram* shader, const Vec3f & dl_pos_view_space, const Mat4f & projection_matrix, const Vec3f& light_intensity)
   {
@@ -108,6 +115,31 @@ namespace fly
     _vboAABB->setData(bb_buffer.data(), bb_buffer.size(), GL_DYNAMIC_COPY);
     GL_CHECK(glDrawArraysInstanced(GL_POINTS, 0, 1, aabbs.size()));
   }
+  void OpenGLAPI::setRendertargets(const std::vector<std::shared_ptr<RTT>>& rtts, const std::shared_ptr<Depthbuffer>& depth_buffer)
+  {
+    _offScreenFramebuffer->bind();
+    unsigned i = 0;
+    std::vector<GLenum> draw_buffers (rtts.size());
+    for (const auto& rtt : rtts) {
+      draw_buffers[i] = GL_COLOR_ATTACHMENT0 + i;
+      _offScreenFramebuffer->texture2D(draw_buffers.back(), *rtt, 0);
+      i++;
+    }
+    GL_CHECK(glDrawBuffers(draw_buffers.size(), draw_buffers.data()));
+    _offScreenFramebuffer->texture2D(GL_DEPTH_ATTACHMENT, *depth_buffer, 0);
+  }
+  void OpenGLAPI::bindBackbuffer(unsigned id) const
+  {
+    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, id));
+  }
+  void OpenGLAPI::composite(const std::shared_ptr<RTT>& lighting_buffer)
+  {
+    _compositeShader->bind();
+    GL_CHECK(glActiveTexture(GL_TEXTURE0));
+    lighting_buffer->bind();
+    setScalar(_compositeShader->uniformLocation("ts_l"), 0);
+    GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
+  }
   std::shared_ptr<GLTexture> OpenGLAPI::createTexture(const std::string & path)
   {
     if (path == "") {
@@ -153,7 +185,29 @@ namespace fly
     _shaderCache[key] = ret;
     return ret;
   }
-  OpenGLAPI::MeshGeometryStorage::MeshGeometryStorage() : 
+  std::shared_ptr<OpenGLAPI::RTT> OpenGLAPI::createRenderToTexture(const Vec2u & size)
+  {
+    auto tex = std::make_shared<GLTexture>();
+    tex->bind();
+    tex->param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    tex->param(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    tex->param(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    tex->param(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    tex->image2D(0, GL_RGBA16F, size, 0, GL_RGBA, GL_FLOAT, nullptr);
+    return tex;
+  }
+  std::shared_ptr<OpenGLAPI::Depthbuffer> OpenGLAPI::createDepthbuffer(const Vec2u & size)
+  {
+    auto tex = std::make_shared<GLTexture>();
+    tex->bind();
+    tex->param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    tex->param(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    tex->param(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    tex->param(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    tex->image2D(0, GL_DEPTH_COMPONENT24, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    return tex;
+  }
+  OpenGLAPI::MeshGeometryStorage::MeshGeometryStorage() :
     _vboAppend(std::make_unique<GLAppendBuffer>(GL_ARRAY_BUFFER)),
     _iboAppend(std::make_unique<GLAppendBuffer>(GL_ELEMENT_ARRAY_BUFFER))
   {

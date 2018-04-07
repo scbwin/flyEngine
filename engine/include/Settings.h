@@ -41,6 +41,7 @@ namespace fly
     DisplayListSortMode _dlSortMode = DisplayListSortMode::SHADER_AND_MATERIAL;
     bool _debugQuadtreeNodeAABBs = false;
     bool _debugObjectAABBs = false;
+    bool _postProcessing = true;
   };
 }
 

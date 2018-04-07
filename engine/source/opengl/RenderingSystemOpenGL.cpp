@@ -1812,7 +1812,7 @@ namespace fly
     GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
   }
 
-  void RenderingSystemOpenGL::pingPongFilter(unsigned int steps, const std::array<std::shared_ptr<GLFramebuffer>, 2>& fb,
+  void RenderingSystemOpenGL::pingPongFilter(unsigned int steps, const std::array<std::shared_ptr<GLFramebufferOld>, 2>& fb,
     const std::vector<float>& kernel_horizontal, const std::vector<float>& kernel_vertical, const std::shared_ptr<GLTextureOld>& weight_texture, const std::shared_ptr<GLTextureOld>& base_texture)
   {
     auto shader = weight_texture != nullptr ? _shaderProgramPingPongFilterBilateral : _shaderProgramPingPongFilter;
@@ -2190,7 +2190,7 @@ namespace fly
   {
     auto size = view_port_size / static_cast<int>(pow(2, level + 1));
     for (int i = 0; i < 2; i++) {
-      _fb[i] = std::make_shared<GLFramebuffer>();
+      _fb[i] = std::make_shared<GLFramebufferOld>();
       _fb[i]->create(size.x, size.y);
       _fb[i]->bind();
       auto tex = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
@@ -2209,7 +2209,7 @@ namespace fly
     if (level > 0) {
       size = view_port_size / 2;
       for (int i = 0; i <= level; i++, size /= 2) {
-        _upsampleFb.push_back(std::make_shared<GLFramebuffer>());
+        _upsampleFb.push_back(std::make_shared<GLFramebufferOld>());
         auto& fb = _upsampleFb.back();
         fb->create(size.x, size.y);
         fb->bind();
@@ -2252,7 +2252,7 @@ namespace fly
   {
     auto size = view_port_size / 4;
     for (auto& fb : _fb) {
-      fb = std::make_shared<GLFramebuffer>();
+      fb = std::make_shared<GLFramebufferOld>();
       fb->create(size.x, size.y);
       fb->bind();
       auto tex = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
@@ -2269,7 +2269,7 @@ namespace fly
     }
 
     size = view_port_size / 2;
-    _resultFb = std::make_shared<GLFramebuffer>();
+    _resultFb = std::make_shared<GLFramebufferOld>();
     _resultFb->create(size.x, size.y);
     _resultFb->bind();
     auto tex = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
@@ -2356,7 +2356,7 @@ namespace fly
     }
 
     for (unsigned int i = 0; i < 2; i++) {
-      _impostorFb[i] = std::make_shared<GLFramebuffer>();
+      _impostorFb[i] = std::make_shared<GLFramebufferOld>();
       _impostorFb[i]->create(256, 256);
       _impostorFb[i]->bind();
       auto tex = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
@@ -2399,7 +2399,7 @@ namespace fly
     _splatMap->setData(splat_map.cols, splat_map.rows, GL_RGBA16F, GL_RGBA, GL_FLOAT, splat_map.data);
     GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
 
-    std::array<std::shared_ptr<GLFramebuffer>, 2> fbs_grad_x;
+    std::array<std::shared_ptr<GLFramebufferOld>, 2> fbs_grad_x;
     for (unsigned int i = 0; i < 2; i++) {
       auto grad_tex = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
       grad_tex->create();
@@ -2408,14 +2408,14 @@ namespace fly
       grad_tex->setMinificationFilter(GL_LINEAR);
       GL_CHECK(glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, &swizzle_mask[0]));
       grad_tex->setData(height_map.cols, height_map.rows, GL_R16F, GL_RED, GL_FLOAT, height_map.data);
-      fbs_grad_x[i] = std::make_shared<GLFramebuffer>();
+      fbs_grad_x[i] = std::make_shared<GLFramebufferOld>();
       fbs_grad_x[i]->create(height_map.cols, height_map.rows);
       fbs_grad_x[i]->bind();
       fbs_grad_x[i]->addTexture(grad_tex, GL_COLOR_ATTACHMENT0);
       fbs_grad_x[i]->checkStatus();
     }
 
-    std::array<std::shared_ptr<GLFramebuffer>, 2> fbs_grad_y;
+    std::array<std::shared_ptr<GLFramebufferOld>, 2> fbs_grad_y;
     for (unsigned int i = 0; i < 2; i++) {
       auto grad_tex = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
       grad_tex->create();
@@ -2424,7 +2424,7 @@ namespace fly
       grad_tex->setMinificationFilter(GL_LINEAR);
       GL_CHECK(glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, &swizzle_mask[0]));
       grad_tex->setData(height_map.cols, height_map.rows, GL_R16F, GL_RED, GL_FLOAT, height_map.data);
-      fbs_grad_y[i] = std::make_shared<GLFramebuffer>();
+      fbs_grad_y[i] = std::make_shared<GLFramebufferOld>();
       fbs_grad_y[i]->create(height_map.cols, height_map.rows);
       fbs_grad_y[i]->bind();
       fbs_grad_y[i]->addTexture(grad_tex, GL_COLOR_ATTACHMENT0);
@@ -2442,7 +2442,7 @@ namespace fly
     GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
     GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
     _normalMap->setData(height_map.cols, height_map.rows, GL_RGB16F, GL_RED, GL_FLOAT, nullptr);
-    auto normal_fb = std::make_shared<GLFramebuffer>();
+    auto normal_fb = std::make_shared<GLFramebufferOld>();
     normal_fb->create(height_map.cols, height_map.rows);
     normal_fb->bind();
     normal_fb->addTexture(_normalMap, GL_COLOR_ATTACHMENT0);
@@ -2741,7 +2741,7 @@ namespace fly
     GL_CHECK(glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
     texture->setCompareMode(GL_COMPARE_REF_TO_TEXTURE, GL_LESS);
     texture->setData(size.x, size.y, num_cascades, GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-    _shadowMaps[entity] = std::make_shared<GLFramebuffer>();
+    _shadowMaps[entity] = std::make_shared<GLFramebufferOld>();
     _shadowMaps[entity]->create(size.x, size.y);
     _shadowMaps[entity]->bind();
     _shadowMaps[entity]->addTexture(texture, GL_DEPTH_ATTACHMENT);
@@ -2790,7 +2790,7 @@ namespace fly
     GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
     texture->setCompareMode(GL_COMPARE_REF_TO_TEXTURE, GL_LEQUAL);
     texture->setData(size.x, size.y, GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-    auto fb = std::make_shared<GLFramebuffer>();
+    auto fb = std::make_shared<GLFramebufferOld>();
     fb->create(size.x, size.y);
     fb->bind();
     fb->addTexture(texture, GL_DEPTH_ATTACHMENT);
@@ -2818,7 +2818,7 @@ namespace fly
     for (int i = 0; i < 6; i++) {
       GL_CHECK(glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_DEPTH_COMPONENT16, size.x, size.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr));
     }
-    auto fb = std::make_shared<GLFramebuffer>();
+    auto fb = std::make_shared<GLFramebufferOld>();
     fb->create(size.x, size.y);
     fb->bind();
     fb->addTexture(texture, GL_DEPTH_ATTACHMENT);
@@ -2875,7 +2875,7 @@ namespace fly
 
     _godRayEffect = std::make_shared<GodRayEffect>(_viewportSize);
 
-    _gBuffer = std::make_shared<GLFramebuffer>();
+    _gBuffer = std::make_shared<GLFramebufferOld>();
     _gBuffer->create(_viewportSize.x, _viewportSize.y);
     _gBuffer->bind();
 
@@ -2904,7 +2904,7 @@ namespace fly
     _gBuffer->checkStatus();
 
     for (unsigned int i = 0; i < 2; i++) {
-      _framebufferQuarterSize[i] = std::make_shared<GLFramebuffer>();
+      _framebufferQuarterSize[i] = std::make_shared<GLFramebufferOld>();
       auto size = _viewportSize / 4;
       _framebufferQuarterSize[i]->create(size.x, size.y);
       _framebufferQuarterSize[i]->bind();
@@ -2921,7 +2921,7 @@ namespace fly
     }
 
     for (unsigned int i = 0; i < 2; i++) {
-      _gradientBufferXQuarterSize[i] = std::make_shared<GLFramebuffer>();
+      _gradientBufferXQuarterSize[i] = std::make_shared<GLFramebufferOld>();
       auto size = _viewportSize / 4;
       _gradientBufferXQuarterSize[i]->create(size.x, size.y);
       _gradientBufferXQuarterSize[i]->bind();
@@ -2938,7 +2938,7 @@ namespace fly
     }
 
     for (unsigned int i = 0; i < 2; i++) {
-      _gradientBufferYQuarterSize[i] = std::make_shared<GLFramebuffer>();
+      _gradientBufferYQuarterSize[i] = std::make_shared<GLFramebufferOld>();
       auto size = _viewportSize / 4;
       _gradientBufferYQuarterSize[i]->create(size.x, size.y);
       _gradientBufferYQuarterSize[i]->bind();
@@ -2954,7 +2954,7 @@ namespace fly
       _gradientBufferYQuarterSize[i]->setDrawbuffersFromColorAttachments();
     }
 
-    _gradientBufferQuarterSize = std::make_shared<GLFramebuffer>();
+    _gradientBufferQuarterSize = std::make_shared<GLFramebufferOld>();
     auto size = _viewportSize / 4;
     _gradientBufferQuarterSize->create(size.x, size.y);
     _gradientBufferQuarterSize->bind();
@@ -2973,7 +2973,7 @@ namespace fly
 
     int i = 0;
     for (auto& lb : _lightingBuffer) {
-      lb = std::make_shared<GLFramebuffer>();
+      lb = std::make_shared<GLFramebufferOld>();
       lb->create(_viewportSize.x, _viewportSize.y);
       lb->bind();
       texture = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
@@ -2994,7 +2994,7 @@ namespace fly
     }
 
     for (unsigned int i = 0; i < 2; i++) {
-      auto fb = std::make_shared<GLFramebuffer>();
+      auto fb = std::make_shared<GLFramebufferOld>();
       fb->create(1, 1);
       fb->bind();
       texture = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);
@@ -3008,7 +3008,7 @@ namespace fly
     }
 
     for (unsigned int i = 0; i < 2; i++) {
-      _DOFBlurBuffer[i] = std::make_shared<GLFramebuffer>();
+      _DOFBlurBuffer[i] = std::make_shared<GLFramebufferOld>();
       _DOFBlurBuffer[i]->create(_viewportSize.x / 2, _viewportSize.y / 2);
       _DOFBlurBuffer[i]->bind();
       auto texture = std::make_shared<GLTextureOld>(GL_TEXTURE_2D);

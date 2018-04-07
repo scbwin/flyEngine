@@ -18,7 +18,7 @@
 #include <GameTimer.h>
 #include <AssimpImporter.h>
 
-#define SPONZA 0
+#define SPONZA 1
 
 class GLWidget : public QOpenGLWidget
 {

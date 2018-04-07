@@ -131,25 +131,25 @@ namespace fly
     std::shared_ptr<GLShaderProgram> _waterPopUpDistortionShader;
     std::shared_ptr<GLShaderProgram> _underwaterShader;
 
-    std::array<std::shared_ptr<GLFramebuffer>, 2> _framebufferQuarterSize;
-    std::array<std::shared_ptr<GLFramebuffer>, 2> _gradientBufferXQuarterSize;
-    std::array<std::shared_ptr<GLFramebuffer>, 2> _gradientBufferYQuarterSize;
-    std::array<std::shared_ptr<GLFramebuffer>, 2> _DOFBlurBuffer;
-    std::array<std::shared_ptr<GLFramebuffer>, 2> _focusBuffer;
-    std::shared_ptr<GLFramebuffer> _gradientBufferQuarterSize;
+    std::array<std::shared_ptr<GLFramebufferOld>, 2> _framebufferQuarterSize;
+    std::array<std::shared_ptr<GLFramebufferOld>, 2> _gradientBufferXQuarterSize;
+    std::array<std::shared_ptr<GLFramebufferOld>, 2> _gradientBufferYQuarterSize;
+    std::array<std::shared_ptr<GLFramebufferOld>, 2> _DOFBlurBuffer;
+    std::array<std::shared_ptr<GLFramebufferOld>, 2> _focusBuffer;
+    std::shared_ptr<GLFramebufferOld> _gradientBufferQuarterSize;
 
-    std::array<std::shared_ptr<GLFramebuffer>, 2> _lightingBuffer;
+    std::array<std::shared_ptr<GLFramebufferOld>, 2> _lightingBuffer;
 
-    std::vector<std::array<std::shared_ptr<GLFramebuffer>, 2>> _bloomFramebuffers;
+    std::vector<std::array<std::shared_ptr<GLFramebufferOld>, 2>> _bloomFramebuffers;
 
     std::shared_ptr<GLTextureOld> _sceneDepthbuffer;
 
     unsigned int _defaultFramebufferId = 0;
 
     std::map<std::string, std::shared_ptr<GLTextureOld>> _textures;
-    std::shared_ptr<GLFramebuffer> _gBuffer; // used for deferred shading
+    std::shared_ptr<GLFramebufferOld> _gBuffer; // used for deferred shading
 
-    std::map<Entity*, std::shared_ptr<GLFramebuffer>> _shadowMaps;
+    std::map<Entity*, std::shared_ptr<GLFramebufferOld>> _shadowMaps;
     std::map<Entity*, std::shared_ptr<GLQuery>> _lightQueries;
 
     unsigned int _frameCount = 0;
@@ -191,7 +191,7 @@ namespace fly
       std::map<int, std::map<int, std::shared_ptr<GLBufferOld>>> _terrainIbo;
       std::map<int, std::map<int, unsigned>> _terrainNumIndices;
       void createIndexBuffer(int lod, int dir, const std::vector<unsigned>& indices);
-      std::array<std::shared_ptr<GLFramebuffer>, 2> _impostorFb;
+      std::array<std::shared_ptr<GLFramebufferOld>, 2> _impostorFb;
       void renderImpostor(const std::shared_ptr<Model>& tree_model, const std::shared_ptr<Model>& leaf_model, const glm::mat4& transform, RenderingSystemOpenGL* rs);
 
       Mat4f getWaterModelMatrix();
@@ -254,8 +254,8 @@ namespace fly
 
       void upsample();
 
-      std::array<std::shared_ptr<GLFramebuffer>, 2> _fb;
-      std::vector<std::shared_ptr<GLFramebuffer>> _upsampleFb;
+      std::array<std::shared_ptr<GLFramebufferOld>, 2> _fb;
+      std::vector<std::shared_ptr<GLFramebufferOld>> _upsampleFb;
       std::shared_ptr<GLTextureOld> _result;
     };
 
@@ -265,8 +265,8 @@ namespace fly
       GodRayEffect(const glm::ivec2& view_port_size);
       ~GodRayEffect();
       bool render(const glm::vec3& light_pos_screen, const glm::vec3& light_pos_view_space, RenderingSystemOpenGL* rs);
-      std::array<std::shared_ptr<GLFramebuffer>, 2> _fb;
-      std::shared_ptr<GLFramebuffer> _resultFb;
+      std::array<std::shared_ptr<GLFramebufferOld>, 2> _fb;
+      std::shared_ptr<GLFramebufferOld> _resultFb;
     };
 
     bool _renderGodRays;
@@ -286,7 +286,7 @@ namespace fly
 
     std::shared_ptr<Mesh> _skydomeMesh;
 
-    std::array<std::shared_ptr<GLFramebuffer>, 2> _exposureBuffer;
+    std::array<std::shared_ptr<GLFramebufferOld>, 2> _exposureBuffer;
 
     std::shared_ptr<Camera> _activeCamera;
 
@@ -330,7 +330,7 @@ namespace fly
     void eyeAdaptionPostProcess();
     void depthOfFieldPostProcess();
     void computeGradient();
-    void pingPongFilter(unsigned int steps, const std::array<std::shared_ptr<GLFramebuffer>, 2>& fb,
+    void pingPongFilter(unsigned int steps, const std::array<std::shared_ptr<GLFramebufferOld>, 2>& fb,
       const std::vector<float>& kernel_horizontal, const std::vector<float>& kernel_vertical, const std::shared_ptr<GLTextureOld>& weight_texture = nullptr, const std::shared_ptr<GLTextureOld>& base_texture = nullptr);
     void renderSkybox();
     void renderSkydome();

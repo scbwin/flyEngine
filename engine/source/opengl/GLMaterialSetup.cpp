@@ -4,6 +4,7 @@
 #include <opengl/GLWrappers.h>
 #include <Material.h>
 #include <opengl/GLTexture.h>
+#include <opengl/GLShaderInterface.h>
 
 namespace fly
 {
@@ -12,26 +13,25 @@ namespace fly
   }
   void SetupDiffuseColor::setup(const OpenGLAPI::MaterialDesc & desc)
   {
-    const auto& col = desc.getMaterial()->getDiffuseColor();
-    GL_CHECK(glUniform3f(desc.getShader()->uniformLocation("d_col"), col[0], col[1], col[2]));
+    setVector(desc.getShader()->uniformLocation("d_col"), desc.getMaterial()->getDiffuseColor());
   }
   void SetupDiffuseMap::setup(const OpenGLAPI::MaterialDesc & desc)
   {
     GL_CHECK(glActiveTexture(GL_TEXTURE0));
     desc.getDiffuseMap()->bind();
-    GL_CHECK(glUniform1i(desc.getShader()->uniformLocation("ts_diff"), 0));
+    setScalar(desc.getShader()->uniformLocation("ts_diff"), 0);
   }
   void SetupAlphaMap::setup(const OpenGLAPI::MaterialDesc & desc)
   {
     GL_CHECK(glActiveTexture(GL_TEXTURE1));
     desc.getAlphaMap()->bind();
-    GL_CHECK(glUniform1i(desc.getShader()->uniformLocation("ts_alpha"), 1));
+    setScalar(desc.getShader()->uniformLocation("ts_alpha"), 1);
   }
   void SetupNormalMap::setup(const OpenGLAPI::MaterialDesc & desc)
   {
     GL_CHECK(glActiveTexture(GL_TEXTURE2));
     desc.getNormalMap()->bind();
-    GL_CHECK(glUniform1i(desc.getShader()->uniformLocation("ts_norm"), 2));
+    setScalar(desc.getShader()->uniformLocation("ts_norm"), 2);
   }
   void SetupDiffuseAlphaMap::setup(const OpenGLAPI::MaterialDesc & desc)
   {

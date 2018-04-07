@@ -92,7 +92,7 @@ namespace fly
     virtual ~GLRenderbuffer();
   };
 
-  class GLFramebuffer
+  class GLFramebufferOld
   {
   public:
     void create(int width, int height);
@@ -109,7 +109,7 @@ namespace fly
     void setDrawbuffersFromColorAttachments();
     void checkStatus();
     std::vector<std::shared_ptr<GLTextureOld>>& textures();
-    virtual ~GLFramebuffer();
+    virtual ~GLFramebufferOld();
   private:
     GLuint _id;
     int _width;

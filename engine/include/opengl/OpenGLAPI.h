@@ -7,7 +7,7 @@
 #include <renderer/RenderParams.h>
 #include <memory>
 #include <vector>
-#include <map>
+#include <unordered_map>
 
 namespace fly
 {
@@ -20,21 +20,23 @@ namespace fly
   class GLAppendBuffer;
   class GLMaterialSetup;
   class Material;
+  class GLFramebuffer;
 
   class OpenGLAPI
   {
   public:
     OpenGLAPI();
-    virtual ~OpenGLAPI() = default;
+    virtual ~OpenGLAPI();
     ZNearMapping getZNearMapping() const;
     void setViewport(const Vec2u& size) const;
     void clearRendertargetColor(const Vec4f& color) const;
     static inline constexpr bool isDirectX() { return false; }
     template<bool enable>
-    inline void setDepthTestEnabled() const
-    {
-      GL_CHECK(enable ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST));
-    }
+    inline void setDepthTestEnabled() const { GL_CHECK(enable ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST)); }
+    template<bool enable>
+    inline void setFaceCullingEnabled() const { GL_CHECK(enable ? glEnable(GL_CULL_FACE) : glDisable(GL_CULL_FACE)); }
+    using RTT = GLTexture;
+    using Depthbuffer = GLTexture;
     class MeshGeometryStorage
     {
     public:
@@ -52,7 +54,7 @@ namespace fly
       std::unique_ptr<GLVertexArray> _vao;
       std::unique_ptr<GLAppendBuffer> _vboAppend;
       std::unique_ptr<GLAppendBuffer> _iboAppend;
-      std::map<std::shared_ptr<Mesh>, MeshData> _meshDataCache;
+      std::unordered_map<std::shared_ptr<Mesh>, MeshData> _meshDataCache;
       size_t _indices = 0;
       size_t _baseVertex = 0;
     };
@@ -80,20 +82,26 @@ namespace fly
     void setupMaterial(const MaterialDesc& desc, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix, const Vec3f& light_intensity);
     void setupShaderConstants(const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix, const Vec3f& light_intensity);
     void setupMaterialConstants(const std::shared_ptr<Material>& material);
-
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mv);
     void renderAABBs(const std::vector<AABB*>& aabbs, const Mat4f& transform, const Vec3f& col);
+    void setRendertargets(const std::vector<std::shared_ptr<RTT>>& rtts, const std::shared_ptr<Depthbuffer>& depth_buffer);
+    void bindBackbuffer(unsigned id) const;
+    void composite(const std::shared_ptr<RTT>& lighting_buffer);
     std::shared_ptr<GLTexture> createTexture(const std::string& path);
     std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material);
     std::shared_ptr<GLShaderProgram> createShader(const std::string& vertex_file, const std::string& fragment_file, const std::string& geometry_file = "");
+    std::shared_ptr<RTT> createRenderToTexture(const Vec2u& size);
+    std::shared_ptr<Depthbuffer> createDepthbuffer(const Vec2u& size);
   private:
-    GLShaderProgram* _activeShader;
-    std::map<std::string, std::shared_ptr<GLTexture>> _textureCache;
-    std::map<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>> _matDescCache;
-    std::map<std::string, std::shared_ptr<GLShaderProgram>> _shaderCache;
+    GLShaderProgram * _activeShader;
+    std::unordered_map<std::string, std::shared_ptr<GLTexture>> _textureCache;
+    std::unordered_map<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>> _matDescCache;
+    std::unordered_map<std::string, std::shared_ptr<GLShaderProgram>> _shaderCache;
     std::shared_ptr<GLShaderProgram> _aabbShader;
+    std::shared_ptr<GLShaderProgram> _compositeShader;
     std::shared_ptr<GLVertexArray> _vaoAABB;
     std::shared_ptr<GLBuffer> _vboAABB;
+    std::unique_ptr<GLFramebuffer> _offScreenFramebuffer;
   };
 }
 
