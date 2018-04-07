@@ -17,6 +17,8 @@ namespace fly
     Mat4f _viewMatrix;
     Mat4f _VP;
     Mat4f _Vinverse;
+    Mat4f _viewToLight;
+    Vec3f _lightPosView;
     ZNearMapping _zNearMapping;
   };
 }

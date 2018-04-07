@@ -101,7 +101,7 @@ namespace fly
     link();
   }
 
-  void GLShaderProgram::add(const std::string & fname, ShaderType type)
+  void GLShaderProgram::add(const std::string & fname, ShaderType type) const
   {
     GLenum shader_type;
     switch (type)

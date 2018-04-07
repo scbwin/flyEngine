@@ -1,5 +1,6 @@
 #include <opengl/GLSLShaderGenerator.h>
 #include <fstream>
+#include <iostream>
 
 namespace fly
 {
@@ -16,12 +17,22 @@ namespace fly
       fname += "_alpha";
     }
     fname += ".glsl";
-    if (std::ifstream(fname).good()) { // File already exists
-      return fname;
+    for (const auto& n : _fnames) {
+      if (n == fname) { // File already created
+        return fname;
+      }
     }
+    _fnames.push_back(fname);
+    _flags.push_back(flags);
     return createMeshFragmentFile(fname, flags, shadows);
   }
-  std::string GLSLShaderGenerator::createMeshFragmentFile(const std::string & fname, unsigned flags, bool shadows)
+  void GLSLShaderGenerator::regenerateShaders(bool shadows)
+  {
+    for (unsigned i = 0; i < _fnames.size(); i++) {
+      createMeshFragmentFile(_fnames[i], _flags[i], shadows);
+    }
+  }
+  std::string GLSLShaderGenerator::createMeshFragmentFile(const std::string & fname, unsigned flags, bool shadows) const
   {
     std::string shader_src = "#version 330 \n\
 layout(location = 0) out vec3 fragmentColor;\n\

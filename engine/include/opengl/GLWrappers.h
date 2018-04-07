@@ -44,7 +44,7 @@ namespace fly
     void reload();
   private:
     GLuint _id;
-    void add(const std::string& fname, ShaderType type);
+    void add(const std::string& fname, ShaderType type) const;
   };
 
   class GLBufferOld

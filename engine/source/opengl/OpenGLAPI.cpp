@@ -19,7 +19,8 @@
 
 namespace fly
 {
-  OpenGLAPI::OpenGLAPI()
+  OpenGLAPI::OpenGLAPI() : 
+    _shaderGenerator(std::make_unique<GLSLShaderGenerator>())
   {
     glewExperimental = true;
     auto result = glewInit();
@@ -254,6 +255,14 @@ namespace fly
     tex->image2D(0, GL_DEPTH_COMPONENT24, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
     return tex;
   }
+  void OpenGLAPI::recreateShadersAndMaterials(bool shadows)
+  {
+    _shaderGenerator->regenerateShaders(shadows);
+    _shaderCache.clear();
+    for (const auto e : _matDescCache) {
+      e.second->create(e.second->getMaterial(), this, shadows);
+    }
+  }
   OpenGLAPI::MeshGeometryStorage::MeshGeometryStorage() :
     _vboAppend(std::make_unique<GLAppendBuffer>(GL_ARRAY_BUFFER)),
     _iboAppend(std::make_unique<GLAppendBuffer>(GL_ELEMENT_ARRAY_BUFFER))
@@ -298,6 +307,10 @@ namespace fly
   }
   OpenGLAPI::MaterialDesc::MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI * api, bool shadows) : _material(material)
   {
+    create(material, api, shadows);
+  }
+  void OpenGLAPI::MaterialDesc::create(const std::shared_ptr<Material>& material, OpenGLAPI* api, bool shadows)
+  {
     _diffuseMap = api->createTexture(material->getDiffusePath());
     _normalMap = api->createTexture(material->getNormalPath());
     _alphaMap = api->createTexture(material->getOpacityPath());
@@ -333,7 +346,7 @@ namespace fly
     if (_normalMap) {
       flag |= FLAG::NORMAL_MAP;
     }
-    _shader = api->createShader(vertex_file, GLSLShaderGenerator().createMeshFragmentShaderFile(flag, shadows));
+    _shader = api->createShader(vertex_file, api->_shaderGenerator->createMeshFragmentShaderFile(flag, shadows));
     _smShader = api->createShader("assets/opengl/vs_shadow.glsl", "assets/opengl/fs_shadow.glsl");
   }
   const std::unique_ptr<GLMaterialSetup>& OpenGLAPI::MaterialDesc::getMaterialSetup() const

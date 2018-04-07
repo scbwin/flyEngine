@@ -21,6 +21,7 @@ namespace fly
   class GLMaterialSetup;
   class Material;
   class GLFramebuffer;
+  class GLSLShaderGenerator;
 
   class OpenGLAPI
   {
@@ -80,6 +81,7 @@ namespace fly
     {
     public:
       MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI* api, bool shadows);
+      void create(const std::shared_ptr<Material>& material, OpenGLAPI* api, bool shadows);
       const std::unique_ptr<GLMaterialSetup>& getMaterialSetup() const;
       const std::shared_ptr<GLShaderProgram>& getShader() const;
       const std::shared_ptr<GLShaderProgram>& getSMShader() const;
@@ -117,6 +119,7 @@ namespace fly
     std::shared_ptr<GLShaderProgram> createShader(const std::string& vertex_file, const std::string& fragment_file, const std::string& geometry_file = "");
     std::shared_ptr<RTT> createRenderToTexture(const Vec2u& size);
     std::shared_ptr<Depthbuffer> createDepthbuffer(const Vec2u& size);
+    void recreateShadersAndMaterials(bool shadows);
   private:
     GLShaderProgram * _activeShader;
     std::unordered_map<std::string, std::shared_ptr<GLTexture>> _textureCache;
@@ -127,6 +130,7 @@ namespace fly
     std::shared_ptr<GLVertexArray> _vaoAABB;
     std::shared_ptr<GLBuffer> _vboAABB;
     std::unique_ptr<GLFramebuffer> _offScreenFramebuffer;
+    std::unique_ptr<GLSLShaderGenerator> _shaderGenerator;
   };
 }
 

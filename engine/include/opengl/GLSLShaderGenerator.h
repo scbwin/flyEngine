@@ -2,6 +2,7 @@
 #define GLSLSHADERGENERATOR_H
 
 #include <string>
+#include <vector>
 
 namespace fly
 {
@@ -16,8 +17,11 @@ namespace fly
       ALPHA_MAP = 4
     };
     std::string createMeshFragmentShaderFile(unsigned flags, bool shadows);
+    void regenerateShaders(bool shadows);
   private:
-    std::string createMeshFragmentFile(const std::string& fname, unsigned flags, bool shadows);
+    std::string createMeshFragmentFile(const std::string& fname, unsigned flags, bool shadows) const;
+    std::vector<std::string> _fnames;
+    std::vector<unsigned> _flags;
   };
 }
 

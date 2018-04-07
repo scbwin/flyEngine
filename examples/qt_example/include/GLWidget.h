@@ -5,6 +5,8 @@
 #include <memory>
 #include <set>
 
+#define SPONZA_MANY 0
+
 namespace fly
 {
   class OpenGLAPI;

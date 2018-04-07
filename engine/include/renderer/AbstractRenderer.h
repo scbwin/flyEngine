@@ -19,6 +19,7 @@
 #include <iostream>
 #include <Quadtree.h>
 #include <Settings.h>
+#include <functional>
 
 namespace fly
 {
@@ -35,6 +36,9 @@ namespace fly
     virtual ~AbstractRenderer() = default;
     void setSettings(const Settings& settings)
     {
+      if (_settings._shadows != settings._shadows) {
+        _api.recreateShadersAndMaterials(settings._shadows);
+      }
       _settings = settings;
       if (settings._postProcessing) {
         _lightingBuffer = _api.createRenderToTexture(_viewPortSize);
@@ -45,6 +49,53 @@ namespace fly
         _depthBuffer = nullptr;
       }
       _shadowMap = _api.createDepthbuffer(settings._shadowMapSize);
+      if (settings._shadows) {
+        _shaderSetupFunc = [this] (typename API::MaterialDesc::ShaderProgram* shader) {
+          _api.setupShader(shader, _rp._lightPosView, _rp._projectionMatrix, _directionalLight->getIntensity(), _shadowMap, _rp._viewToLight);
+        };
+        _materialSetupFunc = [this](const typename API::MaterialDesc& mat_desc) {
+          _api.setupMaterial(mat_desc, _rp._lightPosView, _rp._projectionMatrix, _directionalLight->getIntensity(), _shadowMap, _rp._viewToLight);
+        };
+      }
+      else {
+        _shaderSetupFunc = [this](typename API::MaterialDesc::ShaderProgram* shader) {
+          _api.setupShader(shader, _rp._lightPosView, _rp._projectionMatrix, _directionalLight->getIntensity());
+        };
+        _materialSetupFunc = [this](const typename API::MaterialDesc& mat_desc) {
+          _api.setupMaterial(mat_desc, _rp._lightPosView, _rp._projectionMatrix, _directionalLight->getIntensity());
+        };
+      }
+      if (settings._dlSortMode == DisplayListSortMode::SHADER_AND_MATERIAL) {
+        _staticMeshRenderFunc = [this]() {
+          std::unordered_map<typename API::MaterialDesc::ShaderProgram*, std::unordered_map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> display_list;
+          for (const auto& e : _visibleMeshes) {
+            display_list[e->_materialDesc->getShader().get()][e->_materialDesc.get()].push_back(e);
+          }
+          for (const auto& e : display_list) {
+            _shaderSetupFunc(e.first);
+            for (const auto& e1 : e.second) {
+              _api.setupMaterial(*e1.first);
+              for (const auto& smr : e1.second) {
+                _api.renderMesh(smr->_meshData, _rp._viewMatrix * smr->_smr->getModelMatrix());
+              }
+            }
+          }
+        };
+      }
+      else {
+        _staticMeshRenderFunc = [this]() {
+          std::unordered_map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>> display_list;
+          for (const auto& e : _visibleMeshes) {
+            display_list[e->_materialDesc.get()].push_back(e);
+          }
+          for (const auto& e : display_list) {
+            _materialSetupFunc(*e.first);
+            for (const auto& smr : e.second) {
+              _api.renderMesh(smr->_meshData, _rp._viewMatrix * smr->_smr->getModelMatrix());
+            }
+          }
+        };
+      }
     }
     const Settings& getSettings() const
     {
@@ -88,9 +139,8 @@ namespace fly
         }
         _api.setDepthTestEnabled<true>();
         _api.setFaceCullingEnabled<true>();
-        Vec3f light_pos_view = (_rp._viewMatrix * Vec4f(_directionalLight->_pos, 1.f)).xyz();
+        _rp._lightPosView = (_rp._viewMatrix * Vec4f(_directionalLight->_pos, 1.f)).xyz();
         _meshGeometryStorage.bind();
-        Mat4f view_to_light;
         if (_settings._shadows) {
           std::vector<Mat4f> light_vps;
           _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfView,
@@ -110,45 +160,19 @@ namespace fly
               _api.renderMeshMVP(smr->_meshData, light_vps[0] * smr->_smr->getModelMatrix());
             }
           }
-          view_to_light = light_vps[0] * _rp._Vinverse;
+          _rp._viewToLight = light_vps[0] * _rp._Vinverse;
           _api.setDepthClampEnabled<false>();
         }
         _settings._postProcessing ? _api.setRendertargets({ _lightingBuffer }, _depthBuffer) : _api.bindBackbuffer(_defaultRenderTarget);
         _api.setViewport(_viewPortSize);
         _api.clearRendertarget<true, true, false>(Vec4f(0.149f, 0.509f, 0.929f, 1.f));
-        std::vector<StaticMeshRenderable*> visible_elements = _quadtree->getVisibleElements<API::isDirectX()>(_rp._VP);
-        if (_settings._dlSortMode == DisplayListSortMode::SHADER_AND_MATERIAL) {
-          std::unordered_map<typename API::MaterialDesc::ShaderProgram*, std::unordered_map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> display_list;
-          for (const auto& e : visible_elements) {
-            display_list[e->_materialDesc->getShader().get()][e->_materialDesc.get()].push_back(e);
-          }
-          for (const auto& e : display_list) {
-            _api.setupShader(e.first, light_pos_view, _rp._projectionMatrix, _directionalLight->getIntensity(), _shadowMap, view_to_light);
-            for (const auto& e1 : e.second) {
-              _api.setupMaterial(*e1.first);
-              for (const auto& smr : e1.second) {
-                _api.renderMesh(smr->_meshData, _rp._viewMatrix * smr->_smr->getModelMatrix());
-              }
-            }
-          }
-        }
-        else {
-          std::unordered_map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>> display_list;
-          for (const auto& e : visible_elements) {
-            display_list[e->_materialDesc.get()].push_back(e);
-          }
-          for (const auto& e : display_list) {
-            _api.setupMaterial(*e.first, light_pos_view, _rp._projectionMatrix, _directionalLight->getIntensity(), _shadowMap, view_to_light);
-            for (const auto& smr : e.second) {
-              _api.renderMesh(smr->_meshData, _rp._viewMatrix * smr->_smr->getModelMatrix());
-            }
-          }
-        }
+        _visibleMeshes = _quadtree->getVisibleElements<API::isDirectX()>(_rp._VP);
+        _staticMeshRenderFunc();
         if (_settings._debugQuadtreeNodeAABBs) {
           renderQuadtreeAABBs();
         }
         if (_settings._debugObjectAABBs) {
-          renderObjectAABBs(visible_elements);
+          renderObjectAABBs(_visibleMeshes);
         }
         if (_settings._postProcessing) {
           _api.setDepthTestEnabled<false>();
@@ -175,6 +199,8 @@ namespace fly
     {
       _api.reloadShaders();
     }
+    const Vec3f& getSceneMin() const { return _sceneMin; }
+    const Vec3f& getSceneMax() const { return _sceneMax; }
   private:
     API _api;
     ProjectionParams _pp;
@@ -201,6 +227,11 @@ namespace fly
     typename API::MeshGeometryStorage _meshGeometryStorage;
     std::unordered_map<Entity*, std::shared_ptr<StaticMeshRenderable>> _staticMeshRenderables;
     std::unique_ptr<Quadtree<StaticMeshRenderable>> _quadtree;
+    std::vector<StaticMeshRenderable*> _visibleMeshes;
+
+    std::function<void(typename API::MaterialDesc::ShaderProgram*)> _shaderSetupFunc;
+    std::function<void(const typename API::MaterialDesc&)> _materialSetupFunc;
+    std::function<void(void)> _staticMeshRenderFunc;
 
     void buildQuadtree()
     {
