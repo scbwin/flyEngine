@@ -49,4 +49,9 @@ namespace fly
     SetupAlphaMap::setup(desc);
     SetupNormalMap::setup(desc);
   }
+  void SetupDiffuseColorNormalMap::setup(const OpenGLAPI::MaterialDesc & desc)
+  {
+    SetupDiffuseColor::setup(desc);
+    SetupNormalMap::setup(desc);
+  }
 }

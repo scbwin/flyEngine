@@ -330,9 +330,11 @@ namespace fly
       _materialSetup = std::make_unique<SetupDiffuseMap>();
     }
     else if (_alphaMap) {
-      _materialSetup = std::make_unique<SetupAlphaMap>();
       std::string err = "Unsupported material type.";
       throw std::exception(err.c_str());
+    }
+    else if (_normalMap) {
+      _materialSetup = std::make_unique<SetupDiffuseColorNormalMap>();
     }
     else {
       _materialSetup = std::make_unique<SetupDiffuseColor>();

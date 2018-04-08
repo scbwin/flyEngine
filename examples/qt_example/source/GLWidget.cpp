@@ -250,15 +250,30 @@ void GLWidget::initGame()
   }
 #endif
 
-/*  auto plane_model = importer->loadModel("assets/plane.obj");
+#if SPONZA_MANY
+  auto plane_model = importer->loadModel("assets/plane.obj");
   for (const auto& m : plane_model->getMaterials()) {
     m->setNormalPath("assets/ground_normals.png");
+    m->setDiffuseColor(fly::Vec3f(0.870f, 0.768f, 0.329f) * 1.5f);
+  }
+  for (const auto& m : plane_model->getMeshes()) {
+    std::vector<fly::Vertex> vertices_new;
+    for (const auto& v : m->getVertices()) {
+      fly::Vertex v_new = v;
+      v_new._uv *= 120.f;
+      vertices_new.push_back(v_new);
+    }
+    m->setVertices(vertices_new);
   }
   for (const auto& m : plane_model->getMeshes()) {
     auto entity = _engine->getEntityManager()->createEntity();
+    auto scale = _renderer->getSceneMax() - _renderer->getSceneMin();
+    scale[1] = 1.f;
+    auto translation = _renderer->getSceneMin();
     entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(m, 
-      plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(fly::Vec3f(0.f), fly::Vec3f(600.f, 1.f, 600.f)).getModelMatrix()));
-  }*/
+      plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(translation, scale).getModelMatrix()));
+  }
+#endif
 
   auto cam_entity = _engine->getEntityManager()->createEntity();
   cam_entity->addComponent(std::make_shared<fly::Camera>(glm::vec3(0.f, 0.f, -100.f), glm::vec3(0.f)));

@@ -18,6 +18,8 @@ namespace fly
 
     const std::vector<Vertex>& getVertices() const;
     const std::vector<unsigned int>& getIndices() const;
+    void setVertices(const std::vector<Vertex>& vertices);
+    void setIndices(const std::vector<unsigned>& indices);
     unsigned int getMaterialIndex() const;
     AABB* getAABB() const;
     void setMaterialIndex(unsigned material_index);

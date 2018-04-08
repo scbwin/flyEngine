@@ -33,6 +33,14 @@ namespace fly
   {
     return _indices;
   }
+  void Mesh::setVertices(const std::vector<Vertex>& vertices)
+  {
+    _vertices = vertices;
+  }
+  void Mesh::setIndices(const std::vector<unsigned>& indices)
+  {
+    _indices = indices;
+  }
   unsigned int Mesh::getMaterialIndex() const
   {
     return _materialIndex;

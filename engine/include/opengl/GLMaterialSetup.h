@@ -41,6 +41,13 @@ namespace fly
     virtual void setup(const OpenGLAPI::MaterialDesc& desc) override;
   private:
   };
+  class SetupDiffuseColorNormalMap : public SetupDiffuseColor, public SetupNormalMap
+  {
+  public:
+    virtual ~SetupDiffuseColorNormalMap() = default;
+    virtual void setup(const OpenGLAPI::MaterialDesc& desc) override;
+  private:
+  };
   class SetupDiffuseAlphaMap : public SetupDiffuseMap, public SetupAlphaMap
   {
   public:
