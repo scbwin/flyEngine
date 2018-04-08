@@ -12,8 +12,8 @@ uniform sampler2D ts_alpha;
 uniform sampler2D ts_norm;
 uniform vec3 lpos_cs; // light position view space
 uniform vec3 I_in; // light intensity
-uniform mat4 v_to_l; // world to light space
-uniform sampler2D ts_sm;
+uniform mat4 v_to_l; // view space to light space
+uniform sampler2DShadow ts_sm;
 // Material constants
 uniform float ka;
 uniform float kd;
@@ -35,7 +35,6 @@ void main()
   vec4 shadow_coord = v_to_l * vec4(pos_view, 1.f);
   shadow_coord.xyz /= shadow_coord.w;
   shadow_coord = shadow_coord * 0.5f + 0.5f;
-  if (all(greaterThanEqual(shadow_coord.xyz, vec3(0.f))) && all(lessThanEqual(shadow_coord.xyz, vec3(1.f)))) {
-    fragmentColor *= 1.f - float(shadow_coord.z - 0.005f > texture(ts_sm, shadow_coord.xy).r) * 0.5f; 
-  }
+  shadow_coord.z -= 0.005f;
+  fragmentColor *= 1.f - texture(ts_sm, shadow_coord.xyz) * 0.5f;
 }

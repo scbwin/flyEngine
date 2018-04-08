@@ -30,6 +30,11 @@ namespace fly
     bind();
     GL_CHECK(glTexParameteri(_target, name, val));
   }
+  void GLTexture::param(GLenum name, const GLfloat * val) const
+  {
+    bind();
+    GL_CHECK(glTexParameterfv(_target, name, val));
+  }
   unsigned GLTexture::width() const
   {
     return _width;

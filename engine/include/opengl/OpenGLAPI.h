@@ -22,6 +22,7 @@ namespace fly
   class Material;
   class GLFramebuffer;
   class GLSLShaderGenerator;
+  struct Settings;
 
   class OpenGLAPI
   {
@@ -56,6 +57,7 @@ namespace fly
     void reloadShaders();
     using RTT = GLTexture;
     using Depthbuffer = GLTexture;
+    using Shadowmap = GLTexture;
     class MeshGeometryStorage
     {
     public:
@@ -80,8 +82,8 @@ namespace fly
     class MaterialDesc
     {
     public:
-      MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI* api, bool shadows);
-      void create(const std::shared_ptr<Material>& material, OpenGLAPI* api, bool shadows);
+      MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI* api, const Settings& settings);
+      void create(const std::shared_ptr<Material>& material, OpenGLAPI* api, const Settings& settings);
       const std::unique_ptr<GLMaterialSetup>& getMaterialSetup() const;
       const std::shared_ptr<GLShaderProgram>& getShader() const;
       const std::shared_ptr<GLShaderProgram>& getSMShader() const;
@@ -115,11 +117,12 @@ namespace fly
     void bindBackbuffer(unsigned id) const;
     void composite(const std::shared_ptr<RTT>& lighting_buffer);
     std::shared_ptr<GLTexture> createTexture(const std::string& path);
-    std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material, bool shadows);
+    std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material, const Settings& settings);
     std::shared_ptr<GLShaderProgram> createShader(const std::string& vertex_file, const std::string& fragment_file, const std::string& geometry_file = "");
     std::shared_ptr<RTT> createRenderToTexture(const Vec2u& size);
     std::shared_ptr<Depthbuffer> createDepthbuffer(const Vec2u& size);
-    void recreateShadersAndMaterials(bool shadows);
+    std::shared_ptr<Shadowmap> createShadowmap(const Vec2u& size, const Settings& settings);
+    void recreateShadersAndMaterials(const Settings& settings);
   private:
     GLShaderProgram * _activeShader;
     std::unordered_map<std::string, std::shared_ptr<GLTexture>> _textureCache;

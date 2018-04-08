@@ -6,6 +6,8 @@
 
 namespace fly
 {
+  struct Settings;
+
   class GLSLShaderGenerator
   {
   public:
@@ -16,10 +18,10 @@ namespace fly
       NORMAL_MAP = 2, 
       ALPHA_MAP = 4
     };
-    std::string createMeshFragmentShaderFile(unsigned flags, bool shadows);
-    void regenerateShaders(bool shadows);
+    std::string createMeshFragmentShaderFile(unsigned flags, const Settings& settings);
+    void regenerateShaders(const Settings& settings);
   private:
-    std::string createMeshFragmentFile(const std::string& fname, unsigned flags, bool shadows) const;
+    std::string createMeshFragmentFile(const std::string& fname, unsigned flags, const Settings& settings) const;
     std::vector<std::string> _fnames;
     std::vector<unsigned> _flags;
   };

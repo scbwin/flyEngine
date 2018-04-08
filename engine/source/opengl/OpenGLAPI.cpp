@@ -16,6 +16,7 @@
 #include <opengl/GLShaderInterface.h>
 #include <opengl/GLFramebuffer.h>
 #include <opengl/GLSLShaderGenerator.h>
+#include <Settings.h>
 
 namespace fly
 {
@@ -204,20 +205,20 @@ namespace fly
     _textureCache[path] = ret;
     return ret;
   }
-  std::shared_ptr<OpenGLAPI::MaterialDesc> OpenGLAPI::createMaterial(const std::shared_ptr<Material>& material, bool shadows)
+  std::shared_ptr<OpenGLAPI::MaterialDesc> OpenGLAPI::createMaterial(const std::shared_ptr<Material>& material, const Settings& settings)
   {
   //  std::cout << "mat desc cache size:" << _matDescCache.size() << std::endl;
     auto it = _matDescCache.find(material);
     if (it != _matDescCache.end()) {
       return it->second;
     }
-    auto ret = std::make_shared<MaterialDesc>(material, this, shadows);
+    auto ret = std::make_shared<MaterialDesc>(material, this, settings);
     _matDescCache[material] = ret;
     return ret;
   }
   std::shared_ptr<GLShaderProgram> OpenGLAPI::createShader(const std::string & vertex_file, const std::string & fragment_file, const std::string& geometry_file)
   {
-    std::string key = vertex_file + fragment_file;
+    std::string key = vertex_file + fragment_file + geometry_file;
     auto it = _shaderCache.find(key);
     if (it != _shaderCache.end()) {
       return it->second;
@@ -255,12 +256,30 @@ namespace fly
     tex->image2D(0, GL_DEPTH_COMPONENT24, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
     return tex;
   }
-  void OpenGLAPI::recreateShadersAndMaterials(bool shadows)
+  std::shared_ptr<OpenGLAPI::Shadowmap> OpenGLAPI::createShadowmap(const Vec2u & size, const Settings& settings)
   {
-    _shaderGenerator->regenerateShaders(shadows);
+    auto tex = std::make_shared<GLTexture>();
+    tex->bind();
+    GLint filter = settings._shadowPercentageCloserFiltering ? GL_LINEAR : GL_NEAREST;
+    tex->param(GL_TEXTURE_MIN_FILTER, filter);
+    tex->param(GL_TEXTURE_MAG_FILTER, filter);
+    tex->param(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    tex->param(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    tex->param(GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
+    tex->param(GL_TEXTURE_BORDER_COLOR, Vec4f(std::numeric_limits<float>::max()).ptr());
+    if (settings._shadowPercentageCloserFiltering) {
+      tex->param(GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+      tex->param(GL_TEXTURE_COMPARE_FUNC, GL_GREATER);
+    }
+    tex->image2D(0, GL_DEPTH_COMPONENT24, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    return tex;
+  }
+  void OpenGLAPI::recreateShadersAndMaterials(const Settings& settings)
+  {
+    _shaderGenerator->regenerateShaders(settings);
     _shaderCache.clear();
     for (const auto e : _matDescCache) {
-      e.second->create(e.second->getMaterial(), this, shadows);
+      e.second->create(e.second->getMaterial(), this, settings);
     }
   }
   OpenGLAPI::MeshGeometryStorage::MeshGeometryStorage() :
@@ -305,11 +324,11 @@ namespace fly
     _meshDataCache[mesh] = data;
     return data;
   }
-  OpenGLAPI::MaterialDesc::MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI * api, bool shadows) : _material(material)
+  OpenGLAPI::MaterialDesc::MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI * api, const Settings& settings) : _material(material)
   {
-    create(material, api, shadows);
+    create(material, api, settings);
   }
-  void OpenGLAPI::MaterialDesc::create(const std::shared_ptr<Material>& material, OpenGLAPI* api, bool shadows)
+  void OpenGLAPI::MaterialDesc::create(const std::shared_ptr<Material>& material, OpenGLAPI* api, const Settings& settings)
   {
     _diffuseMap = api->createTexture(material->getDiffusePath());
     _normalMap = api->createTexture(material->getNormalPath());
@@ -348,7 +367,7 @@ namespace fly
     if (_normalMap) {
       flag |= FLAG::NORMAL_MAP;
     }
-    _shader = api->createShader(vertex_file, api->_shaderGenerator->createMeshFragmentShaderFile(flag, shadows));
+    _shader = api->createShader(vertex_file, api->_shaderGenerator->createMeshFragmentShaderFile(flag, settings));
     _smShader = api->createShader("assets/opengl/vs_shadow.glsl", "assets/opengl/fs_shadow.glsl");
   }
   const std::unique_ptr<GLMaterialSetup>& OpenGLAPI::MaterialDesc::getMaterialSetup() const

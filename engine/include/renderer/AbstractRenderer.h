@@ -36,8 +36,8 @@ namespace fly
     virtual ~AbstractRenderer() = default;
     void setSettings(const Settings& settings)
     {
-      if (_settings._shadows != settings._shadows) {
-        _api.recreateShadersAndMaterials(settings._shadows);
+      if (_settings._shadows != settings._shadows || _settings._shadowPercentageCloserFiltering != settings._shadowPercentageCloserFiltering) {
+        _api.recreateShadersAndMaterials(settings);
       }
       _settings = settings;
       if (settings._postProcessing) {
@@ -48,7 +48,7 @@ namespace fly
         _lightingBuffer = nullptr;
         _depthBuffer = nullptr;
       }
-      _shadowMap = _api.createDepthbuffer(settings._shadowMapSize);
+      _shadowMap = settings._shadows ? _api.createShadowmap(settings._shadowMapSize, settings) : nullptr;
       if (settings._shadows) {
         _shaderSetupFunc = [this] (typename API::MaterialDesc::ShaderProgram* shader) {
           _api.setupShader(shader, _rp._lightPosView, _rp._projectionMatrix, _directionalLight->getIntensity(), _shadowMap, _rp._viewToLight);
@@ -108,7 +108,7 @@ namespace fly
       auto mr = entity->getComponent<fly::StaticMeshRenderable>();
       if (mr) {
         auto mesh_renderable = std::make_shared<StaticMeshRenderable>();
-        mesh_renderable->_materialDesc = _api.createMaterial(mr->getMaterial(), _settings._shadows);
+        mesh_renderable->_materialDesc = _api.createMaterial(mr->getMaterial(), _settings);
         mesh_renderable->_meshData = _meshGeometryStorage.addMesh(mr->getMesh());
         mesh_renderable->_smr = mr;
         _staticMeshRenderables[entity] = mesh_renderable;
@@ -213,7 +213,7 @@ namespace fly
     Settings _settings;
     std::shared_ptr<typename API::RTT> _lightingBuffer;
     std::shared_ptr<typename API::Depthbuffer> _depthBuffer;
-    std::shared_ptr<typename API::Depthbuffer> _shadowMap;
+    std::shared_ptr<typename API::Shadowmap> _shadowMap;
     unsigned _defaultRenderTarget = 0;
 
     // Wrapper for StaticMeshRenderable

@@ -15,6 +15,7 @@ namespace fly
     void bind() const;
     void image2D(GLint level, GLint internal_format, const Vec2u& size, GLint border, GLenum format, GLenum type, const void* data);
     void param(GLenum name, GLint val) const;
+    void param(GLenum name, const GLfloat* val) const;
     unsigned width() const;
     unsigned height() const;
     ~GLTexture();
