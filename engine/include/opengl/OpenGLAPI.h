@@ -9,6 +9,7 @@
 #include <vector>
 #include <unordered_map>
 #include <functional>
+#include <opengl/GLTexture.h>
 
 namespace fly
 {
@@ -16,7 +17,6 @@ namespace fly
   class GLVertexArray;
   class GLShaderProgram;
   class Mesh;
-  class GLTexture;
   class AABB;
   class GLAppendBuffer;
   class GLMaterialSetup;
@@ -102,25 +102,25 @@ namespace fly
     };
     void setupShader(GLShaderProgram* shader);
     void setupShader(GLShaderProgram* shader, const GlobalShaderParams& params);
-    void setupShader(GLShaderProgram* shader, const GlobalShaderParams& param, const std::shared_ptr<Depthbuffer>& shadow_map);
+    void setupShader(GLShaderProgram* shader, const GlobalShaderParams& param, const Depthbuffer* shadow_map);
     void setupMaterial(const MaterialDesc& desc);
     void setupMaterial(const MaterialDesc& desc, const GlobalShaderParams& param);
-    void setupMaterial(const MaterialDesc& desc, const GlobalShaderParams& param, const std::shared_ptr<Depthbuffer>& shadow_map);
+    void setupMaterial(const MaterialDesc& desc, const GlobalShaderParams& param, const Depthbuffer* shadow_map);
     void setupShaderConstants(const GlobalShaderParams& param);
-    void setupShaderConstants(const GlobalShaderParams& param, const std::shared_ptr<Depthbuffer>& shadow_map);
+    void setupShaderConstants(const GlobalShaderParams& param, const Depthbuffer* shadow_map);
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mv);
     void renderMeshMVP(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mvp);
     void renderAABBs(const std::vector<AABB*>& aabbs, const Mat4f& transform, const Vec3f& col);
-    void setRendertargets(const std::vector<std::shared_ptr<RTT>>& rtts, const std::shared_ptr<Depthbuffer>& depth_buffer);
-    void setRendertargets(const std::vector<std::shared_ptr<RTT>>& rtts, const std::shared_ptr<Depthbuffer>& depth_buffer, unsigned depth_buffer_layer);
+    void setRendertargets(const std::vector<RTT*>& rtts, const Depthbuffer* depth_buffer);
+    void setRendertargets(const std::vector<RTT*>& rtts, const Depthbuffer* depth_buffer, unsigned depth_buffer_layer);
     void bindBackbuffer(unsigned id) const;
-    void composite(const std::shared_ptr<RTT>& lighting_buffer);
+    void composite(const RTT* lighting_buffer);
     std::shared_ptr<GLTexture> createTexture(const std::string& path);
     std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material, const Settings& settings);
     std::shared_ptr<GLShaderProgram> createShader(const std::string& vertex_file, const std::string& fragment_file, const std::string& geometry_file = "");
-    std::shared_ptr<RTT> createRenderToTexture(const Vec2u& size);
-    std::shared_ptr<Depthbuffer> createDepthbuffer(const Vec2u& size);
-    std::shared_ptr<Shadowmap> createShadowmap(const Vec2u& size, const Settings& settings);
+    std::unique_ptr<RTT> createRenderToTexture(const Vec2u& size);
+    std::unique_ptr<Depthbuffer> createDepthbuffer(const Vec2u& size);
+    std::unique_ptr<Shadowmap> createShadowmap(const Vec2u& size, const Settings& settings);
     void recreateShadersAndMaterials(const Settings& settings);
   private:
     GLShaderProgram * _activeShader;
@@ -135,7 +135,7 @@ namespace fly
     std::unique_ptr<GLSLShaderGenerator> _shaderGenerator;
 
     void checkFramebufferStatus();
-    void setColorBuffers(const std::vector<std::shared_ptr<RTT>>& rtts);
+    void setColorBuffers(const std::vector<RTT*>& rtts);
   };
 }
 

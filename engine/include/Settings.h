@@ -49,6 +49,7 @@ namespace fly
     float _smBias = 0.000083f;
     std::vector<float> _smFrustumSplits = { 30.f };
  //   std::vector<float> _smFrustumSplits = { 30.f, 50.f, 200.f };
+    bool _normalMapping = true;
   };
 }
 

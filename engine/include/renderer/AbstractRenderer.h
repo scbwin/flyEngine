@@ -32,12 +32,13 @@ namespace fly
       _pp._far = 1000.f;
       _pp._fieldOfViewDegrees = 45.f;
     }
-    virtual ~AbstractRenderer() = default;
+    virtual ~AbstractRenderer() {}
     void setSettings(const Settings& settings)
     {
       if (_settings._shadows != settings._shadows ||
         _settings._shadowPercentageCloserFiltering != settings._shadowPercentageCloserFiltering ||
-        _settings._smBias != settings._smBias) {
+        _settings._smBias != settings._smBias ||
+        _settings._normalMapping != settings._normalMapping) {
         _api.recreateShadersAndMaterials(settings);
       }
       _settings = settings;
@@ -51,39 +52,39 @@ namespace fly
       }
       _shadowMap = settings._shadows ? _api.createShadowmap(settings._shadowMapSize, settings) : nullptr;
       if (settings._shadows) {
-        _shaderSetupFunc = [this] (typename API::MaterialDesc::ShaderProgram* shader) {
-          _api.setupShader(shader, _rp, _shadowMap);
+        _shaderSetupFunc = [this](typename API::MaterialDesc::ShaderProgram* shader) {
+          _api.setupShader(shader, _rp, _shadowMap.get());
         };
         _materialSetupFunc = [this](const typename API::MaterialDesc& mat_desc) {
-          _api.setupMaterial(mat_desc, _rp, _shadowMap);
+          _api.setupMaterial(mat_desc, _rp, _shadowMap.get());
         };
         _staticMeshRenderFuncSM = [this]() {
-            std::vector<Mat4f> light_vps;
-            auto vp_shadow_volume = _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
-              _rp._Vinverse, _directionalLight->getViewMatrix(), static_cast<float>(_settings._shadowMapSize), _settings._smFrustumSplits, light_vps, _api.isDirectX());
-            std::vector<StaticMeshRenderable*> sm_visible_elements = _quadtree->getVisibleElements<API::isDirectX()>(vp_shadow_volume);
-            std::map<typename API::MaterialDesc::ShaderProgram*, std::vector<StaticMeshRenderable*>> sm_display_list;
-            for (const auto& e : sm_visible_elements) {
-              sm_display_list[e->_materialDesc->getSMShader().get()].push_back(e);
-            }
-            _api.setDepthClampEnabled<true>();
-            _api.setViewport(Vec2u(_settings._shadowMapSize));
-            for (unsigned i = 0; i < _settings._smFrustumSplits.size(); i++) {
-              _api.setRendertargets({}, _shadowMap, i);
-              _api.clearRendertarget<false, true, false>(Vec4f());
-              for (const auto& e : sm_display_list) {
-                _api.setupShader(e.first);
-                for (const auto& smr : e.second) {
-                  _api.renderMeshMVP(smr->_meshData, light_vps[i] * smr->_smr->getModelMatrix());
-                }
+          std::vector<Mat4f> light_vps;
+          auto vp_shadow_volume = _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
+            _rp._Vinverse, _directionalLight->getViewMatrix(), static_cast<float>(_settings._shadowMapSize), _settings._smFrustumSplits, light_vps, _api.isDirectX());
+          std::vector<StaticMeshRenderable*> sm_visible_elements = _quadtree->getVisibleElements<API::isDirectX()>(vp_shadow_volume);
+          std::map<typename API::MaterialDesc::ShaderProgram*, std::vector<StaticMeshRenderable*>> sm_display_list;
+          for (const auto& e : sm_visible_elements) {
+            sm_display_list[e->_materialDesc->getSMShader().get()].push_back(e);
+          }
+          _api.setDepthClampEnabled<true>();
+          _api.setViewport(Vec2u(_settings._shadowMapSize));
+          for (unsigned i = 0; i < _settings._smFrustumSplits.size(); i++) {
+            _api.setRendertargets({}, _shadowMap.get(), i);
+            _api.clearRendertarget<false, true, false>(Vec4f());
+            for (const auto& e : sm_display_list) {
+              _api.setupShader(e.first);
+              for (const auto& smr : e.second) {
+                _api.renderMeshMVP(smr->_meshData, light_vps[i] * smr->_smr->getModelMatrix());
               }
             }
-            _rp._viewToLight.resize(light_vps.size());
-            for (unsigned i = 0; i < _settings._smFrustumSplits.size(); i++) {
-              _rp._viewToLight[i] = light_vps[i] * _rp._Vinverse;
-            }
-            _rp._smFrustumSplits = _settings._smFrustumSplits;
-            _api.setDepthClampEnabled<false>();
+          }
+          _rp._viewToLight.resize(light_vps.size());
+          for (unsigned i = 0; i < _settings._smFrustumSplits.size(); i++) {
+            _rp._viewToLight[i] = light_vps[i] * _rp._Vinverse;
+          }
+          _rp._smFrustumSplits = _settings._smFrustumSplits;
+          _api.setDepthClampEnabled<false>();
         };
       }
       else {
@@ -173,7 +174,7 @@ namespace fly
         _rp._lightIntensity = _directionalLight->getIntensity();
         _meshGeometryStorage.bind();
         _staticMeshRenderFuncSM();
-        _settings._postProcessing ? _api.setRendertargets({ _lightingBuffer }, _depthBuffer) : _api.bindBackbuffer(_defaultRenderTarget);
+        _settings._postProcessing ? _api.setRendertargets({ _lightingBuffer.get() }, _depthBuffer.get()) : _api.bindBackbuffer(_defaultRenderTarget);
         _api.setViewport(_viewPortSize);
         _api.clearRendertarget<true, true, false>(Vec4f(0.149f, 0.509f, 0.929f, 1.f));
         _visibleMeshes = _quadtree->getVisibleElements<API::isDirectX()>(_rp._VP);
@@ -187,7 +188,7 @@ namespace fly
         if (_settings._postProcessing) {
           _api.setDepthTestEnabled<false>();
           _api.bindBackbuffer(_defaultRenderTarget);
-          _api.composite(_lightingBuffer);
+          _api.composite(_lightingBuffer.get());
         }
       }
     }
@@ -201,14 +202,8 @@ namespace fly
 
       setSettings(_settings);
     }
-    void setDefaultRendertarget(unsigned rt)
-    {
-      _defaultRenderTarget = rt;
-    }
-    void reloadShaders()
-    {
-      _api.reloadShaders();
-    }
+    inline void setDefaultRendertarget(unsigned rt) { _defaultRenderTarget = rt; }
+    inline void reloadShaders() { _api.reloadShaders(); }
     const Vec3f& getSceneMin() const { return _sceneMin; }
     const Vec3f& getSceneMax() const { return _sceneMax; }
   private:
@@ -221,9 +216,9 @@ namespace fly
     Vec3f _sceneMin = Vec3f(std::numeric_limits<float>::max());
     Vec3f _sceneMax = Vec3f(std::numeric_limits<float>::lowest());
     Settings _settings;
-    std::shared_ptr<typename API::RTT> _lightingBuffer;
-    std::shared_ptr<typename API::Depthbuffer> _depthBuffer;
-    std::shared_ptr<typename API::Shadowmap> _shadowMap;
+    std::unique_ptr<typename API::RTT> _lightingBuffer;
+    std::unique_ptr<typename API::Depthbuffer> _depthBuffer;
+    std::unique_ptr<typename API::Shadowmap> _shadowMap;
     unsigned _defaultRenderTarget = 0;
 
     // Wrapper for StaticMeshRenderable

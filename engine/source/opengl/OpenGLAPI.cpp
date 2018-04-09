@@ -9,7 +9,6 @@
 #include <Timing.h>
 #include <StaticModelRenderable.h>
 #include <SOIL/SOIL.h>
-#include <opengl/GLTexture.h>
 #include <opengl/GLAppendBuffer.h>
 #include <Material.h>
 #include <opengl/GLShaderInterface.h>
@@ -76,7 +75,7 @@ namespace fly
     setupShader(shader);
     setupShaderConstants(param);
   }
-  void OpenGLAPI::setupShader(GLShaderProgram * shader, const GlobalShaderParams& param, const std::shared_ptr<Depthbuffer>& shadow_map)
+  void OpenGLAPI::setupShader(GLShaderProgram * shader, const GlobalShaderParams& param, const Depthbuffer* shadow_map)
   {
     setupShader(shader);
     setupShaderConstants(param, shadow_map);
@@ -87,7 +86,7 @@ namespace fly
     setVector(_activeShader->uniformLocation("lpos_cs"), param._lightPosView);
     setVector(_activeShader->uniformLocation("I_in"), param._lightIntensity);
   }
-  void OpenGLAPI::setupShaderConstants(const GlobalShaderParams& param, const std::shared_ptr<Depthbuffer>& shadow_map)
+  void OpenGLAPI::setupShaderConstants(const GlobalShaderParams& param, const Depthbuffer* shadow_map)
   {
     setupShaderConstants(param);
     GL_CHECK(glActiveTexture(GL_TEXTURE3));
@@ -101,7 +100,7 @@ namespace fly
   {
     desc.setupShaderVariables();
   }
-  void OpenGLAPI::setupMaterial(const MaterialDesc & desc, const GlobalShaderParams& param, const std::shared_ptr<Depthbuffer>& shadow_map)
+  void OpenGLAPI::setupMaterial(const MaterialDesc & desc, const GlobalShaderParams& param, const Depthbuffer* shadow_map)
   {
     setupShader(desc.getShader().get());
     setupShaderConstants(param, shadow_map);
@@ -138,13 +137,13 @@ namespace fly
     _vboAABB->setData(bb_buffer.data(), bb_buffer.size(), GL_DYNAMIC_COPY);
     GL_CHECK(glDrawArraysInstanced(GL_POINTS, 0, 1, static_cast<GLsizei>(aabbs.size())));
   }
-  void OpenGLAPI::setRendertargets(const std::vector<std::shared_ptr<RTT>>& rtts, const std::shared_ptr<Depthbuffer>& depth_buffer)
+  void OpenGLAPI::setRendertargets(const std::vector<RTT*>& rtts, const Depthbuffer* depth_buffer)
   {
     setColorBuffers(rtts);
     _offScreenFramebuffer->texture(GL_DEPTH_ATTACHMENT, depth_buffer, 0);
     checkFramebufferStatus();
   }
-  void OpenGLAPI::setRendertargets(const std::vector<std::shared_ptr<RTT>>& rtts, const std::shared_ptr<Depthbuffer>& depth_buffer, unsigned depth_buffer_layer)
+  void OpenGLAPI::setRendertargets(const std::vector<RTT*>& rtts, const Depthbuffer* depth_buffer, unsigned depth_buffer_layer)
   {
     setColorBuffers(rtts);
     _offScreenFramebuffer->textureLayer(GL_DEPTH_ATTACHMENT, depth_buffer, 0, depth_buffer_layer);
@@ -154,7 +153,7 @@ namespace fly
   {
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, id));
   }
-  void OpenGLAPI::composite(const std::shared_ptr<RTT>& lighting_buffer)
+  void OpenGLAPI::composite(const RTT* lighting_buffer)
   {
     _compositeShader->bind();
     GL_CHECK(glActiveTexture(GL_TEXTURE0));
@@ -208,9 +207,9 @@ namespace fly
     _shaderCache[key] = ret;
     return ret;
   }
-  std::shared_ptr<OpenGLAPI::RTT> OpenGLAPI::createRenderToTexture(const Vec2u & size)
+  std::unique_ptr<OpenGLAPI::RTT> OpenGLAPI::createRenderToTexture(const Vec2u & size)
   {
-    auto tex = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+    auto tex = std::make_unique<GLTexture>(GL_TEXTURE_2D);
     tex->bind();
     tex->param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     tex->param(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -219,9 +218,9 @@ namespace fly
     tex->image2D(0, GL_RGBA16F, size, 0, GL_RGBA, GL_FLOAT, nullptr);
     return tex;
   }
-  std::shared_ptr<OpenGLAPI::Depthbuffer> OpenGLAPI::createDepthbuffer(const Vec2u & size)
+  std::unique_ptr<OpenGLAPI::Depthbuffer> OpenGLAPI::createDepthbuffer(const Vec2u & size)
   {
-    auto tex = std::make_shared<GLTexture>(GL_TEXTURE_2D);
+    auto tex = std::make_unique<GLTexture>(GL_TEXTURE_2D);
     tex->bind();
     tex->param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     tex->param(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -230,9 +229,9 @@ namespace fly
     tex->image2D(0, GL_DEPTH_COMPONENT24, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
     return tex;
   }
-  std::shared_ptr<OpenGLAPI::Shadowmap> OpenGLAPI::createShadowmap(const Vec2u & size, const Settings& settings)
+  std::unique_ptr<OpenGLAPI::Shadowmap> OpenGLAPI::createShadowmap(const Vec2u & size, const Settings& settings)
   {
-    auto tex = std::make_shared<GLTexture>(GL_TEXTURE_2D_ARRAY);
+    auto tex = std::make_unique<GLTexture>(GL_TEXTURE_2D_ARRAY);
     tex->bind();
     GLint filter = settings._shadowPercentageCloserFiltering ? GL_LINEAR : GL_NEAREST;
     tex->param(GL_TEXTURE_MIN_FILTER, filter);
@@ -263,7 +262,7 @@ namespace fly
       std::cout << "Framebuffer imcomplete" << std::endl;
     }
   }
-  void OpenGLAPI::setColorBuffers(const std::vector<std::shared_ptr<RTT>>& rtts)
+  void OpenGLAPI::setColorBuffers(const std::vector<RTT*>& rtts)
   {
     _offScreenFramebuffer->bind();
     _offScreenFramebuffer->clearAttachments();
@@ -361,7 +360,7 @@ namespace fly
         setScalar(_shader->uniformLocation("ts_alpha"), 1);
       });
     }
-    if (_normalMap) {
+    if (_normalMap && settings._normalMapping) {
       flag |= FLAG::NORMAL_MAP;
       _shaderSetupFuncs.push_back([this]() {
         GL_CHECK(glActiveTexture(GL_TEXTURE2));

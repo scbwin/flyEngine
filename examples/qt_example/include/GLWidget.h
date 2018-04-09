@@ -66,6 +66,8 @@ protected:
   static void cbGetPCF(void* value, void* client_data);
   static void cbSetSmBias(const void* value, void* client_data);
   static void cbGetSmBias(void* value, void* client_data);
+  static void cbSetNormalMapping(const void* value, void* client_data);
+  static void cbGetNormalMapping(void* value, void* client_data);
 private:
   std::unique_ptr<fly::Engine> _engine;
   std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>> _renderer;

@@ -16,14 +16,14 @@ namespace fly
   {
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, _id));
   }
-  void GLFramebuffer::texture(GLenum attachment, const std::shared_ptr<GLTexture>& tex, GLint level)
+  void GLFramebuffer::texture(GLenum attachment, const GLTexture* tex, GLint level)
   {
     if (tex) {
       _attachments.insert(attachment);
     }
     GL_CHECK(glFramebufferTexture(GL_FRAMEBUFFER, attachment, tex ? tex->id() : 0, level));
   }
-  void GLFramebuffer::textureLayer(GLenum attachment, const std::shared_ptr<GLTexture>& tex, GLint level, GLint layer)
+  void GLFramebuffer::textureLayer(GLenum attachment, const GLTexture* tex, GLint level, GLint layer)
   {
     if (tex) {
       _attachments.insert(attachment);
