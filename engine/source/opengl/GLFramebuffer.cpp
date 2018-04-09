@@ -23,6 +23,13 @@ namespace fly
     }
     GL_CHECK(glFramebufferTexture(GL_FRAMEBUFFER, attachment, tex ? tex->id() : 0, level));
   }
+  void GLFramebuffer::textureLayer(GLenum attachment, const std::shared_ptr<GLTexture>& tex, GLint level, GLint layer)
+  {
+    if (tex) {
+      _attachments.insert(attachment);
+    }
+    GL_CHECK(glFramebufferTextureLayer(GL_FRAMEBUFFER, attachment, tex ? tex->id() : 0, level, layer));
+  }
   void GLFramebuffer::clearAttachments()
   {
     for (const auto& a : _attachments) {

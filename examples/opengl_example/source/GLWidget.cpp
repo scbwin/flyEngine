@@ -304,7 +304,10 @@ void GLWidget::initializeGL()
   _lights.push_back(_engine->getEntityManager()->createEntity());
   _sphereModel = _importer->loadModel("assets/sphere.obj");
   _rs->setSkydome(_sphereModel->getMeshes()[0]);
-  auto dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(-1000.f, 2000.f, -1000.f), glm::vec3(200.f), _csmDistances);
+  auto dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(-1000.f, 2000.f, -1000.f), glm::vec3(200.f));
+  auto settings = _rs->getSettings();
+  settings._smFrustumSplits = { 10.f, 30.f, 125.f, 300.f };
+  _rs->setSettings(settings);
  // auto transform = std::make_shared<fly::Transform>(glm::vec3(-1000.f, 2000.f, -1000.f), glm::vec3(200.f));
  // dl->_target = glm::vec3(0.f);
   _lights.back()->addComponent(dl);

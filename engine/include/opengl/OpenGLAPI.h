@@ -112,6 +112,7 @@ namespace fly
     void renderMeshMVP(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mvp);
     void renderAABBs(const std::vector<AABB*>& aabbs, const Mat4f& transform, const Vec3f& col);
     void setRendertargets(const std::vector<std::shared_ptr<RTT>>& rtts, const std::shared_ptr<Depthbuffer>& depth_buffer);
+    void setRendertargets(const std::vector<std::shared_ptr<RTT>>& rtts, const std::shared_ptr<Depthbuffer>& depth_buffer, unsigned depth_buffer_layer);
     void bindBackbuffer(unsigned id) const;
     void composite(const std::shared_ptr<RTT>& lighting_buffer);
     std::shared_ptr<GLTexture> createTexture(const std::string& path);
@@ -132,6 +133,9 @@ namespace fly
     std::shared_ptr<GLBuffer> _vboAABB;
     std::unique_ptr<GLFramebuffer> _offScreenFramebuffer;
     std::unique_ptr<GLSLShaderGenerator> _shaderGenerator;
+
+    void checkFramebufferStatus();
+    void setColorBuffers(const std::vector<std::shared_ptr<RTT>>& rtts);
   };
 }
 

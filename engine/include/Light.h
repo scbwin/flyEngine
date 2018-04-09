@@ -29,11 +29,10 @@ namespace fly
   class DirectionalLight : public Light
   {
   public:
-    DirectionalLight(const Vec3f& color, const Vec3f& pos, const Vec3f& target, const std::vector<float>& csm_distances);
-    std::vector<float> _csmDistances;
+    DirectionalLight(const Vec3f& color, const Vec3f& pos, const Vec3f& target);
     float _ambientPower = 0.3f;
-    void getViewProjectionMatrices(float aspect_ratio, float near_plane, float fov, const Mat4f& view_matrix_inverse,
-      const Mat4f& view_matrix_light, float shadow_map_size, std::vector<Mat4f>& vp, bool directx = false);
+    Mat4f getViewProjectionMatrices(float aspect_ratio, float near_plane, float fov_degrees, const Mat4f& view_matrix_inverse,
+      const Mat4f& view_matrix_light, float shadow_map_size, const std::vector<float>& frustum_splits, std::vector<Mat4f>& vp, bool directx = false);
     glm::mat4 getViewMatrix();
   };
 

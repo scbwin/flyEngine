@@ -4,6 +4,7 @@
 #include <GL/glew.h>
 #include <opengl/OpenGLUtils.h>
 #include <math/FlyMath.h>
+#include <vector>
 
 namespace fly
 {
@@ -18,6 +19,8 @@ namespace fly
   static inline void setMatrixTranspose(int loc, const Mat2f& m) { GL_CHECK(glUniformMatrix2fv(loc, 1, true, m.ptr())); }
   static inline void setMatrixTranspose(int loc, const Mat3f& m) { GL_CHECK(glUniformMatrix3fv(loc, 1, true, m.ptr())); }
   static inline void setMatrixTranspose(int loc, const Mat4f& m) { GL_CHECK(glUniformMatrix4fv(loc, 1, true, m.ptr())); }
+  static inline void setScalarArray(int loc, const float& s, unsigned count) { GL_CHECK(glUniform1fv(loc, count, &s)); }
+  static inline void setMatrixArray(int loc, const Mat4f& first, unsigned count) { GL_CHECK(glUniformMatrix4fv(loc, count, false, first.ptr())); }
 }
 
 #endif

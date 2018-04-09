@@ -24,6 +24,7 @@ uniform bool gammaCorrectionEnabled;
 uniform int numSamples;
 
 uniform float nearPlane;
+uniform float smBias;
 
 const vec2 poisson_disk[16] = vec2 [] (
 vec2(-0.586188, -0.234821),
@@ -58,13 +59,11 @@ float computeShadow(int cascade, vec3 pos_view_space)
 	float shadow = 0.f;
 	vec3 shadow_coord = vec3(V_inverse_VPLight[cascade] * vec4(pos_view_space, 1.f));
 	shadow_coord = shadow_coord * 0.5f + 0.5f;
-	float bias = 0.01f;
-	shadow_coord.z -= float(shadow_coord.z > bias) * bias;
+	shadow_coord.z -= float(shadow_coord.z > smBias) * smBias;
 	float weight = 0.9f / float(numSamples);
 	vec3 pos_world_space = vec3(V_inverse * vec4(pos_view_space, 1.f));
 	for (int i = 0; i < numSamples; i++) {
 		// random number is dependent on the world position in millimeters
-		
 		float rand = random(round(fract(pos_world_space) * 384.f), i) * 3.14f;
 		mat2 rotation_mat = mat2(cos(rand), sin(rand), -sin(rand), cos(rand));
 		vec2 offset = rotation_mat * poisson_disk[i] * smTexelSize;

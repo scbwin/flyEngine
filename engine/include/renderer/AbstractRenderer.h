@@ -30,7 +30,7 @@ namespace fly
     {
       _pp._near = 0.1f;
       _pp._far = 1000.f;
-      _pp._fieldOfView = glm::radians(45.f);
+      _pp._fieldOfViewDegrees = 45.f;
     }
     virtual ~AbstractRenderer() = default;
     void setSettings(const Settings& settings)
@@ -57,6 +57,34 @@ namespace fly
         _materialSetupFunc = [this](const typename API::MaterialDesc& mat_desc) {
           _api.setupMaterial(mat_desc, _rp, _shadowMap);
         };
+        _staticMeshRenderFuncSM = [this]() {
+            std::vector<Mat4f> light_vps;
+            auto vp_shadow_volume = _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
+              _rp._Vinverse, _directionalLight->getViewMatrix(), static_cast<float>(_settings._shadowMapSize), _settings._smFrustumSplits, light_vps, _api.isDirectX());
+            std::vector<StaticMeshRenderable*> sm_visible_elements = _quadtree->getVisibleElements<API::isDirectX()>(vp_shadow_volume);
+            std::map<typename API::MaterialDesc::ShaderProgram*, std::vector<StaticMeshRenderable*>> sm_display_list;
+            for (const auto& e : sm_visible_elements) {
+              sm_display_list[e->_materialDesc->getSMShader().get()].push_back(e);
+            }
+            _api.setDepthClampEnabled<true>();
+            _api.setViewport(Vec2u(_settings._shadowMapSize));
+            for (unsigned i = 0; i < _settings._smFrustumSplits.size(); i++) {
+              _api.setRendertargets({}, _shadowMap, i);
+              _api.clearRendertarget<false, true, false>(Vec4f());
+              for (const auto& e : sm_display_list) {
+                _api.setupShader(e.first);
+                for (const auto& smr : e.second) {
+                  _api.renderMeshMVP(smr->_meshData, light_vps[i] * smr->_smr->getModelMatrix());
+                }
+              }
+            }
+            _rp._viewToLight.resize(light_vps.size());
+            for (unsigned i = 0; i < _settings._smFrustumSplits.size(); i++) {
+              _rp._viewToLight[i] = light_vps[i] * _rp._Vinverse;
+            }
+            _rp._smFrustumSplits = _settings._smFrustumSplits;
+            _api.setDepthClampEnabled<false>();
+        };
       }
       else {
         _shaderSetupFunc = [this](typename API::MaterialDesc::ShaderProgram* shader) {
@@ -65,6 +93,7 @@ namespace fly
         _materialSetupFunc = [this](const typename API::MaterialDesc& mat_desc) {
           _api.setupMaterial(mat_desc, _rp);
         };
+        _staticMeshRenderFuncSM = []() {};
       }
       if (settings._dlSortMode == DisplayListSortMode::SHADER_AND_MATERIAL) {
         _staticMeshRenderFunc = [this]() {
@@ -143,28 +172,7 @@ namespace fly
         _rp._lightPosView = (_rp._viewMatrix * Vec4f(_directionalLight->_pos, 1.f)).xyz();
         _rp._lightIntensity = _directionalLight->getIntensity();
         _meshGeometryStorage.bind();
-        if (_settings._shadows) {
-          std::vector<Mat4f> light_vps;
-          _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfView,
-            _rp._Vinverse, _directionalLight->getViewMatrix(), static_cast<float>(_settings._shadowMapSize), light_vps, _api.isDirectX());
-          std::vector<StaticMeshRenderable*> sm_visible_elements = _quadtree->getVisibleElements<API::isDirectX()>(light_vps[0]);
-          std::map<typename API::MaterialDesc::ShaderProgram*, std::vector<StaticMeshRenderable*>> sm_display_list;
-          for (const auto& e : sm_visible_elements) {
-            sm_display_list[e->_materialDesc->getSMShader().get()].push_back(e);
-          }
-          _api.setDepthClampEnabled<true>();
-          _api.setRendertargets({}, _shadowMap);
-          _api.setViewport(Vec2u(_settings._shadowMapSize));
-          _api.clearRendertarget<false, true, false>(Vec4f());
-          for (const auto& e : sm_display_list) {
-            _api.setupShader(e.first);
-            for (const auto& smr : e.second) {
-              _api.renderMeshMVP(smr->_meshData, light_vps[0] * smr->_smr->getModelMatrix());
-            }
-          }
-          _rp._viewToLight = light_vps[0] * _rp._Vinverse;
-          _api.setDepthClampEnabled<false>();
-        }
+        _staticMeshRenderFuncSM();
         _settings._postProcessing ? _api.setRendertargets({ _lightingBuffer }, _depthBuffer) : _api.bindBackbuffer(_defaultRenderTarget);
         _api.setViewport(_viewPortSize);
         _api.clearRendertarget<true, true, false>(Vec4f(0.149f, 0.509f, 0.929f, 1.f));
@@ -188,8 +196,8 @@ namespace fly
       _viewPortSize = window_size;
       float aspect_ratio = _viewPortSize[0] / _viewPortSize[1];
       _rp._projectionMatrix = _api.getZNearMapping() == ZNearMapping::ZERO ?
-        glm::perspectiveRH_ZO(_pp._fieldOfView, aspect_ratio, _pp._near, _pp._far) :
-        glm::perspectiveRH_NO(_pp._fieldOfView, aspect_ratio, _pp._near, _pp._far);
+        glm::perspectiveRH_ZO(glm::radians(_pp._fieldOfViewDegrees), aspect_ratio, _pp._near, _pp._far) :
+        glm::perspectiveRH_NO(glm::radians(_pp._fieldOfViewDegrees), aspect_ratio, _pp._near, _pp._far);
 
       setSettings(_settings);
     }
@@ -233,7 +241,8 @@ namespace fly
 
     std::function<void(typename API::MaterialDesc::ShaderProgram*)> _shaderSetupFunc;
     std::function<void(const typename API::MaterialDesc&)> _materialSetupFunc;
-    std::function<void(void)> _staticMeshRenderFunc;
+    std::function<void()> _staticMeshRenderFunc;
+    std::function<void()> _staticMeshRenderFuncSM;
 
     void buildQuadtree()
     {

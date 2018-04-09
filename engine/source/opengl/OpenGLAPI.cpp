@@ -93,7 +93,9 @@ namespace fly
     GL_CHECK(glActiveTexture(GL_TEXTURE3));
     shadow_map->bind();
     setScalar(_activeShader->uniformLocation("ts_sm"), 3);
-    setMatrix(_activeShader->uniformLocation("v_to_l"), param._viewToLight);
+    setMatrixArray(_activeShader->uniformLocation("v_to_l"), param._viewToLight.front(), static_cast<unsigned>(param._viewToLight.size()));
+    setScalar(_activeShader->uniformLocation("nfs"), static_cast<int>(param._viewToLight.size()));
+    setScalarArray(_activeShader->uniformLocation("fs"), param._smFrustumSplits.front(), static_cast<unsigned>(param._smFrustumSplits.size()));
   }
   void OpenGLAPI::setupMaterial(const MaterialDesc & desc)
   {
@@ -134,30 +136,19 @@ namespace fly
       bb_buffer.push_back(aabb->getMax());
     }
     _vboAABB->setData(bb_buffer.data(), bb_buffer.size(), GL_DYNAMIC_COPY);
-    GL_CHECK(glDrawArraysInstanced(GL_POINTS, 0, 1, aabbs.size()));
+    GL_CHECK(glDrawArraysInstanced(GL_POINTS, 0, 1, static_cast<GLsizei>(aabbs.size())));
   }
   void OpenGLAPI::setRendertargets(const std::vector<std::shared_ptr<RTT>>& rtts, const std::shared_ptr<Depthbuffer>& depth_buffer)
   {
-    _offScreenFramebuffer->bind();
-    _offScreenFramebuffer->clearAttachments();
-    std::vector<GLenum> draw_buffers;
-    if (rtts.size()) {
-      unsigned i = 0;
-      for (const auto& rtt : rtts) {
-        draw_buffers.push_back(GL_COLOR_ATTACHMENT0 + i);
-        _offScreenFramebuffer->texture(draw_buffers.back(), rtt, 0);
-        i++;
-      }
-    }
-    else {
-      draw_buffers.push_back(GL_NONE);
-    }
+    setColorBuffers(rtts);
     _offScreenFramebuffer->texture(GL_DEPTH_ATTACHMENT, depth_buffer, 0);
-    GL_CHECK(glDrawBuffers(draw_buffers.size(), draw_buffers.data()));
-    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    if (status != GL_FRAMEBUFFER_COMPLETE) {
-      std::cout << "Framebuffer imcomplete" << std::endl;
-    }
+    checkFramebufferStatus();
+  }
+  void OpenGLAPI::setRendertargets(const std::vector<std::shared_ptr<RTT>>& rtts, const std::shared_ptr<Depthbuffer>& depth_buffer, unsigned depth_buffer_layer)
+  {
+    setColorBuffers(rtts);
+    _offScreenFramebuffer->textureLayer(GL_DEPTH_ATTACHMENT, depth_buffer, 0, depth_buffer_layer);
+    checkFramebufferStatus();
   }
   void OpenGLAPI::bindBackbuffer(unsigned id) const
   {
@@ -219,7 +210,7 @@ namespace fly
   }
   std::shared_ptr<OpenGLAPI::RTT> OpenGLAPI::createRenderToTexture(const Vec2u & size)
   {
-    auto tex = std::make_shared<GLTexture>();
+    auto tex = std::make_shared<GLTexture>(GL_TEXTURE_2D);
     tex->bind();
     tex->param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     tex->param(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -230,7 +221,7 @@ namespace fly
   }
   std::shared_ptr<OpenGLAPI::Depthbuffer> OpenGLAPI::createDepthbuffer(const Vec2u & size)
   {
-    auto tex = std::make_shared<GLTexture>();
+    auto tex = std::make_shared<GLTexture>(GL_TEXTURE_2D);
     tex->bind();
     tex->param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     tex->param(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -241,7 +232,7 @@ namespace fly
   }
   std::shared_ptr<OpenGLAPI::Shadowmap> OpenGLAPI::createShadowmap(const Vec2u & size, const Settings& settings)
   {
-    auto tex = std::make_shared<GLTexture>();
+    auto tex = std::make_shared<GLTexture>(GL_TEXTURE_2D_ARRAY);
     tex->bind();
     GLint filter = settings._shadowPercentageCloserFiltering ? GL_LINEAR : GL_NEAREST;
     tex->param(GL_TEXTURE_MIN_FILTER, filter);
@@ -254,7 +245,7 @@ namespace fly
       tex->param(GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
       tex->param(GL_TEXTURE_COMPARE_FUNC, GL_GREATER);
     }
-    tex->image2D(0, GL_DEPTH_COMPONENT24, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    tex->image3D(0, GL_DEPTH_COMPONENT24, Vec3u(size, static_cast<unsigned>(settings._smFrustumSplits.size())), 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
     return tex;
   }
   void OpenGLAPI::recreateShadersAndMaterials(const Settings& settings)
@@ -264,6 +255,31 @@ namespace fly
     for (const auto e : _matDescCache) {
       e.second->create(this, settings);
     }
+  }
+  void OpenGLAPI::checkFramebufferStatus()
+  {
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+      std::cout << "Framebuffer imcomplete" << std::endl;
+    }
+  }
+  void OpenGLAPI::setColorBuffers(const std::vector<std::shared_ptr<RTT>>& rtts)
+  {
+    _offScreenFramebuffer->bind();
+    _offScreenFramebuffer->clearAttachments();
+    std::vector<GLenum> draw_buffers;
+    if (rtts.size()) {
+      unsigned i = 0;
+      for (const auto& rtt : rtts) {
+        draw_buffers.push_back(GL_COLOR_ATTACHMENT0 + i);
+        _offScreenFramebuffer->texture(draw_buffers.back(), rtt, 0);
+        i++;
+      }
+    }
+    else {
+      draw_buffers.push_back(GL_NONE);
+    }
+    GL_CHECK(glDrawBuffers(static_cast<GLsizei>(draw_buffers.size()), draw_buffers.data()));
   }
   OpenGLAPI::MeshGeometryStorage::MeshGeometryStorage() :
     _vboAppend(std::make_unique<GLAppendBuffer>(GL_ARRAY_BUFFER)),

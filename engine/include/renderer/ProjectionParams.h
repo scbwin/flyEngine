@@ -5,7 +5,7 @@ namespace fly
 {
   struct ProjectionParams
   {
-    float _fieldOfView;
+    float _fieldOfViewDegrees;
     float _near;
     float _far;
   };

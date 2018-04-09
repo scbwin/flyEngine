@@ -16,6 +16,7 @@ namespace fly
     ~GLFramebuffer();
     void bind() const;
     void texture(GLenum attachment, const std::shared_ptr<GLTexture>& tex, GLint level);
+    void textureLayer(GLenum attachment, const std::shared_ptr<GLTexture>& tex, GLint level, GLint layer);
     void clearAttachments();
   private:
     GLuint _id;

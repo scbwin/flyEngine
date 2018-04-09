@@ -36,21 +36,23 @@ namespace fly
     view_matrix = glm::lookAt(glm::vec3(_pos), glm::vec3(_target), up);
   }
 
-  DirectionalLight::DirectionalLight(const Vec3f& color, const Vec3f& pos, const Vec3f& target, const std::vector<float>& csm_distances) :
-    Light(color, pos, target), _csmDistances(csm_distances)
+  DirectionalLight::DirectionalLight(const Vec3f& color, const Vec3f& pos, const Vec3f& target) :
+    Light(color, pos, target)
   {
     _lensFlareWeight = 2.f;
     _lensFlareRefSamplesPassed = 4000.f;
   }
 
-  void DirectionalLight::getViewProjectionMatrices(float aspect_ratio, float near_plane, float fov, const Mat4f& view_matrix_inverse,
-    const Mat4f& view_matrix_light, float shadow_map_size, std::vector<Mat4f>& vp, bool directx)
+  Mat4f DirectionalLight::getViewProjectionMatrices(float aspect_ratio, float near_plane, float fov_degrees, const Mat4f& view_matrix_inverse,
+    const Mat4f& view_matrix_light, float shadow_map_size, const std::vector<float>& frustum_splits, std::vector<Mat4f>& vp,bool directx)
   {
     assert(!vp.size());
-    for (unsigned int i = 0; i < _csmDistances.size(); i++) {
-      float near = i == 0 ? near_plane : _csmDistances[i - 1];
-      Mat4f projection_matrix = directx ? glm::perspectiveZO(glm::radians(fov), aspect_ratio, near, _csmDistances[i])
-        : glm::perspectiveNO(glm::radians(fov), aspect_ratio, near, _csmDistances[i]);
+    Vec3f global_min(std::numeric_limits<float>::max());
+    Vec3f global_max(std::numeric_limits<float>::lowest());
+    for (unsigned int i = 0; i < frustum_splits.size(); i++) {
+      float near = i == 0 ? near_plane : frustum_splits[i - 1];
+      Mat4f projection_matrix = directx ? glm::perspectiveZO(glm::radians(fov_degrees), aspect_ratio, near, frustum_splits[i])
+        : glm::perspectiveNO(glm::radians(fov_degrees), aspect_ratio, near, frustum_splits[i]);
       Mat4f p_inverse = inverse(projection_matrix);
       auto vp_inverse_v_light = view_matrix_light * view_matrix_inverse * p_inverse;
 
@@ -92,7 +94,12 @@ namespace fly
 
       vp.push_back(Mat4f(directx ? glm::orthoZO(bb_min[0], bb_max[0], bb_min[1], bb_max[1], bb_min[2], bb_max[2])
         : glm::orthoNO(bb_min[0], bb_max[0], bb_min[1], bb_max[1], bb_min[2], bb_max[2])) * view_matrix_light);
+
+      global_min = minimum(global_min, bb_min);
+      global_max = maximum(global_max, bb_max);
     }
+    return Mat4f(directx ? glm::orthoZO(global_min[0], global_max[0], global_min[1], global_max[1], global_min[2], global_max[2])
+      : glm::orthoNO(global_min[0], global_max[0], global_min[1], global_max[1], global_min[2], global_max[2])) * view_matrix_light;
   }
 
   glm::mat4 DirectionalLight::getViewMatrix()

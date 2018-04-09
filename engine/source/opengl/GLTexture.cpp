@@ -25,6 +25,14 @@ namespace fly
     _width = size[0];
     _height = size[1];
   }
+  void GLTexture::image3D(GLint level, GLint internal_format, const Vec3u & size, GLint border, GLenum format, GLenum type, const void * data)
+  {
+    bind();
+    GL_CHECK(glTexImage3D(_target, level, internal_format, size[0], size[1], size[2], border, format, type, data));
+    _width = size[0];
+    _height = size[1];
+    _depth = size[2];
+  }
   void GLTexture::param(GLenum name, GLint val) const
   {
     bind();
@@ -42,6 +50,10 @@ namespace fly
   unsigned GLTexture::height() const
   {
     return _height;
+  }
+  unsigned GLTexture::depth() const
+  {
+    return _depth;
   }
   GLTexture::~GLTexture()
   {

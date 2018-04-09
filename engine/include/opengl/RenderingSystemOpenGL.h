@@ -8,6 +8,7 @@
 #include <mutex>
 #include <future>
 #include <Terrain.h>
+#include <Settings.h>
 
 #define NONE 0
 #define NORTH 1
@@ -42,7 +43,8 @@ namespace fly
     virtual float getSceneDepth(const glm::ivec2& pos) override;
     void setDefaultFramebufferId(unsigned int fb_id);
     void getSobelKernel(std::vector<float>& smooth, std::vector<float>& gradient);
-
+    void setSettings(const Settings& settings);
+    const Settings& getSettings() const;
     bool _useTreeBillboards = false;
 
 #if PROFILE
@@ -351,6 +353,7 @@ namespace fly
     void renderWater();
     void renderDirectionalLights();
     void initFramebuffers();
+    Settings _settings;
 
     struct AsyncTextureResult
     {
@@ -372,7 +375,6 @@ namespace fly
         pos_screen_hat.y / pos_screen_hat.w, pos_screen_hat.z / pos_screen_hat.w);
       return (1.f + pos_screen_ndc) * 0.5f;
     }
-
   };
 }
 

@@ -386,7 +386,7 @@ namespace fly
         auto dl = directional_light->getComponent<DirectionalLight>();
     //    auto transform = directional_light->getComponent<Transform>();
   //      auto pos_world_space = transform->getTranslation();
-        dl->getViewProjectionMatrices(_aspectRatio, _zNear, _fov, inverse(glm::mat4(_viewMatrix)), dl->getViewMatrix(), _shadowMaps[directional_light]->width(), vp);
+        dl->getViewProjectionMatrices(_aspectRatio, _zNear, _fov, inverse(glm::mat4(_viewMatrix)), dl->getViewMatrix(), _shadowMaps[directional_light]->width(), _settings._smFrustumSplits, vp);
         for (auto& n : t.second->_visibleNodesShadowMap) {
           if (n->_transforms.size() && n->_lod <= 1) {
             tr->_treeVao[n]->bind();
@@ -832,14 +832,14 @@ namespace fly
     auto dl = (*_directionalLights.begin())->getComponent<DirectionalLight>();
     auto shadow_map = _shadowMaps[*_directionalLights.begin()];
     std::vector<Mat4f> vp;
-    dl->getViewProjectionMatrices(_aspectRatio, _zNear, _fov, inverse(_viewMatrix), dl->getViewMatrix(), shadow_map->width(), vp);
+    dl->getViewProjectionMatrices(_aspectRatio, _zNear, _fov, inverse(_viewMatrix), dl->getViewMatrix(), shadow_map->width(), _settings._smFrustumSplits, vp);
     for (auto& t : _terrainRenderables) {
       t.second->_visibleNodes.clear();
       t.second->_visibleNodesShadowMap.clear();
       auto model_matrix = t.second->_transform->getModelMatrix();
       t.second->_terrain->getTreeNodesForRendering(glm::inverse(glm::mat4(model_matrix)) * glm::vec4(_camPos, 1.f), t.second->_visibleNodes, _VP * glm::mat4(model_matrix), nullptr);
       std::vector<Mat4f> light_mvps;
-      for (unsigned i = 0; i < dl->_csmDistances.size(); ++i) {
+      for (unsigned i = 0; i < _settings._smFrustumSplits.size(); ++i) {
         light_mvps.push_back(vp[i] * model_matrix);
       }
       t.second->_terrain->getTreeNodesForRendering(glm::inverse(glm::mat4(model_matrix)) * glm::vec4(_camPos, 1.f), t.second->_visibleNodesShadowMap, _VP * glm::mat4(model_matrix), (*_directionalLights.begin())->getComponent<DirectionalLight>().get(), light_mvps);
@@ -1346,11 +1346,11 @@ namespace fly
 
     auto light = directional_light->getComponent<DirectionalLight>();
     auto light_pos_world = light->_pos;
-    auto csm_distances = light->_csmDistances;
+    auto csm_distances = _settings._smFrustumSplits;
     auto shadow_map = _shadowMaps[directional_light];
     std::vector<Mat4f> vp;
     std::vector<Mat4f> v_inverse_vp_light;
-    light->getViewProjectionMatrices(_aspectRatio, _zNear, _fov, inverse(_viewMatrix), light->getViewMatrix(), shadow_map->width(), vp);
+    light->getViewProjectionMatrices(_aspectRatio, _zNear, _fov, inverse(_viewMatrix), light->getViewMatrix(), shadow_map->width(), _settings._smFrustumSplits, vp);
     for (unsigned int i = 0; i < vp.size(); i++) {
       v_inverse_vp_light.push_back(vp[i] * Mat4f(inverse(_viewMatrix)));
     }
@@ -1378,6 +1378,7 @@ namespace fly
     GL_CHECK(glUniform1i(shader->uniformLocation("shadowsEnabled"), _shadowsEnabled));
     GL_CHECK(glUniform1i(shader->uniformLocation("gammaCorrectionEnabled"), _gammaCorrectionEnabled));
     GL_CHECK(glUniform1f(shader->uniformLocation("nearPlane"), _zNear));
+    GL_CHECK(glUniform1f(shader->uniformLocation("smBias"), _settings._smBias));
 
     GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
   }
@@ -1913,7 +1914,7 @@ namespace fly
 
     std::vector<Mat4f> vp;
     auto dl = entity->getComponent<DirectionalLight>();
-    dl->getViewProjectionMatrices(_aspectRatio, _zNear, _fov, inverse(_viewMatrix), dl->getViewMatrix(),_shadowMaps[entity]->width(), vp);
+    dl->getViewProjectionMatrices(_aspectRatio, _zNear, _fov, inverse(_viewMatrix), dl->getViewMatrix(),_shadowMaps[entity]->width(), _settings._smFrustumSplits, vp);
     GL_CHECK(glUniform1i(shader->uniformLocation("numLayers"), vp.size()));
     GL_CHECK(glUniformMatrix4fv(shader->uniformLocation("VP"), vp.size(), false, &vp[0][0][0]));
 
@@ -2728,7 +2729,7 @@ namespace fly
     }
 
     auto dl = entity->getComponent<DirectionalLight>();
-    auto num_cascades = dl->_csmDistances.size();
+    auto num_cascades = _settings._smFrustumSplits.size();
 
     glm::ivec2 size(1024);
 
@@ -3043,5 +3044,13 @@ namespace fly
   {
     smooth = _sobelKernelSmooth;
     gradient = _sobelKernelGradient;
+  }
+  void fly::RenderingSystemOpenGL::setSettings(const Settings & settings)
+  {
+    _settings = settings;
+  }
+  const Settings & fly::RenderingSystemOpenGL::getSettings() const
+  {
+    return _settings;
   }
 }

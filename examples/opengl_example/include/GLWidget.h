@@ -18,7 +18,7 @@
 #include <GameTimer.h>
 #include <AssimpImporter.h>
 
-#define SPONZA 1
+#define SPONZA 0
 
 class GLWidget : public QOpenGLWidget
 {
@@ -67,7 +67,6 @@ private:
   QLabel* _lblGrassTriangles;
 #endif
   QColor _guiBackgroundColor = QColor(50, 50, 50, 128);
-  std::vector<float> _csmDistances = { 10.f, 30.f, 125.f, 300.f };
   //std::shared_ptr<fly::Mesh> _sphereMesh;
   std::shared_ptr<fly::Model> _sphereModel;
 #if !SPONZA

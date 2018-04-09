@@ -301,8 +301,7 @@ void GLWidget::initGame()
   cam_entity->addComponent(std::make_shared<fly::Camera>(glm::vec3(0.f, 0.f, -100.f), glm::vec3(0.f)));
   
   auto dl_entity = _engine->getEntityManager()->createEntity();
-  std::vector<float> csm_distances = { 30.f, 50.f, 200.f };
-  _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(-1000.f, 2000.f, -1000.f), glm::vec3(-500.f, 0.f, -500.f), csm_distances);
+  _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(-1000.f, 2000.f, -1000.f), glm::vec3(-500.f, 0.f, -500.f));
  // auto light_pos = _renderer->getSceneMin();
   //light_pos[1] = 200.f;
   //_dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), light_pos, glm::vec3(0.f), csm_distances);

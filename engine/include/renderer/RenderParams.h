@@ -2,6 +2,7 @@
 #define RENDERPARAMS_H
 
 #include <math/FlyMath.h>
+#include <vector>
 
 namespace fly
 {
@@ -17,7 +18,8 @@ namespace fly
     Mat4f _viewMatrix;
     Mat4f _VP;
     Mat4f _Vinverse;
-    Mat4f _viewToLight;
+    std::vector<Mat4f> _viewToLight;
+    std::vector<float> _smFrustumSplits;
     Vec3f _lightPosView;
     Vec3f _lightIntensity;
     ZNearMapping _zNearMapping;
