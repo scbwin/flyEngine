@@ -29,6 +29,6 @@ void main()
   vec4 shadow_coord = v_to_l * vec4(pos_view, 1.f);
   shadow_coord.xyz /= shadow_coord.w;
   shadow_coord = shadow_coord * 0.5f + 0.5f;
-  shadow_coord.z -= 0.005f;
+  shadow_coord.z -= -0.000008f;
   fragmentColor *= 1.f - texture(ts_sm, shadow_coord.xyz) * 0.5f;
 }

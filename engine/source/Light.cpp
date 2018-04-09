@@ -28,7 +28,7 @@ namespace fly
     _lensFlareWeight = 0.11f;
   }
 
-  void SpotLight::getViewProjectionMatrix(glm::mat4& view_matrix, glm::mat4& projection_matrix) 
+  void SpotLight::getViewProjectionMatrix(glm::mat4& view_matrix, glm::mat4& projection_matrix)
   {
     projection_matrix = glm::perspective(glm::radians(_umbraDegrees * 2.f), 1.f, _zNear, _zFar);
     glm::vec3 direction = normalize(_target - _pos);
@@ -49,24 +49,25 @@ namespace fly
     assert(!vp.size());
     for (unsigned int i = 0; i < _csmDistances.size(); i++) {
       float near = i == 0 ? near_plane : _csmDistances[i - 1];
-      glm::mat4 projection_matrix = directx ? glm::perspectiveZO(glm::radians(fov), aspect_ratio, near, _csmDistances[i]) 
-        : glm::perspective(glm::radians(fov), aspect_ratio, near, _csmDistances[i]);
+      Mat4f projection_matrix = directx ? glm::perspectiveZO(glm::radians(fov), aspect_ratio, near, _csmDistances[i])
+        : glm::perspectiveNO(glm::radians(fov), aspect_ratio, near, _csmDistances[i]);
       Mat4f p_inverse = inverse(projection_matrix);
       auto vp_inverse_v_light = view_matrix_light * view_matrix_inverse * p_inverse;
 
-      std::array<Vec3f, 8> cube_ndc = { Vec3f(-1.f, -1.f, directx ? 0.f : -1.f), Vec3f(1.f, -1.f, directx ? 0.f : -1.f), Vec3f(-1.f, 1.f, directx ? 0.f : -1.f), Vec3f(-1.f, -1.f, 1.f),
-        Vec3f(1.f, 1.f, directx ? 0.f : -1.f), Vec3f(1.f, -1.f, 1.f), Vec3f(-1.f, 1.f, 1.f), Vec3f(1.f, 1.f, 1.f) };
+      float near_ndc = directx ? 0.f : (-1.f);
+      std::array<Vec3f, 8> cube_ndc = { Vec3f(-1.f, -1.f, near_ndc), Vec3f(1.f, -1.f, near_ndc), Vec3f(-1.f, 1.f, near_ndc), Vec3f(-1.f, -1.f, 1.f),
+        Vec3f(1.f, 1.f, near_ndc), Vec3f(1.f, -1.f, 1.f), Vec3f(-1.f, 1.f, 1.f), Vec3f(1.f, 1.f, 1.f) };
 
-      std::vector<Vec3f> cam_frustum_light_space, cam_frustum_view_space;
+      std::array<Vec3f, 8> cam_frustum_light_space, cam_frustum_view_space;
       Vec3f light_space_frustum_center(0.f);
       Vec3f view_space_frustum_center(0.f);
       for (unsigned int j = 0; j < cube_ndc.size(); j++) {
-        auto corner_light = vp_inverse_v_light * Vec4f({ cube_ndc[j][0], cube_ndc[j][1], cube_ndc[j][2], 1.f });
-        cam_frustum_light_space.push_back(Vec3f({ corner_light[0] / corner_light[3], corner_light[1] / corner_light[3], corner_light[2] / corner_light[3] }));
+        auto corner_light = vp_inverse_v_light * Vec4f(cube_ndc[j], 1.f);
+        cam_frustum_light_space[j] = corner_light.xyz() / corner_light[3];
         cam_frustum_light_space[j][2] = -cam_frustum_light_space[j][2];
         light_space_frustum_center += cam_frustum_light_space[j];
-        auto corner_view_space = p_inverse * Vec4f({ cube_ndc[j][0], cube_ndc[j][1], cube_ndc[j][2], 1.f });
-        cam_frustum_view_space.push_back(Vec3f({ corner_view_space[0] / corner_view_space[3], corner_view_space[1] / corner_view_space[3], corner_view_space[2] / corner_view_space[3] }));
+        auto corner_view_space = p_inverse * Vec4f(cube_ndc[j], 1.f);
+        cam_frustum_view_space[j] = corner_view_space.xyz() / corner_view_space[3];
         cam_frustum_view_space[j][2] = -cam_frustum_view_space[j][2];
         view_space_frustum_center += cam_frustum_view_space[j];
       }
@@ -78,7 +79,7 @@ namespace fly
       for (unsigned int j = 0; j < 8; j++) {
         sphere_radius_view_space = (std::max)(sphere_radius_view_space, distance(view_space_frustum_center, cam_frustum_view_space[j]));
       }
-      Vec3f bb_min (light_space_frustum_center - sphere_radius_view_space);
+      Vec3f bb_min(light_space_frustum_center - sphere_radius_view_space);
       Vec3f bb_max(light_space_frustum_center + sphere_radius_view_space);
 
       // Avoids shimmering edges when the camera is moving
@@ -86,7 +87,11 @@ namespace fly
       bb_min = floor(bb_min / units_per_texel) * units_per_texel;
       bb_max = ceil(bb_max / units_per_texel) * units_per_texel;
 
-      vp.push_back(Mat4f(directx ? glm::orthoZO(bb_min[0], bb_max[0], bb_min[1], bb_max[1], bb_min[2], bb_max[2]) : glm::ortho(bb_min[0], bb_max[0], bb_min[1], bb_max[1], bb_min[2], bb_max[2])) * view_matrix_light);
+      // Shadow casters can be outside the view frustum but inside the light frustum, therefore include everything that is in front of the light.
+      bb_min[2] = 0.f;
+
+      vp.push_back(Mat4f(directx ? glm::orthoZO(bb_min[0], bb_max[0], bb_min[1], bb_max[1], bb_min[2], bb_max[2])
+        : glm::orthoNO(bb_min[0], bb_max[0], bb_min[1], bb_max[1], bb_min[2], bb_max[2])) * view_matrix_light);
     }
   }
 

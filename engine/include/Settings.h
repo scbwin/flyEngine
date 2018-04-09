@@ -45,6 +45,7 @@ namespace fly
     unsigned _shadowMapSize = 1024;
     bool _shadows = true;
     bool _shadowPercentageCloserFiltering = true;
+    float _smBias = 0.00005f;
   };
 }
 

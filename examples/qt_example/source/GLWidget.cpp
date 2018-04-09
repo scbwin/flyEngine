@@ -50,6 +50,7 @@ void GLWidget::initializeGL()
   TwAddVarCB(settings_bar, "Sponza specular", TwType::TW_TYPE_FLOAT, cbSetSpec, cbGetSpec, &_sponzaModel, "step=0.2");
   TwAddVarCB(settings_bar, "Shadows", TwType::TW_TYPE_BOOLCPP, cbSetShadows, cbGetShadows, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, cbSetPCF, cbGetPCF, &_renderer, nullptr);
+  TwAddVarCB(settings_bar, "Shadow bias", TwType::TW_TYPE_FLOAT, cbSetSmBias, cbGetSmBias, &_renderer, "step=0.000001f");
 
   TwSetTopBar(_bar);
 }
@@ -227,6 +228,16 @@ void GLWidget::cbGetPCF(void * value, void * client_data)
 {
   *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._shadowPercentageCloserFiltering;
 }
+void GLWidget::cbSetSmBias(const void * value, void * client_data)
+{
+  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings();
+  settings._smBias = *reinterpret_cast<const float*>(value);
+  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->setSettings(settings);
+}
+void GLWidget::cbGetSmBias(void * value, void * client_data)
+{
+  *reinterpret_cast<float*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._smBias;
+}
 void GLWidget::cbSetSortModeShaderMaterial(const void * value, void * clientData)
 {
   if (*reinterpret_cast<const bool*>(value)) {
@@ -298,4 +309,7 @@ void GLWidget::initGame()
   dl_entity->addComponent(_dl);
   
   _camController = std::make_unique<fly::CameraController>(cam_entity->getComponent<fly::Camera>(), 20.f);
+#if SPONZA_MANY
+  _camController->setSpeed(100.f);
+#endif
 }

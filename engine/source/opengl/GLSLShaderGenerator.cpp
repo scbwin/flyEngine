@@ -87,7 +87,7 @@ void main()\n\
       shader_src += "  vec4 shadow_coord = v_to_l * vec4(pos_view, 1.f);\n\
   shadow_coord.xyz /= shadow_coord.w;\n\
   shadow_coord = shadow_coord * 0.5f + 0.5f;\n\
-  shadow_coord.z -= 0.005f;\n";
+  shadow_coord.z -= " + std::to_string(settings._smBias) + "f;\n";
       if (!settings._shadowPercentageCloserFiltering) {
         shader_src += "  if (all(greaterThanEqual(shadow_coord.xyz, vec3(0.f))) && all(lessThanEqual(shadow_coord.xyz, vec3(1.f)))) {\n  ";
       }

@@ -35,7 +35,9 @@ namespace fly
     virtual ~AbstractRenderer() = default;
     void setSettings(const Settings& settings)
     {
-      if (_settings._shadows != settings._shadows || _settings._shadowPercentageCloserFiltering != settings._shadowPercentageCloserFiltering) {
+      if (_settings._shadows != settings._shadows ||
+        _settings._shadowPercentageCloserFiltering != settings._shadowPercentageCloserFiltering ||
+        _settings._smBias != settings._smBias) {
         _api.recreateShadersAndMaterials(settings);
       }
       _settings = settings;
