@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 #include <unordered_map>
+#include <functional>
 
 namespace fly
 {
@@ -23,6 +24,7 @@ namespace fly
   class GLFramebuffer;
   class GLSLShaderGenerator;
   struct Settings;
+  struct GlobalShaderParams;
 
   class OpenGLAPI
   {
@@ -83,18 +85,15 @@ namespace fly
     {
     public:
       MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI* api, const Settings& settings);
+      void create(OpenGLAPI* api, const Settings& settings);
       void create(const std::shared_ptr<Material>& material, OpenGLAPI* api, const Settings& settings);
-      const std::unique_ptr<GLMaterialSetup>& getMaterialSetup() const;
-      const std::shared_ptr<GLShaderProgram>& getShader() const;
-      const std::shared_ptr<GLShaderProgram>& getSMShader() const;
-      const std::shared_ptr<Material>& getMaterial() const;
-      const std::shared_ptr<GLTexture>& getDiffuseMap() const;
-      const std::shared_ptr<GLTexture>& getNormalMap() const;
-      const std::shared_ptr<GLTexture>& getAlphaMap() const;
+      void setupShaderVariables() const;
       using ShaderProgram = GLShaderProgram;
+      const std::shared_ptr<ShaderProgram>& getShader() const;
+      const std::shared_ptr<ShaderProgram>& getSMShader() const;
     private:
       std::shared_ptr<Material> _material;
-      std::unique_ptr<GLMaterialSetup> _materialSetup;
+      std::vector<std::function<void()>> _shaderSetupFuncs;
       std::shared_ptr<ShaderProgram> _shader;
       std::shared_ptr<ShaderProgram> _smShader;
       std::shared_ptr<GLTexture> _diffuseMap;
@@ -102,14 +101,13 @@ namespace fly
       std::shared_ptr<GLTexture> _alphaMap;
     };
     void setupShader(GLShaderProgram* shader);
-    void setupShader(GLShaderProgram* shader, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix, const Vec3f& light_intensity);
-    void setupShader(GLShaderProgram* shader, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix, const Vec3f& light_intensity, const std::shared_ptr<Depthbuffer>& shadow_map, const Mat4f& view_to_light);
+    void setupShader(GLShaderProgram* shader, const GlobalShaderParams& params);
+    void setupShader(GLShaderProgram* shader, const GlobalShaderParams& param, const std::shared_ptr<Depthbuffer>& shadow_map);
     void setupMaterial(const MaterialDesc& desc);
-    void setupMaterial(const MaterialDesc& desc, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix, const Vec3f& light_intensity);
-    void setupMaterial(const MaterialDesc& desc, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix, const Vec3f& light_intensity, const std::shared_ptr<Depthbuffer>& shadow_map, const Mat4f& view_to_light);
-    void setupShaderConstants(const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix, const Vec3f& light_intensity);
-    void setupShaderConstants(const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix, const Vec3f& light_intensity, const std::shared_ptr<Depthbuffer>& shadow_map, const Mat4f& view_to_light);
-    void setupMaterialConstants(const std::shared_ptr<Material>& material);
+    void setupMaterial(const MaterialDesc& desc, const GlobalShaderParams& param);
+    void setupMaterial(const MaterialDesc& desc, const GlobalShaderParams& param, const std::shared_ptr<Depthbuffer>& shadow_map);
+    void setupShaderConstants(const GlobalShaderParams& param);
+    void setupShaderConstants(const GlobalShaderParams& param, const std::shared_ptr<Depthbuffer>& shadow_map);
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mv);
     void renderMeshMVP(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mvp);
     void renderAABBs(const std::vector<AABB*>& aabbs, const Mat4f& transform, const Vec3f& col);

@@ -9,7 +9,6 @@
 #include <math/FlyMath.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/transform.hpp>
-#include <unordered_map>
 #include <map>
 #include <Model.h>
 #include <memory>
@@ -51,23 +50,23 @@ namespace fly
       _shadowMap = settings._shadows ? _api.createShadowmap(settings._shadowMapSize, settings) : nullptr;
       if (settings._shadows) {
         _shaderSetupFunc = [this] (typename API::MaterialDesc::ShaderProgram* shader) {
-          _api.setupShader(shader, _rp._lightPosView, _rp._projectionMatrix, _directionalLight->getIntensity(), _shadowMap, _rp._viewToLight);
+          _api.setupShader(shader, _rp, _shadowMap);
         };
         _materialSetupFunc = [this](const typename API::MaterialDesc& mat_desc) {
-          _api.setupMaterial(mat_desc, _rp._lightPosView, _rp._projectionMatrix, _directionalLight->getIntensity(), _shadowMap, _rp._viewToLight);
+          _api.setupMaterial(mat_desc, _rp, _shadowMap);
         };
       }
       else {
         _shaderSetupFunc = [this](typename API::MaterialDesc::ShaderProgram* shader) {
-          _api.setupShader(shader, _rp._lightPosView, _rp._projectionMatrix, _directionalLight->getIntensity());
+          _api.setupShader(shader, _rp);
         };
         _materialSetupFunc = [this](const typename API::MaterialDesc& mat_desc) {
-          _api.setupMaterial(mat_desc, _rp._lightPosView, _rp._projectionMatrix, _directionalLight->getIntensity());
+          _api.setupMaterial(mat_desc, _rp);
         };
       }
       if (settings._dlSortMode == DisplayListSortMode::SHADER_AND_MATERIAL) {
         _staticMeshRenderFunc = [this]() {
-          std::unordered_map<typename API::MaterialDesc::ShaderProgram*, std::unordered_map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> display_list;
+          std::map<typename API::MaterialDesc::ShaderProgram*, std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> display_list;
           for (const auto& e : _visibleMeshes) {
             display_list[e->_materialDesc->getShader().get()][e->_materialDesc.get()].push_back(e);
           }
@@ -84,7 +83,7 @@ namespace fly
       }
       else {
         _staticMeshRenderFunc = [this]() {
-          std::unordered_map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>> display_list;
+          std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>> display_list;
           for (const auto& e : _visibleMeshes) {
             display_list[e->_materialDesc.get()].push_back(e);
           }
@@ -140,13 +139,14 @@ namespace fly
         _api.setDepthTestEnabled<true>();
         _api.setFaceCullingEnabled<true>();
         _rp._lightPosView = (_rp._viewMatrix * Vec4f(_directionalLight->_pos, 1.f)).xyz();
+        _rp._lightIntensity = _directionalLight->getIntensity();
         _meshGeometryStorage.bind();
         if (_settings._shadows) {
           std::vector<Mat4f> light_vps;
           _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfView,
             _rp._Vinverse, _directionalLight->getViewMatrix(), static_cast<float>(_settings._shadowMapSize), light_vps, _api.isDirectX());
           std::vector<StaticMeshRenderable*> sm_visible_elements = _quadtree->getVisibleElements<API::isDirectX()>(light_vps[0]);
-          std::unordered_map<typename API::MaterialDesc::ShaderProgram*, std::vector<StaticMeshRenderable*>> sm_display_list;
+          std::map<typename API::MaterialDesc::ShaderProgram*, std::vector<StaticMeshRenderable*>> sm_display_list;
           for (const auto& e : sm_visible_elements) {
             sm_display_list[e->_materialDesc->getSMShader().get()].push_back(e);
           }
@@ -204,7 +204,7 @@ namespace fly
   private:
     API _api;
     ProjectionParams _pp;
-    RenderParams _rp;
+    GlobalShaderParams _rp;
     Vec2f _viewPortSize;
     std::shared_ptr<Camera> _camera;
     std::shared_ptr<DirectionalLight> _directionalLight;
@@ -225,7 +225,7 @@ namespace fly
       inline AABB* getAABBWorld() const { return _smr->getAABBWorld(); }
     };
     typename API::MeshGeometryStorage _meshGeometryStorage;
-    std::unordered_map<Entity*, std::shared_ptr<StaticMeshRenderable>> _staticMeshRenderables;
+    std::map<Entity*, std::shared_ptr<StaticMeshRenderable>> _staticMeshRenderables;
     std::unique_ptr<Quadtree<StaticMeshRenderable>> _quadtree;
     std::vector<StaticMeshRenderable*> _visibleMeshes;
 

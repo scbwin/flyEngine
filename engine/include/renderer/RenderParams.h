@@ -11,7 +11,7 @@ namespace fly
     MINUS_ONE // opengl
   };
 
-  struct RenderParams
+  struct GlobalShaderParams
   {
     Mat4f _projectionMatrix;
     Mat4f _viewMatrix;
@@ -19,6 +19,7 @@ namespace fly
     Mat4f _Vinverse;
     Mat4f _viewToLight;
     Vec3f _lightPosView;
+    Vec3f _lightIntensity;
     ZNearMapping _zNearMapping;
   };
 }

@@ -12,11 +12,11 @@
 #include <opengl/GLTexture.h>
 #include <opengl/GLAppendBuffer.h>
 #include <Material.h>
-#include <opengl/GLMaterialSetup.h>
 #include <opengl/GLShaderInterface.h>
 #include <opengl/GLFramebuffer.h>
 #include <opengl/GLSLShaderGenerator.h>
 #include <Settings.h>
+#include <renderer/RenderParams.h>
 
 namespace fly
 {
@@ -71,61 +71,45 @@ namespace fly
     _activeShader = shader;
     _activeShader->bind();
   }
-  void OpenGLAPI::setupShader(GLShaderProgram* shader, const Vec3f & dl_pos_view_space, const Mat4f & projection_matrix, const Vec3f& light_intensity)
+  void OpenGLAPI::setupShader(GLShaderProgram* shader, const GlobalShaderParams& param)
   {
-    _activeShader = shader;
-    _activeShader->bind();
-    setupShaderConstants(dl_pos_view_space, projection_matrix, light_intensity);
+    setupShader(shader);
+    setupShaderConstants(param);
   }
-  void OpenGLAPI::setupShader(GLShaderProgram * shader, const Vec3f & dl_pos_view_space, const Mat4f & projection_matrix, 
-    const Vec3f & light_intensity, const std::shared_ptr<Depthbuffer>& shadow_map, const Mat4f& view_to_light)
+  void OpenGLAPI::setupShader(GLShaderProgram * shader, const GlobalShaderParams& param, const std::shared_ptr<Depthbuffer>& shadow_map)
   {
-    _activeShader = shader;
-    _activeShader->bind();
-    setupShaderConstants(dl_pos_view_space, projection_matrix, light_intensity, shadow_map, view_to_light);
+    setupShader(shader);
+    setupShaderConstants(param, shadow_map);
   }
-  void OpenGLAPI::setupShaderConstants(const Vec3f & dl_pos_view_space, const Mat4f & projection_matrix, const Vec3f& light_intensity)
+  void OpenGLAPI::setupShaderConstants(const GlobalShaderParams& param)
   {
-    setMatrix(_activeShader->uniformLocation("P"), projection_matrix);
-    setVector(_activeShader->uniformLocation("lpos_cs"), dl_pos_view_space);
-    setVector(_activeShader->uniformLocation("I_in"), light_intensity);
+    setMatrix(_activeShader->uniformLocation("P"), param._projectionMatrix);
+    setVector(_activeShader->uniformLocation("lpos_cs"), param._lightPosView);
+    setVector(_activeShader->uniformLocation("I_in"), param._lightIntensity);
   }
-  void OpenGLAPI::setupShaderConstants(const Vec3f & dl_pos_view_space, const Mat4f & projection_matrix, const Vec3f & light_intensity, const std::shared_ptr<Depthbuffer>& shadow_map, const Mat4f& view_to_light)
+  void OpenGLAPI::setupShaderConstants(const GlobalShaderParams& param, const std::shared_ptr<Depthbuffer>& shadow_map)
   {
-    setupShaderConstants(dl_pos_view_space, projection_matrix, light_intensity);
+    setupShaderConstants(param);
     GL_CHECK(glActiveTexture(GL_TEXTURE3));
     shadow_map->bind();
     setScalar(_activeShader->uniformLocation("ts_sm"), 3);
-    setMatrix(_activeShader->uniformLocation("v_to_l"), view_to_light);
-  }
-  void OpenGLAPI::setupMaterialConstants(const std::shared_ptr<Material>& material)
-  {
-    setScalar(_activeShader->uniformLocation("ka"), material->getKa());
-    setScalar(_activeShader->uniformLocation("kd"), material->getKd());
-    setScalar(_activeShader->uniformLocation("ks"), material->getKs());
-    setScalar(_activeShader->uniformLocation("s_e"), material->getSpecularExponent());
+    setMatrix(_activeShader->uniformLocation("v_to_l"), param._viewToLight);
   }
   void OpenGLAPI::setupMaterial(const MaterialDesc & desc)
   {
-    desc.getMaterialSetup()->setup(desc);
-    setupMaterialConstants(desc.getMaterial());
+    desc.setupShaderVariables();
   }
-  void OpenGLAPI::setupMaterial(const MaterialDesc & desc, const Vec3f & dl_pos_view_space, const Mat4f & projection_matrix,
-    const Vec3f & light_intensity, const std::shared_ptr<Depthbuffer>& shadow_map, const Mat4f& view_to_light)
+  void OpenGLAPI::setupMaterial(const MaterialDesc & desc, const GlobalShaderParams& param, const std::shared_ptr<Depthbuffer>& shadow_map)
   {
-    _activeShader = desc.getShader().get();
-    _activeShader->bind();
-    setupShaderConstants(dl_pos_view_space, projection_matrix, light_intensity, shadow_map, view_to_light);
-    setupMaterialConstants(desc.getMaterial());
-    desc.getMaterialSetup()->setup(desc);
+    setupShader(desc.getShader().get());
+    setupShaderConstants(param, shadow_map);
+    setupMaterial(desc);
   }
-  void OpenGLAPI::setupMaterial(const MaterialDesc & desc, const Vec3f& dl_pos_view_space, const Mat4f& projection_matrix, const Vec3f& light_intensity)
+  void OpenGLAPI::setupMaterial(const MaterialDesc & desc, const GlobalShaderParams& param)
   {
-    _activeShader = desc.getShader().get();
-    _activeShader->bind();
-    setupShaderConstants(dl_pos_view_space, projection_matrix, light_intensity);
-    setupMaterialConstants(desc.getMaterial());
-    desc.getMaterialSetup()->setup(desc);
+    setupShader(desc.getShader().get());
+    setupShaderConstants(param);
+    setupMaterial(desc);
   }
   void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & mv)
   {
@@ -141,15 +125,14 @@ namespace fly
   void OpenGLAPI::renderAABBs(const std::vector<AABB*>& aabbs, const Mat4f& transform, const Vec3f& col)
   {
     _vaoAABB->bind();
-    _activeShader = _aabbShader.get();
-    _activeShader->bind();
+    setupShader(_aabbShader.get());
     setMatrix(_activeShader->uniformLocation("VP"), transform);
+    setVector(_activeShader->uniformLocation("c"), col);
     std::vector<Vec3f> bb_buffer;
     for (const auto& aabb : aabbs) {
       bb_buffer.push_back(aabb->getMin());
       bb_buffer.push_back(aabb->getMax());
     }
-    setVector(_activeShader->uniformLocation("c"), col);
     _vboAABB->setData(bb_buffer.data(), bb_buffer.size(), GL_DYNAMIC_COPY);
     GL_CHECK(glDrawArraysInstanced(GL_POINTS, 0, 1, aabbs.size()));
   }
@@ -279,7 +262,7 @@ namespace fly
     _shaderGenerator->regenerateShaders(settings);
     _shaderCache.clear();
     for (const auto e : _matDescCache) {
-      e.second->create(e.second->getMaterial(), this, settings);
+      e.second->create(this, settings);
     }
   }
   OpenGLAPI::MeshGeometryStorage::MeshGeometryStorage() :
@@ -328,74 +311,68 @@ namespace fly
   {
     create(material, api, settings);
   }
+  void OpenGLAPI::MaterialDesc::create(OpenGLAPI * api, const Settings & settings)
+  {
+    create(_material, api, settings);
+  }
   void OpenGLAPI::MaterialDesc::create(const std::shared_ptr<Material>& material, OpenGLAPI* api, const Settings& settings)
   {
+    _shaderSetupFuncs.clear();
     _diffuseMap = api->createTexture(material->getDiffusePath());
     _normalMap = api->createTexture(material->getNormalPath());
     _alphaMap = api->createTexture(material->getOpacityPath());
     using FLAG = GLSLShaderGenerator::MeshRenderFlag;
     unsigned flag = FLAG::NONE;
     std::string vertex_file = "assets/opengl/vs_simple.glsl";
-    if (_diffuseMap && _alphaMap && _normalMap) {
-      _materialSetup = std::make_unique<SetupDiffuseAlphaNormalMap>();
-    }
-    else if (_diffuseMap && _normalMap) {
-      _materialSetup = std::make_unique<SetupDiffuseNormalMap>();
-    }
-    else if (_diffuseMap && _alphaMap) {
-      _materialSetup = std::make_unique<SetupDiffuseAlphaMap>();
-    }
-    else if (_diffuseMap) {
-      _materialSetup = std::make_unique<SetupDiffuseMap>();
-    }
-    else if (_alphaMap) {
-      std::string err = "Unsupported material type.";
-      throw std::exception(err.c_str());
-    }
-    else if (_normalMap) {
-      _materialSetup = std::make_unique<SetupDiffuseColorNormalMap>();
-    }
-    else {
-      _materialSetup = std::make_unique<SetupDiffuseColor>();
-    }
     if (_diffuseMap) {
       flag |= FLAG::DIFFUSE_MAP;
+      _shaderSetupFuncs.push_back([this]() {
+        GL_CHECK(glActiveTexture(GL_TEXTURE0));
+        _diffuseMap->bind();
+        setScalar(_shader->uniformLocation("ts_diff"), 0);
+      });
+    }
+    else {
+      _shaderSetupFuncs.push_back([this]() {
+        setVector(_shader->uniformLocation("d_col"), _material->getDiffuseColor());
+      });
     }
     if (_alphaMap) {
       flag |= FLAG::ALPHA_MAP;
+      _shaderSetupFuncs.push_back([this]() {
+        GL_CHECK(glActiveTexture(GL_TEXTURE1));
+        _alphaMap->bind();
+        setScalar(_shader->uniformLocation("ts_alpha"), 1);
+      });
     }
     if (_normalMap) {
       flag |= FLAG::NORMAL_MAP;
+      _shaderSetupFuncs.push_back([this]() {
+        GL_CHECK(glActiveTexture(GL_TEXTURE2));
+        _normalMap->bind();
+        setScalar(_shader->uniformLocation("ts_norm"), 2);
+      });
     }
     _shader = api->createShader(vertex_file, api->_shaderGenerator->createMeshFragmentShaderFile(flag, settings));
     _smShader = api->createShader("assets/opengl/vs_shadow.glsl", "assets/opengl/fs_shadow.glsl");
+    assert(_shaderSetupFuncs.size() <= 3);
   }
-  const std::unique_ptr<GLMaterialSetup>& OpenGLAPI::MaterialDesc::getMaterialSetup() const
+  void OpenGLAPI::MaterialDesc::setupShaderVariables() const
   {
-    return _materialSetup;
+    for (const auto& f : _shaderSetupFuncs) {
+      f();
+    }
+    setScalar(_shader->uniformLocation("ka"), _material->getKa());
+    setScalar(_shader->uniformLocation("kd"), _material->getKd());
+    setScalar(_shader->uniformLocation("ks"), _material->getKs());
+    setScalar(_shader->uniformLocation("s_e"), _material->getSpecularExponent());
   }
-  const std::shared_ptr<GLShaderProgram>& OpenGLAPI::MaterialDesc::getShader() const
+  const std::shared_ptr<OpenGLAPI::MaterialDesc::ShaderProgram>& OpenGLAPI::MaterialDesc::getShader() const
   {
     return _shader;
   }
-  const std::shared_ptr<GLShaderProgram>& OpenGLAPI::MaterialDesc::getSMShader() const
+  const std::shared_ptr<OpenGLAPI::MaterialDesc::ShaderProgram>& OpenGLAPI::MaterialDesc::getSMShader() const
   {
     return _smShader;
-  }
-  const std::shared_ptr<Material>& OpenGLAPI::MaterialDesc::getMaterial() const
-  {
-    return _material;
-  }
-  const std::shared_ptr<GLTexture>& OpenGLAPI::MaterialDesc::getDiffuseMap() const
-  {
-    return _diffuseMap;
-  }
-  const std::shared_ptr<GLTexture>& OpenGLAPI::MaterialDesc::getNormalMap() const
-  {
-    return _normalMap;
-  }
-  const std::shared_ptr<GLTexture>& OpenGLAPI::MaterialDesc::getAlphaMap() const
-  {
-    return _alphaMap;
   }
 }
