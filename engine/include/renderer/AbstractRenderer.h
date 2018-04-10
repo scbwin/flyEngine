@@ -79,10 +79,7 @@ namespace fly
               }
             }
           }
-          _rp._viewToLight.resize(light_vps.size());
-          for (unsigned i = 0; i < _settings._smFrustumSplits.size(); i++) {
-            _rp._viewToLight[i] = light_vps[i] * _rp._Vinverse;
-          }
+          _rp._worldToLight = light_vps;
           _rp._smFrustumSplits = _settings._smFrustumSplits;
           _api.setDepthClampEnabled<false>();
         };
@@ -107,7 +104,7 @@ namespace fly
             for (const auto& e1 : e.second) {
               e1.first->setup();
               for (const auto& smr : e1.second) {
-                _api.renderMesh(smr->_meshData, _rp._viewMatrix * smr->_smr->getModelMatrix());
+                _api.renderMesh(smr->_meshData, smr->_smr->getModelMatrix(), smr->_smr->getModelMatrixInverse());
               }
             }
           }
@@ -122,7 +119,7 @@ namespace fly
           for (const auto& e : display_list) {
             _materialSetupFunc(*e.first);
             for (const auto& smr : e.second) {
-              _api.renderMesh(smr->_meshData, _rp._viewMatrix * smr->_smr->getModelMatrix());
+              _api.renderMesh(smr->_meshData, smr->_smr->getModelMatrix(), smr->_smr->getModelMatrixInverse());
             }
           }
         };
@@ -170,7 +167,8 @@ namespace fly
         }
         _api.setDepthTestEnabled<true>();
         _api.setFaceCullingEnabled<true>();
-        _rp._lightPosView = (_rp._viewMatrix * Vec4f(_directionalLight->_pos, 1.f)).xyz();
+        _rp._lightPosWorld = _directionalLight->_pos;
+        _rp._camPosworld = _camera->_pos;
         _rp._lightIntensity = _directionalLight->getIntensity();
         _meshGeometryStorage.bind();
         _staticMeshRenderFuncSM();

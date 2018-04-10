@@ -6,7 +6,8 @@ namespace fly
   StaticMeshRenderable::StaticMeshRenderable(const std::shared_ptr<Mesh>& mesh, const std::shared_ptr<Material>& material, const Mat4f & model_matrix) :
     _mesh(mesh),
     _material(material),
-    _modelMatrix(model_matrix)
+    _modelMatrix(model_matrix),
+    _modelMatrixInverse(inverse(glm::mat3(model_matrix)))
   {
     Vec3f bb_min(std::numeric_limits<float>::max());
     Vec3f bb_max(std::numeric_limits<float>::lowest());
@@ -32,5 +33,9 @@ namespace fly
   const Mat4f& StaticMeshRenderable::getModelMatrix() const
   {
     return _modelMatrix;
+  }
+  const Mat3f& StaticMeshRenderable::getModelMatrixInverse() const
+  {
+    return _modelMatrixInverse;
   }
 }

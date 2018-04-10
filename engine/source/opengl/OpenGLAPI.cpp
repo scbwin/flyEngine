@@ -82,9 +82,10 @@ namespace fly
   }
   void OpenGLAPI::setupShaderConstants(const GlobalShaderParams& param)
   {
-    setMatrix(_activeShader->uniformLocation("P"), param._projectionMatrix);
-    setVector(_activeShader->uniformLocation("lpos_cs"), param._lightPosView);
+    setMatrix(_activeShader->uniformLocation("VP"), param._VP);
+    setVector(_activeShader->uniformLocation("lpos_ws"), param._lightPosWorld);
     setVector(_activeShader->uniformLocation("I_in"), param._lightIntensity);
+    setVector(_activeShader->uniformLocation("cp_ws"), param._camPosworld);
   }
   void OpenGLAPI::setupShaderConstants(const GlobalShaderParams& param, const Depthbuffer* shadow_map)
   {
@@ -92,8 +93,8 @@ namespace fly
     GL_CHECK(glActiveTexture(GL_TEXTURE3));
     shadow_map->bind();
     setScalar(_activeShader->uniformLocation("ts_sm"), 3);
-    setMatrixArray(_activeShader->uniformLocation("v_to_l"), param._viewToLight.front(), static_cast<unsigned>(param._viewToLight.size()));
-    setScalar(_activeShader->uniformLocation("nfs"), static_cast<int>(param._viewToLight.size()));
+    setMatrixArray(_activeShader->uniformLocation("w_to_l"), param._worldToLight.front(), static_cast<unsigned>(param._worldToLight.size()));
+    setScalar(_activeShader->uniformLocation("nfs"), static_cast<int>(param._worldToLight.size()));
     setScalarArray(_activeShader->uniformLocation("fs"), param._smFrustumSplits.front(), static_cast<unsigned>(param._smFrustumSplits.size()));
   }
   void OpenGLAPI::setupMaterial(const MaterialDesc & desc, const GlobalShaderParams& param, const Depthbuffer* shadow_map)
@@ -108,10 +109,10 @@ namespace fly
     setupShaderConstants(param);
     desc.setup();
   }
-  void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & mv)
+  void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse)
   {
-    setMatrix(_activeShader->uniformLocation("MV"), mv);
-    setMatrixTranspose(_activeShader->uniformLocation("MV_i"), inverse(glm::mat3(mv)));
+    setMatrix(_activeShader->uniformLocation("M"), model_matrix);
+    setMatrixTranspose(_activeShader->uniformLocation("M_i"), model_matrix_inverse);
     GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, GL_UNSIGNED_INT, mesh_data._indices, mesh_data._baseVertex));
   }
   void OpenGLAPI::renderMeshMVP(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & mvp)
@@ -340,7 +341,7 @@ namespace fly
       _shaderSetupFuncs.push_back([this]() {
         GL_CHECK(glActiveTexture(GL_TEXTURE0));
         _diffuseMap->bind();
-        setScalar(_shader->uniformLocation("ts_diff"), 0);
+        setScalar(_shader->uniformLocation(GLSLShaderGenerator::diffuseSampler()), 0);
       });
     }
     else {
@@ -353,7 +354,7 @@ namespace fly
       _shaderSetupFuncs.push_back([this]() {
         GL_CHECK(glActiveTexture(GL_TEXTURE1));
         _alphaMap->bind();
-        setScalar(_shader->uniformLocation("ts_alpha"), 1);
+        setScalar(_shader->uniformLocation(GLSLShaderGenerator::alphaSampler()), 1);
       });
     }
     if (_normalMap && settings._normalMapping) {
@@ -361,7 +362,7 @@ namespace fly
       _shaderSetupFuncs.push_back([this]() {
         GL_CHECK(glActiveTexture(GL_TEXTURE2));
         _normalMap->bind();
-        setScalar(_shader->uniformLocation("ts_norm"), 2);
+        setScalar(_shader->uniformLocation(GLSLShaderGenerator::normalSampler()), 2);
       });
     }
     _shader = api->createShader(vertex_file, api->_shaderGenerator->createMeshFragmentShaderFile(flag, settings));

@@ -20,6 +20,9 @@ namespace fly
     };
     std::string createMeshFragmentShaderFile(unsigned flags, const Settings& settings);
     void regenerateShaders(const Settings& settings);
+    static inline constexpr const char* diffuseSampler() { return "ts_d"; };
+    static inline constexpr const char* alphaSampler() { return "ts_a"; };
+    static inline constexpr const char* normalSampler() { return "ts_n"; };
   private:
     std::string createMeshFragmentFile(const std::string& fname, unsigned flags, const Settings& settings) const;
     std::vector<std::string> _fnames;

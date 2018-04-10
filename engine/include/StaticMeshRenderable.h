@@ -21,8 +21,10 @@ namespace fly
     const std::shared_ptr<Mesh>& getMesh() const;
     const std::shared_ptr<Material>& getMaterial() const;
     const Mat4f& getModelMatrix() const;
+    const Mat3f& getModelMatrixInverse() const;
   private:
     Mat4f _modelMatrix;
+    Mat3f _modelMatrixInverse;
     std::shared_ptr<Mesh> _mesh;
     std::shared_ptr<Material> _material;
     std::unique_ptr<AABB> _aabbWorld;

@@ -107,7 +107,7 @@ namespace fly
     void setupMaterial(const MaterialDesc& desc, const GlobalShaderParams& param, const Depthbuffer* shadow_map);
     void setupShaderConstants(const GlobalShaderParams& param);
     void setupShaderConstants(const GlobalShaderParams& param, const Depthbuffer* shadow_map);
-    void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mv);
+    void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse);
     void renderMeshMVP(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mvp);
     void renderAABBs(const std::vector<AABB*>& aabbs, const Mat4f& transform, const Vec3f& col);
     void setRendertargets(const std::vector<RTT*>& rtts, const Depthbuffer* depth_buffer);
