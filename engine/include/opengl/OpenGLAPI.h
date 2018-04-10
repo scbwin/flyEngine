@@ -99,6 +99,7 @@ namespace fly
       std::shared_ptr<GLTexture> _diffuseMap;
       std::shared_ptr<GLTexture> _normalMap;
       std::shared_ptr<GLTexture> _alphaMap;
+      std::shared_ptr<GLTexture> _heightMap;
     };
     void setupShader(GLShaderProgram* shader);
     void setupShader(GLShaderProgram* shader, const GlobalShaderParams& params);

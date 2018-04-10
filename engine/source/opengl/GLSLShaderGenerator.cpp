@@ -17,6 +17,9 @@ namespace fly
     if (flags & MeshRenderFlag::ALPHA_MAP) {
       fname += "_alpha";
     }
+    if (flags & MeshRenderFlag::PARALLAX_MAP) {
+      fname += "_parallax";
+    }
     fname += ".glsl";
     for (const auto& n : _fnames) {
       if (n == fname) { // File already created
@@ -47,6 +50,7 @@ uniform vec3 d_col;\n\
 uniform sampler2D " + std::string(diffuseSampler()) + ";\n\
 uniform sampler2D " + std::string(alphaSampler()) + ";\n\
 uniform sampler2D " + std::string(normalSampler()) + ";\n\
+uniform sampler2D " + std::string(heightSampler()) + ";\n\
 uniform vec3 lpos_ws; // light position world space\n\
 uniform vec3 cp_ws; // camera position world space\n\
 uniform vec3 I_in; // light intensity\n\
@@ -60,27 +64,34 @@ uniform float kd;\n\
 uniform float ks;\n\
 uniform float s_e;\n\
 void main()\n\
-{\n;";
+{\n  vec2 uv = uv_out;\n";
+    if ((flags & MeshRenderFlag::NORMAL_MAP) || (flags & MeshRenderFlag::PARALLAX_MAP)) {
+      shader_src += "  mat3 world_to_tangent = transpose(mat3(tangent_world, bitangent_world, normal_world));\n";
+    }
+    if (flags & PARALLAX_MAP) {
+      shader_src += "  vec3 view_dir_ts = world_to_tangent * normalize(cp_ws - pos_world);\n\
+  uv -= view_dir_ts.xy / view_dir_ts.z * (1.f - texture(" + std::string(heightSampler()) + ", uv).r) * 0.09f;\n";
+    }
     if (flags & MeshRenderFlag::ALPHA_MAP) {
-      shader_src += "  	if (texture(" + std::string(alphaSampler()) + ", uv_out).r < 0.5) {\n\
-  discard;\n\
-  return;\n\
+      shader_src += "  	if (texture(" + std::string(alphaSampler()) + ", uv).r < 0.5) {\n\
+    discard;\n\
+    return;\n\
   }\n";
     }
-    shader_src += "  vec3 l = normalize(lpos_ws - pos_world);\n";
+    shader_src += "  vec3 l = " + std::string((((flags & PARALLAX_MAP) || (flags & NORMAL_MAP)) ? "world_to_tangent *" : "")) + " normalize(lpos_ws - pos_world);\n\
+  vec3 e = " + std::string((((flags & PARALLAX_MAP) || (flags & NORMAL_MAP)) ? "world_to_tangent *" : "")) + " normalize(cp_ws - pos_world);\n";
     if (flags & MeshRenderFlag::NORMAL_MAP) {
-      shader_src += "  mat3 TBN = mat3(tangent_world, bitangent_world, normal_world);\n\
-  vec3 normal_world_new = normalize(TBN * (texture(" + std::string(normalSampler()) + ", uv_out).xyz * 2.f - 1.f));\n\
-  float diffuse = clamp(dot(l, normal_world_new), 0.f, 1.f);\n\
-  float specular = pow(clamp(dot(reflect(-l, normal_world_new), normalize(cp_ws - pos_world)), 0.f, 1.f), s_e);\n";
+  shader_src += "  vec3 normal_ts = normalize((texture(" + std::string(normalSampler()) + ", uv).xyz * 2.f - 1.f));\n\
+  float diffuse = clamp(dot(l, normal_ts), 0.f, 1.f);\n\
+  float specular = pow(clamp(dot(reflect(-l, normal_ts), e), 0.f, 1.f), s_e);\n";
     }
     else {
       shader_src += "  float diffuse = clamp(dot(l, normal_world), 0.f, 1.f);\n\
-  float specular = pow(clamp(dot(reflect(-l, normal_world), normalize(cp_ws - pos_world)), 0.f, 1.f), s_e);\n";
+  float specular = pow(clamp(dot(reflect(-l, normal_world), e), 0.f, 1.f), s_e);\n";
     }
 
     if (flags & MeshRenderFlag::DIFFUSE_MAP) {
-      shader_src += "  vec3 albedo = texture(" + std::string(diffuseSampler()) + ", uv_out).rgb;\n";
+      shader_src += "  vec3 albedo = texture(" + std::string(diffuseSampler()) + ", uv).rgb;\n";
     }
     else {
       shader_src += "  vec3 albedo = d_col;\n";
@@ -89,7 +100,7 @@ void main()\n\
     if (settings._shadows) {
       shader_src += "  int index = nfs-1;\n\
   for (int i = nfs-2; i >= 0; i--) {\n\
-    index -= int(distance(pos_world, cp_ws) < fs[i]);\n\
+    index -= int(length(e) < fs[i]);\n\
   }\n";
       shader_src += "  vec4 shadow_coord = w_to_l[index] * vec4(pos_world, 1.f);\n\
   shadow_coord.xyz /= shadow_coord.w;\n\
@@ -107,7 +118,6 @@ void main()\n\
 
     std::ofstream os(fname);
     os.write(shader_src.c_str(), shader_src.size());
-    os.close();
     return fname;
   }
 }

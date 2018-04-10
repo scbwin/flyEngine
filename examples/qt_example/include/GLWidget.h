@@ -68,6 +68,8 @@ protected:
   static void cbGetSmBias(void* value, void* client_data);
   static void cbSetNormalMapping(const void* value, void* client_data);
   static void cbGetNormalMapping(void* value, void* client_data);
+  static void cbSetParallaxMapping(const void* value, void* client_data);
+  static void cbGetParallaxMapping(void* value, void* client_data);
 private:
   std::unique_ptr<fly::Engine> _engine;
   std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>> _renderer;

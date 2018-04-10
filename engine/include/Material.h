@@ -14,6 +14,7 @@ namespace fly
     std::string& getDiffusePath();
     std::string& getNormalPath();
     std::string& getOpacityPath();
+    std::string& getHeightPath();
     float getSpecularExponent() const;
     const Vec3f& getDiffuseColor() const;
     void setDiffuseColor(const Vec3f& diffuse_color);
@@ -21,6 +22,7 @@ namespace fly
     void setDiffusePath(const std::string& diffuse_path);
     void setNormalPath(const std::string& normal_path);
     void setOpacityPath(const std::string& opacity_path);
+    void setHeightPath(const std::string& height_path);
     bool hasWindX() const;
     void setHasWindX(bool has_wind, float strength, float frequ);
     bool hasWindZ() const;
@@ -42,6 +44,7 @@ namespace fly
     std::string _diffusePath;
     std::string _normalPath;
     std::string _opacityPath;
+    std::string _heightPath;
     float _specularExponent = 48.f;
     bool _hasWindX = false;
     bool _hasWindZ = false;

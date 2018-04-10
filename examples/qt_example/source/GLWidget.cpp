@@ -52,6 +52,7 @@ void GLWidget::initializeGL()
   TwAddVarCB(settings_bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, cbSetPCF, cbGetPCF, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Shadow bias", TwType::TW_TYPE_FLOAT, cbSetSmBias, cbGetSmBias, &_renderer, "step=0.000001f");
   TwAddVarCB(settings_bar, "Normal mapping", TwType::TW_TYPE_BOOLCPP, cbSetNormalMapping, cbGetNormalMapping, &_renderer, nullptr);
+  TwAddVarCB(settings_bar, "Parallax mapping", TwType::TW_TYPE_BOOLCPP, cbSetParallaxMapping, cbGetParallaxMapping, &_renderer, nullptr);
 
   TwSetTopBar(_bar);
 }
@@ -249,6 +250,16 @@ void GLWidget::cbGetNormalMapping(void * value, void * client_data)
 {
   *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._normalMapping;
 }
+void GLWidget::cbSetParallaxMapping(const void * value, void * client_data)
+{
+  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings();
+  settings._parallaxMapping = *reinterpret_cast<const bool*>(value);
+  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->setSettings(settings);
+}
+void GLWidget::cbGetParallaxMapping(void * value, void * client_data)
+{
+  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._parallaxMapping;
+}
 void GLWidget::cbSetSortModeShaderMaterial(const void * value, void * clientData)
 {
   if (*reinterpret_cast<const bool*>(value)) {
@@ -264,6 +275,12 @@ void GLWidget::initGame()
   _sponzaModel = importer->loadModel("assets/sponza/sponza.obj");
   for (const auto& m : _sponzaModel->getMaterials()) {
     m->setSpecularExponent(32.f);
+    if (m->getDiffusePath() == "assets/sponza/textures\\spnza_bricks_a_diff.tga") {
+      m->setHeightPath("assets/DisplacementMap.png");
+    }
+    else if (m->getDiffusePath() == "assets/sponza/textures\\sponza_floor_a_diff.tga") {
+      m->setHeightPath("assets/height.png");
+    }
   }
 #if SPONZA_MANY
   for (int x = 0; x < 10; x++) {

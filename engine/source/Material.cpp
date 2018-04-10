@@ -19,6 +19,10 @@ namespace fly
   {
     return _opacityPath;
   }
+  std::string & Material::getHeightPath()
+  {
+    return _heightPath;
+  }
   void Material::setSpecularExponent(float specular)
   {
     _specularExponent = std::max(1.f, specular);
@@ -34,6 +38,10 @@ namespace fly
   void Material::setOpacityPath(const std::string & opacity_path)
   {
     _opacityPath = opacity_path;
+  }
+  void Material::setHeightPath(const std::string & height_path)
+  {
+    _heightPath = height_path;
   }
   float Material::getSpecularExponent() const
   {

@@ -10,6 +10,7 @@ uniform vec3 d_col;
 uniform sampler2D ts_d;
 uniform sampler2D ts_a;
 uniform sampler2D ts_n;
+uniform sampler2D ts_h;
 uniform vec3 lpos_ws; // light position world space
 uniform vec3 cp_ws; // camera position world space
 uniform vec3 I_in; // light intensity
@@ -24,16 +25,18 @@ uniform float ks;
 uniform float s_e;
 void main()
 {
-;  vec3 l = normalize(lpos_ws - pos_world);
-  mat3 TBN = mat3(tangent_world, bitangent_world, normal_world);
-  vec3 normal_world_new = normalize(TBN * (texture(ts_n, uv_out).xyz * 2.f - 1.f));
-  float diffuse = clamp(dot(l, normal_world_new), 0.f, 1.f);
-  float specular = pow(clamp(dot(reflect(-l, normal_world_new), normalize(cp_ws - pos_world)), 0.f, 1.f), s_e);
+  vec2 uv = uv_out;
+  mat3 world_to_tangent = transpose(mat3(tangent_world, bitangent_world, normal_world));
+  vec3 l = world_to_tangent * normalize(lpos_ws - pos_world);
+  vec3 e = world_to_tangent * normalize(cp_ws - pos_world);
+  vec3 normal_ts = normalize((texture(ts_n, uv).xyz * 2.f - 1.f));
+  float diffuse = clamp(dot(l, normal_ts), 0.f, 1.f);
+  float specular = pow(clamp(dot(reflect(-l, normal_ts), e), 0.f, 1.f), s_e);
   vec3 albedo = d_col;
   fragmentColor = I_in * albedo * (ka + kd * diffuse + ks * specular);
   int index = nfs-1;
   for (int i = nfs-2; i >= 0; i--) {
-    index -= int(distance(pos_world, cp_ws) < fs[i]);
+    index -= int(length(e) < fs[i]);
   }
   vec4 shadow_coord = w_to_l[index] * vec4(pos_world, 1.f);
   shadow_coord.xyz /= shadow_coord.w;

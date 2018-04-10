@@ -26,14 +26,18 @@ uniform float s_e;
 void main()
 {
   vec2 uv = uv_out;
+  mat3 world_to_tangent = transpose(mat3(tangent_world, bitangent_world, normal_world));
+  vec3 view_dir_ts = world_to_tangent * normalize(cp_ws - pos_world);
+  uv -= view_dir_ts.xy / view_dir_ts.z * (1.f - texture(ts_h, uv).r) * 0.09f;
   	if (texture(ts_a, uv).r < 0.5) {
     discard;
     return;
   }
-  vec3 l =  normalize(lpos_ws - pos_world);
-  vec3 e =  normalize(cp_ws - pos_world);
-  float diffuse = clamp(dot(l, normal_world), 0.f, 1.f);
-  float specular = pow(clamp(dot(reflect(-l, normal_world), e), 0.f, 1.f), s_e);
+  vec3 l = world_to_tangent * normalize(lpos_ws - pos_world);
+  vec3 e = world_to_tangent * normalize(cp_ws - pos_world);
+  vec3 normal_ts = normalize((texture(ts_n, uv).xyz * 2.f - 1.f));
+  float diffuse = clamp(dot(l, normal_ts), 0.f, 1.f);
+  float specular = pow(clamp(dot(reflect(-l, normal_ts), e), 0.f, 1.f), s_e);
   vec3 albedo = texture(ts_d, uv).rgb;
   fragmentColor = I_in * albedo * (ka + kd * diffuse + ks * specular);
   int index = nfs-1;

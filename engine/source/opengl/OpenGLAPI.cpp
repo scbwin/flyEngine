@@ -90,9 +90,9 @@ namespace fly
   void OpenGLAPI::setupShaderConstants(const GlobalShaderParams& param, const Depthbuffer* shadow_map)
   {
     setupShaderConstants(param);
-    GL_CHECK(glActiveTexture(GL_TEXTURE3));
+    GL_CHECK(glActiveTexture(GL_TEXTURE4));
     shadow_map->bind();
-    setScalar(_activeShader->uniformLocation("ts_sm"), 3);
+    setScalar(_activeShader->uniformLocation("ts_sm"), 4);
     setMatrixArray(_activeShader->uniformLocation("w_to_l"), param._worldToLight.front(), static_cast<unsigned>(param._worldToLight.size()));
     setScalar(_activeShader->uniformLocation("nfs"), static_cast<int>(param._worldToLight.size()));
     setScalarArray(_activeShader->uniformLocation("fs"), param._smFrustumSplits.front(), static_cast<unsigned>(param._smFrustumSplits.size()));
@@ -333,6 +333,7 @@ namespace fly
     _diffuseMap = api->createTexture(material->getDiffusePath());
     _normalMap = api->createTexture(material->getNormalPath());
     _alphaMap = api->createTexture(material->getOpacityPath());
+    _heightMap = api->createTexture(material->getHeightPath());
     using FLAG = GLSLShaderGenerator::MeshRenderFlag;
     unsigned flag = FLAG::NONE;
     std::string vertex_file = "assets/opengl/vs_simple.glsl";
@@ -363,6 +364,14 @@ namespace fly
         GL_CHECK(glActiveTexture(GL_TEXTURE2));
         _normalMap->bind();
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::normalSampler()), 2);
+      });
+    }
+    if (_heightMap && settings._parallaxMapping) {
+      flag |= FLAG::PARALLAX_MAP;
+      _shaderSetupFuncs.push_back([this]() {
+        GL_CHECK(glActiveTexture(GL_TEXTURE3));
+        _heightMap->bind();
+        setScalar(_shader->uniformLocation(GLSLShaderGenerator::heightSampler()), 3);
       });
     }
     _shader = api->createShader(vertex_file, api->_shaderGenerator->createMeshFragmentShaderFile(flag, settings));
