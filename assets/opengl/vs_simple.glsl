@@ -11,7 +11,7 @@ uniform mat4 P;
 
 // Model constants
 uniform mat4 MV;
-uniform mat4 MV_i;
+uniform mat3 MV_i;
 
 out vec3 pos_view;
 out vec3 normal_view;
@@ -23,8 +23,8 @@ void main()
 {
 	pos_view = (MV * vec4(position, 1.f)).xyz;
 	gl_Position = P * vec4(pos_view, 1.f);
-	normal_view = normalize((MV_i * vec4(normal, 0.f)).xyz);
+	normal_view = normalize(MV_i * normal);
 	uv_out = uv;
-	tangent_view = normalize((MV_i * vec4(tangent, 0.f)).xyz);
-	bitangent_view = normalize((MV_i * vec4(bitangent, 0.f)).xyz);
+	tangent_view = normalize(MV_i * tangent);
+	bitangent_view = normalize(MV_i * bitangent);
 }

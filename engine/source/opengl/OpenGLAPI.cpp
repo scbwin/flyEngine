@@ -111,7 +111,7 @@ namespace fly
   void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & mv)
   {
     setMatrix(_activeShader->uniformLocation("MV"), mv);
-    setMatrixTranspose(_activeShader->uniformLocation("MV_i"), inverse(mv));
+    setMatrixTranspose(_activeShader->uniformLocation("MV_i"), inverse(glm::mat3(mv)));
     GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, GL_UNSIGNED_INT, mesh_data._indices, mesh_data._baseVertex));
   }
   void OpenGLAPI::renderMeshMVP(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & mvp)
