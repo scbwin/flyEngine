@@ -87,7 +87,7 @@ namespace fly
       MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI* api, const Settings& settings);
       void create(OpenGLAPI* api, const Settings& settings);
       void create(const std::shared_ptr<Material>& material, OpenGLAPI* api, const Settings& settings);
-      void setupShaderVariables() const;
+      void setup() const;
       using ShaderProgram = GLShaderProgram;
       const std::shared_ptr<ShaderProgram>& getShader() const;
       const std::shared_ptr<ShaderProgram>& getSMShader() const;
@@ -103,7 +103,6 @@ namespace fly
     void setupShader(GLShaderProgram* shader);
     void setupShader(GLShaderProgram* shader, const GlobalShaderParams& params);
     void setupShader(GLShaderProgram* shader, const GlobalShaderParams& param, const Depthbuffer* shadow_map);
-    void setupMaterial(const MaterialDesc& desc);
     void setupMaterial(const MaterialDesc& desc, const GlobalShaderParams& param);
     void setupMaterial(const MaterialDesc& desc, const GlobalShaderParams& param, const Depthbuffer* shadow_map);
     void setupShaderConstants(const GlobalShaderParams& param);

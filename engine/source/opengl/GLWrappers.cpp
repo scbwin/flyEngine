@@ -54,6 +54,10 @@ namespace fly
       }
       std::cout << "failed to link _program but error log is empty" << std::endl;
     }
+    for (const auto& s : _shaders) {
+      GL_CHECK(glDetachShader(_id, s));
+      GL_CHECK(glDeleteShader(s));
+    }
   }
   void GLShaderProgram::bind() const
   {
@@ -94,6 +98,7 @@ namespace fly
       GL_CHECK(glDeleteProgram(_id));
     }
     _uniformLocations.clear();
+    _shaders.clear();
     create();
     for (unsigned int i = 0; i < _fnames.size(); i++) {
       add(_fnames[i], _types[i]);
@@ -101,7 +106,7 @@ namespace fly
     link();
   }
 
-  void GLShaderProgram::add(const std::string & fname, ShaderType type) const
+  void GLShaderProgram::add(const std::string & fname, ShaderType type)
   {
     GLenum shader_type;
     switch (type)
@@ -129,8 +134,6 @@ namespace fly
       shader_code_str += line + "\n";
     }
 
-    is.close();
-
     const char* code_str_ptr = shader_code_str.c_str();
     GL_CHECK(glShaderSource(shader_id, 1, &code_str_ptr, NULL));
     GL_CHECK(glCompileShader(shader_id));
@@ -148,11 +151,11 @@ namespace fly
       return;
     }
     GL_CHECK(glAttachShader(_id, shader_id));
+    _shaders.push_back(shader_id);
   }
 
   void GLBufferOld::create(GLenum target)
   {
-    //std::cout << "GLVertexBuffer::create" << std::endl;
     _target = target;
     GL_CHECK(glGenBuffers(1, &_id));
   }

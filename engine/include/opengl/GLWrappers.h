@@ -40,11 +40,12 @@ namespace fly
     virtual ~GLShaderProgram();
     std::vector<std::string> _fnames;
     std::vector<ShaderType> _types;
+    std::vector<GLuint> _shaders;
     std::unordered_map<std::string, GLint> _uniformLocations;
     void reload();
   private:
     GLuint _id;
-    void add(const std::string& fname, ShaderType type) const;
+    void add(const std::string& fname, ShaderType type);
   };
 
   class GLBufferOld

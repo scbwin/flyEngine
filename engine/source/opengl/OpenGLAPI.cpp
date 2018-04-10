@@ -96,21 +96,17 @@ namespace fly
     setScalar(_activeShader->uniformLocation("nfs"), static_cast<int>(param._viewToLight.size()));
     setScalarArray(_activeShader->uniformLocation("fs"), param._smFrustumSplits.front(), static_cast<unsigned>(param._smFrustumSplits.size()));
   }
-  void OpenGLAPI::setupMaterial(const MaterialDesc & desc)
-  {
-    desc.setupShaderVariables();
-  }
   void OpenGLAPI::setupMaterial(const MaterialDesc & desc, const GlobalShaderParams& param, const Depthbuffer* shadow_map)
   {
     setupShader(desc.getShader().get());
     setupShaderConstants(param, shadow_map);
-    setupMaterial(desc);
+    desc.setup();
   }
   void OpenGLAPI::setupMaterial(const MaterialDesc & desc, const GlobalShaderParams& param)
   {
     setupShader(desc.getShader().get());
     setupShaderConstants(param);
-    setupMaterial(desc);
+    desc.setup();
   }
   void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & mv)
   {
@@ -372,7 +368,7 @@ namespace fly
     _smShader = api->createShader("assets/opengl/vs_shadow.glsl", "assets/opengl/fs_shadow.glsl");
     assert(_shaderSetupFuncs.size() <= 3);
   }
-  void OpenGLAPI::MaterialDesc::setupShaderVariables() const
+  void OpenGLAPI::MaterialDesc::setup() const
   {
     for (const auto& f : _shaderSetupFuncs) {
       f();

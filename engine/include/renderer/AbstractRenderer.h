@@ -105,7 +105,7 @@ namespace fly
           for (const auto& e : display_list) {
             _shaderSetupFunc(e.first);
             for (const auto& e1 : e.second) {
-              _api.setupMaterial(*e1.first);
+              e1.first->setup();
               for (const auto& smr : e1.second) {
                 _api.renderMesh(smr->_meshData, _rp._viewMatrix * smr->_smr->getModelMatrix());
               }
