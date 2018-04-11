@@ -83,20 +83,15 @@ namespace fly
       e->reload();
     }
   }
-  void OpenGLAPI::setupShader(GLShaderProgram * shader)
+  void OpenGLAPI::bindShader(GLShaderProgram * shader)
   {
     _activeShader = shader;
     _activeShader->bind();
   }
-  void OpenGLAPI::setupShader(GLShaderProgram* shader, const GlobalShaderParams& param)
+  void OpenGLAPI::bindShadowmap(const Shadowmap & shadowmap)
   {
-    setupShader(shader);
-    setupShaderConstants(param);
-  }
-  void OpenGLAPI::setupShader(GLShaderProgram * shader, const GlobalShaderParams& param, const Depthbuffer* shadow_map)
-  {
-    setupShader(shader);
-    setupShaderConstants(param, shadow_map);
+    GL_CHECK(glActiveTexture(GL_TEXTURE4));
+    shadowmap.bind();
   }
   void OpenGLAPI::setupShaderConstants(const GlobalShaderParams& param)
   {
@@ -105,27 +100,13 @@ namespace fly
     setVector(_activeShader->uniformLocation("I_in"), param._lightIntensity);
     setVector(_activeShader->uniformLocation("cp_ws"), param._camPosworld);
   }
-  void OpenGLAPI::setupShaderConstants(const GlobalShaderParams& param, const Depthbuffer* shadow_map)
+  void OpenGLAPI::setupShaderConstantsShadowmap(const GlobalShaderParams& param)
   {
-    setupShaderConstants(param);
-    GL_CHECK(glActiveTexture(GL_TEXTURE4));
-    shadow_map->bind();
     setScalar(_activeShader->uniformLocation("ts_sm"), 4);
     setMatrixArray(_activeShader->uniformLocation("w_to_l"), param._worldToLight.front(), static_cast<unsigned>(param._worldToLight.size()));
     setScalar(_activeShader->uniformLocation("nfs"), static_cast<int>(param._worldToLight.size()));
     setScalarArray(_activeShader->uniformLocation("fs"), param._smFrustumSplits.front(), static_cast<unsigned>(param._smFrustumSplits.size()));
-  }
-  void OpenGLAPI::setupMaterial(const MaterialDesc & desc, const GlobalShaderParams& param, const Depthbuffer* shadow_map)
-  {
-    setupShader(desc.getShader().get());
-    setupShaderConstants(param, shadow_map);
-    desc.setup();
-  }
-  void OpenGLAPI::setupMaterial(const MaterialDesc & desc, const GlobalShaderParams& param)
-  {
-    setupShader(desc.getShader().get());
-    setupShaderConstants(param);
-    desc.setup();
+    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::shadowMapBias()), param._smBias);
   }
   void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse)
   {
@@ -141,7 +122,7 @@ namespace fly
   void OpenGLAPI::renderAABBs(const std::vector<AABB*>& aabbs, const Mat4f& transform, const Vec3f& col)
   {
     _vaoAABB->bind();
-    setupShader(_aabbShader.get());
+    bindShader(_aabbShader.get());
     setMatrix(_activeShader->uniformLocation("VP"), transform);
     setVector(_activeShader->uniformLocation("c"), col);
     std::vector<Vec3f> bb_buffer;

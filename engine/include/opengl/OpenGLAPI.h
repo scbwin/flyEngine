@@ -103,13 +103,10 @@ namespace fly
       std::shared_ptr<GLTexture> _alphaMap;
       std::shared_ptr<GLTexture> _heightMap;
     };
-    void setupShader(GLShaderProgram* shader);
-    void setupShader(GLShaderProgram* shader, const GlobalShaderParams& params);
-    void setupShader(GLShaderProgram* shader, const GlobalShaderParams& param, const Depthbuffer* shadow_map);
-    void setupMaterial(const MaterialDesc& desc, const GlobalShaderParams& param);
-    void setupMaterial(const MaterialDesc& desc, const GlobalShaderParams& param, const Depthbuffer* shadow_map);
+    void bindShader(GLShaderProgram* shader);
+    void bindShadowmap(const Shadowmap& shadowmap);
     void setupShaderConstants(const GlobalShaderParams& param);
-    void setupShaderConstants(const GlobalShaderParams& param, const Depthbuffer* shadow_map);
+    void setupShaderConstantsShadowmap(const GlobalShaderParams& param);
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse);
     void renderMeshMVP(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mvp);
     void renderAABBs(const std::vector<AABB*>& aabbs, const Mat4f& transform, const Vec3f& col);

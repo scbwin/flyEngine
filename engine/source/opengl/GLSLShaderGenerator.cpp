@@ -52,6 +52,7 @@ uniform sampler2D " + std::string(alphaSampler()) + ";\n\
 uniform sampler2D " + std::string(normalSampler()) + ";\n\
 uniform sampler2D " + std::string(heightSampler()) + ";\n\
 uniform float " + std::string(parallaxHeightScale()) + ";\n\
+uniform float " + std::string(shadowMapBias()) + ";\n\
 uniform vec3 lpos_ws; // light position world space\n\
 uniform vec3 cp_ws; // camera position world space\n\
 uniform vec3 I_in; // light intensity\n\
@@ -106,7 +107,7 @@ void main()\n\
       shader_src += "  vec4 shadow_coord = w_to_l[index] * vec4(pos_world, 1.f);\n\
   shadow_coord.xyz /= shadow_coord.w;\n\
   shadow_coord = shadow_coord * 0.5f + 0.5f;\n\
-  shadow_coord.z -= " + std::to_string(settings._smBias) + "f;\n";
+  shadow_coord.z -= " + std::string(shadowMapBias()) + ";\n";
       if (!settings._shadowPercentageCloserFiltering) {
         shader_src += "  if (all(greaterThanEqual(shadow_coord.xyz, vec3(0.f))) && all(lessThanEqual(shadow_coord.xyz, vec3(1.f)))) {\n  ";
       }

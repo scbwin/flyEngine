@@ -12,6 +12,7 @@ uniform sampler2D ts_a;
 uniform sampler2D ts_n;
 uniform sampler2D ts_h;
 uniform float pm_h;
+uniform float sm_b;
 uniform vec3 lpos_ws; // light position world space
 uniform vec3 cp_ws; // camera position world space
 uniform vec3 I_in; // light intensity
@@ -46,6 +47,6 @@ void main()
   vec4 shadow_coord = w_to_l[index] * vec4(pos_world, 1.f);
   shadow_coord.xyz /= shadow_coord.w;
   shadow_coord = shadow_coord * 0.5f + 0.5f;
-  shadow_coord.z -= 0.000083f;
+  shadow_coord.z -= sm_b;
   fragmentColor *= 1.f - texture(ts_sm, vec4(shadow_coord.xy, index, shadow_coord.z)) * 0.5f;
 }

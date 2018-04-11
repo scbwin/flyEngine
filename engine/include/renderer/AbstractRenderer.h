@@ -37,7 +37,6 @@ namespace fly
     {
       if (_settings._shadows != settings._shadows ||
         _settings._shadowPercentageCloserFiltering != settings._shadowPercentageCloserFiltering ||
-        _settings._smBias != settings._smBias ||
         _settings._normalMapping != settings._normalMapping ||
         _settings._parallaxMapping != settings._parallaxMapping) {
         _api.recreateShadersAndMaterials(settings);
@@ -53,12 +52,6 @@ namespace fly
       }
       _shadowMap = settings._shadows ? _api.createShadowmap(settings._shadowMapSize, settings) : nullptr;
       if (settings._shadows) {
-        _shaderSetupFunc = [this](typename API::MaterialDesc::ShaderProgram* shader) {
-          _api.setupShader(shader, _rp, _shadowMap.get());
-        };
-        _materialSetupFunc = [this](const typename API::MaterialDesc& mat_desc) {
-          _api.setupMaterial(mat_desc, _rp, _shadowMap.get());
-        };
         _staticMeshRenderFuncSM = [this]() {
           std::vector<Mat4f> light_vps;
           auto vp_shadow_volume = _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
@@ -74,7 +67,7 @@ namespace fly
             _api.setRendertargets({}, _shadowMap.get(), i);
             _api.clearRendertarget<false, true, false>(Vec4f());
             for (const auto& e : sm_display_list) {
-              _api.setupShader(e.first);
+              _api.bindShader(e.first);
               for (const auto& smr : e.second) {
                 _api.renderMeshMVP(smr->_meshData, light_vps[i] * smr->_smr->getModelMatrix());
               }
@@ -82,16 +75,11 @@ namespace fly
           }
           _rp._worldToLight = light_vps;
           _rp._smFrustumSplits = _settings._smFrustumSplits;
+          _rp._smBias = _settings._smBias;
           _api.setDepthClampEnabled<false>();
         };
       }
       else {
-        _shaderSetupFunc = [this](typename API::MaterialDesc::ShaderProgram* shader) {
-          _api.setupShader(shader, _rp);
-        };
-        _materialSetupFunc = [this](const typename API::MaterialDesc& mat_desc) {
-          _api.setupMaterial(mat_desc, _rp);
-        };
         _staticMeshRenderFuncSM = []() {};
       }
       if (settings._dlSortMode == DisplayListSortMode::SHADER_AND_MATERIAL) {
@@ -101,7 +89,8 @@ namespace fly
             display_list[e->_materialDesc->getShader().get()][e->_materialDesc.get()].push_back(e);
           }
           for (const auto& e : display_list) {
-            _shaderSetupFunc(e.first);
+            _api.bindShader(e.first);
+            setupShaderConstants();
             for (const auto& e1 : e.second) {
               e1.first->setup();
               for (const auto& smr : e1.second) {
@@ -118,12 +107,22 @@ namespace fly
             display_list[e->_materialDesc.get()].push_back(e);
           }
           for (const auto& e : display_list) {
-            _materialSetupFunc(*e.first);
+            _api.bindShader(e.first->getShader().get());
+            setupShaderConstants();
+            e.first->setup();
             for (const auto& smr : e.second) {
               _api.renderMesh(smr->_meshData, smr->_smr->getModelMatrix(), smr->_smr->getModelMatrixInverse());
             }
           }
         };
+      }
+      _shaderConstantsSetupFuncs = { [this]() {
+        _api.setupShaderConstants(_rp);
+      } };
+      if (settings._shadows) {
+        _shaderConstantsSetupFuncs.push_back([this]() {
+          _api.setupShaderConstantsShadowmap(_rp);
+        });
       }
     }
     const Settings& getSettings() const
@@ -177,6 +176,9 @@ namespace fly
         _api.setViewport(_viewPortSize);
         _api.clearRendertarget<true, true, false>(Vec4f(0.149f, 0.509f, 0.929f, 1.f));
         _visibleMeshes = _quadtree->getVisibleElements<API::isDirectX()>(_rp._VP);
+        if (_settings._shadows) {
+          _api.bindShadowmap(*_shadowMap);
+        }
         _staticMeshRenderFunc();
         if (_settings._debugQuadtreeNodeAABBs) {
           renderQuadtreeAABBs();
@@ -205,7 +207,7 @@ namespace fly
     inline void reloadShaders() { _api.reloadShaders(); }
     const Vec3f& getSceneMin() const { return _sceneMin; }
     const Vec3f& getSceneMax() const { return _sceneMax; }
-    std::vector<std::shared_ptr<Material>> getAllMaterials() {return _api.getAllMaterials();}
+    std::vector<std::shared_ptr<Material>> getAllMaterials() { return _api.getAllMaterials(); }
   private:
     API _api;
     ProjectionParams _pp;
@@ -233,11 +235,9 @@ namespace fly
     std::map<Entity*, std::shared_ptr<StaticMeshRenderable>> _staticMeshRenderables;
     std::unique_ptr<Quadtree<StaticMeshRenderable>> _quadtree;
     std::vector<StaticMeshRenderable*> _visibleMeshes;
-
-    std::function<void(typename API::MaterialDesc::ShaderProgram*)> _shaderSetupFunc;
-    std::function<void(const typename API::MaterialDesc&)> _materialSetupFunc;
     std::function<void()> _staticMeshRenderFunc;
     std::function<void()> _staticMeshRenderFuncSM;
+    std::vector<std::function<void()>> _shaderConstantsSetupFuncs;
 
     void buildQuadtree()
     {
@@ -265,6 +265,11 @@ namespace fly
           aabbs.push_back(e->getAABBWorld());
         }
         _api.renderAABBs(aabbs, _rp._VP, Vec3f(0.f, 1.f, 0.f));
+      }
+    }
+    inline void setupShaderConstants() {
+      for (const auto& f : _shaderConstantsSetupFuncs) {
+        f();
       }
     }
   };

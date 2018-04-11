@@ -20,6 +20,7 @@ namespace fly
     Mat4f _Vinverse;
     std::vector<Mat4f> _worldToLight;
     std::vector<float> _smFrustumSplits;
+    float _smBias;
     Vec3f _lightPosWorld;
     Vec3f _camPosworld;
     Vec3f _lightIntensity;

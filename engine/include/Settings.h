@@ -46,7 +46,7 @@ namespace fly
     unsigned _shadowMapSize = 1024;
     bool _shadows = true;
     bool _shadowPercentageCloserFiltering = true;
-    float _smBias = 0.000083f;
+    float _smBias = 0.002f;
     std::vector<float> _smFrustumSplits = { 30.f };
  //   std::vector<float> _smFrustumSplits = { 30.f, 50.f, 200.f };
     bool _normalMapping = true;
