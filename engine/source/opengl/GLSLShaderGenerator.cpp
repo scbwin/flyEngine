@@ -51,6 +51,7 @@ uniform sampler2D " + std::string(diffuseSampler()) + ";\n\
 uniform sampler2D " + std::string(alphaSampler()) + ";\n\
 uniform sampler2D " + std::string(normalSampler()) + ";\n\
 uniform sampler2D " + std::string(heightSampler()) + ";\n\
+uniform float " + std::string(parallaxHeightScale()) + ";\n\
 uniform vec3 lpos_ws; // light position world space\n\
 uniform vec3 cp_ws; // camera position world space\n\
 uniform vec3 I_in; // light intensity\n\
@@ -70,7 +71,7 @@ void main()\n\
     }
     if (flags & PARALLAX_MAP) {
       shader_src += "  vec3 view_dir_ts = world_to_tangent * normalize(cp_ws - pos_world);\n\
-  uv -= view_dir_ts.xy / view_dir_ts.z * (1.f - texture(" + std::string(heightSampler()) + ", uv).r) * 0.09f;\n";
+  uv -= view_dir_ts.xy / view_dir_ts.z * (1.f - texture(" + std::string(heightSampler()) + ", uv).r) * " + std::string(parallaxHeightScale()) + ";\n";
     }
     if (flags & MeshRenderFlag::ALPHA_MAP) {
       shader_src += "  	if (texture(" + std::string(alphaSampler()) + ", uv).r < 0.5) {\n\

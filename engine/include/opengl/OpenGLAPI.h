@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <functional>
 #include <opengl/GLTexture.h>
+#include <SoftwareCache.h>
 
 namespace fly
 {
@@ -77,7 +78,7 @@ namespace fly
       std::unique_ptr<GLVertexArray> _vao;
       std::unique_ptr<GLAppendBuffer> _vboAppend;
       std::unique_ptr<GLAppendBuffer> _iboAppend;
-      std::unordered_map<std::shared_ptr<Mesh>, MeshData> _meshDataCache;
+      std::unique_ptr < SoftwareCache<std::shared_ptr<Mesh>, MeshData, const std::shared_ptr<Mesh>&>> _meshDataCache;
       size_t _indices = 0;
       size_t _baseVertex = 0;
     };
@@ -91,6 +92,7 @@ namespace fly
       using ShaderProgram = GLShaderProgram;
       const std::shared_ptr<ShaderProgram>& getShader() const;
       const std::shared_ptr<ShaderProgram>& getSMShader() const;
+      const std::shared_ptr<Material>& getMaterial() const;
     private:
       std::shared_ptr<Material> _material;
       std::vector<std::function<void()>> _shaderSetupFuncs;
@@ -122,11 +124,12 @@ namespace fly
     std::unique_ptr<Depthbuffer> createDepthbuffer(const Vec2u& size);
     std::unique_ptr<Shadowmap> createShadowmap(const Vec2u& size, const Settings& settings);
     void recreateShadersAndMaterials(const Settings& settings);
+    std::vector<std::shared_ptr<Material>> getAllMaterials();
   private:
     GLShaderProgram * _activeShader;
-    std::unordered_map<std::string, std::shared_ptr<GLTexture>> _textureCache;
-    std::unordered_map<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>> _matDescCache;
-    std::unordered_map<std::string, std::shared_ptr<GLShaderProgram>> _shaderCache;
+    SoftwareCache<std::string, std::shared_ptr<GLTexture>, const std::string& > _textureCache;
+    SoftwareCache<std::string, std::shared_ptr<GLShaderProgram>, const std::string&, const std::string&, const std::string&> _shaderCache;
+    SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>, const std::shared_ptr<Material>&, const Settings&> _matDescCache;
     std::shared_ptr<GLShaderProgram> _aabbShader;
     std::shared_ptr<GLShaderProgram> _compositeShader;
     std::shared_ptr<GLVertexArray> _vaoAABB;

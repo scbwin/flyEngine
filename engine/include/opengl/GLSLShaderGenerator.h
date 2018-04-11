@@ -25,6 +25,7 @@ namespace fly
     static inline constexpr const char* alphaSampler() { return "ts_a"; };
     static inline constexpr const char* normalSampler() { return "ts_n"; };
     static inline constexpr const char* heightSampler() { return "ts_h"; };
+    static inline constexpr const char* parallaxHeightScale() { return "pm_h"; };
   private:
     std::string createMeshFragmentFile(const std::string& fname, unsigned flags, const Settings& settings) const;
     std::vector<std::string> _fnames;

@@ -70,13 +70,14 @@ protected:
   static void cbGetNormalMapping(void* value, void* client_data);
   static void cbSetParallaxMapping(const void* value, void* client_data);
   static void cbGetParallaxMapping(void* value, void* client_data);
+  static void cbSetPMHScale(const void* value, void* client_data);
+  static void cbGetPMHScale(void* value, void* client_data);
 private:
   std::unique_ptr<fly::Engine> _engine;
   std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>> _renderer;
   std::unique_ptr<fly::GameTimer> _gameTimer;
   std::unique_ptr<fly::CameraController> _camController;
   std::shared_ptr<fly::DirectionalLight> _dl;
-  std::shared_ptr<fly::Model> _sponzaModel;
   void initGame();
   float _measure = 0.f;
   unsigned _fps = 0;

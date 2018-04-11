@@ -11,6 +11,7 @@
 #include <map>
 #include <regex>
 #include <unordered_map>
+#include <SoftwareCache.h>
 
 namespace fly
 {
@@ -37,11 +38,13 @@ namespace fly
     void bind() const;
     GLuint id();
     GLint uniformLocation(const std::string& name);
-    virtual ~GLShaderProgram();
+    GLShaderProgram();
+    ~GLShaderProgram();
     std::vector<std::string> _fnames;
     std::vector<ShaderType> _types;
     std::vector<GLuint> _shaders;
-    std::unordered_map<std::string, GLint> _uniformLocations;
+   // std::unordered_map<std::string, GLint> _uniformLocations;
+    SoftwareCache<std::string, GLint, const std::string&> _uniformLocations;
     void reload();
   private:
     GLuint _id;

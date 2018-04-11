@@ -51,6 +51,7 @@ namespace fly
  //   std::vector<float> _smFrustumSplits = { 30.f, 50.f, 200.f };
     bool _normalMapping = true;
     bool _parallaxMapping = true;
+    bool _parallaxOcclusionMappig = true;
   };
 }
 

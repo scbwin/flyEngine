@@ -205,6 +205,7 @@ namespace fly
     inline void reloadShaders() { _api.reloadShaders(); }
     const Vec3f& getSceneMin() const { return _sceneMin; }
     const Vec3f& getSceneMax() const { return _sceneMax; }
+    std::vector<std::shared_ptr<Material>> getAllMaterials() {return _api.getAllMaterials();}
   private:
     API _api;
     ProjectionParams _pp;

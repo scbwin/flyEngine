@@ -115,4 +115,12 @@ namespace fly
   {
     _ks = ks;
   }
+  float Material::getParallaxHeightScale() const
+  {
+    return _parallaxHeightScale;
+  }
+  void Material::setParallaxHeightScale(float height_scale)
+  {
+    _parallaxHeightScale = height_scale;
+  }
 }

@@ -47,7 +47,8 @@ void GLWidget::initializeGL()
   TwAddVarCB(settings_bar, "Group by shader and material", TwType::TW_TYPE_BOOLCPP, cbSetSortModeShaderMaterial, cbGetSortModeShaderMaterial, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Light intensity", TwType::TW_TYPE_COLOR3F, cbSetLightIntensity, cbGetLightIntensity, &_dl, nullptr);
   TwAddVarCB(settings_bar, "Post processing", TwType::TW_TYPE_BOOLCPP, cbSetPostProcessing, cbGetPostProcessing, &_renderer, nullptr);
-  TwAddVarCB(settings_bar, "Sponza specular", TwType::TW_TYPE_FLOAT, cbSetSpec, cbGetSpec, &_sponzaModel, "step=0.2");
+  TwAddVarCB(settings_bar, "Sponza specular", TwType::TW_TYPE_FLOAT, cbSetSpec, cbGetSpec, &_renderer, "step=0.2");
+  TwAddVarCB(settings_bar, "Parallax height scale", TwType::TW_TYPE_FLOAT, cbSetPMHScale, cbGetPMHScale, &_renderer, "step=0.001");
   TwAddVarCB(settings_bar, "Shadows", TwType::TW_TYPE_BOOLCPP, cbSetShadows, cbGetShadows, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, cbSetPCF, cbGetPCF, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Shadow bias", TwType::TW_TYPE_FLOAT, cbSetSmBias, cbGetSmBias, &_renderer, "step=0.000001f");
@@ -196,15 +197,13 @@ void GLWidget::cbGetPostProcessing(void * value, void * clientData)
 }
 void GLWidget::cbSetSpec(const void * value, void * clientData)
 {
-  auto sponza_model = *reinterpret_cast<std::shared_ptr<fly::Model>*>(clientData);
-  for (const auto& m : sponza_model->getMaterials()) {
+  for (const auto& m : (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getAllMaterials()) {
     m->setSpecularExponent(*reinterpret_cast<const float*>(value));
   }
 }
 void GLWidget::cbGetSpec(void * value, void * clientData)
 {
-  auto sponza_model = *reinterpret_cast<std::shared_ptr<fly::Model>*>(clientData);
-  *reinterpret_cast<float*>(value) = sponza_model->getMaterials().front()->getSpecularExponent();
+  *reinterpret_cast<float*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getAllMaterials().front()->getSpecularExponent();
 }
 void GLWidget::cbSetShadows(const void * value, void * clientData)
 {
@@ -260,6 +259,16 @@ void GLWidget::cbGetParallaxMapping(void * value, void * client_data)
 {
   *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._parallaxMapping;
 }
+void GLWidget::cbSetPMHScale(const void * value, void * client_data)
+{
+  for (const auto& m : (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getAllMaterials()) {
+    m->setParallaxHeightScale(*reinterpret_cast<const float*>(value));
+  }
+}
+void GLWidget::cbGetPMHScale(void * value, void * client_data)
+{
+  *reinterpret_cast<float*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getAllMaterials().front()->getParallaxHeightScale();
+}
 void GLWidget::cbSetSortModeShaderMaterial(const void * value, void * clientData)
 {
   if (*reinterpret_cast<const bool*>(value)) {
@@ -272,8 +281,8 @@ void GLWidget::cbSetSortModeShaderMaterial(const void * value, void * clientData
 void GLWidget::initGame()
 {
   auto importer = std::make_shared<fly::AssimpImporter>();
-  _sponzaModel = importer->loadModel("assets/sponza/sponza.obj");
-  for (const auto& m : _sponzaModel->getMaterials()) {
+  auto sponza_model = importer->loadModel("assets/sponza/sponza.obj");
+  for (const auto& m : sponza_model->getMaterials()) {
     m->setSpecularExponent(32.f);
     if (m->getDiffusePath() == "assets/sponza/textures\\spnza_bricks_a_diff.tga") {
       m->setHeightPath("assets/DisplacementMap.png");
@@ -286,13 +295,13 @@ void GLWidget::initGame()
   for (int x = 0; x < 10; x++) {
     for (int y = 0; y < 10; y++) {
 #endif
-      for (const auto& mesh : _sponzaModel->getMeshes()) {
+      for (const auto& mesh : sponza_model->getMeshes()) {
         auto entity = _engine->getEntityManager()->createEntity();
         entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(mesh,
 #if SPONZA_MANY
-          _sponzaModel->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(x * 60.f, 0.f, y * 60.f), fly::Vec3f(0.01f)).getModelMatrix()));
+          sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(x * 60.f, 0.f, y * 60.f), fly::Vec3f(0.01f)).getModelMatrix()));
 #else
-          _sponzaModel->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(0.f), fly::Vec3f(0.01f)).getModelMatrix()));
+          sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(0.f), fly::Vec3f(0.01f)).getModelMatrix()));
 #endif
       }
 #if SPONZA_MANY

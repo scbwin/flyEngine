@@ -20,7 +20,25 @@
 namespace fly
 {
   OpenGLAPI::OpenGLAPI() : 
-    _shaderGenerator(std::make_unique<GLSLShaderGenerator>())
+    _shaderGenerator(std::make_unique<GLSLShaderGenerator>()),
+    _shaderCache(SoftwareCache<std::string, std::shared_ptr<GLShaderProgram>, const std::string&,
+      const std::string&, const std::string& > ([](const std::string& vs, const std::string& fs, const std::string& gs){
+    auto ret = std::make_shared<GLShaderProgram>();
+    ret->create();
+    ret->addShaderFromFile(vs, GLShaderProgram::ShaderType::VERTEX);
+    if (gs != "") { ret->addShaderFromFile(gs, GLShaderProgram::ShaderType::GEOMETRY); }
+    ret->addShaderFromFile(fs, GLShaderProgram::ShaderType::FRAGMENT);
+    ret->link();
+    return ret;
+  })),
+    _textureCache(SoftwareCache<std::string, std::shared_ptr<GLTexture>, const std::string&> ([](const std::string& path) {
+    auto tex = SOIL_load_OGL_texture(path.c_str(), SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_TEXTURE_REPEATS | SOIL_FLAG_COMPRESS_TO_DXT);
+    return tex != 0 ? std::make_shared<GLTexture>(tex, GL_TEXTURE_2D) : nullptr;
+  })),
+    _matDescCache(SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>, const std::shared_ptr<Material>&, const Settings&> (
+      [this](const std::shared_ptr<Material>& material, const Settings&  settings) {
+    return std::make_shared<MaterialDesc>(material, this, settings);
+  }))
   {
     glewExperimental = true;
     auto result = glewInit();
@@ -33,8 +51,6 @@ namespace fly
     else {
       std::cout << "OpenGLAPI::OpenGLAPI() Failed to initialized GLEW: " << glewGetErrorString(result) << std::endl;
     }
-    _aabbShader = createShader("assets/opengl/vs_aabb.glsl", "assets/opengl/fs_aabb.glsl", "assets/opengl/gs_aabb.glsl");
-    _compositeShader = createShader("assets/opengl/vs_screen.glsl", "assets/opengl/fs_composite.glsl");
     _vaoAABB = std::make_shared<GLVertexArray>();
     _vaoAABB->bind();
     _vboAABB = std::make_shared<GLBuffer>(GL_ARRAY_BUFFER);
@@ -47,6 +63,8 @@ namespace fly
     GL_CHECK(glVertexAttribPointer(1, 3, GL_FLOAT, false, 2 * sizeof(Vec3f), reinterpret_cast<const void*>(sizeof(Vec3f))));
 
     _offScreenFramebuffer = std::make_unique<GLFramebuffer>();
+    _aabbShader = createShader("assets/opengl/vs_aabb.glsl", "assets/opengl/fs_aabb.glsl", "assets/opengl/gs_aabb.glsl");
+    _compositeShader = createShader("assets/opengl/vs_screen.glsl", "assets/opengl/fs_composite.glsl");
   }
   OpenGLAPI::~OpenGLAPI()
   {
@@ -61,8 +79,8 @@ namespace fly
   }
   void OpenGLAPI::reloadShaders()
   {
-    for (const auto& e : _shaderCache) {
-      e.second->reload();
+    for (const auto& e : _shaderCache.getElements()) {
+      e->reload();
     }
   }
   void OpenGLAPI::setupShader(GLShaderProgram * shader)
@@ -160,49 +178,16 @@ namespace fly
   }
   std::shared_ptr<GLTexture> OpenGLAPI::createTexture(const std::string & path)
   {
-    if (path == "") {
-      return nullptr;
-    }
-    auto it = _textureCache.find(path);
-    if (it != _textureCache.end()) {
-      return it->second;
-    }
-    auto tex = SOIL_load_OGL_texture(path.c_str(), SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_TEXTURE_REPEATS | SOIL_FLAG_COMPRESS_TO_DXT);
-    if (tex == 0) {
-      return nullptr;
-    }
-    auto ret = std::make_shared<GLTexture>(tex, GL_TEXTURE_2D);
-    _textureCache[path] = ret;
-    return ret;
+    return _textureCache.getOrCreate(path, path);
   }
   std::shared_ptr<OpenGLAPI::MaterialDesc> OpenGLAPI::createMaterial(const std::shared_ptr<Material>& material, const Settings& settings)
   {
-  //  std::cout << "mat desc cache size:" << _matDescCache.size() << std::endl;
-    auto it = _matDescCache.find(material);
-    if (it != _matDescCache.end()) {
-      return it->second;
-    }
-    auto ret = std::make_shared<MaterialDesc>(material, this, settings);
-    _matDescCache[material] = ret;
-    return ret;
+    return _matDescCache.getOrCreate(material, material, settings);
   }
   std::shared_ptr<GLShaderProgram> OpenGLAPI::createShader(const std::string & vertex_file, const std::string & fragment_file, const std::string& geometry_file)
   {
     std::string key = vertex_file + fragment_file + geometry_file;
-    auto it = _shaderCache.find(key);
-    if (it != _shaderCache.end()) {
-      return it->second;
-    }
-    auto ret = std::make_shared<GLShaderProgram>();
-    ret->create();
-    ret->addShaderFromFile(vertex_file, GLShaderProgram::ShaderType::VERTEX);
-    if (geometry_file != "") {
-      ret->addShaderFromFile(geometry_file, GLShaderProgram::ShaderType::GEOMETRY);
-    }
-    ret->addShaderFromFile(fragment_file, GLShaderProgram::ShaderType::FRAGMENT);
-    ret->link();
-    _shaderCache[key] = ret;
-    return ret;
+    return _shaderCache.getOrCreate(key, vertex_file, fragment_file, geometry_file);
   }
   std::unique_ptr<OpenGLAPI::RTT> OpenGLAPI::createRenderToTexture(const Vec2u & size)
   {
@@ -248,9 +233,17 @@ namespace fly
   {
     _shaderGenerator->regenerateShaders(settings);
     _shaderCache.clear();
-    for (const auto e : _matDescCache) {
-      e.second->create(this, settings);
+    for (const auto e : _matDescCache.getElements()) {
+      e->create(this, settings);
     }
+  }
+  std::vector<std::shared_ptr<Material>> OpenGLAPI::getAllMaterials()
+  {
+    std::vector<std::shared_ptr<Material>> materials;
+    for (const auto& e : _matDescCache.getElements()) {
+      materials.push_back(e->getMaterial());
+    }
+    return materials;
   }
   void OpenGLAPI::checkFramebufferStatus()
   {
@@ -281,6 +274,31 @@ namespace fly
     _vboAppend(std::make_unique<GLAppendBuffer>(GL_ARRAY_BUFFER)),
     _iboAppend(std::make_unique<GLAppendBuffer>(GL_ELEMENT_ARRAY_BUFFER))
   {
+    _meshDataCache = std::make_unique <SoftwareCache<std::shared_ptr<Mesh>, MeshData, const std::shared_ptr<Mesh>&>>([this] (
+      const std::shared_ptr<Mesh>& mesh) {
+      MeshData mesh_data;
+      mesh_data._count = static_cast<GLsizei>(mesh->getIndices().size());
+      mesh_data._baseVertex = static_cast<GLint>(_baseVertex);
+      mesh_data._indices = reinterpret_cast<GLvoid*>(_indices);
+      _indices += mesh->getIndices().size() * sizeof(mesh->getIndices().front());
+      _baseVertex += mesh->getVertices().size();
+      _vboAppend->appendData(mesh->getVertices().data(), mesh->getVertices().size());
+      _iboAppend->appendData(mesh->getIndices().data(), mesh->getIndices().size());
+      _vao = std::make_unique<GLVertexArray>();
+      _vao->bind();
+      _vboAppend->getBuffer()->bind();
+      _iboAppend->getBuffer()->bind();
+      for (unsigned i = 0; i < 5; i++) {
+        GL_CHECK(glEnableVertexAttribArray(i));
+      }
+      GL_CHECK(glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _position))));
+      GL_CHECK(glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _normal))));
+      GL_CHECK(glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _uv))));
+      GL_CHECK(glVertexAttribPointer(3, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _tangent))));
+      GL_CHECK(glVertexAttribPointer(4, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _bitangent))));
+      GL_CHECK(glBindVertexArray(0));
+      return mesh_data;
+    });
   }
   OpenGLAPI::MeshGeometryStorage::~MeshGeometryStorage()
   {
@@ -291,33 +309,7 @@ namespace fly
   }
   OpenGLAPI::MeshGeometryStorage::MeshData OpenGLAPI::MeshGeometryStorage::addMesh(const std::shared_ptr<Mesh>& mesh)
   {
-    auto it = _meshDataCache.find(mesh);
-    if (it != _meshDataCache.end()) { // Mesh is already in the cache
-      return it->second;
-    }
-    MeshData data;
-    data._count = static_cast<GLsizei>(mesh->getIndices().size());
-    data._baseVertex = static_cast<GLint>(_baseVertex);
-    data._indices = reinterpret_cast<GLvoid*>(_indices);
-    _indices += mesh->getIndices().size() * sizeof(mesh->getIndices().front());
-    _baseVertex += mesh->getVertices().size();
-    _vboAppend->appendData(mesh->getVertices().data(), mesh->getVertices().size());
-    _iboAppend->appendData(mesh->getIndices().data(), mesh->getIndices().size());
-    _vao = std::make_unique<GLVertexArray>();
-    _vao->bind();
-    _vboAppend->getBuffer()->bind();
-    _iboAppend->getBuffer()->bind();
-    for (unsigned i = 0; i < 5; i++) {
-      GL_CHECK(glEnableVertexAttribArray(i));
-    }
-    GL_CHECK(glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _position))));
-    GL_CHECK(glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _normal))));
-    GL_CHECK(glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _uv))));
-    GL_CHECK(glVertexAttribPointer(3, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _tangent))));
-    GL_CHECK(glVertexAttribPointer(4, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _bitangent))));
-    GL_CHECK(glBindVertexArray(0));
-    _meshDataCache[mesh] = data;
-    return data;
+    return _meshDataCache->getOrCreate(mesh, mesh);
   }
   OpenGLAPI::MaterialDesc::MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI * api, const Settings& settings) : _material(material)
   {
@@ -372,6 +364,7 @@ namespace fly
         GL_CHECK(glActiveTexture(GL_TEXTURE3));
         _heightMap->bind();
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::heightSampler()), 3);
+        setScalar(_shader->uniformLocation(GLSLShaderGenerator::parallaxHeightScale()), _material->getParallaxHeightScale());
       });
     }
     _shader = api->createShader(vertex_file, api->_shaderGenerator->createMeshFragmentShaderFile(flag, settings));
@@ -395,5 +388,9 @@ namespace fly
   const std::shared_ptr<OpenGLAPI::MaterialDesc::ShaderProgram>& OpenGLAPI::MaterialDesc::getSMShader() const
   {
     return _smShader;
+  }
+  const std::shared_ptr<Material>& OpenGLAPI::MaterialDesc::getMaterial() const
+  {
+    return _material;
   }
 }

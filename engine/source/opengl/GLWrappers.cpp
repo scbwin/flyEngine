@@ -69,23 +69,22 @@ namespace fly
   }
   GLint GLShaderProgram::uniformLocation(const std::string& name)
   {
-    auto it = _uniformLocations.find(name);
-    if (it == _uniformLocations.end()) {
-      auto loc = glGetUniformLocation(_id, name.c_str());
-      if (loc == -1) {
-#if _DEBUG
-        for (const auto& f : _fnames) {
-          std::cout << f << ",";
-        }
-        std::cout << " No valid uniform location for name: " << name << std::endl;
-#endif
+    return _uniformLocations.getOrCreate(name, name);
+  }
+  GLShaderProgram::GLShaderProgram() :
+    _uniformLocations(SoftwareCache<std::string, GLint, const std::string&>([this](const std::string& name) {
+    auto loc = glGetUniformLocation(_id, name.c_str());
+    if (loc == -1) {
+      std::string err;
+      for (const auto& f : _fnames) {
+        err += f + ",";
       }
-      else {
-        _uniformLocations[name] = loc;
-      }
-      return loc;
+      err += " No valid uniform location for name: " + name;
+      throw std::exception(err.c_str());
     }
-    return it->second;
+    return loc;
+  }))
+  {
   }
   GLShaderProgram::~GLShaderProgram()
   {
@@ -169,10 +168,10 @@ namespace fly
   }
   GLBufferOld::~GLBufferOld()
   {
-    
+
     GL_CHECK(glDeleteBuffers(1, &_id));
   }
- 
+
   GLTextureOld::GLTextureOld(GLuint id, GLenum target) : _id(id), _target(target)
   {
   }
@@ -233,7 +232,7 @@ namespace fly
   }
   GLTextureOld::~GLTextureOld()
   {
- //   std::cout << "delete texture" << std::endl;
+    //   std::cout << "delete texture" << std::endl;
     GL_CHECK(glDeleteTextures(1, &_id));
   }
   int GLTextureOld::width()
@@ -325,7 +324,7 @@ namespace fly
   }
   GLFramebufferOld::~GLFramebufferOld()
   {
-  //  std::cout << "delete fb:" << _width << " " << _height << std::endl;
+    //  std::cout << "delete fb:" << _width << " " << _height << std::endl;
     GL_CHECK(glDeleteFramebuffers(1, &_id));
   }
   void GLRenderbuffer::create()
