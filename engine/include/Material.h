@@ -39,6 +39,10 @@ namespace fly
     void setKs(float ks);
     float getParallaxHeightScale() const;
     void setParallaxHeightScale(float height_scale);
+    float getParallaxMinSteps() const;
+    float getParallaxMaxSteps() const;
+    void setParallaxMinSteps(float min_steps);
+    void setParallaxMaxSteps(float max_steps);
 
   private:
     Vec3f _diffuseColor;
@@ -56,7 +60,9 @@ namespace fly
     float _ka = 0.025f;
     float _kd = 1.f;
     float _ks = 1.f;
-    float _parallaxHeightScale = 0.09f;
+    float _parallaxHeightScale = 0.04f;
+    float _parallaxMinSteps = 8.f;
+    float _parallaxMaxSteps = 16.f;
   };
 }
 

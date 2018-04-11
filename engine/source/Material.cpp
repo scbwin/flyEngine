@@ -123,4 +123,21 @@ namespace fly
   {
     _parallaxHeightScale = height_scale;
   }
+  float Material::getParallaxMinSteps() const
+  {
+    return _parallaxMinSteps;
+  }
+  float Material::getParallaxMaxSteps() const
+  {
+    return _parallaxMaxSteps;
+  }
+  void Material::setParallaxMinSteps(float min_steps)
+  {
+    _parallaxMinSteps = std::min(min_steps, _parallaxMaxSteps);
+    _parallaxMinSteps = std::max(_parallaxMinSteps, 1.f);
+  }
+  void Material::setParallaxMaxSteps(float max_steps)
+  {
+    _parallaxMaxSteps = std::max(max_steps, _parallaxMinSteps);
+  }
 }

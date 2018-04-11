@@ -30,7 +30,16 @@ void main()
   vec2 uv = uv_out;
   mat3 world_to_tangent = transpose(mat3(tangent_world, bitangent_world, normal_world));
   vec3 view_dir_ts = world_to_tangent * normalize(cp_ws - pos_world);
-  uv -= view_dir_ts.xy / view_dir_ts.z * (1.f - texture(ts_h, uv).r) * pm_h;
+  float steps = 32.f;
+  vec2 ray = view_dir_ts.xy * pm_h;
+  vec2 delta = ray / steps;
+  float layer_delta = 1.f / steps;
+  float layer_depth = layer_delta;
+  uv -= delta;
+  bool hit = false;
+  for (float i = 0.f; i < steps && !hit; i++, uv -= delta, layer_depth += layer_delta) {
+    hit = (1.f - texture(ts_h, uv).r) > layer_depth;
+  }
   vec3 l = world_to_tangent * normalize(lpos_ws - pos_world);
   vec3 e = world_to_tangent * normalize(cp_ws - pos_world);
   float diffuse = clamp(dot(l, normal_world), 0.f, 1.f);

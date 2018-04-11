@@ -70,8 +70,14 @@ protected:
   static void cbGetNormalMapping(void* value, void* client_data);
   static void cbSetParallaxMapping(const void* value, void* client_data);
   static void cbGetParallaxMapping(void* value, void* client_data);
+  static void cbSetParallaxSteep(const void* value, void* client_data);
+  static void cbGetParallaxSteep(void* value, void* client_data);
   static void cbSetPMHScale(const void* value, void* client_data);
   static void cbGetPMHScale(void* value, void* client_data);
+  static void cbSetPMMinSteps(const void* value, void* client_data);
+  static void cbGetPMMinSteps(void* value, void* client_data);
+  static void cbSetPMMaxSteps(const void* value, void* client_data);
+  static void cbGetPMMaxSteps(void* value, void* client_data);
 private:
   std::unique_ptr<fly::Engine> _engine;
   std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>> _renderer;

@@ -13,6 +13,8 @@ uniform sampler2D ts_n;
 uniform sampler2D ts_h;
 uniform float pm_h;
 uniform float sm_b;
+uniform float p_min;
+uniform float p_max;
 uniform vec3 lpos_ws; // light position world space
 uniform vec3 cp_ws; // camera position world space
 uniform vec3 I_in; // light intensity

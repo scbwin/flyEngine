@@ -13,6 +13,8 @@ uniform sampler2D ts_n;
 uniform sampler2D ts_h;
 uniform float pm_h;
 uniform float sm_b;
+uniform float p_min;
+uniform float p_max;
 uniform vec3 lpos_ws; // light position world space
 uniform vec3 cp_ws; // camera position world space
 uniform vec3 I_in; // light intensity
@@ -30,7 +32,7 @@ void main()
   vec2 uv = uv_out;
   mat3 world_to_tangent = transpose(mat3(tangent_world, bitangent_world, normal_world));
   vec3 view_dir_ts = world_to_tangent * normalize(cp_ws - pos_world);
-  uv -= view_dir_ts.xy / view_dir_ts.z * (1.f - texture(ts_h, uv).r) * pm_h;
+  uv -= view_dir_ts.xy / view_dir_ts.z * (1.f - textureLod(ts_h, uv, 0.f).r) * pm_h; 
   vec3 l = world_to_tangent * normalize(lpos_ws - pos_world);
   vec3 e = world_to_tangent * normalize(cp_ws - pos_world);
   vec3 normal_ts = normalize((texture(ts_n, uv).xyz * 2.f - 1.f));

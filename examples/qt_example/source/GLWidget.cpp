@@ -49,11 +49,14 @@ void GLWidget::initializeGL()
   TwAddVarCB(settings_bar, "Post processing", TwType::TW_TYPE_BOOLCPP, cbSetPostProcessing, cbGetPostProcessing, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Sponza specular", TwType::TW_TYPE_FLOAT, cbSetSpec, cbGetSpec, &_renderer, "step=0.2");
   TwAddVarCB(settings_bar, "Parallax height scale", TwType::TW_TYPE_FLOAT, cbSetPMHScale, cbGetPMHScale, &_renderer, "step=0.001");
+  TwAddVarCB(settings_bar, "Steep parallax min steps", TwType::TW_TYPE_FLOAT, cbSetPMMinSteps, cbGetPMMinSteps, &_renderer, "step=0.1");
+  TwAddVarCB(settings_bar, "Steep parallax max steps", TwType::TW_TYPE_FLOAT, cbSetPMMaxSteps, cbGetPMMaxSteps, &_renderer, "step=0.1");
   TwAddVarCB(settings_bar, "Shadows", TwType::TW_TYPE_BOOLCPP, cbSetShadows, cbGetShadows, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, cbSetPCF, cbGetPCF, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Shadow bias", TwType::TW_TYPE_FLOAT, cbSetSmBias, cbGetSmBias, &_renderer, "step=0.000001f");
   TwAddVarCB(settings_bar, "Normal mapping", TwType::TW_TYPE_BOOLCPP, cbSetNormalMapping, cbGetNormalMapping, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Parallax mapping", TwType::TW_TYPE_BOOLCPP, cbSetParallaxMapping, cbGetParallaxMapping, &_renderer, nullptr);
+  TwAddVarCB(settings_bar, "Steep parallax mapping", TwType::TW_TYPE_BOOLCPP, cbSetParallaxSteep, cbGetParallaxSteep, &_renderer, nullptr);
 
   TwSetTopBar(_bar);
 }
@@ -259,6 +262,16 @@ void GLWidget::cbGetParallaxMapping(void * value, void * client_data)
 {
   *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._parallaxMapping;
 }
+void GLWidget::cbSetParallaxSteep(const void * value, void * client_data)
+{
+  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings();
+  settings._steepParallax = *reinterpret_cast<const bool*>(value);
+  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->setSettings(settings);
+}
+void GLWidget::cbGetParallaxSteep(void * value, void * client_data)
+{
+  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._steepParallax;
+}
 void GLWidget::cbSetPMHScale(const void * value, void * client_data)
 {
   for (const auto& m : (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getAllMaterials()) {
@@ -268,6 +281,26 @@ void GLWidget::cbSetPMHScale(const void * value, void * client_data)
 void GLWidget::cbGetPMHScale(void * value, void * client_data)
 {
   *reinterpret_cast<float*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getAllMaterials().front()->getParallaxHeightScale();
+}
+void GLWidget::cbSetPMMinSteps(const void * value, void * client_data)
+{
+  for (const auto& m : (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getAllMaterials()) {
+    m->setParallaxMinSteps(*reinterpret_cast<const float*>(value));
+  }
+}
+void GLWidget::cbGetPMMinSteps(void * value, void * client_data)
+{
+  *reinterpret_cast<float*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getAllMaterials().front()->getParallaxMinSteps();
+}
+void GLWidget::cbSetPMMaxSteps(const void * value, void * client_data)
+{
+  for (const auto& m : (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getAllMaterials()) {
+    m->setParallaxMaxSteps(*reinterpret_cast<const float*>(value));
+  }
+}
+void GLWidget::cbGetPMMaxSteps(void * value, void * client_data)
+{
+  *reinterpret_cast<float*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getAllMaterials().front()->getParallaxMaxSteps();
 }
 void GLWidget::cbSetSortModeShaderMaterial(const void * value, void * clientData)
 {

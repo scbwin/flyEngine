@@ -53,6 +53,8 @@ uniform sampler2D " + std::string(normalSampler()) + ";\n\
 uniform sampler2D " + std::string(heightSampler()) + ";\n\
 uniform float " + std::string(parallaxHeightScale()) + ";\n\
 uniform float " + std::string(shadowMapBias()) + ";\n\
+uniform float " + std::string(parallaxMinSteps()) + ";\n\
+uniform float " + std::string(parallaxMaxSteps()) + ";\n\
 uniform vec3 lpos_ws; // light position world space\n\
 uniform vec3 cp_ws; // camera position world space\n\
 uniform vec3 I_in; // light intensity\n\
@@ -71,8 +73,23 @@ void main()\n\
       shader_src += "  mat3 world_to_tangent = transpose(mat3(tangent_world, bitangent_world, normal_world));\n";
     }
     if (flags & PARALLAX_MAP) {
-      shader_src += "  vec3 view_dir_ts = world_to_tangent * normalize(cp_ws - pos_world);\n\
-  uv -= view_dir_ts.xy / view_dir_ts.z * (1.f - texture(" + std::string(heightSampler()) + ", uv).r) * " + std::string(parallaxHeightScale()) + ";\n";
+      shader_src += "  vec3 view_dir_ts = world_to_tangent * normalize(cp_ws - pos_world);\n";
+      if (!settings._steepParallax) {
+       shader_src += "  uv -= view_dir_ts.xy / view_dir_ts.z * (1.f - textureLod(" + std::string(heightSampler()) + ", uv, 0.f).r) * " + std::string(parallaxHeightScale()) + "; \n";
+      }
+      else {
+        //shader_src += "float steps = 32.f;\n
+        shader_src += "  float steps = mix(" + std::string(parallaxMaxSteps()) + ", " + std::string(parallaxMinSteps()) + ", clamp(dot(vec3(0.f, 0.f, 1.f), view_dir_ts), 0.f, 1.f));\n\
+  vec2 ray = view_dir_ts.xy * " + std::string(parallaxHeightScale()) + ";\n\
+  vec2 delta = ray / steps;\n\
+  float layer_delta = 1.f / steps;\n\
+  float layer_depth = layer_delta;\n\
+  uv -= delta;\n\
+  bool hit = false;\n\
+  for (float i = 0.f; i < steps && !hit; i++, uv -= delta, layer_depth += layer_delta) {\n\
+    hit = (1.f - textureLod(" + std::string(heightSampler()) + ", uv, 0.f).r) < layer_depth;\n\
+  }\n";
+      }
     }
     if (flags & MeshRenderFlag::ALPHA_MAP) {
       shader_src += "  	if (texture(" + std::string(alphaSampler()) + ", uv).r < 0.5) {\n\

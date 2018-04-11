@@ -302,7 +302,7 @@ namespace fly
   }
   void OpenGLAPI::MaterialDesc::create(const std::shared_ptr<Material>& material, OpenGLAPI* api, const Settings& settings)
   {
-    _shaderSetupFuncs.clear();
+    _materialSetupFuncs.clear();
     _diffuseMap = api->createTexture(material->getDiffusePath());
     _normalMap = api->createTexture(material->getNormalPath());
     _alphaMap = api->createTexture(material->getOpacityPath());
@@ -312,20 +312,20 @@ namespace fly
     std::string vertex_file = "assets/opengl/vs_simple.glsl";
     if (_diffuseMap) {
       flag |= FLAG::DIFFUSE_MAP;
-      _shaderSetupFuncs.push_back([this]() {
+      _materialSetupFuncs.push_back([this]() {
         GL_CHECK(glActiveTexture(GL_TEXTURE0));
         _diffuseMap->bind();
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::diffuseSampler()), 0);
       });
     }
     else {
-      _shaderSetupFuncs.push_back([this]() {
+      _materialSetupFuncs.push_back([this]() {
         setVector(_shader->uniformLocation("d_col"), _material->getDiffuseColor());
       });
     }
     if (_alphaMap) {
       flag |= FLAG::ALPHA_MAP;
-      _shaderSetupFuncs.push_back([this]() {
+      _materialSetupFuncs.push_back([this]() {
         GL_CHECK(glActiveTexture(GL_TEXTURE1));
         _alphaMap->bind();
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::alphaSampler()), 1);
@@ -333,28 +333,34 @@ namespace fly
     }
     if (_normalMap && settings._normalMapping) {
       flag |= FLAG::NORMAL_MAP;
-      _shaderSetupFuncs.push_back([this]() {
+      _materialSetupFuncs.push_back([this]() {
         GL_CHECK(glActiveTexture(GL_TEXTURE2));
         _normalMap->bind();
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::normalSampler()), 2);
       });
     }
-    if (_heightMap && settings._parallaxMapping) {
+    if (_heightMap && (settings._parallaxMapping || settings._steepParallax)) {
       flag |= FLAG::PARALLAX_MAP;
-      _shaderSetupFuncs.push_back([this]() {
+      _materialSetupFuncs.push_back([this]() {
         GL_CHECK(glActiveTexture(GL_TEXTURE3));
         _heightMap->bind();
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::heightSampler()), 3);
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::parallaxHeightScale()), _material->getParallaxHeightScale());
       });
+      if (settings._steepParallax) {
+        _materialSetupFuncs.push_back([this]() {
+          setScalar(_shader->uniformLocation(GLSLShaderGenerator::parallaxMinSteps()), _material->getParallaxMinSteps());
+          setScalar(_shader->uniformLocation(GLSLShaderGenerator::parallaxMaxSteps()), _material->getParallaxMaxSteps());
+        });
+      }
     }
     _shader = api->createShader(vertex_file, api->_shaderGenerator->createMeshFragmentShaderFile(flag, settings));
     _smShader = api->createShader("assets/opengl/vs_shadow.glsl", "assets/opengl/fs_shadow.glsl");
-    assert(_shaderSetupFuncs.size() <= 3);
+  //  assert(_materialSetupFuncs.size() <= 3);
   }
   void OpenGLAPI::MaterialDesc::setup() const
   {
-    for (const auto& f : _shaderSetupFuncs) {
+    for (const auto& f : _materialSetupFuncs) {
       f();
     }
     setScalar(_shader->uniformLocation("ka"), _material->getKa());

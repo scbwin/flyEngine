@@ -95,7 +95,7 @@ namespace fly
       const std::shared_ptr<Material>& getMaterial() const;
     private:
       std::shared_ptr<Material> _material;
-      std::vector<std::function<void()>> _shaderSetupFuncs;
+      std::vector<std::function<void()>> _materialSetupFuncs;
       std::shared_ptr<ShaderProgram> _shader;
       std::shared_ptr<ShaderProgram> _smShader;
       std::shared_ptr<GLTexture> _diffuseMap;

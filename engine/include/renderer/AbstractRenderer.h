@@ -38,7 +38,8 @@ namespace fly
       if (_settings._shadows != settings._shadows ||
         _settings._shadowPercentageCloserFiltering != settings._shadowPercentageCloserFiltering ||
         _settings._normalMapping != settings._normalMapping ||
-        _settings._parallaxMapping != settings._parallaxMapping) {
+        _settings._parallaxMapping != settings._parallaxMapping ||
+        _settings._steepParallax != settings._steepParallax) {
         _api.recreateShadersAndMaterials(settings);
       }
       _settings = settings;
