@@ -16,6 +16,7 @@
 #include <opengl/GLSLShaderGenerator.h>
 #include <Settings.h>
 #include <renderer/RenderParams.h>
+#include <opengl/GLSampler.h>
 
 namespace fly
 {
@@ -43,10 +44,9 @@ namespace fly
     glewExperimental = true;
     auto result = glewInit();
     if (result == GLEW_OK) {
-      GLint major_version, minor_version;
-      GL_CHECK(glGetIntegerv(GL_MAJOR_VERSION, &major_version));
-      GL_CHECK(glGetIntegerv(GL_MINOR_VERSION, &minor_version));
-      std::cout << "OpenGLAPI::OpenGLAPI(): Initialized GLEW, GL Version: " << major_version << "." << minor_version << std::endl;
+      GL_CHECK(glGetIntegerv(GL_MAJOR_VERSION, &_glVersionMajor));
+      GL_CHECK(glGetIntegerv(GL_MINOR_VERSION, &_glVersionMinor));
+      std::cout << "OpenGLAPI::OpenGLAPI(): Initialized GLEW, GL Version: " << _glVersionMajor << "." << _glVersionMinor << std::endl;
     }
     else {
       std::cout << "OpenGLAPI::OpenGLAPI() Failed to initialized GLEW: " << glewGetErrorString(result) << std::endl;
@@ -65,6 +65,7 @@ namespace fly
     _offScreenFramebuffer = std::make_unique<GLFramebuffer>();
     _aabbShader = createShader("assets/opengl/vs_aabb.glsl", "assets/opengl/fs_aabb.glsl", "assets/opengl/gs_aabb.glsl");
     _compositeShader = createShader("assets/opengl/vs_screen.glsl", "assets/opengl/fs_composite.glsl");
+    _samplerAnisotropic = std::make_unique<GLSampler>();
   }
   OpenGLAPI::~OpenGLAPI()
   {
@@ -83,24 +84,32 @@ namespace fly
       e->reload();
     }
   }
+  void OpenGLAPI::beginFrame() const
+  {
+    if (_anisotropy > 1) {
+      for (unsigned i = 0; i <= 3; i++) {
+        _samplerAnisotropic->bind(i);
+      }
+    }
+  }
   void OpenGLAPI::bindShader(GLShaderProgram * shader)
   {
     _activeShader = shader;
     _activeShader->bind();
   }
-  void OpenGLAPI::bindShadowmap(const Shadowmap & shadowmap)
+  void OpenGLAPI::bindShadowmap(const Shadowmap & shadowmap) const
   {
     GL_CHECK(glActiveTexture(GL_TEXTURE4));
     shadowmap.bind();
   }
-  void OpenGLAPI::setupShaderConstants(const GlobalShaderParams& param)
+  void OpenGLAPI::setupShaderConstants(const GlobalShaderParams& param) const
   {
     setMatrix(_activeShader->uniformLocation("VP"), param._VP);
     setVector(_activeShader->uniformLocation("lpos_ws"), param._lightPosWorld);
     setVector(_activeShader->uniformLocation("I_in"), param._lightIntensity);
     setVector(_activeShader->uniformLocation("cp_ws"), param._camPosworld);
   }
-  void OpenGLAPI::setupShaderConstantsShadowmap(const GlobalShaderParams& param)
+  void OpenGLAPI::setupShaderConstantsShadowmap(const GlobalShaderParams& param) const
   {
     setScalar(_activeShader->uniformLocation("ts_sm"), 4);
     setMatrixArray(_activeShader->uniformLocation("w_to_l"), param._worldToLight.front(), static_cast<unsigned>(param._worldToLight.size()));
@@ -108,13 +117,13 @@ namespace fly
     setScalarArray(_activeShader->uniformLocation("fs"), param._smFrustumSplits.front(), static_cast<unsigned>(param._smFrustumSplits.size()));
     setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::shadowMapBias()), param._smBias);
   }
-  void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse)
+  void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse) const
   {
     setMatrix(_activeShader->uniformLocation("M"), model_matrix);
     setMatrixTranspose(_activeShader->uniformLocation("M_i"), model_matrix_inverse);
     GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, GL_UNSIGNED_INT, mesh_data._indices, mesh_data._baseVertex));
   }
-  void OpenGLAPI::renderMeshMVP(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & mvp)
+  void OpenGLAPI::renderMeshMVP(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & mvp) const
   {
     setMatrix(_activeShader->uniformLocation("MVP"), mvp);
     GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, GL_UNSIGNED_INT, mesh_data._indices, mesh_data._baseVertex));
@@ -152,10 +161,25 @@ namespace fly
   void OpenGLAPI::composite(const RTT* lighting_buffer)
   {
     _compositeShader->bind();
-    GL_CHECK(glActiveTexture(GL_TEXTURE0));
+    GL_CHECK(glActiveTexture(GL_TEXTURE5));
     lighting_buffer->bind();
-    setScalar(_compositeShader->uniformLocation("ts_l"), 0);
+    setScalar(_compositeShader->uniformLocation("ts_l"), 5);
     GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
+  }
+  void OpenGLAPI::endFrame() const
+  {
+    for (unsigned i = 0; i <= 3; i++) {
+      _samplerAnisotropic->unbind(i);
+    }
+  }
+  void OpenGLAPI::setAnisotropy(unsigned anisotropy)
+  {
+    if (_glVersionMajor >= 4 && _glVersionMinor >= 6) {
+      float max_ani;
+      GL_CHECK(glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &max_ani));
+      _anisotropy = glm::clamp(anisotropy, 1u, static_cast<unsigned>(max_ani));
+      _samplerAnisotropic->param(GL_TEXTURE_MAX_ANISOTROPY, _anisotropy);
+    }
   }
   std::shared_ptr<GLTexture> OpenGLAPI::createTexture(const std::string & path)
   {

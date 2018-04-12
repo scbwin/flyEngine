@@ -16,7 +16,7 @@ set (HEADER_FILES
 	${IDIR}/opengl/GLWrappers.h ${IDIR}/opengl/OpenGLUtils.h ${IDIR}/opengl/RenderingSystemOpenGL.h ${IDIR}/opengl/OpenGLAPI.h ${IDIR}/renderer/ProjectionParams.h ${IDIR}/renderer/RenderParams.h
 	${IDIR}/physics/ParticleSystem.h ${IDIR}/physics/PhysicsSystem.h ${IDIR}/Quadtree.h ${IDIR}/Settings.h ${IDIR}/LevelOfDetail.h ${IDIR}/Timing.h ${IDIR}/renderer/AbstractRenderer.h
 	${IDIR}/StaticModelRenderable.h ${IDIR}/CameraController.h ${IDIR}/StaticMeshRenderable.h ${IDIR}/opengl/GLShaderInterface.h ${IDIR}/opengl/GLFramebuffer.h
-	${IDIR}/opengl/GLSLShaderGenerator.h ${IDIR}/SoftwareCache.h
+	${IDIR}/opengl/GLSLShaderGenerator.h ${IDIR}/SoftwareCache.h ${IDIR}/opengl/GLSampler.h
 )
 
 if(${BUILD_DX11})
@@ -31,7 +31,7 @@ set (SOURCE_FILES
 	${SDIR}/physics/ParticleSystem.cpp ${SDIR}/physics/PhysicsSystem.cpp ${SDIR}/LevelOfDetail.cpp ${SDIR}/Timing.cpp ${SDIR}/opengl/OpenGLAPI.cpp
 	${SDIR}/opengl/GLVertexArray.cpp ${SDIR}/opengl/GLBuffer.cpp ${SDIR}/opengl/GLAppendBuffer.cpp
 	${SDIR}/StaticModelRenderable.cpp ${SDIR}/CameraController.cpp ${SDIR}/StaticMeshRenderable.cpp ${SDIR}/opengl/GLFramebuffer.cpp
-	${SDIR}/opengl/GLSLShaderGenerator.cpp
+	${SDIR}/opengl/GLSLShaderGenerator.cpp ${SDIR}/opengl/GLSampler.cpp
 )
 
 if(${BUILD_DX11})

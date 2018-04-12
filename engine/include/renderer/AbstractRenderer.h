@@ -43,6 +43,7 @@ namespace fly
         _api.recreateShadersAndMaterials(settings);
       }
       _settings = settings;
+      _api.setAnisotropy(settings._anisotropy);
       if (settings._postProcessing) {
         _lightingBuffer = _api.createRenderToTexture(_viewPortSize);
         _depthBuffer = _api.createDepthbuffer(_viewPortSize);
@@ -161,6 +162,7 @@ namespace fly
         buildQuadtree();
       }
       if (_camera && _directionalLight) {
+        _api.beginFrame();
         _rp._viewMatrix = _camera->getViewMatrix(_camera->_pos, _camera->_eulerAngles);
         _rp._VP = _rp._projectionMatrix * _rp._viewMatrix;
         if (_settings._shadows) {
@@ -192,6 +194,7 @@ namespace fly
           _api.bindBackbuffer(_defaultRenderTarget);
           _api.composite(_lightingBuffer.get());
         }
+        _api.endFrame();
       }
     }
     void onResize(const Vec2u& window_size)

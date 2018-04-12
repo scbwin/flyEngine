@@ -33,7 +33,26 @@ void main()
   vec2 uv = uv_out;
   mat3 world_to_tangent = transpose(mat3(tangent_world, bitangent_world, normal_world));
   vec3 view_dir_ts = world_to_tangent * normalize(cp_ws - pos_world);
-  uv -= view_dir_ts.xy / view_dir_ts.z * (1.f - textureLod(ts_h, uv, 0.f).r) * pm_h; 
+  float steps = mix(p_max, p_min, clamp(dot(vec3(0.f, 0.f, 1.f), view_dir_ts), 0.f, 1.f));
+  vec2 ray = view_dir_ts.xy * pm_h;
+  vec2 delta = ray / steps;
+  float layer_delta = 1.f / steps;
+  float layer_depth = 1.f - layer_delta;
+  uv -= delta;
+  for (float i = 0.f; i < steps; i++, uv -= delta, layer_depth -= layer_delta) {
+    if(textureLod(ts_h, uv, 0.f).r > layer_depth){
+      delta *= 0.5f;
+      layer_delta *= 0.5f;
+      uv += delta;
+      layer_depth += layer_delta;
+      for (float i = 0.f, sign; i < pbss; i++, uv += delta * sign, layer_depth += layer_delta * sign){
+        sign = (textureLod(ts_h, uv, 0.f).r > layer_depth) ? 1.f : -1.f;
+        delta *= 0.5f;
+        layer_delta *= 0.5f;
+      }
+      break;
+    }
+  }
   vec3 l = world_to_tangent * normalize(lpos_ws - pos_world);
   vec3 e = world_to_tangent * normalize(cp_ws - pos_world);
   vec3 normal_ts = normalize((texture(ts_n, uv).xyz * 2.f - 1.f));

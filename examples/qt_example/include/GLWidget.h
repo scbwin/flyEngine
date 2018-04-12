@@ -80,6 +80,8 @@ protected:
   static void cbGetPMMaxSteps(void* value, void* client_data);
   static void cbSetPMBinarySearchSteps(const void* value, void* client_data);
   static void cbGetPMBinarySearchSteps(void* value, void* client_data);
+  static void cbSetAnisotropy(const void* value, void* client_data);
+  static void cbGetAnisotropy(void* value, void* client_data);
 private:
   std::unique_ptr<fly::Engine> _engine;
   std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>> _renderer;

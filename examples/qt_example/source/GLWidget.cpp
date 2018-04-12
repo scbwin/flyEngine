@@ -58,6 +58,7 @@ void GLWidget::initializeGL()
   TwAddVarCB(settings_bar, "Normal mapping", TwType::TW_TYPE_BOOLCPP, cbSetNormalMapping, cbGetNormalMapping, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Parallax mapping", TwType::TW_TYPE_BOOLCPP, cbSetParallaxMapping, cbGetParallaxMapping, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Steep parallax mapping", TwType::TW_TYPE_BOOLCPP, cbSetParallaxSteep, cbGetParallaxSteep, &_renderer, nullptr);
+  TwAddVarCB(settings_bar, "Anisotropy", TwType::TW_TYPE_UINT32, cbSetAnisotropy, cbGetAnisotropy, &_renderer, "step=1");
 
   TwSetTopBar(_bar);
 }
@@ -312,6 +313,16 @@ void GLWidget::cbSetPMBinarySearchSteps(const void * value, void * client_data)
 void GLWidget::cbGetPMBinarySearchSteps(void * value, void * client_data)
 {
   *reinterpret_cast<float*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getAllMaterials().front()->getParallaxBinarySearchSteps();
+}
+void GLWidget::cbSetAnisotropy(const void * value, void * client_data)
+{
+  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings();
+  settings._anisotropy = *reinterpret_cast<const unsigned*>(value);
+  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->setSettings(settings);
+}
+void GLWidget::cbGetAnisotropy(void * value, void * client_data)
+{
+  *reinterpret_cast<unsigned*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._anisotropy;
 }
 void GLWidget::cbSetSortModeShaderMaterial(const void * value, void * clientData)
 {

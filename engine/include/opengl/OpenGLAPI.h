@@ -26,6 +26,7 @@ namespace fly
   class GLSLShaderGenerator;
   struct Settings;
   struct GlobalShaderParams;
+  class GLSampler;
 
   class OpenGLAPI
   {
@@ -103,17 +104,20 @@ namespace fly
       std::shared_ptr<GLTexture> _alphaMap;
       std::shared_ptr<GLTexture> _heightMap;
     };
+    void beginFrame() const;
     void bindShader(GLShaderProgram* shader);
-    void bindShadowmap(const Shadowmap& shadowmap);
-    void setupShaderConstants(const GlobalShaderParams& param);
-    void setupShaderConstantsShadowmap(const GlobalShaderParams& param);
-    void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse);
-    void renderMeshMVP(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mvp);
+    void bindShadowmap(const Shadowmap& shadowmap) const;
+    void setupShaderConstants(const GlobalShaderParams& param) const;
+    void setupShaderConstantsShadowmap(const GlobalShaderParams& param) const;
+    void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse) const;
+    void renderMeshMVP(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mvp) const;
     void renderAABBs(const std::vector<AABB*>& aabbs, const Mat4f& transform, const Vec3f& col);
     void setRendertargets(const std::vector<RTT*>& rtts, const Depthbuffer* depth_buffer);
     void setRendertargets(const std::vector<RTT*>& rtts, const Depthbuffer* depth_buffer, unsigned depth_buffer_layer);
     void bindBackbuffer(unsigned id) const;
     void composite(const RTT* lighting_buffer);
+    void endFrame() const;
+    void setAnisotropy(unsigned anisotropy);
     std::shared_ptr<GLTexture> createTexture(const std::string& path);
     std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material, const Settings& settings);
     std::shared_ptr<GLShaderProgram> createShader(const std::string& vertex_file, const std::string& fragment_file, const std::string& geometry_file = "");
@@ -133,6 +137,9 @@ namespace fly
     std::shared_ptr<GLBuffer> _vboAABB;
     std::unique_ptr<GLFramebuffer> _offScreenFramebuffer;
     std::unique_ptr<GLSLShaderGenerator> _shaderGenerator;
+    std::unique_ptr<GLSampler> _samplerAnisotropic;
+    GLint _glVersionMajor, _glVersionMinor;
+    unsigned _anisotropy = 1u;
 
     void checkFramebufferStatus();
     void setColorBuffers(const std::vector<RTT*>& rtts);

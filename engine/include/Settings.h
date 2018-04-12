@@ -52,6 +52,7 @@ namespace fly
     bool _normalMapping = true;
     bool _parallaxMapping = true;
     bool _steepParallax = true;
+    unsigned _anisotropy = 4u;
   };
 }
 
