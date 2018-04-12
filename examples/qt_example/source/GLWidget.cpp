@@ -51,6 +51,7 @@ void GLWidget::initializeGL()
   TwAddVarCB(settings_bar, "Parallax height scale", TwType::TW_TYPE_FLOAT, cbSetPMHScale, cbGetPMHScale, &_renderer, "step=0.001");
   TwAddVarCB(settings_bar, "Steep parallax min steps", TwType::TW_TYPE_FLOAT, cbSetPMMinSteps, cbGetPMMinSteps, &_renderer, "step=0.1");
   TwAddVarCB(settings_bar, "Steep parallax max steps", TwType::TW_TYPE_FLOAT, cbSetPMMaxSteps, cbGetPMMaxSteps, &_renderer, "step=0.1");
+  TwAddVarCB(settings_bar, "Steep parallax binary search steps", TwType::TW_TYPE_FLOAT, cbSetPMBinarySearchSteps, cbGetPMBinarySearchSteps, &_renderer, "step=1");
   TwAddVarCB(settings_bar, "Shadows", TwType::TW_TYPE_BOOLCPP, cbSetShadows, cbGetShadows, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, cbSetPCF, cbGetPCF, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Shadow bias", TwType::TW_TYPE_FLOAT, cbSetSmBias, cbGetSmBias, &_renderer, "step=0.000001f");
@@ -301,6 +302,16 @@ void GLWidget::cbSetPMMaxSteps(const void * value, void * client_data)
 void GLWidget::cbGetPMMaxSteps(void * value, void * client_data)
 {
   *reinterpret_cast<float*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getAllMaterials().front()->getParallaxMaxSteps();
+}
+void GLWidget::cbSetPMBinarySearchSteps(const void * value, void * client_data)
+{
+  for (const auto& m : (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getAllMaterials()) {
+    m->setParallaxBinarySearchSteps(*reinterpret_cast<const float*>(value));
+  }
+}
+void GLWidget::cbGetPMBinarySearchSteps(void * value, void * client_data)
+{
+  *reinterpret_cast<float*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getAllMaterials().front()->getParallaxBinarySearchSteps();
 }
 void GLWidget::cbSetSortModeShaderMaterial(const void * value, void * clientData)
 {

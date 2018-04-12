@@ -43,6 +43,8 @@ namespace fly
     float getParallaxMaxSteps() const;
     void setParallaxMinSteps(float min_steps);
     void setParallaxMaxSteps(float max_steps);
+    float getParallaxBinarySearchSteps() const;
+    void setParallaxBinarySearchSteps(float steps);
 
   private:
     Vec3f _diffuseColor;
@@ -61,8 +63,9 @@ namespace fly
     float _kd = 1.f;
     float _ks = 1.f;
     float _parallaxHeightScale = 0.04f;
-    float _parallaxMinSteps = 8.f;
-    float _parallaxMaxSteps = 16.f;
+    float _parallaxMinSteps = 1.f;
+    float _parallaxMaxSteps = 2.f;
+    float _parallaxBinarySearchSteps = 6.f;
   };
 }
 

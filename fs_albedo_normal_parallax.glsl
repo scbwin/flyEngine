@@ -11,10 +11,11 @@ uniform sampler2D ts_d;
 uniform sampler2D ts_a;
 uniform sampler2D ts_n;
 uniform sampler2D ts_h;
-uniform float pm_h;
-uniform float sm_b;
-uniform float p_min;
-uniform float p_max;
+uniform float pm_h; // Parallax ray scale
+uniform float sm_b; // Shadow map bias
+uniform float p_min; // Parallax min steps
+uniform float p_max; // Parallax max steps
+uniform float pbss; // Parallax binary search steps
 uniform vec3 lpos_ws; // light position world space
 uniform vec3 cp_ws; // camera position world space
 uniform vec3 I_in; // light intensity

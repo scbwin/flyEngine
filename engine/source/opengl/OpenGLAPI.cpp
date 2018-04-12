@@ -351,6 +351,7 @@ namespace fly
         _materialSetupFuncs.push_back([this]() {
           setScalar(_shader->uniformLocation(GLSLShaderGenerator::parallaxMinSteps()), _material->getParallaxMinSteps());
           setScalar(_shader->uniformLocation(GLSLShaderGenerator::parallaxMaxSteps()), _material->getParallaxMaxSteps());
+          setScalar(_shader->uniformLocation(GLSLShaderGenerator::parallaxBinarySearchSteps()), _material->getParallaxBinarySearchSteps());
         });
       }
     }

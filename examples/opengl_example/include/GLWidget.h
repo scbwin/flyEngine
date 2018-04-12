@@ -1,6 +1,7 @@
 #ifndef GLWIDGET_H
 #define GLWIDGET_H
 
+#include <AssimpImporter.h>
 #include <opencv2/opencv.hpp>
 #include "opengl/RenderingSystemOpenGL.h"
 #include <qopenglwidget.h>
@@ -16,7 +17,7 @@
 #include <Model.h>
 #include <random>
 #include <GameTimer.h>
-#include <AssimpImporter.h>
+
 
 #define SPONZA 0
 

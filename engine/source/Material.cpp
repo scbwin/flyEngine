@@ -140,4 +140,12 @@ namespace fly
   {
     _parallaxMaxSteps = std::max(max_steps, _parallaxMinSteps);
   }
+  float Material::getParallaxBinarySearchSteps() const
+  {
+    return _parallaxBinarySearchSteps;
+  }
+  void Material::setParallaxBinarySearchSteps(float steps)
+  {
+    _parallaxBinarySearchSteps = std::max(steps, 0.f);
+  }
 }

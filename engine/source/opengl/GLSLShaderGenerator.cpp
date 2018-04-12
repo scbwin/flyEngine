@@ -51,10 +51,11 @@ uniform sampler2D " + std::string(diffuseSampler()) + ";\n\
 uniform sampler2D " + std::string(alphaSampler()) + ";\n\
 uniform sampler2D " + std::string(normalSampler()) + ";\n\
 uniform sampler2D " + std::string(heightSampler()) + ";\n\
-uniform float " + std::string(parallaxHeightScale()) + ";\n\
-uniform float " + std::string(shadowMapBias()) + ";\n\
-uniform float " + std::string(parallaxMinSteps()) + ";\n\
-uniform float " + std::string(parallaxMaxSteps()) + ";\n\
+uniform float " + std::string(parallaxHeightScale()) + "; // Parallax ray scale\n\
+uniform float " + std::string(shadowMapBias()) + "; // Shadow map bias\n\
+uniform float " + std::string(parallaxMinSteps()) + "; // Parallax min steps\n\
+uniform float " + std::string(parallaxMaxSteps()) + "; // Parallax max steps\n\
+uniform float " + std::string(parallaxBinarySearchSteps()) + "; // Parallax binary search steps\n\
 uniform vec3 lpos_ws; // light position world space\n\
 uniform vec3 cp_ws; // camera position world space\n\
 uniform vec3 I_in; // light intensity\n\
@@ -83,11 +84,21 @@ void main()\n\
   vec2 ray = view_dir_ts.xy * " + std::string(parallaxHeightScale()) + ";\n\
   vec2 delta = ray / steps;\n\
   float layer_delta = 1.f / steps;\n\
-  float layer_depth = layer_delta;\n\
+  float layer_depth = 1.f - layer_delta;\n\
   uv -= delta;\n\
-  bool hit = false;\n\
-  for (float i = 0.f; i < steps && !hit; i++, uv -= delta, layer_depth += layer_delta) {\n\
-    hit = (1.f - textureLod(" + std::string(heightSampler()) + ", uv, 0.f).r) < layer_depth;\n\
+  for (float i = 0.f; i < steps; i++, uv -= delta, layer_depth -= layer_delta) {\n\
+    if(textureLod(" + std::string(heightSampler()) + ", uv, 0.f).r > layer_depth){\n\
+      delta *= 0.5f;\n\
+      layer_delta *= 0.5f;\n\
+      uv += delta;\n\
+      layer_depth += layer_delta;\n\
+      for (float i = 0.f, sign; i < " + std::string(parallaxBinarySearchSteps()) + "; i++, uv += delta * sign, layer_depth += layer_delta * sign){\n\
+        sign = (textureLod(" + std::string(heightSampler()) + ", uv, 0.f).r > layer_depth) ? 1.f : -1.f;\n\
+        delta *= 0.5f;\n\
+        layer_delta *= 0.5f;\n\
+      }\n\
+      break;\n\
+    }\n\
   }\n";
       }
     }

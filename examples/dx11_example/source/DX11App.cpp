@@ -1,6 +1,6 @@
+#include <AssimpImporter.h>
 #include <StaticModelRenderable.h>
 #include <Renderables.h>
-#include <AssimpImporter.h>
 #include <DX11App.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
@@ -18,6 +18,7 @@
 #include <Billboard.h>
 #include <random>
 #include <LevelOfDetail.h>
+#include <Engine.h>
 
 DX11App::DX11App()
 {
@@ -387,9 +388,8 @@ void DX11App::initGame()
   cam_entity->addComponent(_camera);
 
   auto dl_entity = _engine->getEntityManager()->createEntity();
-  std::vector<float> csm_distances = { 10.f, 100.f };
 #if SPONZA
-  _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(30.f, 1024.f, 0.f), glm::vec3(512.f * 5.f, 0.f, 512.f * 5.f), csm_distances);
+  _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(30.f, 1024.f, 0.f), glm::vec3(512.f * 5.f, 0.f, 512.f * 5.f));
 #else 
   _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(8192.f, 1000.f, 8192.f), glm::vec3(0.f, 0.f, 2.f), csm_distances);
 #endif

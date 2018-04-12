@@ -8,7 +8,6 @@
 #endif
 
 #include <windows.h>
-#include <Engine.h>
 #include <EntityManager.h>
 #include <dx11/RenderingSystemDX11.h>
 #include <memory>
@@ -22,6 +21,11 @@
 
 #define SPONZA 1
 #define SPONZA_LARGE 1
+
+namespace fly
+{
+  class Engine;
+}
 
 class DX11App
 {
