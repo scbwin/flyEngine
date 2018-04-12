@@ -17,7 +17,6 @@ namespace fly
     Mat4f _projectionMatrix;
     Mat4f _viewMatrix;
     Mat4f _VP;
-    Mat4f _Vinverse;
     std::vector<Mat4f> _worldToLight;
     std::vector<float> _smFrustumSplits;
     float _smBias;

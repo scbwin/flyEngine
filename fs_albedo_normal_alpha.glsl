@@ -45,7 +45,7 @@ void main()
   fragmentColor = I_in * albedo * (ka + kd * diffuse + ks * specular);
   int index = nfs-1;
   for (int i = nfs-2; i >= 0; i--) {
-    index -= int(length(e) < fs[i]);
+    index -= int(distance(cp_ws, pos_world) < fs[i]);
   }
   vec4 shadow_coord = w_to_l[index] * vec4(pos_world, 1.f);
   shadow_coord.xyz /= shadow_coord.w;

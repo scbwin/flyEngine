@@ -48,6 +48,7 @@ namespace fly
     bool _shadowPercentageCloserFiltering = true;
     float _smBias = 0.0035f;
     std::vector<float> _smFrustumSplits = { 30.f };
+  //  std::vector<float> _smFrustumSplits = { 7.5f, 50.f, 300.f };
  //   std::vector<float> _smFrustumSplits = { 30.f, 50.f, 200.f };
     bool _normalMapping = true;
     bool _parallaxMapping = true;

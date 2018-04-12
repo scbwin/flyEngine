@@ -130,7 +130,7 @@ void main()\n\
     if (settings._shadows) {
       shader_src += "  int index = nfs-1;\n\
   for (int i = nfs-2; i >= 0; i--) {\n\
-    index -= int(length(e) < fs[i]);\n\
+    index -= int(distance(cp_ws, pos_world) < fs[i]);\n\
   }\n";
       shader_src += "  vec4 shadow_coord = w_to_l[index] * vec4(pos_world, 1.f);\n\
   shadow_coord.xyz /= shadow_coord.w;\n\

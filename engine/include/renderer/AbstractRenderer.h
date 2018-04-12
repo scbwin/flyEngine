@@ -57,7 +57,7 @@ namespace fly
         _staticMeshRenderFuncSM = [this]() {
           std::vector<Mat4f> light_vps;
           auto vp_shadow_volume = _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
-            _rp._Vinverse, _directionalLight->getViewMatrix(), static_cast<float>(_settings._shadowMapSize), _settings._smFrustumSplits, light_vps, _api.isDirectX());
+            inverse(_rp._viewMatrix), _directionalLight->getViewMatrix(), static_cast<float>(_settings._shadowMapSize), _settings._smFrustumSplits, light_vps, _api.isDirectX());
           std::vector<StaticMeshRenderable*> sm_visible_elements = _quadtree->getVisibleElements<API::isDirectX()>(vp_shadow_volume);
           std::map<typename API::MaterialDesc::ShaderProgram*, std::vector<StaticMeshRenderable*>> sm_display_list;
           for (const auto& e : sm_visible_elements) {
@@ -165,9 +165,6 @@ namespace fly
         _api.beginFrame();
         _rp._viewMatrix = _camera->getViewMatrix(_camera->_pos, _camera->_eulerAngles);
         _rp._VP = _rp._projectionMatrix * _rp._viewMatrix;
-        if (_settings._shadows) {
-          _rp._Vinverse = inverse(_rp._viewMatrix);
-        }
         _api.setDepthTestEnabled<true>();
         _api.setFaceCullingEnabled<true>();
         _rp._lightPosWorld = _directionalLight->_pos;
