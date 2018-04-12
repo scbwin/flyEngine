@@ -20,10 +20,10 @@
 
 namespace fly
 {
-  OpenGLAPI::OpenGLAPI() : 
+  OpenGLAPI::OpenGLAPI() :
     _shaderGenerator(std::make_unique<GLSLShaderGenerator>()),
     _shaderCache(SoftwareCache<std::string, std::shared_ptr<GLShaderProgram>, const std::string&,
-      const std::string&, const std::string& > ([](const std::string& vs, const std::string& fs, const std::string& gs){
+      const std::string&, const std::string& >([](const std::string& vs, const std::string& fs, const std::string& gs) {
     auto ret = std::make_shared<GLShaderProgram>();
     ret->create();
     ret->addShaderFromFile(vs, GLShaderProgram::ShaderType::VERTEX);
@@ -32,11 +32,11 @@ namespace fly
     ret->link();
     return ret;
   })),
-    _textureCache(SoftwareCache<std::string, std::shared_ptr<GLTexture>, const std::string&> ([](const std::string& path) {
+    _textureCache(SoftwareCache<std::string, std::shared_ptr<GLTexture>, const std::string&>([](const std::string& path) {
     auto tex = SOIL_load_OGL_texture(path.c_str(), SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_TEXTURE_REPEATS | SOIL_FLAG_COMPRESS_TO_DXT);
     return tex != 0 ? std::make_shared<GLTexture>(tex, GL_TEXTURE_2D) : nullptr;
   })),
-    _matDescCache(SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>, const std::shared_ptr<Material>&, const Settings&> (
+    _matDescCache(SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>, const std::shared_ptr<Material>&, const Settings&>(
       [this](const std::shared_ptr<Material>& material, const Settings&  settings) {
     return std::make_shared<MaterialDesc>(material, this, settings);
   }))
@@ -277,33 +277,33 @@ namespace fly
   }
   OpenGLAPI::MeshGeometryStorage::MeshGeometryStorage() :
     _vboAppend(std::make_unique<GLAppendBuffer>(GL_ARRAY_BUFFER)),
-    _iboAppend(std::make_unique<GLAppendBuffer>(GL_ELEMENT_ARRAY_BUFFER))
-  {
-    _meshDataCache = std::make_unique <SoftwareCache<std::shared_ptr<Mesh>, MeshData, const std::shared_ptr<Mesh>&>>([this] (
+    _iboAppend(std::make_unique<GLAppendBuffer>(GL_ELEMENT_ARRAY_BUFFER)),
+    _meshDataCache(SoftwareCache<std::shared_ptr<Mesh>, MeshData, const std::shared_ptr<Mesh>&>([this](
       const std::shared_ptr<Mesh>& mesh) {
-      MeshData mesh_data;
-      mesh_data._count = static_cast<GLsizei>(mesh->getIndices().size());
-      mesh_data._baseVertex = static_cast<GLint>(_baseVertex);
-      mesh_data._indices = reinterpret_cast<GLvoid*>(_indices);
-      _indices += mesh->getIndices().size() * sizeof(mesh->getIndices().front());
-      _baseVertex += mesh->getVertices().size();
-      _vboAppend->appendData(mesh->getVertices().data(), mesh->getVertices().size());
-      _iboAppend->appendData(mesh->getIndices().data(), mesh->getIndices().size());
-      _vao = std::make_unique<GLVertexArray>();
-      _vao->bind();
-      _vboAppend->getBuffer()->bind();
-      _iboAppend->getBuffer()->bind();
-      for (unsigned i = 0; i < 5; i++) {
-        GL_CHECK(glEnableVertexAttribArray(i));
-      }
-      GL_CHECK(glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _position))));
-      GL_CHECK(glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _normal))));
-      GL_CHECK(glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _uv))));
-      GL_CHECK(glVertexAttribPointer(3, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _tangent))));
-      GL_CHECK(glVertexAttribPointer(4, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _bitangent))));
-      GL_CHECK(glBindVertexArray(0));
-      return mesh_data;
-    });
+    MeshData mesh_data;
+    mesh_data._count = static_cast<GLsizei>(mesh->getIndices().size());
+    mesh_data._baseVertex = static_cast<GLint>(_baseVertex);
+    mesh_data._indices = reinterpret_cast<GLvoid*>(_indices);
+    _indices += mesh->getIndices().size() * sizeof(mesh->getIndices().front());
+    _baseVertex += mesh->getVertices().size();
+    _vboAppend->appendData(mesh->getVertices().data(), mesh->getVertices().size());
+    _iboAppend->appendData(mesh->getIndices().data(), mesh->getIndices().size());
+    _vao = std::make_unique<GLVertexArray>();
+    _vao->bind();
+    _vboAppend->getBuffer()->bind();
+    _iboAppend->getBuffer()->bind();
+    for (unsigned i = 0; i < 5; i++) {
+      GL_CHECK(glEnableVertexAttribArray(i));
+    }
+    GL_CHECK(glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _position))));
+    GL_CHECK(glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _normal))));
+    GL_CHECK(glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _uv))));
+    GL_CHECK(glVertexAttribPointer(3, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _tangent))));
+    GL_CHECK(glVertexAttribPointer(4, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _bitangent))));
+    GL_CHECK(glBindVertexArray(0));
+    return mesh_data;
+  }))
+  {
   }
   OpenGLAPI::MeshGeometryStorage::~MeshGeometryStorage()
   {
@@ -314,7 +314,7 @@ namespace fly
   }
   OpenGLAPI::MeshGeometryStorage::MeshData OpenGLAPI::MeshGeometryStorage::addMesh(const std::shared_ptr<Mesh>& mesh)
   {
-    return _meshDataCache->getOrCreate(mesh, mesh);
+    return _meshDataCache.getOrCreate(mesh, mesh);
   }
   OpenGLAPI::MaterialDesc::MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI * api, const Settings& settings) : _material(material)
   {
@@ -381,7 +381,7 @@ namespace fly
     }
     _shader = api->createShader(vertex_file, api->_shaderGenerator->createMeshFragmentShaderFile(flag, settings));
     _smShader = api->createShader("assets/opengl/vs_shadow.glsl", "assets/opengl/fs_shadow.glsl");
-  //  assert(_materialSetupFuncs.size() <= 3);
+    //  assert(_materialSetupFuncs.size() <= 3);
   }
   void OpenGLAPI::MaterialDesc::setup() const
   {

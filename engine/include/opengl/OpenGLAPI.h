@@ -52,12 +52,9 @@ namespace fly
       GL_CHECK(glClear(flag));
     }
     static inline constexpr bool isDirectX() { return false; }
-    template<bool enable>
-    inline void setDepthTestEnabled() const { GL_CHECK(enable ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST)); }
-    template<bool enable>
-    inline void setFaceCullingEnabled() const { GL_CHECK(enable ? glEnable(GL_CULL_FACE) : glDisable(GL_CULL_FACE)); }
-    template<bool enable>
-    inline void setDepthClampEnabled() const { GL_CHECK(enable ? glEnable(GL_DEPTH_CLAMP) : glDisable(GL_DEPTH_CLAMP)); }
+    template<bool enable> inline void setDepthTestEnabled() const { GL_CHECK(enable ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST)); }
+    template<bool enable> inline void setFaceCullingEnabled() const { GL_CHECK(enable ? glEnable(GL_CULL_FACE) : glDisable(GL_CULL_FACE)); }
+    template<bool enable> inline void setDepthClampEnabled() const { GL_CHECK(enable ? glEnable(GL_DEPTH_CLAMP) : glDisable(GL_DEPTH_CLAMP)); }
     void reloadShaders();
     using RTT = GLTexture;
     using Depthbuffer = GLTexture;
@@ -79,7 +76,7 @@ namespace fly
       std::unique_ptr<GLVertexArray> _vao;
       std::unique_ptr<GLAppendBuffer> _vboAppend;
       std::unique_ptr<GLAppendBuffer> _iboAppend;
-      std::unique_ptr < SoftwareCache<std::shared_ptr<Mesh>, MeshData, const std::shared_ptr<Mesh>&>> _meshDataCache;
+      SoftwareCache<std::shared_ptr<Mesh>, MeshData, const std::shared_ptr<Mesh>&> _meshDataCache;
       size_t _indices = 0;
       size_t _baseVertex = 0;
     };
