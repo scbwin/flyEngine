@@ -39,6 +39,10 @@ namespace fly
     _matDescCache(SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>, const std::shared_ptr<Material>&, const Settings&>(
       [this](const std::shared_ptr<Material>& material, const Settings&  settings) {
     return std::make_shared<MaterialDesc>(material, this, settings);
+  })),
+    _shaderDescCache(SoftwareCache<std::shared_ptr<GLShaderProgram>, std::shared_ptr<ShaderDesc>, const std::shared_ptr<GLShaderProgram>&, const Settings&, bool>(
+      [this](const std::shared_ptr<GLShaderProgram>& shader, const Settings& settings, bool needs_time) {
+    return std::make_shared<ShaderDesc>(shader, settings, needs_time);
   }))
   {
     glewExperimental = true;
@@ -97,25 +101,16 @@ namespace fly
     _activeShader = shader;
     _activeShader->bind();
   }
+  void OpenGLAPI::setupShaderDesc(const ShaderDesc & desc, const GlobalShaderParams& params)
+  {
+    _activeShader = desc.getShader().get();
+    _activeShader->bind();
+    desc.setup(params);
+  }
   void OpenGLAPI::bindShadowmap(const Shadowmap & shadowmap) const
   {
     GL_CHECK(glActiveTexture(GL_TEXTURE4));
     shadowmap.bind();
-  }
-  void OpenGLAPI::setupShaderConstants(const GlobalShaderParams& param) const
-  {
-    setMatrix(_activeShader->uniformLocation("VP"), param._VP);
-    setVector(_activeShader->uniformLocation("lpos_ws"), param._lightPosWorld);
-    setVector(_activeShader->uniformLocation("I_in"), param._lightIntensity);
-    setVector(_activeShader->uniformLocation("cp_ws"), param._camPosworld);
-  }
-  void OpenGLAPI::setupShaderConstantsShadowmap(const GlobalShaderParams& param) const
-  {
-    setScalar(_activeShader->uniformLocation("ts_sm"), 4);
-    setMatrixArray(_activeShader->uniformLocation("w_to_l"), param._worldToLight.front(), static_cast<unsigned>(param._worldToLight.size()));
-    setScalar(_activeShader->uniformLocation("nfs"), static_cast<int>(param._worldToLight.size()));
-    setScalarArray(_activeShader->uniformLocation("fs"), param._smFrustumSplits.front(), static_cast<unsigned>(param._smFrustumSplits.size()));
-    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::shadowMapBias()), param._smBias);
   }
   void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse) const
   {
@@ -194,6 +189,10 @@ namespace fly
     std::string key = vertex_file + fragment_file + geometry_file;
     return _shaderCache.getOrCreate(key, vertex_file, fragment_file, geometry_file);
   }
+  std::shared_ptr<OpenGLAPI::ShaderDesc> OpenGLAPI::createShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, const Settings & settings, bool needs_time)
+  {
+    return _shaderDescCache.getOrCreate(shader, shader, settings, needs_time);
+  }
   std::unique_ptr<OpenGLAPI::RTT> OpenGLAPI::createRenderToTexture(const Vec2u & size)
   {
     auto tex = std::make_unique<GLTexture>(GL_TEXTURE_2D);
@@ -238,6 +237,7 @@ namespace fly
   {
     _shaderGenerator->regenerateShaders(settings);
     _shaderCache.clear();
+    _shaderDescCache.clear();
     for (const auto e : _matDescCache.getElements()) {
       e->create(this, settings);
     }
@@ -333,69 +333,69 @@ namespace fly
     _heightMap = api->createTexture(material->getHeightPath());
     using FLAG = GLSLShaderGenerator::MeshRenderFlag;
     unsigned flag = FLAG::NONE;
-    std::string vertex_file = "assets/opengl/vs_simple.glsl";
     if (_diffuseMap) {
       flag |= FLAG::DIFFUSE_MAP;
-      _materialSetupFuncs.push_back([this]() {
+      _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
         GL_CHECK(glActiveTexture(GL_TEXTURE0));
         _diffuseMap->bind();
-        setScalar(_shader->uniformLocation(GLSLShaderGenerator::diffuseSampler()), 0);
+        setScalar(shader->uniformLocation(GLSLShaderGenerator::diffuseSampler()), 0);
       });
     }
     else {
-      _materialSetupFuncs.push_back([this]() {
-        setVector(_shader->uniformLocation("d_col"), _material->getDiffuseColor());
+      _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
+        setVector(shader->uniformLocation("d_col"), _material->getDiffuseColor());
       });
     }
     if (_alphaMap) {
       flag |= FLAG::ALPHA_MAP;
-      _materialSetupFuncs.push_back([this]() {
+      _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
         GL_CHECK(glActiveTexture(GL_TEXTURE1));
         _alphaMap->bind();
-        setScalar(_shader->uniformLocation(GLSLShaderGenerator::alphaSampler()), 1);
+        setScalar(shader->uniformLocation(GLSLShaderGenerator::alphaSampler()), 1);
       });
     }
     if (_normalMap && settings._normalMapping) {
       flag |= FLAG::NORMAL_MAP;
-      _materialSetupFuncs.push_back([this]() {
+      _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
         GL_CHECK(glActiveTexture(GL_TEXTURE2));
         _normalMap->bind();
-        setScalar(_shader->uniformLocation(GLSLShaderGenerator::normalSampler()), 2);
+        setScalar(shader->uniformLocation(GLSLShaderGenerator::normalSampler()), 2);
       });
     }
     if (_heightMap && (settings._parallaxMapping || settings._steepParallax)) {
       flag |= FLAG::PARALLAX_MAP;
-      _materialSetupFuncs.push_back([this]() {
+      _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
         GL_CHECK(glActiveTexture(GL_TEXTURE3));
         _heightMap->bind();
-        setScalar(_shader->uniformLocation(GLSLShaderGenerator::heightSampler()), 3);
-        setScalar(_shader->uniformLocation(GLSLShaderGenerator::parallaxHeightScale()), _material->getParallaxHeightScale());
+        setScalar(shader->uniformLocation(GLSLShaderGenerator::heightSampler()), 3);
+        setScalar(shader->uniformLocation(GLSLShaderGenerator::parallaxHeightScale()), _material->getParallaxHeightScale());
       });
       if (settings._steepParallax) {
-        _materialSetupFuncs.push_back([this]() {
-          setScalar(_shader->uniformLocation(GLSLShaderGenerator::parallaxMinSteps()), _material->getParallaxMinSteps());
-          setScalar(_shader->uniformLocation(GLSLShaderGenerator::parallaxMaxSteps()), _material->getParallaxMaxSteps());
-          setScalar(_shader->uniformLocation(GLSLShaderGenerator::parallaxBinarySearchSteps()), _material->getParallaxBinarySearchSteps());
+        _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
+          setScalar(shader->uniformLocation(GLSLShaderGenerator::parallaxMinSteps()), _material->getParallaxMinSteps());
+          setScalar(shader->uniformLocation(GLSLShaderGenerator::parallaxMaxSteps()), _material->getParallaxMaxSteps());
+          setScalar(shader->uniformLocation(GLSLShaderGenerator::parallaxBinarySearchSteps()), _material->getParallaxBinarySearchSteps());
         });
       }
     }
-    _shader = api->createShader(vertex_file, api->_shaderGenerator->createMeshFragmentShaderFile(flag, settings));
+    auto fragment_file = api->_shaderGenerator->createMeshFragmentShaderFile(flag, settings);
+    _meshShaderDesc = api->createShaderDesc(api->createShader("assets/opengl/vs_simple.glsl", fragment_file), settings, false);
+    _meshShaderDescWind = api->createShaderDesc(api->createShader("assets/opengl/vs_wind.glsl", fragment_file), settings, settings._windAnimations);
     _smShader = api->createShader("assets/opengl/vs_shadow.glsl", "assets/opengl/fs_shadow.glsl");
-    //  assert(_materialSetupFuncs.size() <= 3);
   }
-  void OpenGLAPI::MaterialDesc::setup() const
+  void OpenGLAPI::MaterialDesc::setup(GLShaderProgram* shader) const
   {
     for (const auto& f : _materialSetupFuncs) {
-      f();
+      f(shader);
     }
-    setScalar(_shader->uniformLocation("ka"), _material->getKa());
-    setScalar(_shader->uniformLocation("kd"), _material->getKd());
-    setScalar(_shader->uniformLocation("ks"), _material->getKs());
-    setScalar(_shader->uniformLocation("s_e"), _material->getSpecularExponent());
+    setScalar(shader->uniformLocation("ka"), _material->getKa());
+    setScalar(shader->uniformLocation("kd"), _material->getKd());
+    setScalar(shader->uniformLocation("ks"), _material->getKs());
+    setScalar(shader->uniformLocation("s_e"), _material->getSpecularExponent());
   }
-  const std::shared_ptr<OpenGLAPI::MaterialDesc::ShaderProgram>& OpenGLAPI::MaterialDesc::getShader() const
+  const std::shared_ptr<OpenGLAPI::ShaderDesc>& OpenGLAPI::MaterialDesc::getMeshShaderDesc(bool has_wind) const
   {
-    return _shader;
+    return has_wind ? _meshShaderDescWind : _meshShaderDesc;
   }
   const std::shared_ptr<OpenGLAPI::MaterialDesc::ShaderProgram>& OpenGLAPI::MaterialDesc::getSMShader() const
   {
@@ -404,5 +404,38 @@ namespace fly
   const std::shared_ptr<Material>& OpenGLAPI::MaterialDesc::getMaterial() const
   {
     return _material;
+  }
+  OpenGLAPI::ShaderDesc::ShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, const Settings & settings, bool needs_time) : _shader(shader)
+  {
+    _setupFuncs.push_back([this](const GlobalShaderParams& params) {
+      setMatrix(_shader->uniformLocation("VP"), params._VP);
+      setVector(_shader->uniformLocation("lpos_ws"), params._lightPosWorld);
+      setVector(_shader->uniformLocation("I_in"), params._lightIntensity);
+      setVector(_shader->uniformLocation("cp_ws"), params._camPosworld);
+    });
+    if (settings._shadows) {
+      _setupFuncs.push_back([this](const GlobalShaderParams& params) {
+        setScalar(_shader->uniformLocation("ts_sm"), 4);
+        setMatrixArray(_shader->uniformLocation("w_to_l"), params._worldToLight.front(), static_cast<unsigned>(params._worldToLight.size()));
+        setScalar(_shader->uniformLocation("nfs"), static_cast<int>(params._worldToLight.size()));
+        setScalarArray(_shader->uniformLocation("fs"), params._smFrustumSplits.front(), static_cast<unsigned>(params._smFrustumSplits.size()));
+        setScalar(_shader->uniformLocation(GLSLShaderGenerator::shadowMapBias()), params._smBias);
+      });
+    }
+    if (needs_time) {
+      _setupFuncs.push_back([this](const GlobalShaderParams& params) {
+        setScalar(_shader->uniformLocation("t"), params._time);
+      });
+    }
+  }
+  void OpenGLAPI::ShaderDesc::setup(const GlobalShaderParams & params) const
+  {
+    for (const auto& f : _setupFuncs) {
+      f(params);
+    }
+  }
+  const std::shared_ptr<GLShaderProgram>& OpenGLAPI::ShaderDesc::getShader() const
+  {
+    return _shader;
   }
 }

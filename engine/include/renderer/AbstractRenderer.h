@@ -39,8 +39,12 @@ namespace fly
         _settings._shadowPercentageCloserFiltering != settings._shadowPercentageCloserFiltering ||
         _settings._normalMapping != settings._normalMapping ||
         _settings._parallaxMapping != settings._parallaxMapping ||
-        _settings._steepParallax != settings._steepParallax) {
+        _settings._steepParallax != settings._steepParallax ||
+        _settings._windAnimations != settings._windAnimations) {
         _api.recreateShadersAndMaterials(settings);
+        for (const auto& e : _staticMeshRenderables) {
+          e.second->_shaderDesc = e.second->_materialDesc->getMeshShaderDesc(e.second->_smr->hasWind()).get();
+        }
       }
       _settings = settings;
       _api.setAnisotropy(settings._anisotropy);
@@ -86,15 +90,15 @@ namespace fly
       }
       if (settings._dlSortMode == DisplayListSortMode::SHADER_AND_MATERIAL) {
         _staticMeshRenderFunc = [this]() {
-          std::map<typename API::MaterialDesc::ShaderProgram*, std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> display_list;
+          std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> display_list;
           for (const auto& e : _visibleMeshes) {
-            display_list[e->_materialDesc->getShader().get()][e->_materialDesc.get()].push_back(e);
+            display_list[e->_shaderDesc][e->_materialDesc.get()].push_back(e);
+            //display_list[e->_materialDesc->getMeshShaderDesc(e->_smr->hasWind()).get()][e->_materialDesc.get()].push_back(e);
           }
           for (const auto& e : display_list) {
-            _api.bindShader(e.first);
-            setupShaderConstants();
+            _api.setupShaderDesc(*e.first, _rp);
             for (const auto& e1 : e.second) {
-              e1.first->setup();
+              e1.first->setup(e.first->getShader().get());
               for (const auto& smr : e1.second) {
                 _api.renderMesh(smr->_meshData, smr->_smr->getModelMatrix(), smr->_smr->getModelMatrixInverse());
               }
@@ -109,22 +113,15 @@ namespace fly
             display_list[e->_materialDesc.get()].push_back(e);
           }
           for (const auto& e : display_list) {
-            _api.bindShader(e.first->getShader().get());
-            setupShaderConstants();
-            e.first->setup();
+          //  _api.setupShaderDesc(*e.first->getMeshShaderDesc().get(), _rp);
+          //  e.first->setup(e.first->getMeshShaderDesc()->getShader().get());
+            _api.setupShaderDesc(*e.second[0]->_shaderDesc, _rp);
+            e.first->setup(e.second[0]->_shaderDesc->getShader().get());
             for (const auto& smr : e.second) {
               _api.renderMesh(smr->_meshData, smr->_smr->getModelMatrix(), smr->_smr->getModelMatrixInverse());
             }
           }
         };
-      }
-      _shaderConstantsSetupFuncs = { [this]() {
-        _api.setupShaderConstants(_rp);
-      } };
-      if (settings._shadows) {
-        _shaderConstantsSetupFuncs.push_back([this]() {
-          _api.setupShaderConstantsShadowmap(_rp);
-        });
       }
     }
     const Settings& getSettings() const
@@ -141,6 +138,7 @@ namespace fly
         mesh_renderable->_materialDesc = _api.createMaterial(mr->getMaterial(), _settings);
         mesh_renderable->_meshData = _meshGeometryStorage.addMesh(mr->getMesh());
         mesh_renderable->_smr = mr;
+        mesh_renderable->_shaderDesc = mesh_renderable->_materialDesc->getMeshShaderDesc(mr->hasWind()).get();
         _staticMeshRenderables[entity] = mesh_renderable;
         _sceneMin = minimum(_sceneMin, mr->getAABBWorld()->getMin());
         _sceneMax = maximum(_sceneMax, mr->getAABBWorld()->getMax());
@@ -170,6 +168,7 @@ namespace fly
         _rp._lightPosWorld = _directionalLight->_pos;
         _rp._camPosworld = _camera->_pos;
         _rp._lightIntensity = _directionalLight->getIntensity();
+        _rp._time = time;
         _meshGeometryStorage.bind();
         _staticMeshRenderFuncSM();
         _settings._postProcessing ? _api.setRendertargets({ _lightingBuffer.get() }, _depthBuffer.get()) : _api.bindBackbuffer(_defaultRenderTarget);
@@ -230,6 +229,7 @@ namespace fly
       std::shared_ptr<typename API::MaterialDesc> _materialDesc;
       typename API::MeshGeometryStorage::MeshData _meshData;
       std::shared_ptr<fly::StaticMeshRenderable> _smr;
+      typename API::ShaderDesc* _shaderDesc;
       inline AABB* getAABBWorld() const { return _smr->getAABBWorld(); }
     };
     typename API::MeshGeometryStorage _meshGeometryStorage;
@@ -238,7 +238,6 @@ namespace fly
     std::vector<StaticMeshRenderable*> _visibleMeshes;
     std::function<void()> _staticMeshRenderFunc;
     std::function<void()> _staticMeshRenderFuncSM;
-    std::vector<std::function<void()>> _shaderConstantsSetupFuncs;
 
     void buildQuadtree()
     {
@@ -266,11 +265,6 @@ namespace fly
           aabbs.push_back(e->getAABBWorld());
         }
         _api.renderAABBs(aabbs, _rp._VP, Vec3f(0.f, 1.f, 0.f));
-      }
-    }
-    inline void setupShaderConstants() {
-      for (const auto& f : _shaderConstantsSetupFuncs) {
-        f();
       }
     }
   };

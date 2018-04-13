@@ -3,11 +3,12 @@
 
 namespace fly
 {
-  StaticMeshRenderable::StaticMeshRenderable(const std::shared_ptr<Mesh>& mesh, const std::shared_ptr<Material>& material, const Mat4f & model_matrix) :
+  StaticMeshRenderable::StaticMeshRenderable(const std::shared_ptr<Mesh>& mesh, const std::shared_ptr<Material>& material, const Mat4f & model_matrix, bool has_wind) :
     _mesh(mesh),
     _material(material),
     _modelMatrix(model_matrix),
-    _modelMatrixInverse(inverse(glm::mat3(model_matrix)))
+    _modelMatrixInverse(inverse(glm::mat3(model_matrix))),
+    _hasWind(has_wind)
   {
     Vec3f bb_min(std::numeric_limits<float>::max());
     Vec3f bb_max(std::numeric_limits<float>::lowest());
@@ -37,5 +38,13 @@ namespace fly
   const Mat3f& StaticMeshRenderable::getModelMatrixInverse() const
   {
     return _modelMatrixInverse;
+  }
+  bool StaticMeshRenderable::hasWind() const
+  {
+    return _hasWind;
+  }
+  void StaticMeshRenderable::setHasWind(bool has_wind)
+  {
+    _hasWind = has_wind;
   }
 }

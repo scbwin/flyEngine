@@ -24,6 +24,7 @@ namespace fly
     Vec3f _camPosworld;
     Vec3f _lightIntensity;
     ZNearMapping _zNearMapping;
+    float _time;
   };
 }
 

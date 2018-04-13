@@ -350,14 +350,16 @@ void GLWidget::initGame()
   for (int x = 0; x < 10; x++) {
     for (int y = 0; y < 10; y++) {
 #endif
+      unsigned index = 0;
       for (const auto& mesh : sponza_model->getMeshes()) {
         auto entity = _engine->getEntityManager()->createEntity();
         entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(mesh,
 #if SPONZA_MANY
-          sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(x * 60.f, 0.f, y * 60.f), fly::Vec3f(0.01f)).getModelMatrix()));
+          sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(x * 60.f, 0.f, y * 60.f), fly::Vec3f(0.01f)).getModelMatrix(), index >= 49 && index <= 56));
 #else
-          sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(0.f), fly::Vec3f(0.01f)).getModelMatrix()));
+          sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(0.f), fly::Vec3f(0.01f)).getModelMatrix(), index >= 44 && index <= 62));
 #endif
+        index++;
       }
 #if SPONZA_MANY
     }
@@ -385,7 +387,7 @@ void GLWidget::initGame()
     scale[1] = 1.f;
     auto translation = _renderer->getSceneMin();
     entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(m, 
-      plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(translation, scale).getModelMatrix()));
+      plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(translation, scale).getModelMatrix(), false));
   }
 #endif
 

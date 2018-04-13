@@ -80,21 +80,32 @@ namespace fly
       size_t _indices = 0;
       size_t _baseVertex = 0;
     };
+    class ShaderDesc
+    {
+    public:
+      ShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, const Settings& settings, bool needs_time);
+      void setup(const GlobalShaderParams& params) const;
+      const std::shared_ptr<GLShaderProgram>& getShader() const;
+    private:
+      std::shared_ptr<GLShaderProgram> _shader;
+      std::vector<std::function<void(const GlobalShaderParams&)>> _setupFuncs;
+    };
     class MaterialDesc
     {
     public:
       MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI* api, const Settings& settings);
       void create(OpenGLAPI* api, const Settings& settings);
       void create(const std::shared_ptr<Material>& material, OpenGLAPI* api, const Settings& settings);
-      void setup() const;
+      void setup(GLShaderProgram* shader) const;
       using ShaderProgram = GLShaderProgram;
-      const std::shared_ptr<ShaderProgram>& getShader() const;
+      const std::shared_ptr<ShaderDesc>& getMeshShaderDesc(bool has_wind) const;
       const std::shared_ptr<ShaderProgram>& getSMShader() const;
       const std::shared_ptr<Material>& getMaterial() const;
     private:
       std::shared_ptr<Material> _material;
-      std::vector<std::function<void()>> _materialSetupFuncs;
-      std::shared_ptr<ShaderProgram> _shader;
+      std::vector<std::function<void(GLShaderProgram*)>> _materialSetupFuncs;
+      std::shared_ptr<ShaderDesc> _meshShaderDesc;
+      std::shared_ptr<ShaderDesc> _meshShaderDescWind;
       std::shared_ptr<ShaderProgram> _smShader;
       std::shared_ptr<GLTexture> _diffuseMap;
       std::shared_ptr<GLTexture> _normalMap;
@@ -103,9 +114,8 @@ namespace fly
     };
     void beginFrame() const;
     void bindShader(GLShaderProgram* shader);
+    void setupShaderDesc(const ShaderDesc& desc, const GlobalShaderParams& params);
     void bindShadowmap(const Shadowmap& shadowmap) const;
-    void setupShaderConstants(const GlobalShaderParams& param) const;
-    void setupShaderConstantsShadowmap(const GlobalShaderParams& param) const;
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse) const;
     void renderMeshMVP(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mvp) const;
     void renderAABBs(const std::vector<AABB*>& aabbs, const Mat4f& transform, const Vec3f& col);
@@ -118,6 +128,7 @@ namespace fly
     std::shared_ptr<GLTexture> createTexture(const std::string& path);
     std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material, const Settings& settings);
     std::shared_ptr<GLShaderProgram> createShader(const std::string& vertex_file, const std::string& fragment_file, const std::string& geometry_file = "");
+    std::shared_ptr<ShaderDesc> createShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, const Settings& settings, bool needs_time);
     std::unique_ptr<RTT> createRenderToTexture(const Vec2u& size);
     std::unique_ptr<Depthbuffer> createDepthbuffer(const Vec2u& size);
     std::unique_ptr<Shadowmap> createShadowmap(const Vec2u& size, const Settings& settings);
@@ -128,6 +139,7 @@ namespace fly
     SoftwareCache<std::string, std::shared_ptr<GLTexture>, const std::string& > _textureCache;
     SoftwareCache<std::string, std::shared_ptr<GLShaderProgram>, const std::string&, const std::string&, const std::string&> _shaderCache;
     SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>, const std::shared_ptr<Material>&, const Settings&> _matDescCache;
+    SoftwareCache<std::shared_ptr<GLShaderProgram>, std::shared_ptr<ShaderDesc>, const std::shared_ptr<GLShaderProgram>&, const Settings&, bool> _shaderDescCache;
     std::shared_ptr<GLShaderProgram> _aabbShader;
     std::shared_ptr<GLShaderProgram> _compositeShader;
     std::shared_ptr<GLVertexArray> _vaoAABB;

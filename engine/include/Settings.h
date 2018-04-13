@@ -54,6 +54,7 @@ namespace fly
     bool _parallaxMapping = true;
     bool _steepParallax = true;
     unsigned _anisotropy = 4u;
+    bool _windAnimations = true;
   };
 }
 

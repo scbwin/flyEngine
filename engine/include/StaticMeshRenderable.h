@@ -16,18 +16,21 @@ namespace fly
   class StaticMeshRenderable : public Component
   {
   public:
-    StaticMeshRenderable(const std::shared_ptr<Mesh>& mesh, const std::shared_ptr<Material>& material, const Mat4f& model_matrix);
+    StaticMeshRenderable(const std::shared_ptr<Mesh>& mesh, const std::shared_ptr<Material>& material, const Mat4f& model_matrix, bool has_wind);
     AABB* getAABBWorld() const;
     const std::shared_ptr<Mesh>& getMesh() const;
     const std::shared_ptr<Material>& getMaterial() const;
     const Mat4f& getModelMatrix() const;
     const Mat3f& getModelMatrixInverse() const;
+    bool hasWind() const;
+    void setHasWind(bool has_wind);
   private:
     Mat4f _modelMatrix;
     Mat3f _modelMatrixInverse;
     std::shared_ptr<Mesh> _mesh;
     std::shared_ptr<Material> _material;
     std::unique_ptr<AABB> _aabbWorld;
+    bool _hasWind;
   };
 }
 
