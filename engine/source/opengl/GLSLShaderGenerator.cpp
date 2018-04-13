@@ -113,11 +113,11 @@ void main()\n\
     if (flags & MeshRenderFlag::NORMAL_MAP) {
   shader_src += "  vec3 normal_ts = normalize((texture(" + std::string(normalSampler()) + ", uv).xyz * 2.f - 1.f));\n\
   float diffuse = clamp(dot(l, normal_ts), 0.f, 1.f);\n\
-  float specular = pow(clamp(dot(reflect(-l, normal_ts), e), 0.f, 1.f), s_e);\n";
+  float specular = pow(clamp(dot(normalize(e + l), normal_ts), 0.f, 1.f), s_e);\n";
     }
     else {
       shader_src += "  float diffuse = clamp(dot(l, normal_world), 0.f, 1.f);\n\
-  float specular = pow(clamp(dot(reflect(-l, normal_world), e), 0.f, 1.f), s_e);\n";
+  float specular = pow(clamp(dot(normalize(e + l), normal_world), 0.f, 1.f), s_e);\n";
     }
 
     if (flags & MeshRenderFlag::DIFFUSE_MAP) {

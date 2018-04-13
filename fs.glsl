@@ -34,7 +34,7 @@ void main()
   vec3 l =  normalize(lpos_ws - pos_world);
   vec3 e =  normalize(cp_ws - pos_world);
   float diffuse = clamp(dot(l, normal_world), 0.f, 1.f);
-  float specular = pow(clamp(dot(reflect(-l, normal_world), e), 0.f, 1.f), s_e);
+  float specular = pow(clamp(dot(normalize(e + l), normal_world), 0.f, 1.f), s_e);
   vec3 albedo = d_col;
   fragmentColor = I_in * albedo * (ka + kd * diffuse + ks * specular);
   int index = nfs-1;

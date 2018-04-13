@@ -36,7 +36,7 @@ void main()
   vec3 e = world_to_tangent * normalize(cp_ws - pos_world);
   vec3 normal_ts = normalize((texture(ts_n, uv).xyz * 2.f - 1.f));
   float diffuse = clamp(dot(l, normal_ts), 0.f, 1.f);
-  float specular = pow(clamp(dot(reflect(-l, normal_ts), e), 0.f, 1.f), s_e);
+  float specular = pow(clamp(dot(normalize(e + l), normal_ts), 0.f, 1.f), s_e);
   vec3 albedo = texture(ts_d, uv).rgb;
   fragmentColor = I_in * albedo * (ka + kd * diffuse + ks * specular);
   int index = nfs-1;

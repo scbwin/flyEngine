@@ -11,8 +11,11 @@ uniform sampler2D ts_d;
 uniform sampler2D ts_a;
 uniform sampler2D ts_n;
 uniform sampler2D ts_h;
-uniform float pm_h;
-uniform float sm_b;
+uniform float pm_h; // Parallax ray scale
+uniform float sm_b; // Shadow map bias
+uniform float p_min; // Parallax min steps
+uniform float p_max; // Parallax max steps
+uniform float pbss; // Parallax binary search steps
 uniform vec3 lpos_ws; // light position world space
 uniform vec3 cp_ws; // camera position world space
 uniform vec3 I_in; // light intensity
@@ -30,25 +33,35 @@ void main()
   vec2 uv = uv_out;
   mat3 world_to_tangent = transpose(mat3(tangent_world, bitangent_world, normal_world));
   vec3 view_dir_ts = world_to_tangent * normalize(cp_ws - pos_world);
-  float steps = 32.f;
+  float steps = mix(p_max, p_min, clamp(dot(vec3(0.f, 0.f, 1.f), view_dir_ts), 0.f, 1.f));
   vec2 ray = view_dir_ts.xy * pm_h;
   vec2 delta = ray / steps;
   float layer_delta = 1.f / steps;
-  float layer_depth = layer_delta;
+  float layer_depth = 1.f - layer_delta;
   uv -= delta;
-  bool hit = false;
-  for (float i = 0.f; i < steps && !hit; i++, uv -= delta, layer_depth += layer_delta) {
-    hit = (1.f - texture(ts_h, uv).r) > layer_depth;
+  for (float i = 0.f; i < steps; i++, uv -= delta, layer_depth -= layer_delta) {
+    if(textureLod(ts_h, uv, 0.f).r > layer_depth){
+      delta *= 0.5f;
+      layer_delta *= 0.5f;
+      uv += delta;
+      layer_depth += layer_delta;
+      for (float i = 0.f, sign; i < pbss; i++, uv += delta * sign, layer_depth += layer_delta * sign){
+        sign = (textureLod(ts_h, uv, 0.f).r > layer_depth) ? 1.f : -1.f;
+        delta *= 0.5f;
+        layer_delta *= 0.5f;
+      }
+      break;
+    }
   }
   vec3 l = world_to_tangent * normalize(lpos_ws - pos_world);
   vec3 e = world_to_tangent * normalize(cp_ws - pos_world);
   float diffuse = clamp(dot(l, normal_world), 0.f, 1.f);
-  float specular = pow(clamp(dot(reflect(-l, normal_world), e), 0.f, 1.f), s_e);
+  float specular = pow(clamp(dot(normalize(e + l), normal_world), 0.f, 1.f), s_e);
   vec3 albedo = texture(ts_d, uv).rgb;
   fragmentColor = I_in * albedo * (ka + kd * diffuse + ks * specular);
   int index = nfs-1;
   for (int i = nfs-2; i >= 0; i--) {
-    index -= int(length(e) < fs[i]);
+    index -= int(distance(cp_ws, pos_world) < fs[i]);
   }
   vec4 shadow_coord = w_to_l[index] * vec4(pos_world, 1.f);
   shadow_coord.xyz /= shadow_coord.w;
