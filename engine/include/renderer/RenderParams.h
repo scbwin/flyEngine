@@ -28,6 +28,7 @@ namespace fly
     ZNearMapping _zNearMapping;
     float _time;
     WindParams _windParams;
+    float _exposure;
   };
 }
 

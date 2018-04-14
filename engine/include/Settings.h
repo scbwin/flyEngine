@@ -31,7 +31,7 @@ namespace fly
     Vec3f _skyColor;
     float _brightScale;
     float _brightBias;
-    float _exposure;
+    float _exposure = 1.f;
     unsigned _lensflareLevels;
     int _ssrSteps;
     float _ssrRayLenScale;
@@ -55,6 +55,7 @@ namespace fly
     bool _reliefMapping = true;
     unsigned _anisotropy = 4u;
     bool _windAnimations = true;
+    bool _exposureEnabled = true;
   };
 }
 

@@ -60,14 +60,20 @@ namespace fly
     using RTT = GLTexture;
     using Depthbuffer = GLTexture;
     using Shadowmap = GLTexture;
+    /**
+    * Geometry data for every single mesh that is added is stored in this structure.
+    * There is one vertex array, one big vertex buffer and one big index buffer for the whole scene.
+    * When rendering, only the vertex array has to be bound once at the beginning of the frame, 
+    * this helps to keep state changes at a minimum.
+    */
     class MeshGeometryStorage
     {
     public:
-      struct MeshData
+      struct MeshData // For each mesh
       {
-        GLsizei _count;
-        GLvoid* _indices;
-        GLint _baseVertex;
+        GLsizei _count; // Number of indices (i.e. num triangles * 3)
+        GLvoid* _indices; // Byte offset into the index buffer
+        GLint _baseVertex; // Offset into the vertex buffer
       };
       MeshGeometryStorage();
       ~MeshGeometryStorage();
@@ -81,10 +87,31 @@ namespace fly
       size_t _indices = 0;
       size_t _baseVertex = 0;
     };
+    // Texture unit bindings
+    static constexpr const int diffuseTexUnit() { return 0; }
+    static constexpr const int alphaTexUnit() { return 1; }
+    static constexpr const int normalTexUnit() { return 2; }
+    static constexpr const int heightTexUnit() { return 3; }
+    static constexpr const int shadowTexUnit() { return 4; }
+    static constexpr const int lightingTexUnit() { return 5; }
+    enum ShaderSetupFlags : unsigned
+    {
+      NONE = 0,
+      SHADOWS = 1,
+      TIME = 2,
+      WIND = 4,
+      VP = 8,
+      LIGHTING = 16,
+      LIGHT_VP = 32,
+      EXPOSURE = 64
+    };
+    /**
+    * Class that is used to only send uniform data to the GPU that is actually needed.
+    */
     class ShaderDesc
     {
     public:
-      ShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, bool needs_shadows, bool needs_time, bool needs_wind, bool needs_VP, bool needs_lighting, bool needs_lightVP);
+      ShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, unsigned flags);
       void setup(const GlobalShaderParams& params) const;
       const std::shared_ptr<GLShaderProgram>& getShader() const;
     private:
@@ -128,26 +155,27 @@ namespace fly
     void setRendertargets(const std::vector<RTT*>& rtts, const Depthbuffer* depth_buffer);
     void setRendertargets(const std::vector<RTT*>& rtts, const Depthbuffer* depth_buffer, unsigned depth_buffer_layer);
     void bindBackbuffer(unsigned id) const;
-    void composite(const RTT* lighting_buffer);
+    void composite(const RTT* lighting_buffer, const GlobalShaderParams& params);
     void endFrame() const;
     void setAnisotropy(unsigned anisotropy);
     std::shared_ptr<GLTexture> createTexture(const std::string& path);
     std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material, const Settings& settings);
     std::shared_ptr<GLShaderProgram> createShader(const std::string& vertex_file, const std::string& fragment_file, const std::string& geometry_file = "");
-    std::shared_ptr<ShaderDesc> createShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, bool needs_shadows, bool needs_time, bool needs_wind, bool needs_VP, bool needs_lighting, bool needs_lightVP);
+    std::shared_ptr<ShaderDesc> createShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, unsigned flags);
     std::unique_ptr<RTT> createRenderToTexture(const Vec2u& size);
     std::unique_ptr<Depthbuffer> createDepthbuffer(const Vec2u& size);
     std::unique_ptr<Shadowmap> createShadowmap(const Vec2u& size, const Settings& settings);
     void recreateShadersAndMaterials(const Settings& settings);
+    void createCompositeShaderFile(const Settings& settings);
     std::vector<std::shared_ptr<Material>> getAllMaterials();
   private:
     GLShaderProgram * _activeShader;
     SoftwareCache<std::string, std::shared_ptr<GLTexture>, const std::string& > _textureCache;
     SoftwareCache<std::string, std::shared_ptr<GLShaderProgram>, const std::string&, const std::string&, const std::string&> _shaderCache;
     SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>, const std::shared_ptr<Material>&, const Settings&> _matDescCache;
-    SoftwareCache<std::shared_ptr<GLShaderProgram>, std::shared_ptr<ShaderDesc>, const std::shared_ptr<GLShaderProgram>&, bool, bool, bool, bool, bool, bool> _shaderDescCache;
+    SoftwareCache<std::shared_ptr<GLShaderProgram>, std::shared_ptr<ShaderDesc>, const std::shared_ptr<GLShaderProgram>&, unsigned> _shaderDescCache;
     std::shared_ptr<GLShaderProgram> _aabbShader;
-    std::shared_ptr<GLShaderProgram> _compositeShader;
+    std::shared_ptr<ShaderDesc> _compositeShaderDesc;
     std::shared_ptr<GLVertexArray> _vaoAABB;
     std::shared_ptr<GLBuffer> _vboAABB;
     std::unique_ptr<GLFramebuffer> _offScreenFramebuffer;

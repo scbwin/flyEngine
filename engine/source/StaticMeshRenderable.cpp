@@ -22,7 +22,7 @@ namespace fly
     bb_max += aabb_offset;
     _aabbWorld = std::make_unique<AABB>(bb_min, bb_max);
     _windParams._pivotWorld = _aabbWorld->getMax()[1];
-    _windParams._bendFactorExponent = 1.2f;
+    _windParams._bendFactorExponent = 2.f;
   }
   AABB* StaticMeshRenderable::getAABBWorld() const
   {

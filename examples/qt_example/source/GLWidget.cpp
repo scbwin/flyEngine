@@ -60,6 +60,7 @@ void GLWidget::initializeGL()
   TwAddVarCB(settings_bar, "Relief mapping", TwType::TW_TYPE_BOOLCPP, cbSetParallaxSteep, cbGetParallaxSteep, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Anisotropy", TwType::TW_TYPE_UINT32, cbSetAnisotropy, cbGetAnisotropy, &_renderer, "step=1");
   TwAddVarCB(settings_bar, "Wind animations", TwType::TW_TYPE_BOOLCPP, cbSetWindAnimations, cbGetWindAnimations, &_renderer, nullptr);
+  TwAddVarCB(settings_bar, "Exposure", TwType::TW_TYPE_FLOAT, cbSetExposure, cbGetExposure, &_renderer, "step=0.01f");
 
   TwSetTopBar(_bar);
 }
@@ -334,6 +335,16 @@ void GLWidget::cbSetWindAnimations(const void * value, void * client_data)
 void GLWidget::cbGetWindAnimations(void * value, void * client_data)
 {
   *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._windAnimations;
+}
+void GLWidget::cbSetExposure(const void * value, void * client_data)
+{
+  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings();
+  settings._exposure = *reinterpret_cast<const float*>(value);
+  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->setSettings(settings);
+}
+void GLWidget::cbGetExposure(void * value, void * client_data)
+{
+  *reinterpret_cast<float*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._exposure;
 }
 void GLWidget::cbSetSortModeShaderMaterial(const void * value, void * clientData)
 {

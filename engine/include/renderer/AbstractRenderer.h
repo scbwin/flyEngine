@@ -35,6 +35,7 @@ namespace fly
     virtual ~AbstractRenderer() {}
     void setSettings(const Settings& settings)
     {
+      _api.createCompositeShaderFile(settings);
       if (_settings._shadows != settings._shadows ||
         _settings._shadowPercentageCloserFiltering != settings._shadowPercentageCloserFiltering ||
         _settings._normalMapping != settings._normalMapping ||
@@ -46,6 +47,7 @@ namespace fly
           e.second->init(&_api);
         }
       }
+      _rp._exposure = settings._exposure;
       _settings = settings;
       _api.setAnisotropy(settings._anisotropy);
       if (settings._postProcessing) {
@@ -190,7 +192,7 @@ namespace fly
         if (_settings._postProcessing) {
           _api.setDepthTestEnabled<false>();
           _api.bindBackbuffer(_defaultRenderTarget);
-          _api.composite(_lightingBuffer.get());
+          _api.composite(_lightingBuffer.get(), _rp);
         }
         _api.endFrame();
       }

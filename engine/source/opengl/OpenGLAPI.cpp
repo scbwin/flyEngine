@@ -41,9 +41,9 @@ namespace fly
       [this](const std::shared_ptr<Material>& material, const Settings&  settings) {
     return std::make_shared<MaterialDesc>(material, this, settings);
   })),
-    _shaderDescCache(SoftwareCache<std::shared_ptr<GLShaderProgram>, std::shared_ptr<ShaderDesc>, const std::shared_ptr<GLShaderProgram>&, bool, bool, bool, bool, bool, bool>(
-      [this](const std::shared_ptr<GLShaderProgram>& shader, bool needs_shadows, bool needs_time, bool needs_wind, bool needs_VP, bool needs_lighting, bool needs_lightVP) {
-    return std::make_shared<ShaderDesc>(shader, needs_shadows, needs_time, needs_wind, needs_VP, needs_lighting, needs_lightVP);
+    _shaderDescCache(SoftwareCache<std::shared_ptr<GLShaderProgram>, std::shared_ptr<ShaderDesc>, const std::shared_ptr<GLShaderProgram>&, unsigned>(
+      [this](const std::shared_ptr<GLShaderProgram>& shader, unsigned flags) {
+    return std::make_shared<ShaderDesc>(shader, flags);
   }))
   {
     glewExperimental = true;
@@ -69,7 +69,6 @@ namespace fly
 
     _offScreenFramebuffer = std::make_unique<GLFramebuffer>();
     _aabbShader = createShader("assets/opengl/vs_aabb.glsl", "assets/opengl/fs_aabb.glsl", "assets/opengl/gs_aabb.glsl");
-    _compositeShader = createShader("assets/opengl/vs_screen.glsl", "assets/opengl/fs_composite.glsl");
     _samplerAnisotropic = std::make_unique<GLSampler>();
   }
   OpenGLAPI::~OpenGLAPI()
@@ -104,25 +103,24 @@ namespace fly
   }
   void OpenGLAPI::setupShaderDesc(const ShaderDesc & desc, const GlobalShaderParams& params)
   {
-    _activeShader = desc.getShader().get();
-    _activeShader->bind();
+    bindShader(desc.getShader().get());
     desc.setup(params);
   }
   void OpenGLAPI::bindShadowmap(const Shadowmap & shadowmap) const
   {
-    GL_CHECK(glActiveTexture(GL_TEXTURE4));
+    GL_CHECK(glActiveTexture(GL_TEXTURE0 + shadowTexUnit()));
     shadowmap.bind();
   }
   void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse) const
   {
-    setMatrix(_activeShader->uniformLocation("M"), model_matrix);
-    setMatrixTranspose(_activeShader->uniformLocation("M_i"), model_matrix_inverse);
+    setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::modelMatrix()), model_matrix);
+    setMatrixTranspose(_activeShader->uniformLocation(GLSLShaderGenerator::modelMatrixInverse()), model_matrix_inverse);
     GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, GL_UNSIGNED_INT, mesh_data._indices, mesh_data._baseVertex));
   }
   void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & model_matrix, const Mat3f & model_matrix_inverse, const WindParamsLocal& params, const AABB& aabb) const
   {
-    setMatrix(_activeShader->uniformLocation("M"), model_matrix);
-    setMatrixTranspose(_activeShader->uniformLocation("M_i"), model_matrix_inverse);
+    setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::modelMatrix()), model_matrix);
+    setMatrixTranspose(_activeShader->uniformLocation(GLSLShaderGenerator::modelMatrixInverse()), model_matrix_inverse);
     setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::windPivot()), params._pivotWorld);
     setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::windExponent()), params._bendFactorExponent);
     setVector(_activeShader->uniformLocation(GLSLShaderGenerator::bbMin()), aabb.getMin());
@@ -131,7 +129,7 @@ namespace fly
   }
   void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & model_matrix, const WindParamsLocal & params, const AABB & aabb) const
   {
-    setMatrix(_activeShader->uniformLocation("M"), model_matrix);
+    setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::modelMatrix()), model_matrix);
     setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::windPivot()), params._pivotWorld);
     setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::windExponent()), params._bendFactorExponent);
     setVector(_activeShader->uniformLocation(GLSLShaderGenerator::bbMin()), aabb.getMin());
@@ -140,14 +138,14 @@ namespace fly
   }
   void OpenGLAPI::renderMeshMVP(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & mvp) const
   {
-    setMatrix(_activeShader->uniformLocation("MVP"), mvp);
+    setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::modelViewProjectionMatrix()), mvp);
     GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, GL_UNSIGNED_INT, mesh_data._indices, mesh_data._baseVertex));
   }
   void OpenGLAPI::renderAABBs(const std::vector<AABB*>& aabbs, const Mat4f& transform, const Vec3f& col)
   {
     _vaoAABB->bind();
     bindShader(_aabbShader.get());
-    setMatrix(_activeShader->uniformLocation("VP"), transform);
+    setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::viewProjectionMatrix()), transform);
     setVector(_activeShader->uniformLocation("c"), col);
     std::vector<Vec3f> bb_buffer;
     for (const auto& aabb : aabbs) {
@@ -173,12 +171,12 @@ namespace fly
   {
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, id));
   }
-  void OpenGLAPI::composite(const RTT* lighting_buffer)
+  void OpenGLAPI::composite(const RTT* lighting_buffer, const GlobalShaderParams& params)
   {
-    _compositeShader->bind();
-    GL_CHECK(glActiveTexture(GL_TEXTURE5));
+    setupShaderDesc(*_compositeShaderDesc, params);
+    GL_CHECK(glActiveTexture(GL_TEXTURE0 + lightingTexUnit()));
     lighting_buffer->bind();
-    setScalar(_compositeShader->uniformLocation("ts_l"), 5);
+    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::lightingSampler()), lightingTexUnit());
     GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
   }
   void OpenGLAPI::endFrame() const
@@ -209,10 +207,9 @@ namespace fly
     std::string key = vertex_file + fragment_file + geometry_file;
     return _shaderCache.getOrCreate(key, vertex_file, fragment_file, geometry_file);
   }
-  std::shared_ptr<OpenGLAPI::ShaderDesc> OpenGLAPI::createShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, bool needs_shadows, 
-    bool needs_time, bool needs_wind, bool needs_VP, bool needs_lighting, bool needs_lightVP)
+  std::shared_ptr<OpenGLAPI::ShaderDesc> OpenGLAPI::createShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, unsigned flags)
   {
-    return _shaderDescCache.getOrCreate(shader, shader, needs_shadows, needs_time, needs_wind, needs_VP, needs_lighting, needs_lightVP);
+    return _shaderDescCache.getOrCreate(shader, shader, flags);
   }
   std::unique_ptr<OpenGLAPI::RTT> OpenGLAPI::createRenderToTexture(const Vec2u & size)
   {
@@ -262,6 +259,19 @@ namespace fly
     for (const auto e : _matDescCache.getElements()) {
       e->create(this, settings);
     }
+    createCompositeShaderFile(settings);
+  }
+  void OpenGLAPI::createCompositeShaderFile(const Settings & settings)
+  {
+    std::string vs_c, fs_c;
+    unsigned flags = GLSLShaderGenerator::CompositeFlag::CP_NONE;
+    unsigned ss_flags = ShaderSetupFlags::NONE;
+    if (settings._exposureEnabled) {
+      flags |= GLSLShaderGenerator::CompositeFlag::EXPOSURE;
+      ss_flags |= ShaderSetupFlags::EXPOSURE;
+    }
+    _shaderGenerator->createCompositeShaderFiles(flags, settings, vs_c, fs_c);
+    _compositeShaderDesc = createShaderDesc(createShader(vs_c, fs_c), ss_flags);
   }
   std::vector<std::shared_ptr<Material>> OpenGLAPI::getAllMaterials()
   {
@@ -358,39 +368,39 @@ namespace fly
     if (_diffuseMap) {
       flag |= FLAG::DIFFUSE_MAP;
       _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
-        GL_CHECK(glActiveTexture(GL_TEXTURE0));
+        GL_CHECK(glActiveTexture(GL_TEXTURE0 + diffuseTexUnit()));
         _diffuseMap->bind();
         setScalar(shader->uniformLocation(GLSLShaderGenerator::diffuseSampler()), 0);
       });
     }
     else {
       _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
-        setVector(shader->uniformLocation("d_col"), _material->getDiffuseColor());
+        setVector(shader->uniformLocation(GLSLShaderGenerator::diffuseColor()), _material->getDiffuseColor());
       });
     }
     if (_alphaMap) {
       flag |= FLAG::ALPHA_MAP;
       _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
-        GL_CHECK(glActiveTexture(GL_TEXTURE1));
+        GL_CHECK(glActiveTexture(GL_TEXTURE0 + alphaTexUnit()));
         _alphaMap->bind();
-        setScalar(shader->uniformLocation(GLSLShaderGenerator::alphaSampler()), 1);
+        setScalar(shader->uniformLocation(GLSLShaderGenerator::alphaSampler()), alphaTexUnit());
       });
       _materialSetupFuncsDepth.push_back(_materialSetupFuncs.back());
     }
     if (_normalMap && settings._normalMapping) {
       flag |= FLAG::NORMAL_MAP;
       _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
-        GL_CHECK(glActiveTexture(GL_TEXTURE2));
+        GL_CHECK(glActiveTexture(GL_TEXTURE0 + normalTexUnit()));
         _normalMap->bind();
-        setScalar(shader->uniformLocation(GLSLShaderGenerator::normalSampler()), 2);
+        setScalar(shader->uniformLocation(GLSLShaderGenerator::normalSampler()), normalTexUnit());
       });
     }
     if (_normalMap &&_heightMap && (settings._normalMapping && (settings._parallaxMapping || settings._reliefMapping))) {
       flag |= FLAG::PARALLAX_MAP;
       _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
-        GL_CHECK(glActiveTexture(GL_TEXTURE3));
+        GL_CHECK(glActiveTexture(GL_TEXTURE0 + heightTexUnit()));
         _heightMap->bind();
-        setScalar(shader->uniformLocation(GLSLShaderGenerator::heightSampler()), 3);
+        setScalar(shader->uniformLocation(GLSLShaderGenerator::heightSampler()), heightTexUnit());
         setScalar(shader->uniformLocation(GLSLShaderGenerator::parallaxHeightScale()), _material->getParallaxHeightScale());
       });
       if (settings._reliefMapping) {
@@ -401,29 +411,39 @@ namespace fly
         });
       }
     }
-  //  _smShader = api->createShader("assets/opengl/vs_shadow.glsl", "assets/opengl/fs_shadow.glsl");
     auto fragment_file = api->_shaderGenerator->createMeshFragmentShaderFile(flag, settings);
     auto vertex_file = api->_shaderGenerator->createMeshVertexShaderFile(flag, settings);
-    _meshShaderDesc = api->createShaderDesc(api->createShader(vertex_file, fragment_file), settings._shadows || settings._shadowPercentageCloserFiltering, false, false, true, true, false);
+    unsigned ss_flags = ShaderSetupFlags::LIGHTING | ShaderSetupFlags::VP;;
+    if (settings._shadows || settings._shadowPercentageCloserFiltering) {
+      ss_flags |= ShaderSetupFlags::SHADOWS;
+    }
+    _meshShaderDesc = api->createShaderDesc(api->createShader(vertex_file, fragment_file), ss_flags);
     vertex_file = api->_shaderGenerator->createMeshVertexShaderFile(flag | FLAG::WIND, settings);
-    _meshShaderDescWind = api->createShaderDesc(api->createShader(vertex_file, fragment_file), settings._shadows || settings._shadowPercentageCloserFiltering, settings._windAnimations, settings._windAnimations, true, true, false);
+    if (settings._windAnimations) {
+      ss_flags |= ShaderSetupFlags::WIND | ShaderSetupFlags::TIME;
+    }
+    _meshShaderDescWind = api->createShaderDesc(api->createShader(vertex_file, fragment_file), ss_flags);
 
     auto vertex_shadow_file = api->_shaderGenerator->createMeshVertexShaderFileDepth(flag, settings);
     auto vertex_shadow_file_wind = api->_shaderGenerator->createMeshVertexShaderFileDepth(flag | FLAG::WIND, settings);
     auto fragment_shadow_file = api->_shaderGenerator->createMeshFragmentShaderFileDepth(flag, settings);
     auto fragment_shadow_file_wind = api->_shaderGenerator->createMeshFragmentShaderFileDepth(flag | FLAG::WIND, settings);
-    _meshShaderDescDepth = api->createShaderDesc(api->createShader(vertex_shadow_file, fragment_shadow_file), false, false, false, false, false, false);
-    _meshShaderDescWindDepth = api->createShaderDesc(api->createShader(vertex_shadow_file_wind, fragment_shadow_file_wind), false, settings._windAnimations, settings._windAnimations, true, false, true);
+    _meshShaderDescDepth = api->createShaderDesc(api->createShader(vertex_shadow_file, fragment_shadow_file), ShaderSetupFlags::NONE);
+    ss_flags = ShaderSetupFlags::LIGHT_VP;
+    if (settings._windAnimations) {
+      ss_flags |= ShaderSetupFlags::WIND | ShaderSetupFlags::TIME;
+    }
+    _meshShaderDescWindDepth = api->createShaderDesc(api->createShader(vertex_shadow_file_wind, fragment_shadow_file_wind), ss_flags);
   }
   void OpenGLAPI::MaterialDesc::setup(GLShaderProgram* shader) const
   {
     for (const auto& f : _materialSetupFuncs) {
       f(shader);
     }
-    setScalar(shader->uniformLocation("ka"), _material->getKa());
-    setScalar(shader->uniformLocation("kd"), _material->getKd());
-    setScalar(shader->uniformLocation("ks"), _material->getKs());
-    setScalar(shader->uniformLocation("s_e"), _material->getSpecularExponent());
+    setScalar(shader->uniformLocation(GLSLShaderGenerator::ambientConstant()), _material->getKa());
+    setScalar(shader->uniformLocation(GLSLShaderGenerator::diffuseConstant()), _material->getKd());
+    setScalar(shader->uniformLocation(GLSLShaderGenerator::specularConstant()), _material->getKs());
+    setScalar(shader->uniformLocation(GLSLShaderGenerator::specularExponent()), _material->getSpecularExponent());
   }
   void OpenGLAPI::MaterialDesc::setupDepth(GLShaderProgram * shader) const
   {
@@ -439,54 +459,54 @@ namespace fly
   {
     return has_wind ? _meshShaderDescWindDepth : _meshShaderDescDepth;
   }
- /* const std::shared_ptr<OpenGLAPI::MaterialDesc::ShaderProgram>& OpenGLAPI::MaterialDesc::getSMShader() const
-  {
-    return _smShader;
-  }*/
   const std::shared_ptr<Material>& OpenGLAPI::MaterialDesc::getMaterial() const
   {
     return _material;
   }
-  OpenGLAPI::ShaderDesc::ShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, bool needs_shadows,
-    bool needs_time, bool needs_wind, bool needs_VP, bool needs_lighting, bool needs_lightVP) : _shader(shader)
+  OpenGLAPI::ShaderDesc::ShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, unsigned flags) : _shader(shader)
   {
-    if (needs_VP) {
+    if (flags & ShaderSetupFlags::VP) {
       _setupFuncs.push_back([this](const GlobalShaderParams& params) {
-        setMatrix(_shader->uniformLocation("VP"), params._VP);
+        setMatrix(_shader->uniformLocation(GLSLShaderGenerator::viewProjectionMatrix()), params._VP);
       });
     }
-    if (needs_lighting) {
+    if (flags & ShaderSetupFlags::LIGHTING) {
       _setupFuncs.push_back([this](const GlobalShaderParams& params) {
-        setVector(_shader->uniformLocation("lpos_ws"), params._lightPosWorld);
-        setVector(_shader->uniformLocation("I_in"), params._lightIntensity);
-        setVector(_shader->uniformLocation("cp_ws"), params._camPosworld);
+        setVector(_shader->uniformLocation(GLSLShaderGenerator::lightPositionWorld()), params._lightPosWorld);
+        setVector(_shader->uniformLocation(GLSLShaderGenerator::lightIntensity()), params._lightIntensity);
+        setVector(_shader->uniformLocation(GLSLShaderGenerator::cameraPositionWorld()), params._camPosworld);
       });
     }
-    if (needs_shadows) {
+    if (flags & ShaderSetupFlags::SHADOWS) {
       _setupFuncs.push_back([this](const GlobalShaderParams& params) {
-        setScalar(_shader->uniformLocation("ts_sm"), 4);
-        setMatrixArray(_shader->uniformLocation("w_to_l"), params._worldToLight.front(), static_cast<unsigned>(params._worldToLight.size()));
-        setScalar(_shader->uniformLocation("nfs"), static_cast<int>(params._worldToLight.size()));
-        setScalarArray(_shader->uniformLocation("fs"), params._smFrustumSplits.front(), static_cast<unsigned>(params._smFrustumSplits.size()));
+        setScalar(_shader->uniformLocation(GLSLShaderGenerator::shadowSampler()), shadowTexUnit());
+        setMatrixArray(_shader->uniformLocation(GLSLShaderGenerator::worldToLightMatrices()), params._worldToLight.front(), static_cast<unsigned>(params._worldToLight.size()));
+        setScalar(_shader->uniformLocation(GLSLShaderGenerator::numfrustumSplits()), static_cast<int>(params._worldToLight.size()));
+        setScalarArray(_shader->uniformLocation(GLSLShaderGenerator::frustumSplits()), params._smFrustumSplits.front(), static_cast<unsigned>(params._smFrustumSplits.size()));
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::shadowMapBias()), params._smBias);
       });
     }
-    if (needs_lightVP) {
+    if (flags & ShaderSetupFlags::LIGHT_VP) {
       _setupFuncs.push_back([this](const GlobalShaderParams& params) {
-        setMatrix(_shader->uniformLocation("VP"), *params._lightVP);
+        setMatrix(_shader->uniformLocation(GLSLShaderGenerator::viewProjectionMatrix()), *params._lightVP);
       });
     }
-    if (needs_time) {
+    if (flags & ShaderSetupFlags::TIME) {
       _setupFuncs.push_back([this](const GlobalShaderParams& params) {
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::time()), params._time);
       });
     }
-    if (needs_wind) {
+    if (flags & ShaderSetupFlags::WIND) {
       _setupFuncs.push_back([this](const GlobalShaderParams& params) {
         setVector(_shader->uniformLocation(GLSLShaderGenerator::windDir()), params._windParams._dir);
         setVector(_shader->uniformLocation(GLSLShaderGenerator::windMovement()), params._windParams._movement);
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::windFrequency()), params._windParams._frequency);
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::windStrength()), params._windParams._strength);
+      });
+    }
+    if (flags & ShaderSetupFlags::EXPOSURE) {
+      _setupFuncs.push_back([this](const GlobalShaderParams& params) {
+        setScalar(_shader->uniformLocation(GLSLShaderGenerator::exposure()), params._exposure);
       });
     }
   }
