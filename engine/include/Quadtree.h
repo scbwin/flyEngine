@@ -53,14 +53,14 @@ namespace fly
             return;
           }
         }
-        if (bb_min_el >= _min && bb_max_el <= getMax()) {
+        //if (bb_min_el >= _min && bb_max_el <= getMax()) {
           _elements.push_back(element);
-        }
-        else {
+       // }
+      /*  else {
           std::stringstream ss;
           ss << "Could not add element:" << std::endl << "Chil bounds:" << bb_min_el << " " << bb_max_el << std::endl << "Node bounds:" << _min << " " << getMax() << std::endl << "Check the bounds of the quadtree.";
           throw std::exception(ss.str().c_str());
-        }
+        }*/
       }
       void print(unsigned level) const
       {

@@ -63,11 +63,9 @@ namespace fly
           auto vp_shadow_volume = _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
             inverse(_rp._viewMatrix), _directionalLight->getViewMatrix(), static_cast<float>(_settings._shadowMapSize), _settings._smFrustumSplits, light_vps, _api.isDirectX());
           std::vector<StaticMeshRenderable*> sm_visible_elements = _quadtree->getVisibleElements<API::isDirectX()>(vp_shadow_volume);
-         // std::map<typename API::MaterialDesc::ShaderProgram*, std::vector<StaticMeshRenderable*>> sm_display_list;
-          std::map<typename API::ShaderDesc*, std::vector<StaticMeshRenderable*>> sm_display_list;
+          std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> sm_display_list;
           for (const auto& e : sm_visible_elements) {
-          //  sm_display_list[e->_materialDesc->getSMShader().get()].push_back(e);
-            sm_display_list[e->_shaderDescDepth].push_back(e);
+            sm_display_list[e->_shaderDescDepth][e->_materialDesc.get()].push_back(e);
           }
           _api.setDepthClampEnabled<true>();
           _api.setViewport(Vec2u(_settings._shadowMapSize));
@@ -76,12 +74,13 @@ namespace fly
             _api.clearRendertarget<false, true, false>(Vec4f());
             _rp._lightVP = &light_vps[i];
             for (const auto& e : sm_display_list) {
-           //   _api.bindShader(e.first);
               _api.setupShaderDesc(*e.first, _rp);
-              for (const auto& smr : e.second) {
-                //_api.renderMeshMVP(smr->_meshData, light_vps[i] * smr->_smr->getModelMatrix());
-                smr->_materialDesc->setupDepth(e.first->getShader().get());
-                smr->_meshRenderFuncDepth(light_vps[i]);
+              for (const auto& e1 : e.second) {
+                e1.first->setupDepth(e.first->getShader().get());
+                for (const auto& smr : e1.second) {
+                //  smr->_materialDesc->setupDepth(e.first->getShader().get());
+                  smr->_meshRenderFuncDepth(light_vps[i]);
+                }
               }
             }
           }

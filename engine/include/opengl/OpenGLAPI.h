@@ -102,7 +102,6 @@ namespace fly
       using ShaderProgram = GLShaderProgram;
       const std::shared_ptr<ShaderDesc>& getMeshShaderDesc(bool has_wind) const;
       const std::shared_ptr<ShaderDesc>& getMeshShaderDescDepth(bool has_wind) const;
-     // const std::shared_ptr<ShaderProgram>& getSMShader() const;
       const std::shared_ptr<Material>& getMaterial() const;
     private:
       std::shared_ptr<Material> _material;
@@ -112,7 +111,6 @@ namespace fly
       std::shared_ptr<ShaderDesc> _meshShaderDescWind;
       std::shared_ptr<ShaderDesc> _meshShaderDescDepth;
       std::shared_ptr<ShaderDesc> _meshShaderDescWindDepth;
-     // std::shared_ptr<ShaderProgram> _smShader;
       std::shared_ptr<GLTexture> _diffuseMap;
       std::shared_ptr<GLTexture> _normalMap;
       std::shared_ptr<GLTexture> _alphaMap;

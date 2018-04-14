@@ -5,7 +5,7 @@
 #include <memory>
 #include <set>
 
-#define SPONZA_MANY 1
+#define SPONZA_MANY 0
 #define TREE_SCENE 0
 
 namespace fly
