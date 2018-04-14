@@ -3,6 +3,7 @@
 
 #include <math/FlyMath.h>
 #include <vector>
+#include <WindParams.h>
 
 namespace fly
 {
@@ -20,11 +21,13 @@ namespace fly
     std::vector<Mat4f> _worldToLight;
     std::vector<float> _smFrustumSplits;
     float _smBias;
+    Mat4f* _lightVP;
     Vec3f _lightPosWorld;
     Vec3f _camPosworld;
     Vec3f _lightIntensity;
     ZNearMapping _zNearMapping;
     float _time;
+    WindParams _windParams;
   };
 }
 

@@ -17,6 +17,7 @@
 #include <Settings.h>
 #include <renderer/RenderParams.h>
 #include <opengl/GLSampler.h>
+#include <WindParamsLocal.h>
 
 namespace fly
 {
@@ -40,9 +41,9 @@ namespace fly
       [this](const std::shared_ptr<Material>& material, const Settings&  settings) {
     return std::make_shared<MaterialDesc>(material, this, settings);
   })),
-    _shaderDescCache(SoftwareCache<std::shared_ptr<GLShaderProgram>, std::shared_ptr<ShaderDesc>, const std::shared_ptr<GLShaderProgram>&, const Settings&, bool>(
-      [this](const std::shared_ptr<GLShaderProgram>& shader, const Settings& settings, bool needs_time) {
-    return std::make_shared<ShaderDesc>(shader, settings, needs_time);
+    _shaderDescCache(SoftwareCache<std::shared_ptr<GLShaderProgram>, std::shared_ptr<ShaderDesc>, const std::shared_ptr<GLShaderProgram>&, bool, bool, bool, bool, bool, bool>(
+      [this](const std::shared_ptr<GLShaderProgram>& shader, bool needs_shadows, bool needs_time, bool needs_wind, bool needs_VP, bool needs_lighting, bool needs_lightVP) {
+    return std::make_shared<ShaderDesc>(shader, needs_shadows, needs_time, needs_wind, needs_VP, needs_lighting, needs_lightVP);
   }))
   {
     glewExperimental = true;
@@ -118,6 +119,25 @@ namespace fly
     setMatrixTranspose(_activeShader->uniformLocation("M_i"), model_matrix_inverse);
     GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, GL_UNSIGNED_INT, mesh_data._indices, mesh_data._baseVertex));
   }
+  void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & model_matrix, const Mat3f & model_matrix_inverse, const WindParamsLocal& params, const AABB& aabb) const
+  {
+    setMatrix(_activeShader->uniformLocation("M"), model_matrix);
+    setMatrixTranspose(_activeShader->uniformLocation("M_i"), model_matrix_inverse);
+    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::windPivot()), params._pivotWorld);
+    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::windExponent()), params._bendFactorExponent);
+    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::bbMin()), aabb.getMin());
+    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::bbMax()), aabb.getMax());
+    GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, GL_UNSIGNED_INT, mesh_data._indices, mesh_data._baseVertex));
+  }
+  void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & model_matrix, const WindParamsLocal & params, const AABB & aabb) const
+  {
+    setMatrix(_activeShader->uniformLocation("M"), model_matrix);
+    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::windPivot()), params._pivotWorld);
+    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::windExponent()), params._bendFactorExponent);
+    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::bbMin()), aabb.getMin());
+    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::bbMax()), aabb.getMax());
+    GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, GL_UNSIGNED_INT, mesh_data._indices, mesh_data._baseVertex));
+  }
   void OpenGLAPI::renderMeshMVP(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & mvp) const
   {
     setMatrix(_activeShader->uniformLocation("MVP"), mvp);
@@ -189,9 +209,10 @@ namespace fly
     std::string key = vertex_file + fragment_file + geometry_file;
     return _shaderCache.getOrCreate(key, vertex_file, fragment_file, geometry_file);
   }
-  std::shared_ptr<OpenGLAPI::ShaderDesc> OpenGLAPI::createShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, const Settings & settings, bool needs_time)
+  std::shared_ptr<OpenGLAPI::ShaderDesc> OpenGLAPI::createShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, bool needs_shadows, 
+    bool needs_time, bool needs_wind, bool needs_VP, bool needs_lighting, bool needs_lightVP)
   {
-    return _shaderDescCache.getOrCreate(shader, shader, settings, needs_time);
+    return _shaderDescCache.getOrCreate(shader, shader, needs_shadows, needs_time, needs_wind, needs_VP, needs_lighting, needs_lightVP);
   }
   std::unique_ptr<OpenGLAPI::RTT> OpenGLAPI::createRenderToTexture(const Vec2u & size)
   {
@@ -327,6 +348,7 @@ namespace fly
   void OpenGLAPI::MaterialDesc::create(const std::shared_ptr<Material>& material, OpenGLAPI* api, const Settings& settings)
   {
     _materialSetupFuncs.clear();
+    _materialSetupFuncsDepth.clear();
     _diffuseMap = api->createTexture(material->getDiffusePath());
     _normalMap = api->createTexture(material->getNormalPath());
     _alphaMap = api->createTexture(material->getOpacityPath());
@@ -353,6 +375,7 @@ namespace fly
         _alphaMap->bind();
         setScalar(shader->uniformLocation(GLSLShaderGenerator::alphaSampler()), 1);
       });
+      _materialSetupFuncsDepth.push_back(_materialSetupFuncs.back());
     }
     if (_normalMap && settings._normalMapping) {
       flag |= FLAG::NORMAL_MAP;
@@ -362,7 +385,7 @@ namespace fly
         setScalar(shader->uniformLocation(GLSLShaderGenerator::normalSampler()), 2);
       });
     }
-    if (_heightMap && (settings._parallaxMapping || settings._steepParallax)) {
+    if (_normalMap &&_heightMap && (settings._normalMapping && (settings._parallaxMapping || settings._reliefMapping))) {
       flag |= FLAG::PARALLAX_MAP;
       _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
         GL_CHECK(glActiveTexture(GL_TEXTURE3));
@@ -370,7 +393,7 @@ namespace fly
         setScalar(shader->uniformLocation(GLSLShaderGenerator::heightSampler()), 3);
         setScalar(shader->uniformLocation(GLSLShaderGenerator::parallaxHeightScale()), _material->getParallaxHeightScale());
       });
-      if (settings._steepParallax) {
+      if (settings._reliefMapping) {
         _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
           setScalar(shader->uniformLocation(GLSLShaderGenerator::parallaxMinSteps()), _material->getParallaxMinSteps());
           setScalar(shader->uniformLocation(GLSLShaderGenerator::parallaxMaxSteps()), _material->getParallaxMaxSteps());
@@ -378,10 +401,19 @@ namespace fly
         });
       }
     }
+  //  _smShader = api->createShader("assets/opengl/vs_shadow.glsl", "assets/opengl/fs_shadow.glsl");
     auto fragment_file = api->_shaderGenerator->createMeshFragmentShaderFile(flag, settings);
-    _meshShaderDesc = api->createShaderDesc(api->createShader("assets/opengl/vs_simple.glsl", fragment_file), settings, false);
-    _meshShaderDescWind = api->createShaderDesc(api->createShader("assets/opengl/vs_wind.glsl", fragment_file), settings, settings._windAnimations);
-    _smShader = api->createShader("assets/opengl/vs_shadow.glsl", "assets/opengl/fs_shadow.glsl");
+    auto vertex_file = api->_shaderGenerator->createMeshVertexShaderFile(flag, settings);
+    _meshShaderDesc = api->createShaderDesc(api->createShader(vertex_file, fragment_file), settings._shadows || settings._shadowPercentageCloserFiltering, false, false, true, true, false);
+    vertex_file = api->_shaderGenerator->createMeshVertexShaderFile(flag | FLAG::WIND, settings);
+    _meshShaderDescWind = api->createShaderDesc(api->createShader(vertex_file, fragment_file), settings._shadows || settings._shadowPercentageCloserFiltering, settings._windAnimations, settings._windAnimations, true, true, false);
+
+    auto vertex_shadow_file = api->_shaderGenerator->createMeshVertexShaderFileDepth(flag, settings);
+    auto vertex_shadow_file_wind = api->_shaderGenerator->createMeshVertexShaderFileDepth(flag | FLAG::WIND, settings);
+    auto fragment_shadow_file = api->_shaderGenerator->createMeshFragmentShaderFileDepth(flag, settings);
+    auto fragment_shadow_file_wind = api->_shaderGenerator->createMeshFragmentShaderFileDepth(flag | FLAG::WIND, settings);
+    _meshShaderDescDepth = api->createShaderDesc(api->createShader(vertex_shadow_file, fragment_shadow_file), false, false, false, false, false, false);
+    _meshShaderDescWindDepth = api->createShaderDesc(api->createShader(vertex_shadow_file_wind, fragment_shadow_file_wind), false, settings._windAnimations, settings._windAnimations, true, false, true);
   }
   void OpenGLAPI::MaterialDesc::setup(GLShaderProgram* shader) const
   {
@@ -393,27 +425,44 @@ namespace fly
     setScalar(shader->uniformLocation("ks"), _material->getKs());
     setScalar(shader->uniformLocation("s_e"), _material->getSpecularExponent());
   }
+  void OpenGLAPI::MaterialDesc::setupDepth(GLShaderProgram * shader) const
+  {
+    for (const auto& f : _materialSetupFuncsDepth) {
+      f(shader);
+    }
+  }
   const std::shared_ptr<OpenGLAPI::ShaderDesc>& OpenGLAPI::MaterialDesc::getMeshShaderDesc(bool has_wind) const
   {
     return has_wind ? _meshShaderDescWind : _meshShaderDesc;
   }
-  const std::shared_ptr<OpenGLAPI::MaterialDesc::ShaderProgram>& OpenGLAPI::MaterialDesc::getSMShader() const
+  const std::shared_ptr<OpenGLAPI::ShaderDesc>& OpenGLAPI::MaterialDesc::getMeshShaderDescDepth(bool has_wind) const
+  {
+    return has_wind ? _meshShaderDescWindDepth : _meshShaderDescDepth;
+  }
+ /* const std::shared_ptr<OpenGLAPI::MaterialDesc::ShaderProgram>& OpenGLAPI::MaterialDesc::getSMShader() const
   {
     return _smShader;
-  }
+  }*/
   const std::shared_ptr<Material>& OpenGLAPI::MaterialDesc::getMaterial() const
   {
     return _material;
   }
-  OpenGLAPI::ShaderDesc::ShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, const Settings & settings, bool needs_time) : _shader(shader)
+  OpenGLAPI::ShaderDesc::ShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, bool needs_shadows,
+    bool needs_time, bool needs_wind, bool needs_VP, bool needs_lighting, bool needs_lightVP) : _shader(shader)
   {
-    _setupFuncs.push_back([this](const GlobalShaderParams& params) {
-      setMatrix(_shader->uniformLocation("VP"), params._VP);
-      setVector(_shader->uniformLocation("lpos_ws"), params._lightPosWorld);
-      setVector(_shader->uniformLocation("I_in"), params._lightIntensity);
-      setVector(_shader->uniformLocation("cp_ws"), params._camPosworld);
-    });
-    if (settings._shadows) {
+    if (needs_VP) {
+      _setupFuncs.push_back([this](const GlobalShaderParams& params) {
+        setMatrix(_shader->uniformLocation("VP"), params._VP);
+      });
+    }
+    if (needs_lighting) {
+      _setupFuncs.push_back([this](const GlobalShaderParams& params) {
+        setVector(_shader->uniformLocation("lpos_ws"), params._lightPosWorld);
+        setVector(_shader->uniformLocation("I_in"), params._lightIntensity);
+        setVector(_shader->uniformLocation("cp_ws"), params._camPosworld);
+      });
+    }
+    if (needs_shadows) {
       _setupFuncs.push_back([this](const GlobalShaderParams& params) {
         setScalar(_shader->uniformLocation("ts_sm"), 4);
         setMatrixArray(_shader->uniformLocation("w_to_l"), params._worldToLight.front(), static_cast<unsigned>(params._worldToLight.size()));
@@ -422,9 +471,22 @@ namespace fly
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::shadowMapBias()), params._smBias);
       });
     }
+    if (needs_lightVP) {
+      _setupFuncs.push_back([this](const GlobalShaderParams& params) {
+        setMatrix(_shader->uniformLocation("VP"), *params._lightVP);
+      });
+    }
     if (needs_time) {
       _setupFuncs.push_back([this](const GlobalShaderParams& params) {
-        setScalar(_shader->uniformLocation("t"), params._time);
+        setScalar(_shader->uniformLocation(GLSLShaderGenerator::time()), params._time);
+      });
+    }
+    if (needs_wind) {
+      _setupFuncs.push_back([this](const GlobalShaderParams& params) {
+        setVector(_shader->uniformLocation(GLSLShaderGenerator::windDir()), params._windParams._dir);
+        setVector(_shader->uniformLocation(GLSLShaderGenerator::windMovement()), params._windParams._movement);
+        setScalar(_shader->uniformLocation(GLSLShaderGenerator::windFrequency()), params._windParams._frequency);
+        setScalar(_shader->uniformLocation(GLSLShaderGenerator::windStrength()), params._windParams._strength);
       });
     }
   }

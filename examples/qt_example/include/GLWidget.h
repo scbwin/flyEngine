@@ -5,7 +5,8 @@
 #include <memory>
 #include <set>
 
-#define SPONZA_MANY 0
+#define SPONZA_MANY 1
+#define TREE_SCENE 0
 
 namespace fly
 {
@@ -49,8 +50,8 @@ protected:
   static void cbGetDebugQuadtreeAABBs(void *value, void *clientData);
   static void cbSetDebugObjectAABBs(const void *value, void *clientData);
   static void cbGetDebugObjectAABBs(void *value, void *clientData);
-  static void cbSetSortModeMaterial(const void *value, void *clientData);
-  static void cbGetSortModeMaterial(void *value, void* clientData);
+  static void cbSetSortModeShader(const void *value, void *clientData);
+  static void cbGetSortModeShader(void *value, void* clientData);
   static void cbSetSortModeShaderMaterial(const void *value, void *clientData);
   static void cbGetSortModeShaderMaterial(void *value, void* clientData);
   static void cbSetLightIntensity(const void* value, void* clientData);
@@ -82,6 +83,8 @@ protected:
   static void cbGetPMBinarySearchSteps(void* value, void* client_data);
   static void cbSetAnisotropy(const void* value, void* client_data);
   static void cbGetAnisotropy(void* value, void* client_data);
+  static void cbSetWindAnimations(const void* value, void* client_data);
+  static void cbGetWindAnimations(void* value, void* client_data);
 private:
   std::unique_ptr<fly::Engine> _engine;
   std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>> _renderer;

@@ -3,7 +3,8 @@
 
 namespace fly
 {
-  StaticMeshRenderable::StaticMeshRenderable(const std::shared_ptr<Mesh>& mesh, const std::shared_ptr<Material>& material, const Mat4f & model_matrix, bool has_wind) :
+  StaticMeshRenderable::StaticMeshRenderable(const std::shared_ptr<Mesh>& mesh, const std::shared_ptr<Material>& material, 
+    const Mat4f & model_matrix, bool has_wind, const Vec3f& aabb_offset) :
     _mesh(mesh),
     _material(material),
     _modelMatrix(model_matrix),
@@ -17,7 +18,11 @@ namespace fly
       bb_min = minimum(bb_min, v_world);
       bb_max = maximum(bb_max, v_world);
     }
+    bb_min -= aabb_offset;
+    bb_max += aabb_offset;
     _aabbWorld = std::make_unique<AABB>(bb_min, bb_max);
+    _windParams._pivotWorld = _aabbWorld->getMax()[1];
+    _windParams._bendFactorExponent = 1.2f;
   }
   AABB* StaticMeshRenderable::getAABBWorld() const
   {
@@ -46,5 +51,13 @@ namespace fly
   void StaticMeshRenderable::setHasWind(bool has_wind)
   {
     _hasWind = has_wind;
+  }
+  const WindParamsLocal & StaticMeshRenderable::getWindParams() const
+  {
+    return _windParams;
+  }
+  void StaticMeshRenderable::setWindParams(const WindParamsLocal & params)
+  {
+    _windParams = params;
   }
 }

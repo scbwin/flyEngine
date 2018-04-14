@@ -20,6 +20,16 @@ out vec3 tangent_world;
 out vec3 bitangent_world;
 
 uniform float t;
+// Global wind params
+uniform vec2 wd; // Wind direction
+uniform vec2 wm; // Wind movement
+uniform float wf; // Wind frequency
+uniform float ws; // Wind strength
+// Wind params per mesh
+uniform float wp; // Wind pivot
+uniform float we; // Weight exponent
+uniform vec2 bb_mi; // AABB min xz
+uniform vec2 bb_ma; // AABB max xz
 
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(12.9898f, 78.233f))) * 43758.5453f);
@@ -36,8 +46,9 @@ float noise(vec2 p)
 void main()
 {
 	pos_world = (M * vec4(position, 1.f)).xyz;
-	vec2 wind_dir = vec2(0.f, 1.f);
-	pos_world.xz += wind_dir * (noise(pos_world.xz + t * wind_dir) * 2.f - 1.f) * 0.3f;
+	float weight = pow(abs(wp - pos_world.y), we);
+	pos_world.xz += wd * (noise(pos_world.xz * wf + t * wm) * 2.f - 1.f) * ws * weight;
+	pos_world.xz = clamp(pos_world.xz, bb_mi, bb_ma);
 	gl_Position = VP * vec4(pos_world, 1.f);
 	normal_world = normalize(M_i * normal);
 	uv_out = uv;

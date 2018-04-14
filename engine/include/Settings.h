@@ -14,7 +14,7 @@ namespace fly
 
   enum class DisplayListSortMode
   {
-    MATERIAL,
+    SHADER,
     SHADER_AND_MATERIAL
   };
 
@@ -52,7 +52,7 @@ namespace fly
  //   std::vector<float> _smFrustumSplits = { 30.f, 50.f, 200.f };
     bool _normalMapping = true;
     bool _parallaxMapping = true;
-    bool _steepParallax = true;
+    bool _reliefMapping = true;
     unsigned _anisotropy = 4u;
     bool _windAnimations = true;
   };

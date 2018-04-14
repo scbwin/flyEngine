@@ -39,11 +39,11 @@ namespace fly
         _settings._shadowPercentageCloserFiltering != settings._shadowPercentageCloserFiltering ||
         _settings._normalMapping != settings._normalMapping ||
         _settings._parallaxMapping != settings._parallaxMapping ||
-        _settings._steepParallax != settings._steepParallax ||
+        _settings._reliefMapping != settings._reliefMapping ||
         _settings._windAnimations != settings._windAnimations) {
         _api.recreateShadersAndMaterials(settings);
         for (const auto& e : _staticMeshRenderables) {
-          e.second->_shaderDesc = e.second->_materialDesc->getMeshShaderDesc(e.second->_smr->hasWind()).get();
+          e.second->init(&_api);
         }
       }
       _settings = settings;
@@ -63,19 +63,25 @@ namespace fly
           auto vp_shadow_volume = _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
             inverse(_rp._viewMatrix), _directionalLight->getViewMatrix(), static_cast<float>(_settings._shadowMapSize), _settings._smFrustumSplits, light_vps, _api.isDirectX());
           std::vector<StaticMeshRenderable*> sm_visible_elements = _quadtree->getVisibleElements<API::isDirectX()>(vp_shadow_volume);
-          std::map<typename API::MaterialDesc::ShaderProgram*, std::vector<StaticMeshRenderable*>> sm_display_list;
+         // std::map<typename API::MaterialDesc::ShaderProgram*, std::vector<StaticMeshRenderable*>> sm_display_list;
+          std::map<typename API::ShaderDesc*, std::vector<StaticMeshRenderable*>> sm_display_list;
           for (const auto& e : sm_visible_elements) {
-            sm_display_list[e->_materialDesc->getSMShader().get()].push_back(e);
+          //  sm_display_list[e->_materialDesc->getSMShader().get()].push_back(e);
+            sm_display_list[e->_shaderDescDepth].push_back(e);
           }
           _api.setDepthClampEnabled<true>();
           _api.setViewport(Vec2u(_settings._shadowMapSize));
           for (unsigned i = 0; i < _settings._smFrustumSplits.size(); i++) {
             _api.setRendertargets({}, _shadowMap.get(), i);
             _api.clearRendertarget<false, true, false>(Vec4f());
+            _rp._lightVP = &light_vps[i];
             for (const auto& e : sm_display_list) {
-              _api.bindShader(e.first);
+           //   _api.bindShader(e.first);
+              _api.setupShaderDesc(*e.first, _rp);
               for (const auto& smr : e.second) {
-                _api.renderMeshMVP(smr->_meshData, light_vps[i] * smr->_smr->getModelMatrix());
+                //_api.renderMeshMVP(smr->_meshData, light_vps[i] * smr->_smr->getModelMatrix());
+                smr->_materialDesc->setupDepth(e.first->getShader().get());
+                smr->_meshRenderFuncDepth(light_vps[i]);
               }
             }
           }
@@ -93,14 +99,13 @@ namespace fly
           std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> display_list;
           for (const auto& e : _visibleMeshes) {
             display_list[e->_shaderDesc][e->_materialDesc.get()].push_back(e);
-            //display_list[e->_materialDesc->getMeshShaderDesc(e->_smr->hasWind()).get()][e->_materialDesc.get()].push_back(e);
           }
           for (const auto& e : display_list) {
             _api.setupShaderDesc(*e.first, _rp);
             for (const auto& e1 : e.second) {
               e1.first->setup(e.first->getShader().get());
               for (const auto& smr : e1.second) {
-                _api.renderMesh(smr->_meshData, smr->_smr->getModelMatrix(), smr->_smr->getModelMatrixInverse());
+                smr->_meshRenderFunc();
               }
             }
           }
@@ -108,17 +113,15 @@ namespace fly
       }
       else {
         _staticMeshRenderFunc = [this]() {
-          std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>> display_list;
+          std::map<typename API::ShaderDesc*, std::vector<StaticMeshRenderable*>> display_list;
           for (const auto& e : _visibleMeshes) {
-            display_list[e->_materialDesc.get()].push_back(e);
+            display_list[e->_shaderDesc].push_back(e);
           }
           for (const auto& e : display_list) {
-          //  _api.setupShaderDesc(*e.first->getMeshShaderDesc().get(), _rp);
-          //  e.first->setup(e.first->getMeshShaderDesc()->getShader().get());
-            _api.setupShaderDesc(*e.second[0]->_shaderDesc, _rp);
-            e.first->setup(e.second[0]->_shaderDesc->getShader().get());
+            _api.setupShaderDesc(*e.first, _rp);
             for (const auto& smr : e.second) {
-              _api.renderMesh(smr->_meshData, smr->_smr->getModelMatrix(), smr->_smr->getModelMatrixInverse());
+              smr->_materialDesc->setup(e.first->getShader().get());
+              smr->_meshRenderFunc();
             }
           }
         };
@@ -138,7 +141,7 @@ namespace fly
         mesh_renderable->_materialDesc = _api.createMaterial(mr->getMaterial(), _settings);
         mesh_renderable->_meshData = _meshGeometryStorage.addMesh(mr->getMesh());
         mesh_renderable->_smr = mr;
-        mesh_renderable->_shaderDesc = mesh_renderable->_materialDesc->getMeshShaderDesc(mr->hasWind()).get();
+        mesh_renderable->init(&_api);
         _staticMeshRenderables[entity] = mesh_renderable;
         _sceneMin = minimum(_sceneMin, mr->getAABBWorld()->getMin());
         _sceneMax = maximum(_sceneMax, mr->getAABBWorld()->getMax());
@@ -230,6 +233,30 @@ namespace fly
       typename API::MeshGeometryStorage::MeshData _meshData;
       std::shared_ptr<fly::StaticMeshRenderable> _smr;
       typename API::ShaderDesc* _shaderDesc;
+      typename API::ShaderDesc* _shaderDescDepth;
+      std::function<void()> _meshRenderFunc;
+      std::function<void(const Mat4f&)> _meshRenderFuncDepth;
+      void init(const API* api)
+      {
+        _shaderDesc = _materialDesc->getMeshShaderDesc(_smr->hasWind()).get();
+        _shaderDescDepth = _materialDesc->getMeshShaderDescDepth(_smr->hasWind()).get();
+        if (!_smr->hasWind()) {
+          _meshRenderFunc = [this, api]() {
+            api->renderMesh(_meshData, _smr->getModelMatrix(), _smr->getModelMatrixInverse());
+          };
+          _meshRenderFuncDepth = [this, api](const Mat4f& vp) {
+            api->renderMeshMVP(_meshData, vp * _smr->getModelMatrix());
+          };
+        }
+        else {
+          _meshRenderFunc = [this, api]() {
+            api->renderMesh(_meshData, _smr->getModelMatrix(), _smr->getModelMatrixInverse(), _smr->getWindParams(), *getAABBWorld());
+          };
+          _meshRenderFuncDepth = [this, api](const Mat4f& vp) {
+            api->renderMesh(_meshData, _smr->getModelMatrix(), _smr->getWindParams(), *getAABBWorld());
+          };
+        }
+      }
       inline AABB* getAABBWorld() const { return _smr->getAABBWorld(); }
     };
     typename API::MeshGeometryStorage _meshGeometryStorage;

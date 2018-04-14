@@ -5,6 +5,40 @@
 
 namespace fly
 {
+  GLSLShaderGenerator::GLSLShaderGenerator()
+  {
+    _windParamString = "uniform float " + std::string(time()) + "; \n\
+// Global wind params\n\
+uniform vec2 " + std::string(windDir()) + "; // Wind direction\n\
+uniform vec2 " + std::string(windMovement()) + "; // Wind movement\n\
+uniform float " + std::string(windFrequency()) + "; // Wind frequency\n\
+uniform float " + std::string(windStrength()) + "; // Wind strength\n\
+// Wind params per mesh\n\
+uniform float " + std::string(windPivot()) + "; // Wind pivot\n\
+uniform float " + std::string(windExponent()) + "; // Weight exponent\n\
+uniform vec3 " + std::string(bbMin()) + "; // AABB min xz\n\
+uniform vec3 " + std::string(bbMax()) + "; // AABB max xz\n" + std::string( noiseCodeGLSL() );
+
+    _windCodeString = "  float weight = pow(smoothstep(0.f, " + std::string(bbMax()) + ".y - " + std::string(bbMin()) + ".y, abs(" + std::string(windPivot()) + " - pos_world.y)), " + std::string(windExponent()) + ");\n\
+  pos_world.xz += " + std::string(windDir()) + " * (noise(pos_world.xz * " + std::string(windFrequency()) + " + " + std::string(time()) + " * " + std::string(windMovement()) + ") * 2.f - 1.f) * " + std::string(windStrength()) + " * weight;\n\
+  pos_world.xz = clamp(pos_world.xz, " + std::string(bbMin()) + ".xz, " + std::string(bbMax()) + ".xz);\n";
+  }
+  std::string GLSLShaderGenerator::createMeshVertexShaderFile(unsigned flags, const Settings & settings)
+  {
+    std::string fname = "vs";
+    if (flags & MeshRenderFlag::WIND) {
+      fname += "_wind";
+    }
+    fname += ".glsl";
+    for (const auto& n : _fnamesVertex) {
+      if (n == fname) { // File already created
+        return fname;
+      }
+    }
+    _fnamesVertex.push_back(fname);
+    _flagsVertex.push_back(flags);
+    return createMeshVertexFile(fname, flags, settings);
+  }
   std::string GLSLShaderGenerator::createMeshFragmentShaderFile(unsigned flags, const Settings& settings)
   {
     std::string fname = "fs";
@@ -13,28 +47,143 @@ namespace fly
     }
     if (flags & MeshRenderFlag::NORMAL_MAP) {
       fname += "_normal";
+      if (flags & MeshRenderFlag::PARALLAX_MAP) {
+        fname += "_parallax";
+      }
     }
     if (flags & MeshRenderFlag::ALPHA_MAP) {
       fname += "_alpha";
     }
-    if (flags & MeshRenderFlag::PARALLAX_MAP) {
-      fname += "_parallax";
+    if (settings._shadows || settings._shadowPercentageCloserFiltering) {
+      fname += "_shadows";
+    }
+    if (settings._shadowPercentageCloserFiltering) {
+      fname += "_pcf";
     }
     fname += ".glsl";
-    for (const auto& n : _fnames) {
+    for (const auto& n : _fnamesFragment) {
       if (n == fname) { // File already created
         return fname;
       }
     }
-    _fnames.push_back(fname);
-    _flags.push_back(flags);
+    _fnamesFragment.push_back(fname);
+    _flagsFragment.push_back(flags);
     return createMeshFragmentFile(fname, flags, settings);
+  }
+  std::string GLSLShaderGenerator::createMeshVertexShaderFileDepth(unsigned flags, const Settings & settings)
+  {
+    std::string fname = "vs_depth";
+    if (flags & MeshRenderFlag::WIND) {
+      fname += "_wind";
+    }
+    fname += ".glsl";
+    for (const auto& n : _fnamesVertexDepth) {
+      if (n == fname) {
+        return fname;
+      }
+    }
+    _fnamesVertexDepth.push_back(fname);
+    _flagsVertexDepth.push_back(flags);
+    return createMeshVertexFileDepth(fname, flags, settings);
+  }
+  std::string GLSLShaderGenerator::createMeshFragmentShaderFileDepth(unsigned flags, const Settings & settings)
+  {
+    std::string fname = "fs_depth";
+    if (flags & MeshRenderFlag::ALPHA_MAP) {
+      fname += "_alpha";
+    }
+    fname += ".glsl";
+    for (const auto& n : _fnamesFragmentDepth) {
+      if (n == fname) {
+        return fname;
+      }
+    }
+    _fnamesFragmentDepth.push_back(fname);
+    _flagsFragmentDepth.push_back(flags);
+    return createMeshFragmentFileDepth(fname, flags, settings);
   }
   void GLSLShaderGenerator::regenerateShaders(const Settings& settings)
   {
-    for (unsigned i = 0; i < _fnames.size(); i++) {
-      createMeshFragmentFile(_fnames[i], _flags[i], settings);
+    for (unsigned i = 0; i < _fnamesFragment.size(); i++) {
+      createMeshFragmentFile(_fnamesFragment[i], _flagsFragment[i], settings);
     }
+    for (unsigned i = 0; i < _fnamesVertex.size(); i++) {
+      createMeshVertexFile(_fnamesVertex[i], _flagsVertex[i], settings);
+    }
+    for (unsigned i = 0; i < _fnamesVertexDepth.size(); i++) {
+      createMeshVertexFileDepth(_fnamesVertexDepth[i], _flagsVertexDepth[i], settings);
+    }
+    for (unsigned i = 0; i < _fnamesFragmentDepth.size(); i++) {
+      createMeshFragmentFileDepth(_fnamesFragmentDepth[i], _flagsFragmentDepth[i], settings);
+    }
+  }
+  std::string GLSLShaderGenerator::createMeshVertexFile(const std::string & fname, unsigned flags, const Settings & settings) const
+  {
+    std::string shader_src;
+    shader_src += "#version 330\n\
+layout(location = 0) in vec3 position;\n\
+layout(location = 1) in vec3 normal;\n\
+layout(location = 2) in vec2 uv;\n\
+layout(location = 3) in vec3 tangent;\n\
+layout(location = 4) in vec3 bitangent;\n\
+// Shader constant\n\
+uniform mat4 VP; \n\
+// Model constants\n\
+uniform mat4 M;\n\
+uniform mat3 M_i;\n\
+out vec3 pos_world;\n\
+out vec3 normal_world;\n\
+out vec2 uv_out;\n\
+out vec3 tangent_world;\n\
+out vec3 bitangent_world;\n";
+    if (flags & MeshRenderFlag::WIND) {
+      shader_src += _windParamString;
+    }
+    shader_src += "void main()\n\
+{\n\
+  pos_world = (M * vec4(position, 1.f)).xyz;\n";
+    if (flags & MeshRenderFlag::WIND) {
+      shader_src += _windCodeString;
+    }
+    shader_src += "  gl_Position = VP * vec4(pos_world, 1.f);\n\
+  normal_world = normalize(M_i * normal);\n\
+  uv_out = uv;\n\
+  tangent_world = normalize(M_i * tangent);\n\
+  bitangent_world = normalize(M_i * bitangent);\n\
+}";
+    std::ofstream os(fname);
+    os.write(shader_src.c_str(), shader_src.size());
+    return fname;
+  }
+  std::string GLSLShaderGenerator::createMeshVertexFileDepth(const std::string & fname, unsigned flags, const Settings & settings) const
+  {
+    std::string shader_src = "#version 330\n\
+layout(location = 0) in vec3 position;\n\
+layout(location = 2) in vec2 uv;\n";
+    if (flags & MeshRenderFlag::WIND) {
+      shader_src += "uniform mat4 M;\n\
+uniform mat4 VP;\n";
+      shader_src += _windParamString;
+    }
+    else {
+      shader_src += "uniform mat4 MVP;\n";
+    }
+    shader_src += "out vec2 uv_out;\n\
+void main()\n\
+{\n";
+    if (flags & MeshRenderFlag::WIND) {
+      shader_src += "  vec4 pos_world = M * vec4(position, 1.f);\n";
+      shader_src += _windCodeString;
+      shader_src += "  gl_Position = VP * pos_world;\n";
+    }
+    else {
+      shader_src += "  gl_Position = MVP * vec4(position, 1.f);\n";
+    }
+    shader_src += "  uv_out = uv;\n\
+}\n";
+    std::ofstream os(fname);
+    os.write(shader_src.c_str(), shader_src.size());
+    return fname;
   }
   std::string GLSLShaderGenerator::createMeshFragmentFile(const std::string & fname, unsigned flags, const Settings& settings) const
   {
@@ -73,9 +222,9 @@ void main()\n\
     if ((flags & MeshRenderFlag::NORMAL_MAP) || (flags & MeshRenderFlag::PARALLAX_MAP)) {
       shader_src += "  mat3 world_to_tangent = transpose(mat3(tangent_world, bitangent_world, normal_world));\n";
     }
-    if (flags & PARALLAX_MAP) {
+    if ((flags & NORMAL_MAP) && (flags & PARALLAX_MAP)) { // Parallax only in combination with normal mapping
       shader_src += "  vec3 view_dir_ts = world_to_tangent * normalize(cp_ws - pos_world);\n";
-      if (!settings._steepParallax) {
+      if (!settings._reliefMapping) {
        shader_src += "  uv -= view_dir_ts.xy / view_dir_ts.z * (1.f - textureLod(" + std::string(heightSampler()) + ", uv, 0.f).r) * " + std::string(parallaxHeightScale()) + "; \n";
       }
       else {
@@ -127,7 +276,7 @@ void main()\n\
       shader_src += "  vec3 albedo = d_col;\n";
     }
     shader_src += "  fragmentColor = I_in * albedo * (ka + kd * diffuse + ks * specular);\n";
-    if (settings._shadows) {
+    if (settings._shadows || settings._shadowPercentageCloserFiltering) {
       shader_src += "  int index = nfs-1;\n\
   for (int i = nfs-2; i >= 0; i--) {\n\
     index -= int(distance(cp_ws, pos_world) < fs[i]);\n\
@@ -146,6 +295,25 @@ void main()\n\
     }
     shader_src += "}\n";
 
+    std::ofstream os(fname);
+    os.write(shader_src.c_str(), shader_src.size());
+    return fname;
+  }
+  std::string GLSLShaderGenerator::createMeshFragmentFileDepth(const std::string & fname, unsigned flags, const Settings & settings) const
+  {
+    std::string shader_src = "#version 330\n\
+in vec2 uv_out;\n";
+    if (flags & ALPHA_MAP) {
+      shader_src += "uniform sampler2D " + std::string(alphaSampler()) + ";\n";
+    }
+shader_src += "void main()\n\
+{\n";
+if (flags & ALPHA_MAP) {
+  shader_src += "  if (texture(" + std::string(alphaSampler()) + ", uv_out).r < 0.5f){\n\
+    discard;\n\
+  }\n";
+  }
+shader_src += "}";
     std::ofstream os(fname);
     os.write(shader_src.c_str(), shader_src.size());
     return fname;

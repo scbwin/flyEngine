@@ -43,22 +43,23 @@ void GLWidget::initializeGL()
   TwAddButton(debug_bar, "Reload shaders", cbReloadShaders, &_renderer, nullptr);
 
   auto settings_bar = TwNewBar("Settings");
-  TwAddVarCB(settings_bar, "Group by material", TwType::TW_TYPE_BOOLCPP, cbSetSortModeMaterial, cbGetSortModeMaterial, &_renderer, nullptr);
+  TwAddVarCB(settings_bar, "Group by shader", TwType::TW_TYPE_BOOLCPP, cbSetSortModeShader, cbGetSortModeShader, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Group by shader and material", TwType::TW_TYPE_BOOLCPP, cbSetSortModeShaderMaterial, cbGetSortModeShaderMaterial, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Light intensity", TwType::TW_TYPE_COLOR3F, cbSetLightIntensity, cbGetLightIntensity, &_dl, nullptr);
   TwAddVarCB(settings_bar, "Post processing", TwType::TW_TYPE_BOOLCPP, cbSetPostProcessing, cbGetPostProcessing, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Sponza specular", TwType::TW_TYPE_FLOAT, cbSetSpec, cbGetSpec, &_renderer, "step=0.2");
   TwAddVarCB(settings_bar, "Parallax height scale", TwType::TW_TYPE_FLOAT, cbSetPMHScale, cbGetPMHScale, &_renderer, "step=0.001");
-  TwAddVarCB(settings_bar, "Steep parallax min steps", TwType::TW_TYPE_FLOAT, cbSetPMMinSteps, cbGetPMMinSteps, &_renderer, "step=0.1");
-  TwAddVarCB(settings_bar, "Steep parallax max steps", TwType::TW_TYPE_FLOAT, cbSetPMMaxSteps, cbGetPMMaxSteps, &_renderer, "step=0.1");
-  TwAddVarCB(settings_bar, "Steep parallax binary search steps", TwType::TW_TYPE_FLOAT, cbSetPMBinarySearchSteps, cbGetPMBinarySearchSteps, &_renderer, "step=1");
+  TwAddVarCB(settings_bar, "Relief min steps", TwType::TW_TYPE_FLOAT, cbSetPMMinSteps, cbGetPMMinSteps, &_renderer, "step=0.1");
+  TwAddVarCB(settings_bar, "Relief max steps", TwType::TW_TYPE_FLOAT, cbSetPMMaxSteps, cbGetPMMaxSteps, &_renderer, "step=0.1");
+  TwAddVarCB(settings_bar, "Relief binary search steps", TwType::TW_TYPE_FLOAT, cbSetPMBinarySearchSteps, cbGetPMBinarySearchSteps, &_renderer, "step=1");
   TwAddVarCB(settings_bar, "Shadows", TwType::TW_TYPE_BOOLCPP, cbSetShadows, cbGetShadows, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, cbSetPCF, cbGetPCF, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Shadow bias", TwType::TW_TYPE_FLOAT, cbSetSmBias, cbGetSmBias, &_renderer, "step=0.000001f");
   TwAddVarCB(settings_bar, "Normal mapping", TwType::TW_TYPE_BOOLCPP, cbSetNormalMapping, cbGetNormalMapping, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Parallax mapping", TwType::TW_TYPE_BOOLCPP, cbSetParallaxMapping, cbGetParallaxMapping, &_renderer, nullptr);
-  TwAddVarCB(settings_bar, "Steep parallax mapping", TwType::TW_TYPE_BOOLCPP, cbSetParallaxSteep, cbGetParallaxSteep, &_renderer, nullptr);
+  TwAddVarCB(settings_bar, "Relief mapping", TwType::TW_TYPE_BOOLCPP, cbSetParallaxSteep, cbGetParallaxSteep, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Anisotropy", TwType::TW_TYPE_UINT32, cbSetAnisotropy, cbGetAnisotropy, &_renderer, "step=1");
+  TwAddVarCB(settings_bar, "Wind animations", TwType::TW_TYPE_BOOLCPP, cbSetWindAnimations, cbGetWindAnimations, &_renderer, nullptr);
 
   TwSetTopBar(_bar);
 }
@@ -166,17 +167,17 @@ void GLWidget::cbGetDebugObjectAABBs(void * value, void * clientData)
 {
   *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings()._debugObjectAABBs;
 }
-void GLWidget::cbSetSortModeMaterial(const void * value, void * clientData)
+void GLWidget::cbSetSortModeShader(const void * value, void * clientData)
 {
   if (*reinterpret_cast<const bool*>(value)) {
     fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings();
-    settings._dlSortMode = fly::DisplayListSortMode::MATERIAL;
+    settings._dlSortMode = fly::DisplayListSortMode::SHADER;
     (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->setSettings(settings);
   }
 }
-void GLWidget::cbGetSortModeMaterial(void * value, void* clientData)
+void GLWidget::cbGetSortModeShader(void * value, void* clientData)
 {
-  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings()._dlSortMode == fly::DisplayListSortMode::MATERIAL;
+  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings()._dlSortMode == fly::DisplayListSortMode::SHADER;
 }
 void GLWidget::cbGetSortModeShaderMaterial(void * value, void* clientData)
 {
@@ -267,12 +268,12 @@ void GLWidget::cbGetParallaxMapping(void * value, void * client_data)
 void GLWidget::cbSetParallaxSteep(const void * value, void * client_data)
 {
   fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings();
-  settings._steepParallax = *reinterpret_cast<const bool*>(value);
+  settings._reliefMapping = *reinterpret_cast<const bool*>(value);
   (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->setSettings(settings);
 }
 void GLWidget::cbGetParallaxSteep(void * value, void * client_data)
 {
-  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._steepParallax;
+  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._reliefMapping;
 }
 void GLWidget::cbSetPMHScale(const void * value, void * client_data)
 {
@@ -324,6 +325,16 @@ void GLWidget::cbGetAnisotropy(void * value, void * client_data)
 {
   *reinterpret_cast<unsigned*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._anisotropy;
 }
+void GLWidget::cbSetWindAnimations(const void * value, void * client_data)
+{
+  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings();
+  settings._windAnimations = *reinterpret_cast<const bool*>(value);
+  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->setSettings(settings);
+}
+void GLWidget::cbGetWindAnimations(void * value, void * client_data)
+{
+  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._windAnimations;
+}
 void GLWidget::cbSetSortModeShaderMaterial(const void * value, void * clientData)
 {
   if (*reinterpret_cast<const bool*>(value)) {
@@ -336,6 +347,13 @@ void GLWidget::cbSetSortModeShaderMaterial(const void * value, void * clientData
 void GLWidget::initGame()
 {
   auto importer = std::make_shared<fly::AssimpImporter>();
+#if TREE_SCENE
+  auto tree_model = importer->loadModel("assets/Tree1/Tree1.obj");
+  for (const auto& m : tree_model->getMeshes()) {
+    auto entity = _engine->getEntityManager()->createEntity();
+    entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(m, tree_model->getMaterials()[m->getMaterialIndex()], fly::Transform().getModelMatrix(), false));
+  }
+#else
   auto sponza_model = importer->loadModel("assets/sponza/sponza.obj");
   for (const auto& m : sponza_model->getMaterials()) {
     m->setSpecularExponent(32.f);
@@ -346,6 +364,7 @@ void GLWidget::initGame()
       m->setHeightPath("assets/height.png");
     }
   }
+
 #if SPONZA_MANY
   for (int x = 0; x < 10; x++) {
     for (int y = 0; y < 10; y++) {
@@ -353,11 +372,17 @@ void GLWidget::initGame()
       unsigned index = 0;
       for (const auto& mesh : sponza_model->getMeshes()) {
         auto entity = _engine->getEntityManager()->createEntity();
+        bool has_wind = index >= 44 && index <= 62;
+        fly::Vec3f aabb_offset = has_wind ? fly::Vec3f(0.f, 0.f, 0.25f) : fly::Vec3f(0.f);
+        if (index == sponza_model->getMeshes().size() - 28) {
+          has_wind = true;
+          aabb_offset = fly::Vec3f(0.f, 0.f, 0.25f);
+        }
         entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(mesh,
 #if SPONZA_MANY
-          sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(x * 60.f, 0.f, y * 60.f), fly::Vec3f(0.01f)).getModelMatrix(), index >= 49 && index <= 56));
+          sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(x * 60.f, 0.f, y * 60.f), fly::Vec3f(0.01f)).getModelMatrix(), has_wind, aabb_offset));
 #else
-          sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(0.f), fly::Vec3f(0.01f)).getModelMatrix(), index >= 44 && index <= 62));
+          sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(0.f), fly::Vec3f(0.01f)).getModelMatrix(), has_wind, aabb_offset));
 #endif
         index++;
       }
@@ -365,8 +390,9 @@ void GLWidget::initGame()
     }
   }
 #endif
+#endif
 
-#if SPONZA_MANY
+#if SPONZA_MANY || TREE_SCENE
   auto plane_model = importer->loadModel("assets/plane.obj");
   for (const auto& m : plane_model->getMaterials()) {
     m->setNormalPath("assets/ground_normals.png");
@@ -386,14 +412,13 @@ void GLWidget::initGame()
     auto scale = _renderer->getSceneMax() - _renderer->getSceneMin();
     scale[1] = 1.f;
     auto translation = _renderer->getSceneMin();
-    entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(m, 
+    entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(m,
       plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(translation, scale).getModelMatrix(), false));
   }
 #endif
 
   auto cam_entity = _engine->getEntityManager()->createEntity();
   cam_entity->addComponent(std::make_shared<fly::Camera>(glm::vec3(0.f, 0.f, -100.f), glm::vec3(0.f)));
-  
   auto dl_entity = _engine->getEntityManager()->createEntity();
   _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(-1000.f, 2000.f, -1000.f), glm::vec3(-500.f, 0.f, -500.f));
  // auto light_pos = _renderer->getSceneMin();

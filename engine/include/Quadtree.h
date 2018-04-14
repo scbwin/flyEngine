@@ -39,9 +39,9 @@ namespace fly
       void insert(const TPtr& element)
       {
         AABB* aabb_el = element->getAABBWorld();
-        _aabbWorld = std::unique_ptr<AABB>(new AABB(minimum(_aabbWorld->getMin(), aabb_el->getMin()), maximum(_aabbWorld->getMax(), aabb_el->getMax())));
-        Vec2f bb_min_el({ aabb_el->getMin()[0], aabb_el->getMin()[2] });
-        Vec2f bb_max_el({ aabb_el->getMax()[0], aabb_el->getMax()[2] });
+        _aabbWorld = std::make_unique<AABB>(minimum(_aabbWorld->getMin(), aabb_el->getMin()), maximum(_aabbWorld->getMax(), aabb_el->getMax()));
+        Vec2f bb_min_el(aabb_el->getMin()[0], aabb_el->getMin()[2]);
+        Vec2f bb_max_el(aabb_el->getMax()[0], aabb_el->getMax()[2]);
         std::array<Vec2f, 4> child_min, child_max;
         getChildBounds(child_min, child_max);
         for (unsigned i = 0; i < 4; i++) {
@@ -58,8 +58,7 @@ namespace fly
         }
         else {
           std::stringstream ss;
-          ss << "Could not add element. Child bounds:" << bb_min_el << " " << bb_max_el << ", node bounds:" << _min << " " << getMax() << ". Check the bounds of the quadtree.";
-          std::cout << ss.str() << std::endl;
+          ss << "Could not add element:" << std::endl << "Chil bounds:" << bb_min_el << " " << bb_max_el << std::endl << "Node bounds:" << _min << " " << getMax() << std::endl << "Check the bounds of the quadtree.";
           throw std::exception(ss.str().c_str());
         }
       }
