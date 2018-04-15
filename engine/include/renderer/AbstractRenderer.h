@@ -95,9 +95,9 @@ namespace fly
         _staticMeshRenderFuncSM = []() {};
       }
       if (settings._dlSortMode == DisplayListSortMode::SHADER_AND_MATERIAL) {
-        _staticMeshRenderFunc = [this]() {
+        _staticMeshRenderFunc = [this](const std::vector<StaticMeshRenderable*> & meshes) {
           std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> display_list;
-          for (const auto& e : _visibleMeshes) {
+          for (const auto& e : meshes) {
             display_list[e->_shaderDesc][e->_materialDesc.get()].push_back(e);
           }
           for (const auto& e : display_list) {
@@ -112,9 +112,9 @@ namespace fly
         };
       }
       else {
-        _staticMeshRenderFunc = [this]() {
+        _staticMeshRenderFunc = [this](const std::vector<StaticMeshRenderable*> & meshes) {
           std::map<typename API::ShaderDesc*, std::vector<StaticMeshRenderable*>> display_list;
-          for (const auto& e : _visibleMeshes) {
+          for (const auto& e : meshes) {
             display_list[e->_shaderDesc].push_back(e);
           }
           for (const auto& e : display_list) {
@@ -178,12 +178,12 @@ namespace fly
         _staticMeshRenderFuncSM();
         _api.setViewport(_viewPortSize);
         _gsp._VP = &_vpScene;
-        _visibleMeshes = _quadtree->getVisibleElements<API::isDirectX()>(_vpScene);
+        auto visible_meshes = _quadtree->getVisibleElements<API::isDirectX()>(_vpScene);
         if (_settings._depthPrePass) {
           _api.setRendertargets({}, _depthBuffer.get());
           _api.clearRendertarget<false, true, false>(Vec4f());
           std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> display_list;
-          for (const auto& e : _visibleMeshes) {
+          for (const auto& e : visible_meshes) {
             display_list[e->_shaderDescDepth][e->_materialDesc.get()].push_back(e);
           }
           for (const auto& e : display_list) {
@@ -203,12 +203,12 @@ namespace fly
         if (_shadowMap) {
           _api.bindShadowmap(*_shadowMap);
         }
-        _staticMeshRenderFunc();
+        _staticMeshRenderFunc(visible_meshes);
         if (_settings._debugQuadtreeNodeAABBs) {
           renderQuadtreeAABBs();
         }
         if (_settings._debugObjectAABBs) {
-          renderObjectAABBs(_visibleMeshes);
+          renderObjectAABBs(visible_meshes);
         }
         if (_settings._postProcessing || _settings._depthPrePass) {
           _api.setDepthTestEnabled<false>();
@@ -285,8 +285,7 @@ namespace fly
     typename API::MeshGeometryStorage _meshGeometryStorage;
     std::map<Entity*, std::shared_ptr<StaticMeshRenderable>> _staticMeshRenderables;
     std::unique_ptr<Quadtree<StaticMeshRenderable>> _quadtree;
-    std::vector<StaticMeshRenderable*> _visibleMeshes;
-    std::function<void()> _staticMeshRenderFunc;
+    std::function<void(const std::vector<StaticMeshRenderable*> &)> _staticMeshRenderFunc;
     std::function<void()> _staticMeshRenderFuncSM;
 
     void buildQuadtree()
