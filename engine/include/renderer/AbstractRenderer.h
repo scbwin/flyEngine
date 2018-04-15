@@ -47,10 +47,10 @@ namespace fly
           e.second->init(&_api);
         }
       }
-      _rp._exposure = settings._exposure;
+      _gsp._exposure = settings._exposure;
       _settings = settings;
       _api.setAnisotropy(settings._anisotropy);
-      if (settings._postProcessing) {
+      if (settings._postProcessing || settings._depthPrePass) {
         _lightingBuffer = _api.createRenderToTexture(_viewPortSize);
         _depthBuffer = _api.createDepthbuffer(_viewPortSize);
       }
@@ -63,7 +63,7 @@ namespace fly
         _staticMeshRenderFuncSM = [this]() {
           std::vector<Mat4f> light_vps;
           auto vp_shadow_volume = _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
-            inverse(_rp._viewMatrix), _directionalLight->getViewMatrix(), static_cast<float>(_settings._shadowMapSize), _settings._smFrustumSplits, light_vps, _api.isDirectX());
+            inverse(_gsp._viewMatrix), _directionalLight->getViewMatrix(), static_cast<float>(_settings._shadowMapSize), _settings._smFrustumSplits, light_vps, _api.isDirectX());
           std::vector<StaticMeshRenderable*> sm_visible_elements = _quadtree->getVisibleElements<API::isDirectX()>(vp_shadow_volume);
           std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> sm_display_list;
           for (const auto& e : sm_visible_elements) {
@@ -74,21 +74,20 @@ namespace fly
           for (unsigned i = 0; i < _settings._smFrustumSplits.size(); i++) {
             _api.setRendertargets({}, _shadowMap.get(), i);
             _api.clearRendertarget<false, true, false>(Vec4f());
-            _rp._lightVP = &light_vps[i];
+            _gsp._VP = &light_vps[i];
             for (const auto& e : sm_display_list) {
-              _api.setupShaderDesc(*e.first, _rp);
+              _api.setupShaderDesc(*e.first, _gsp);
               for (const auto& e1 : e.second) {
                 e1.first->setupDepth(e.first->getShader().get());
                 for (const auto& smr : e1.second) {
-                //  smr->_materialDesc->setupDepth(e.first->getShader().get());
-                  smr->_meshRenderFuncDepth(light_vps[i]);
+                  smr->_meshRenderFuncDepth();
                 }
               }
             }
           }
-          _rp._worldToLight = light_vps;
-          _rp._smFrustumSplits = _settings._smFrustumSplits;
-          _rp._smBias = _settings._smBias;
+          _gsp._worldToLight = light_vps;
+          _gsp._smFrustumSplits = _settings._smFrustumSplits;
+          _gsp._smBias = _settings._smBias;
           _api.setDepthClampEnabled<false>();
         };
       }
@@ -102,7 +101,7 @@ namespace fly
             display_list[e->_shaderDesc][e->_materialDesc.get()].push_back(e);
           }
           for (const auto& e : display_list) {
-            _api.setupShaderDesc(*e.first, _rp);
+            _api.setupShaderDesc(*e.first, _gsp);
             for (const auto& e1 : e.second) {
               e1.first->setup(e.first->getShader().get());
               for (const auto& smr : e1.second) {
@@ -119,7 +118,7 @@ namespace fly
             display_list[e->_shaderDesc].push_back(e);
           }
           for (const auto& e : display_list) {
-            _api.setupShaderDesc(*e.first, _rp);
+            _api.setupShaderDesc(*e.first, _gsp);
             for (const auto& smr : e.second) {
               smr->_materialDesc->setup(e.first->getShader().get());
               smr->_meshRenderFunc();
@@ -165,21 +164,43 @@ namespace fly
       }
       if (_camera && _directionalLight) {
         _api.beginFrame();
-        _rp._viewMatrix = _camera->getViewMatrix(_camera->_pos, _camera->_eulerAngles);
-        _rp._VP = _rp._projectionMatrix * _rp._viewMatrix;
+        _gsp._viewMatrix = _camera->getViewMatrix(_camera->_pos, _camera->_eulerAngles);
+        _vpScene = _gsp._projectionMatrix * _gsp._viewMatrix;
         _api.setDepthTestEnabled<true>();
         _api.setFaceCullingEnabled<true>();
-        _rp._lightPosWorld = _directionalLight->_pos;
-        _rp._camPosworld = _camera->_pos;
-        _rp._lightIntensity = _directionalLight->getIntensity();
-        _rp._time = time;
+        _api.setDepthFunc<API::DepthFunc::LEQUAL>();
+        _api.setDepthWriteEnabled<true>();
+        _gsp._lightPosWorld = _directionalLight->_pos;
+        _gsp._camPosworld = _camera->_pos;
+        _gsp._lightIntensity = _directionalLight->getIntensity();
+        _gsp._time = time;
         _meshGeometryStorage.bind();
         _staticMeshRenderFuncSM();
-        _settings._postProcessing ? _api.setRendertargets({ _lightingBuffer.get() }, _depthBuffer.get()) : _api.bindBackbuffer(_defaultRenderTarget);
         _api.setViewport(_viewPortSize);
-        _api.clearRendertarget<true, true, false>(Vec4f(0.149f, 0.509f, 0.929f, 1.f));
-        _visibleMeshes = _quadtree->getVisibleElements<API::isDirectX()>(_rp._VP);
-        if (_settings._shadows) {
+        _gsp._VP = &_vpScene;
+        _visibleMeshes = _quadtree->getVisibleElements<API::isDirectX()>(_vpScene);
+        if (_settings._depthPrePass) {
+          _api.setRendertargets({}, _depthBuffer.get());
+          _api.clearRendertarget<false, true, false>(Vec4f());
+          std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> display_list;
+          for (const auto& e : _visibleMeshes) {
+            display_list[e->_shaderDescDepth][e->_materialDesc.get()].push_back(e);
+          }
+          for (const auto& e : display_list) {
+            _api.setupShaderDesc(*e.first, _gsp);
+            for (const auto& e1 : e.second) {
+              e1.first->setupDepth(e.first->getShader().get());
+              for (const auto& smr : e1.second) {
+                smr->_meshRenderFuncDepth();
+              }
+            }
+          }
+          _api.setDepthWriteEnabled<false>();
+          _api.setDepthFunc<API::DepthFunc::EQUAL>();
+        }
+        (_settings._postProcessing || _settings._depthPrePass) ? _api.setRendertargets({ _lightingBuffer.get() }, _depthBuffer.get()) : _api.bindBackbuffer(_defaultRenderTarget);
+        _settings._depthPrePass ? _api.clearRendertarget<true, false, false>(Vec4f(0.149f, 0.509f, 0.929f, 1.f)) : _api.clearRendertarget<true, true, false>(Vec4f(0.149f, 0.509f, 0.929f, 1.f));
+        if (_shadowMap) {
           _api.bindShadowmap(*_shadowMap);
         }
         _staticMeshRenderFunc();
@@ -189,10 +210,10 @@ namespace fly
         if (_settings._debugObjectAABBs) {
           renderObjectAABBs(_visibleMeshes);
         }
-        if (_settings._postProcessing) {
+        if (_settings._postProcessing || _settings._depthPrePass) {
           _api.setDepthTestEnabled<false>();
           _api.bindBackbuffer(_defaultRenderTarget);
-          _api.composite(_lightingBuffer.get(), _rp);
+          _api.composite(_lightingBuffer.get(), _gsp);
         }
         _api.endFrame();
       }
@@ -201,7 +222,7 @@ namespace fly
     {
       _viewPortSize = window_size;
       float aspect_ratio = _viewPortSize[0] / _viewPortSize[1];
-      _rp._projectionMatrix = _api.getZNearMapping() == ZNearMapping::ZERO ?
+      _gsp._projectionMatrix = _api.getZNearMapping() == ZNearMapping::ZERO ?
         glm::perspectiveRH_ZO(glm::radians(_pp._fieldOfViewDegrees), aspect_ratio, _pp._near, _pp._far) :
         glm::perspectiveRH_NO(glm::radians(_pp._fieldOfViewDegrees), aspect_ratio, _pp._near, _pp._far);
 
@@ -215,7 +236,7 @@ namespace fly
   private:
     API _api;
     ProjectionParams _pp;
-    GlobalShaderParams _rp;
+    GlobalShaderParams _gsp;
     Vec2f _viewPortSize;
     std::shared_ptr<Camera> _camera;
     std::shared_ptr<DirectionalLight> _directionalLight;
@@ -226,6 +247,7 @@ namespace fly
     std::unique_ptr<typename API::Depthbuffer> _depthBuffer;
     std::unique_ptr<typename API::Shadowmap> _shadowMap;
     unsigned _defaultRenderTarget = 0;
+    Mat4f _vpScene;
 
     // Wrapper for StaticMeshRenderable
     struct StaticMeshRenderable
@@ -236,7 +258,7 @@ namespace fly
       typename API::ShaderDesc* _shaderDesc;
       typename API::ShaderDesc* _shaderDescDepth;
       std::function<void()> _meshRenderFunc;
-      std::function<void(const Mat4f&)> _meshRenderFuncDepth;
+      std::function<void()> _meshRenderFuncDepth;
       void init(const API* api)
       {
         _shaderDesc = _materialDesc->getMeshShaderDesc(_smr->hasWind()).get();
@@ -245,15 +267,15 @@ namespace fly
           _meshRenderFunc = [this, api]() {
             api->renderMesh(_meshData, _smr->getModelMatrix(), _smr->getModelMatrixInverse());
           };
-          _meshRenderFuncDepth = [this, api](const Mat4f& vp) {
-            api->renderMeshMVP(_meshData, vp * _smr->getModelMatrix());
+          _meshRenderFuncDepth = [this, api]() {
+            api->renderMesh(_meshData, _smr->getModelMatrix());
           };
         }
         else {
           _meshRenderFunc = [this, api]() {
             api->renderMesh(_meshData, _smr->getModelMatrix(), _smr->getModelMatrixInverse(), _smr->getWindParams(), *getAABBWorld());
           };
-          _meshRenderFuncDepth = [this, api](const Mat4f& vp) {
+          _meshRenderFuncDepth = [this, api]() {
             api->renderMesh(_meshData, _smr->getModelMatrix(), _smr->getWindParams(), *getAABBWorld());
           };
         }
@@ -276,23 +298,27 @@ namespace fly
     }
     void renderQuadtreeAABBs()
     {
-      auto visible_nodes = _quadtree->getVisibleNodes(_rp._VP);
+      auto visible_nodes = _quadtree->getVisibleNodes(_vpScene);
       if (visible_nodes.size()) {
+        _api.setDepthWriteEnabled<true>();
+        _api.setDepthFunc<API::DepthFunc::LEQUAL>();
         std::vector<AABB*> aabbs;
         for (const auto& n : visible_nodes) {
           aabbs.push_back(n->getAABBWorld());
         }
-        _api.renderAABBs(aabbs, _rp._VP, Vec3f(1.f, 0.f, 0.f));
+        _api.renderAABBs(aabbs, _vpScene, Vec3f(1.f, 0.f, 0.f));
       }
     }
     void renderObjectAABBs(const std::vector<StaticMeshRenderable*>& visible_elements)
     {
       if (visible_elements.size()) {
+        _api.setDepthWriteEnabled<true>();
+        _api.setDepthFunc<API::DepthFunc::LEQUAL>();
         std::vector<AABB*> aabbs;
         for (const auto& e : visible_elements) {
           aabbs.push_back(e->getAABBWorld());
         }
-        _api.renderAABBs(aabbs, _rp._VP, Vec3f(0.f, 1.f, 0.f));
+        _api.renderAABBs(aabbs, _vpScene, Vec3f(0.f, 1.f, 0.f));
       }
     }
   };

@@ -56,6 +56,37 @@ namespace fly
     template<bool enable> inline void setDepthTestEnabled() const { GL_CHECK(enable ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST)); }
     template<bool enable> inline void setFaceCullingEnabled() const { GL_CHECK(enable ? glEnable(GL_CULL_FACE) : glDisable(GL_CULL_FACE)); }
     template<bool enable> inline void setDepthClampEnabled() const { GL_CHECK(enable ? glEnable(GL_DEPTH_CLAMP) : glDisable(GL_DEPTH_CLAMP)); }
+    template<bool enable> inline void setDepthWriteEnabled() const { GL_CHECK(glDepthMask(enable)); }
+    enum class DepthFunc { NEVER, LESS, EQUAL, LEQUAL, GREATER, NOTEQUAL, GEQUAL, ALWAYS };
+    template<DepthFunc f> inline void setDepthFunc() const
+    {
+      GLenum func;
+      if (f == DepthFunc::NEVER) {
+        func = GL_NEVER;
+      }
+      else if (f == DepthFunc::LESS) {
+        func = GL_LESS;
+      }
+      else if (f == DepthFunc::EQUAL) {
+        func = GL_EQUAL;
+      }
+      else if (f == DepthFunc::LEQUAL) {
+        func = GL_LEQUAL;
+      }
+      else if (f == DepthFunc::GREATER) {
+        func = GL_GREATER;
+      }
+      else if (f == DepthFunc::NOTEQUAL) {
+        func = GL_NOTEQUAL;
+      }
+      else if (f == DepthFunc::GEQUAL) {
+        func = GL_GEQUAL;
+      }
+      else if (f == DepthFunc::ALWAYS) {
+        func = GL_ALWAYS;
+      }
+      GL_CHECK(glDepthFunc(func));
+    }
     void reloadShaders();
     using RTT = GLTexture;
     using Depthbuffer = GLTexture;
@@ -102,8 +133,7 @@ namespace fly
       WIND = 4,
       VP = 8,
       LIGHTING = 16,
-      LIGHT_VP = 32,
-      EXPOSURE = 64
+      EXPOSURE = 32
     };
     /**
     * Class that is used to only send uniform data to the GPU that is actually needed.
@@ -147,6 +177,7 @@ namespace fly
     void bindShader(GLShaderProgram* shader);
     void setupShaderDesc(const ShaderDesc& desc, const GlobalShaderParams& params);
     void bindShadowmap(const Shadowmap& shadowmap) const;
+    void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix) const;
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse) const;
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse, const WindParamsLocal& wind_params, const AABB& aabb) const;
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const WindParamsLocal& wind_params, const AABB& aabb) const;

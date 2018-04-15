@@ -111,6 +111,11 @@ namespace fly
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + shadowTexUnit()));
     shadowmap.bind();
   }
+  void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & model_matrix) const
+  {
+    setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::modelMatrix()), model_matrix);
+    GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, GL_UNSIGNED_INT, mesh_data._indices, mesh_data._baseVertex));
+  }
   void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse) const
   {
     setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::modelMatrix()), model_matrix);
@@ -191,7 +196,7 @@ namespace fly
       float max_ani;
       GL_CHECK(glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &max_ani));
       _anisotropy = glm::clamp(anisotropy, 1u, static_cast<unsigned>(max_ani));
-      _samplerAnisotropic->param(GL_TEXTURE_MAX_ANISOTROPY, _anisotropy);
+      _samplerAnisotropic->param(GL_TEXTURE_MAX_ANISOTROPY, static_cast<float>(_anisotropy));
     }
   }
   std::shared_ptr<GLTexture> OpenGLAPI::createTexture(const std::string & path)
@@ -428,8 +433,8 @@ namespace fly
     auto vertex_shadow_file_wind = api->_shaderGenerator->createMeshVertexShaderFileDepth(flag | FLAG::WIND, settings);
     auto fragment_shadow_file = api->_shaderGenerator->createMeshFragmentShaderFileDepth(flag, settings);
     auto fragment_shadow_file_wind = api->_shaderGenerator->createMeshFragmentShaderFileDepth(flag | FLAG::WIND, settings);
-    _meshShaderDescDepth = api->createShaderDesc(api->createShader(vertex_shadow_file, fragment_shadow_file), ShaderSetupFlags::NONE);
-    ss_flags = ShaderSetupFlags::LIGHT_VP;
+    _meshShaderDescDepth = api->createShaderDesc(api->createShader(vertex_shadow_file, fragment_shadow_file), ShaderSetupFlags::VP);
+    ss_flags = ShaderSetupFlags::VP;
     if (settings._windAnimations) {
       ss_flags |= ShaderSetupFlags::WIND | ShaderSetupFlags::TIME;
     }
@@ -467,7 +472,7 @@ namespace fly
   {
     if (flags & ShaderSetupFlags::VP) {
       _setupFuncs.push_back([this](const GlobalShaderParams& params) {
-        setMatrix(_shader->uniformLocation(GLSLShaderGenerator::viewProjectionMatrix()), params._VP);
+        setMatrix(_shader->uniformLocation(GLSLShaderGenerator::viewProjectionMatrix()), *params._VP);
       });
     }
     if (flags & ShaderSetupFlags::LIGHTING) {
@@ -484,11 +489,6 @@ namespace fly
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::numfrustumSplits()), static_cast<int>(params._worldToLight.size()));
         setScalarArray(_shader->uniformLocation(GLSLShaderGenerator::frustumSplits()), params._smFrustumSplits.front(), static_cast<unsigned>(params._smFrustumSplits.size()));
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::shadowMapBias()), params._smBias);
-      });
-    }
-    if (flags & ShaderSetupFlags::LIGHT_VP) {
-      _setupFuncs.push_back([this](const GlobalShaderParams& params) {
-        setMatrix(_shader->uniformLocation(GLSLShaderGenerator::viewProjectionMatrix()), *params._lightVP);
       });
     }
     if (flags & ShaderSetupFlags::TIME) {

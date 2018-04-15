@@ -61,6 +61,7 @@ void GLWidget::initializeGL()
   TwAddVarCB(settings_bar, "Anisotropy", TwType::TW_TYPE_UINT32, cbSetAnisotropy, cbGetAnisotropy, &_renderer, "step=1");
   TwAddVarCB(settings_bar, "Wind animations", TwType::TW_TYPE_BOOLCPP, cbSetWindAnimations, cbGetWindAnimations, &_renderer, nullptr);
   TwAddVarCB(settings_bar, "Exposure", TwType::TW_TYPE_FLOAT, cbSetExposure, cbGetExposure, &_renderer, "step=0.01f");
+  TwAddVarCB(settings_bar, "Depth pre pass", TwType::TW_TYPE_BOOLCPP, cbSetDepthPrepass, cbGetDepthPrepass, &_renderer, nullptr);
 
   TwSetTopBar(_bar);
 }
@@ -345,6 +346,16 @@ void GLWidget::cbSetExposure(const void * value, void * client_data)
 void GLWidget::cbGetExposure(void * value, void * client_data)
 {
   *reinterpret_cast<float*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._exposure;
+}
+void GLWidget::cbSetDepthPrepass(const void * value, void * client_data)
+{
+  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings();
+  settings._depthPrePass = *reinterpret_cast<const bool*>(value);
+  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->setSettings(settings);
+}
+void GLWidget::cbGetDepthPrepass(void * value, void * client_data)
+{
+  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._depthPrePass;
 }
 void GLWidget::cbSetSortModeShaderMaterial(const void * value, void * clientData)
 {

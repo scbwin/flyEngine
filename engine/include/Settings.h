@@ -56,6 +56,7 @@ namespace fly
     unsigned _anisotropy = 4u;
     bool _windAnimations = true;
     bool _exposureEnabled = true;
+    bool _depthPrePass = false;
   };
 }
 

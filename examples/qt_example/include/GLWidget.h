@@ -87,6 +87,8 @@ protected:
   static void cbGetWindAnimations(void* value, void* client_data);
   static void cbSetExposure(const void* value, void* client_data);
   static void cbGetExposure(void* value, void* client_data);
+  static void cbSetDepthPrepass(const void* value, void* client_data);
+  static void cbGetDepthPrepass(void* value, void* client_data);
 private:
   std::unique_ptr<fly::Engine> _engine;
   std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>> _renderer;

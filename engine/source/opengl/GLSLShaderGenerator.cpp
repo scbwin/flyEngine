@@ -156,6 +156,9 @@ out vec3 normal_world;\n\
 out vec2 uv_out;\n\
 out vec3 tangent_world;\n\
 out vec3 bitangent_world;\n";
+    if (settings._depthPrePass) {
+      shader_src += "invariant gl_Position; \n";
+  }
     if (flags & MeshRenderFlag::WIND) {
       shader_src += _windParamString;
     }
@@ -180,25 +183,20 @@ out vec3 bitangent_world;\n";
     std::string shader_src = "#version 330\n\
 layout(location = 0) in vec3 position;\n\
 layout(location = 2) in vec2 uv;\n";
-    if (flags & MeshRenderFlag::WIND) {
+    if (settings._depthPrePass) {
+      shader_src += "invariant gl_Position; \n";
+    }
       shader_src += "uniform mat4 " + std::string(modelMatrix()) + ";\n\
 uniform mat4 " + std::string(viewProjectionMatrix()) + ";\n";
       shader_src += _windParamString;
-    }
-    else {
-      shader_src += "uniform mat4 " + std::string(modelViewProjectionMatrix()) + ";\n";
-    }
     shader_src += "out vec2 uv_out;\n\
 void main()\n\
 {\n";
-    if (flags & MeshRenderFlag::WIND) {
       shader_src += "  vec4 pos_world = M * vec4(position, 1.f);\n";
-      shader_src += _windCodeString;
+      if (flags & MeshRenderFlag::WIND) {
+        shader_src += _windCodeString;
+      }
       shader_src += "  gl_Position = VP * pos_world;\n";
-    }
-    else {
-      shader_src += "  gl_Position = MVP * vec4(position, 1.f);\n";
-    }
     shader_src += "  uv_out = uv;\n\
 }\n";
     std::ofstream os(fname);
