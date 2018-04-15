@@ -105,6 +105,7 @@ namespace fly
         GLsizei _count; // Number of indices (i.e. num triangles * 3)
         GLvoid* _indices; // Byte offset into the index buffer
         GLint _baseVertex; // Offset into the vertex buffer
+        inline unsigned numTriangles() const {return static_cast<unsigned>(_count / 3);}
       };
       MeshGeometryStorage();
       ~MeshGeometryStorage();

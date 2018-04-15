@@ -21,6 +21,8 @@
 #include <functional>
 #include <GraphicsSettings.h>
 
+#define RENDERER_STATS 0
+
 namespace fly
 {
   template<class API>
@@ -100,6 +102,9 @@ namespace fly
     }
     virtual void update(float time, float delta_time) override
     {
+#if RENDERER_STATS
+      _stats = {};
+#endif
       if (_quadtree == nullptr) {
         buildQuadtree();
       }
@@ -117,7 +122,7 @@ namespace fly
         _gsp._time = time;
         _gsp._exposure = _gs->getExposure();
         _meshGeometryStorage.bind();
-        if (_gs->getShadows() || _gs->getShadowsPCF()) {
+        if (_shadowMapping) {
           renderShadowMap();
         }
         _api.setViewport(_viewPortSize);
@@ -177,6 +182,16 @@ namespace fly
     const Vec3f& getSceneMin() const { return _sceneMin; }
     const Vec3f& getSceneMax() const { return _sceneMax; }
     std::vector<std::shared_ptr<Material>> getAllMaterials() { return _api.getAllMaterials(); }
+#if RENDERER_STATS
+    struct RendererStats
+    {
+      unsigned _renderedTriangles;
+      unsigned _renderedTrianglesShadow;
+      unsigned _renderedMeshes;
+      unsigned _renderedMeshesShadow;
+    };
+    const RendererStats& getStats() const { return _stats; }
+#endif
   private:
     API _api;
     ProjectionParams _pp;
@@ -194,6 +209,10 @@ namespace fly
     Mat4f _vpScene;
     bool _offScreenRendering;
     bool _shadowMapping;
+
+#if RENDERER_STATS
+    RendererStats _stats;
+#endif
 
     // Wrapper for StaticMeshRenderable
     struct StaticMeshRenderable
@@ -298,6 +317,10 @@ namespace fly
           e1.first->setup(e.first->getShader().get());
           for (const auto& smr : e1.second) {
             smr->render(_api);
+#if RENDERER_STATS
+            _stats._renderedTriangles += smr->_meshData.numTriangles();
+            _stats._renderedMeshes++;
+#endif
           }
         }
       }
@@ -324,6 +347,10 @@ namespace fly
             e1.first->setupDepth(e.first->getShader().get());
             for (const auto& smr : e1.second) {
               smr->renderDepth(_api);
+#if RENDERER_STATS
+              _stats._renderedTrianglesShadow += smr->_meshData.numTriangles();
+              _stats._renderedMeshesShadow ++;
+#endif
             }
           }
         }

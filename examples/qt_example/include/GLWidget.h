@@ -6,7 +6,7 @@
 #include <set>
 #include <GraphicsSettings.h>
 
-#define SPONZA_MANY 1
+#define SPONZA_MANY 0
 #define TREE_SCENE 0
 
 namespace fly
@@ -58,6 +58,11 @@ private:
   unsigned _fps = 0;
   CTwBar* _bar;
   const char* _fpsButtonName = "FPS";
+  const char* _renderedTrianglesName = "Triangles";
+  const char* _renderedTrianglesShadowName = "Triangles shadow";
+  const char* _renderedMeshesName = "Meshes";
+  const char* _renderedMeshesShadowName = "Meshes shadow";
+  std::string formatNumber(unsigned number);
 };
 
 #endif

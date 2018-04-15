@@ -38,6 +38,12 @@ void GLWidget::initializeGL()
   TwInit(TwGraphAPI::TW_OPENGL_CORE, nullptr);
   _bar = TwNewBar("Stats");
   TwAddButton(_bar, _fpsButtonName, nullptr, nullptr, nullptr);
+#if RENDERER_STATS
+  TwAddButton(_bar, _renderedMeshesName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _renderedMeshesShadowName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _renderedTrianglesName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _renderedTrianglesShadowName, nullptr, nullptr, nullptr);
+#endif
   auto settings_bar = TwNewBar("Settings");
   AntWrapper(settings_bar, &_graphicsSettings, _renderer->getApi());
   TwSetTopBar(_bar);
@@ -77,6 +83,13 @@ void GLWidget::paintGL()
     _measure = _gameTimer->getTotalTimeSeconds() + 1.f;
     std::string fps_label_str = std::to_string(_fps) + " FPS";
     TwSetParam(_bar, _fpsButtonName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, fps_label_str.c_str());
+#if RENDERER_STATS
+    const auto& stats = _renderer->getStats();
+    TwSetParam(_bar, _renderedMeshesName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Meshes:" + formatNumber(stats._renderedMeshes)).c_str());
+    TwSetParam(_bar, _renderedMeshesShadowName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Meshes SM:" + formatNumber(stats._renderedMeshesShadow)).c_str());
+    TwSetParam(_bar, _renderedTrianglesName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Triangles:" + formatNumber(stats._renderedTriangles)).c_str());
+    TwSetParam(_bar, _renderedTrianglesShadowName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Triangles SM:" + formatNumber(stats._renderedTrianglesShadow)).c_str());
+#endif
     _fps = 0;
   }
   TwDraw();
@@ -204,13 +217,43 @@ void GLWidget::initGame()
   cam_entity->addComponent(std::make_shared<fly::Camera>(glm::vec3(0.f, 0.f, -100.f), glm::vec3(0.f)));
   auto dl_entity = _engine->getEntityManager()->createEntity();
   _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(-1000.f, 2000.f, -1000.f), glm::vec3(-500.f, 0.f, -500.f));
- // auto light_pos = _renderer->getSceneMin();
-  //light_pos[1] = 200.f;
-  //_dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), light_pos, glm::vec3(0.f), csm_distances);
   dl_entity->addComponent(_dl);
   
   _camController = std::make_unique<fly::CameraController>(cam_entity->getComponent<fly::Camera>(), 20.f);
 #if SPONZA_MANY
   _camController->setSpeed(100.f);
 #endif
+}
+
+std::string GLWidget::formatNumber(unsigned number)
+{
+  unsigned num = number;
+  std::string ret;
+  while (true) {
+    unsigned remainder = num % 1000;
+    num /= 1000;
+    char rem_str[4];
+    if (num == 0) {
+      if (remainder >= 100) {
+        sprintf_s(rem_str, "%3u", remainder);
+      }
+      else if (remainder >= 10) {
+        sprintf_s(rem_str, "%2u", remainder);
+      }
+      else {
+        sprintf_s(rem_str, "%1u", remainder);
+      }
+    }
+    else {
+      sprintf_s(rem_str, "%03u", remainder);
+    }
+    ret = rem_str + ret;
+    if (num == 0) {
+      break;
+    }
+    else {
+      ret = "," + ret;
+    }
+  }
+  return ret;
 }
