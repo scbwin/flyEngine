@@ -7,6 +7,7 @@
 namespace fly
 {
   struct Settings;
+  class GraphicsSettings;
 
   class GLSLShaderGenerator
   {
@@ -26,12 +27,12 @@ namespace fly
       CP_NONE = 0,
       EXPOSURE = 1
     };
-    std::string createMeshVertexShaderFile(unsigned flags, const Settings& settings);
-    std::string createMeshFragmentShaderFile(unsigned flags, const Settings& settings);
-    std::string createMeshVertexShaderFileDepth(unsigned flags, const Settings& settings);
-    std::string createMeshFragmentShaderFileDepth(unsigned flags, const Settings& settings);
-    void createCompositeShaderFiles(unsigned flags, const Settings& settings, std::string& vertex_file, std::string& fragment_file);
-    void regenerateShaders(const Settings& settings);
+    std::string createMeshVertexShaderFile(unsigned flags, const GraphicsSettings& settings);
+    std::string createMeshFragmentShaderFile(unsigned flags, const GraphicsSettings& settings);
+    std::string createMeshVertexShaderFileDepth(unsigned flags, const GraphicsSettings& settings);
+    std::string createMeshFragmentShaderFileDepth(unsigned flags, const GraphicsSettings& settings);
+    void createCompositeShaderFiles(unsigned flags, const GraphicsSettings& gs, std::string& vertex_file, std::string& fragment_file);
+    void regenerateShaders(const GraphicsSettings& gs);
     static inline constexpr const char* diffuseSampler() { return "ts_d"; };
     static inline constexpr const char* alphaSampler() { return "ts_a"; };
     static inline constexpr const char* normalSampler() { return "ts_n"; };
@@ -84,11 +85,11 @@ float noise(vec2 p)\n\
     static inline constexpr const char* vertexFileComposite() { return "assets/opengl/vs_screen.glsl"; };
     static inline constexpr const char* directory() { return "generated/"; };
   private:
-    std::string createMeshVertexFile(const std::string& fname, unsigned flags, const Settings& settings) const;
-    std::string createMeshVertexFileDepth(const std::string& fname, unsigned flags, const Settings& settings) const;
-    std::string createMeshFragmentFile(const std::string& fname, unsigned flags, const Settings& settings) const;
-    std::string createMeshFragmentFileDepth(const std::string& fname, unsigned flags, const Settings& settings) const;
-    void createCompositeShaderFiles(const std::string& fs_file, unsigned flags, const Settings& settings) const;
+    std::string createMeshVertexFile(const std::string& fname, unsigned flags, const GraphicsSettings& settings) const;
+    std::string createMeshVertexFileDepth(const std::string& fname, unsigned flags, const GraphicsSettings& settings) const;
+    std::string createMeshFragmentFile(const std::string& fname, unsigned flags, const GraphicsSettings& settings) const;
+    std::string createMeshFragmentFileDepth(const std::string& fname, unsigned flags, const GraphicsSettings& settings) const;
+    void createCompositeShaderFiles(const std::string& fs_file, unsigned flags, const GraphicsSettings& gs) const;
     std::vector<std::string> _fnamesFragment;
     std::vector<unsigned> _flagsFragment;
     std::vector<std::string> _fnamesVertex;

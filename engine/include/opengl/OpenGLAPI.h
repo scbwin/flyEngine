@@ -24,10 +24,10 @@ namespace fly
   class Material;
   class GLFramebuffer;
   class GLSLShaderGenerator;
-  struct Settings;
   struct GlobalShaderParams;
   class GLSampler;
   struct WindParamsLocal;
+  class GraphicsSettings;
 
   class OpenGLAPI
   {
@@ -151,9 +151,9 @@ namespace fly
     class MaterialDesc
     {
     public:
-      MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI* api, const Settings& settings);
-      void create(OpenGLAPI* api, const Settings& settings);
-      void create(const std::shared_ptr<Material>& material, OpenGLAPI* api, const Settings& settings);
+      MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI* api, const GraphicsSettings& settings);
+      void create(OpenGLAPI* api, const GraphicsSettings& settings);
+      void create(const std::shared_ptr<Material>& material, OpenGLAPI* api, const GraphicsSettings& settings);
       void setup(GLShaderProgram* shader) const;
       void setupDepth(GLShaderProgram* shader) const;
       using ShaderProgram = GLShaderProgram;
@@ -190,20 +190,20 @@ namespace fly
     void endFrame() const;
     void setAnisotropy(unsigned anisotropy);
     std::shared_ptr<GLTexture> createTexture(const std::string& path);
-    std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material, const Settings& settings);
+    std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material, const GraphicsSettings& settings);
     std::shared_ptr<GLShaderProgram> createShader(const std::string& vertex_file, const std::string& fragment_file, const std::string& geometry_file = "");
     std::shared_ptr<ShaderDesc> createShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, unsigned flags);
     std::unique_ptr<RTT> createRenderToTexture(const Vec2u& size);
     std::unique_ptr<Depthbuffer> createDepthbuffer(const Vec2u& size);
-    std::unique_ptr<Shadowmap> createShadowmap(const Vec2u& size, const Settings& settings);
-    void recreateShadersAndMaterials(const Settings& settings);
-    void createCompositeShaderFile(const Settings& settings);
+    std::unique_ptr<Shadowmap> createShadowmap(const Vec2u& size, const GraphicsSettings& settings);
+    void recreateShadersAndMaterials(const GraphicsSettings& gs);
+    void createCompositeShaderFile(const GraphicsSettings& gs);
     std::vector<std::shared_ptr<Material>> getAllMaterials();
   private:
     GLShaderProgram * _activeShader;
     SoftwareCache<std::string, std::shared_ptr<GLTexture>, const std::string& > _textureCache;
     SoftwareCache<std::string, std::shared_ptr<GLShaderProgram>, const std::string&, const std::string&, const std::string&> _shaderCache;
-    SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>, const std::shared_ptr<Material>&, const Settings&> _matDescCache;
+    SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
     SoftwareCache<std::shared_ptr<GLShaderProgram>, std::shared_ptr<ShaderDesc>, const std::shared_ptr<GLShaderProgram>&, unsigned> _shaderDescCache;
     std::shared_ptr<GLShaderProgram> _aabbShader;
     std::shared_ptr<ShaderDesc> _compositeShaderDesc;

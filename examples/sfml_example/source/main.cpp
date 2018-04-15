@@ -13,6 +13,7 @@
 #include <GameTimer.h>
 #include <set>
 #include <CameraController.h>
+#include <GraphicsSettings.h>
 
 bool handleEvents(sf::RenderWindow& window, const std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>& rs, 
   std::set<sf::Keyboard::Key>& keys_pressed, fly::CameraController* cc, float delta_time)
@@ -59,7 +60,8 @@ int main()
   fly::Vec2u winsize(1024u, 768u);
   sf::RenderWindow window(sf::VideoMode(winsize[0], winsize[1]), "My window");
   auto engine = std::make_unique<fly::Engine>();
-  auto rs = std::make_shared<fly::AbstractRenderer<fly::OpenGLAPI>>();
+  fly::GraphicsSettings gs;
+  auto rs = std::make_shared<fly::AbstractRenderer<fly::OpenGLAPI>>(&gs);
   rs->onResize(winsize);
   engine->addSystem(rs);
   {auto cam_entity = engine->getEntityManager()->createEntity();
@@ -71,7 +73,7 @@ int main()
   auto sponza_model = importer->loadModel("assets/sponza/sponza.obj");
   for (const auto& m : sponza_model->getMeshes()) {
     auto sponza_entity = engine->getEntityManager()->createEntity();
-    sponza_entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(m, sponza_model->getMaterials()[m->getMaterialIndex()], fly::Transform(0.f, fly::Vec3f(0.01f)).getModelMatrix()));
+    sponza_entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(m, sponza_model->getMaterials()[m->getMaterialIndex()], fly::Transform(0.f, fly::Vec3f(0.01f)).getModelMatrix(), false));
   }
   fly::GameTimer timer;
   std::set<sf::Keyboard::Key> keys_pressed;

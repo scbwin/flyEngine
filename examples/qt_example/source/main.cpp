@@ -11,8 +11,8 @@ int main(int argc, char* argv[])
   _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif 
 #endif
-  try
-  {
+ // try
+  //{
     QSurfaceFormat format;
     format.setSwapInterval(0);
     QSurfaceFormat::setDefaultFormat(format);
@@ -22,11 +22,11 @@ int main(int argc, char* argv[])
     gl_widget.show();
 
     return app.exec();
-  }
+  /*}
   catch (const std::exception& e)
   {
     std::cout << e.what() << std::endl;
     getchar();
     return -1;
-  }
+  }*/
 }

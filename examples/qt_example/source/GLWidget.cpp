@@ -12,6 +12,7 @@
 #include <AntTweakBar.h>
 #include <LevelOfDetail.h>
 #include <StaticMeshRenderable.h>
+#include <AntWrapper.h>
 
 GLWidget::GLWidget()
 {
@@ -27,7 +28,8 @@ GLWidget::~GLWidget()
 
 void GLWidget::initializeGL()
 {
-  _renderer = std::make_shared<fly::AbstractRenderer<fly::OpenGLAPI>>();
+  _renderer = std::make_shared<fly::AbstractRenderer<fly::OpenGLAPI>>(&_graphicsSettings);
+  _graphicsSettings.addListener(_renderer);
   _engine->addSystem(_renderer);
   initGame();
   auto timer = new QTimer(this);
@@ -36,33 +38,8 @@ void GLWidget::initializeGL()
   TwInit(TwGraphAPI::TW_OPENGL_CORE, nullptr);
   _bar = TwNewBar("Stats");
   TwAddButton(_bar, _fpsButtonName, nullptr, nullptr, nullptr);
-
-  auto debug_bar = TwNewBar("Debug");
-  TwAddVarCB(debug_bar, "Quadtree AABBs", TwType::TW_TYPE_BOOLCPP, cbSetDebugQuadtreeAABBs, cbGetDebugQuadtreeAABBs, &_renderer, nullptr);
-  TwAddVarCB(debug_bar, "Object AABBs", TwType::TW_TYPE_BOOLCPP, cbSetDebugObjectAABBs, cbGetDebugObjectAABBs, &_renderer, nullptr);
-  TwAddButton(debug_bar, "Reload shaders", cbReloadShaders, &_renderer, nullptr);
-
   auto settings_bar = TwNewBar("Settings");
-  TwAddVarCB(settings_bar, "Group by shader", TwType::TW_TYPE_BOOLCPP, cbSetSortModeShader, cbGetSortModeShader, &_renderer, nullptr);
-  TwAddVarCB(settings_bar, "Group by shader and material", TwType::TW_TYPE_BOOLCPP, cbSetSortModeShaderMaterial, cbGetSortModeShaderMaterial, &_renderer, nullptr);
-  TwAddVarCB(settings_bar, "Light intensity", TwType::TW_TYPE_COLOR3F, cbSetLightIntensity, cbGetLightIntensity, &_dl, nullptr);
-  TwAddVarCB(settings_bar, "Post processing", TwType::TW_TYPE_BOOLCPP, cbSetPostProcessing, cbGetPostProcessing, &_renderer, nullptr);
-  TwAddVarCB(settings_bar, "Sponza specular", TwType::TW_TYPE_FLOAT, cbSetSpec, cbGetSpec, &_renderer, "step=0.2");
-  TwAddVarCB(settings_bar, "Parallax height scale", TwType::TW_TYPE_FLOAT, cbSetPMHScale, cbGetPMHScale, &_renderer, "step=0.001");
-  TwAddVarCB(settings_bar, "Relief min steps", TwType::TW_TYPE_FLOAT, cbSetPMMinSteps, cbGetPMMinSteps, &_renderer, "step=0.1");
-  TwAddVarCB(settings_bar, "Relief max steps", TwType::TW_TYPE_FLOAT, cbSetPMMaxSteps, cbGetPMMaxSteps, &_renderer, "step=0.1");
-  TwAddVarCB(settings_bar, "Relief binary search steps", TwType::TW_TYPE_FLOAT, cbSetPMBinarySearchSteps, cbGetPMBinarySearchSteps, &_renderer, "step=1");
-  TwAddVarCB(settings_bar, "Shadows", TwType::TW_TYPE_BOOLCPP, cbSetShadows, cbGetShadows, &_renderer, nullptr);
-  TwAddVarCB(settings_bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, cbSetPCF, cbGetPCF, &_renderer, nullptr);
-  TwAddVarCB(settings_bar, "Shadow bias", TwType::TW_TYPE_FLOAT, cbSetSmBias, cbGetSmBias, &_renderer, "step=0.000001f");
-  TwAddVarCB(settings_bar, "Normal mapping", TwType::TW_TYPE_BOOLCPP, cbSetNormalMapping, cbGetNormalMapping, &_renderer, nullptr);
-  TwAddVarCB(settings_bar, "Parallax mapping", TwType::TW_TYPE_BOOLCPP, cbSetParallaxMapping, cbGetParallaxMapping, &_renderer, nullptr);
-  TwAddVarCB(settings_bar, "Relief mapping", TwType::TW_TYPE_BOOLCPP, cbSetParallaxSteep, cbGetParallaxSteep, &_renderer, nullptr);
-  TwAddVarCB(settings_bar, "Anisotropy", TwType::TW_TYPE_UINT32, cbSetAnisotropy, cbGetAnisotropy, &_renderer, "step=1");
-  TwAddVarCB(settings_bar, "Wind animations", TwType::TW_TYPE_BOOLCPP, cbSetWindAnimations, cbGetWindAnimations, &_renderer, nullptr);
-  TwAddVarCB(settings_bar, "Exposure", TwType::TW_TYPE_FLOAT, cbSetExposure, cbGetExposure, &_renderer, "step=0.01f");
-  TwAddVarCB(settings_bar, "Depth pre pass", TwType::TW_TYPE_BOOLCPP, cbSetDepthPrepass, cbGetDepthPrepass, &_renderer, nullptr);
-
+  AntWrapper(settings_bar, &_graphicsSettings, _renderer->getApi());
   TwSetTopBar(_bar);
 }
 
@@ -148,222 +125,6 @@ void GLWidget::mouseReleaseEvent(QMouseEvent * e)
 
 void GLWidget::wheelEvent(QWheelEvent * e)
 {
-}
-void GLWidget::cbSetDebugQuadtreeAABBs(const void * value, void * clientData)
-{
-  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings();
-  settings._debugQuadtreeNodeAABBs = *reinterpret_cast<const bool*>(value);
-  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->setSettings(settings);
-}
-void GLWidget::cbGetDebugQuadtreeAABBs(void * value, void * clientData)
-{
-  *reinterpret_cast<bool*>(value) =  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings()._debugQuadtreeNodeAABBs;
-}
-void GLWidget::cbSetDebugObjectAABBs(const void * value, void * clientData)
-{
-  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings();
-  settings._debugObjectAABBs = *reinterpret_cast<const bool*>(value);
-  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->setSettings(settings);
-}
-void GLWidget::cbGetDebugObjectAABBs(void * value, void * clientData)
-{
-  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings()._debugObjectAABBs;
-}
-void GLWidget::cbSetSortModeShader(const void * value, void * clientData)
-{
-  if (*reinterpret_cast<const bool*>(value)) {
-    fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings();
-    settings._dlSortMode = fly::DisplayListSortMode::SHADER;
-    (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->setSettings(settings);
-  }
-}
-void GLWidget::cbGetSortModeShader(void * value, void* clientData)
-{
-  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings()._dlSortMode == fly::DisplayListSortMode::SHADER;
-}
-void GLWidget::cbGetSortModeShaderMaterial(void * value, void* clientData)
-{
-  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings()._dlSortMode == fly::DisplayListSortMode::SHADER_AND_MATERIAL;
-}
-void GLWidget::cbSetLightIntensity(const void * value, void * clientData)
-{
-  (*reinterpret_cast<std::shared_ptr<fly::DirectionalLight>*>(clientData))->setIntensity(*reinterpret_cast<const fly::Vec3f*>(value));
-}
-void GLWidget::cbGetLightIntensity(void * value, void * clientData)
-{
-  *reinterpret_cast<fly::Vec3f*>(value) = (*reinterpret_cast<std::shared_ptr<fly::DirectionalLight>*>(clientData))->getIntensity();
-}
-void GLWidget::cbSetPostProcessing(const void * value, void * clientData)
-{
-  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings();
-  settings._postProcessing = *reinterpret_cast<const bool*>(value);
-  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->setSettings(settings);
-}
-void GLWidget::cbGetPostProcessing(void * value, void * clientData)
-{
-  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings()._postProcessing;
-}
-void GLWidget::cbSetSpec(const void * value, void * clientData)
-{
-  for (const auto& m : (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getAllMaterials()) {
-    m->setSpecularExponent(*reinterpret_cast<const float*>(value));
-  }
-}
-void GLWidget::cbGetSpec(void * value, void * clientData)
-{
-  *reinterpret_cast<float*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getAllMaterials().front()->getSpecularExponent();
-}
-void GLWidget::cbSetShadows(const void * value, void * clientData)
-{
-  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings();
-  settings._shadows = *reinterpret_cast<const bool*>(value);
-  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->setSettings(settings);
-}
-void GLWidget::cbGetShadows(void * value, void * clientData)
-{
-  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings()._shadows;
-}
-void GLWidget::cbReloadShaders(void * client_data)
-{
-  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->reloadShaders();
-}
-void GLWidget::cbSetPCF(const void * value, void * client_data)
-{
-  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings();
-  settings._shadowPercentageCloserFiltering = *reinterpret_cast<const bool*>(value);
-  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->setSettings(settings);
-}
-void GLWidget::cbGetPCF(void * value, void * client_data)
-{
-  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._shadowPercentageCloserFiltering;
-}
-void GLWidget::cbSetSmBias(const void * value, void * client_data)
-{
-  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings();
-  settings._smBias = *reinterpret_cast<const float*>(value);
-  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->setSettings(settings);
-}
-void GLWidget::cbGetSmBias(void * value, void * client_data)
-{
-  *reinterpret_cast<float*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._smBias;
-}
-void GLWidget::cbSetNormalMapping(const void * value, void * client_data)
-{
-  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings();
-  settings._normalMapping = *reinterpret_cast<const bool*>(value);
-  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->setSettings(settings);
-}
-void GLWidget::cbGetNormalMapping(void * value, void * client_data)
-{
-  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._normalMapping;
-}
-void GLWidget::cbSetParallaxMapping(const void * value, void * client_data)
-{
-  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings();
-  settings._parallaxMapping = *reinterpret_cast<const bool*>(value);
-  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->setSettings(settings);
-}
-void GLWidget::cbGetParallaxMapping(void * value, void * client_data)
-{
-  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._parallaxMapping;
-}
-void GLWidget::cbSetParallaxSteep(const void * value, void * client_data)
-{
-  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings();
-  settings._reliefMapping = *reinterpret_cast<const bool*>(value);
-  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->setSettings(settings);
-}
-void GLWidget::cbGetParallaxSteep(void * value, void * client_data)
-{
-  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._reliefMapping;
-}
-void GLWidget::cbSetPMHScale(const void * value, void * client_data)
-{
-  for (const auto& m : (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getAllMaterials()) {
-    m->setParallaxHeightScale(*reinterpret_cast<const float*>(value));
-  }
-}
-void GLWidget::cbGetPMHScale(void * value, void * client_data)
-{
-  *reinterpret_cast<float*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getAllMaterials().front()->getParallaxHeightScale();
-}
-void GLWidget::cbSetPMMinSteps(const void * value, void * client_data)
-{
-  for (const auto& m : (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getAllMaterials()) {
-    m->setParallaxMinSteps(*reinterpret_cast<const float*>(value));
-  }
-}
-void GLWidget::cbGetPMMinSteps(void * value, void * client_data)
-{
-  *reinterpret_cast<float*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getAllMaterials().front()->getParallaxMinSteps();
-}
-void GLWidget::cbSetPMMaxSteps(const void * value, void * client_data)
-{
-  for (const auto& m : (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getAllMaterials()) {
-    m->setParallaxMaxSteps(*reinterpret_cast<const float*>(value));
-  }
-}
-void GLWidget::cbGetPMMaxSteps(void * value, void * client_data)
-{
-  *reinterpret_cast<float*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getAllMaterials().front()->getParallaxMaxSteps();
-}
-void GLWidget::cbSetPMBinarySearchSteps(const void * value, void * client_data)
-{
-  for (const auto& m : (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getAllMaterials()) {
-    m->setParallaxBinarySearchSteps(*reinterpret_cast<const float*>(value));
-  }
-}
-void GLWidget::cbGetPMBinarySearchSteps(void * value, void * client_data)
-{
-  *reinterpret_cast<float*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getAllMaterials().front()->getParallaxBinarySearchSteps();
-}
-void GLWidget::cbSetAnisotropy(const void * value, void * client_data)
-{
-  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings();
-  settings._anisotropy = *reinterpret_cast<const unsigned*>(value);
-  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->setSettings(settings);
-}
-void GLWidget::cbGetAnisotropy(void * value, void * client_data)
-{
-  *reinterpret_cast<unsigned*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._anisotropy;
-}
-void GLWidget::cbSetWindAnimations(const void * value, void * client_data)
-{
-  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings();
-  settings._windAnimations = *reinterpret_cast<const bool*>(value);
-  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->setSettings(settings);
-}
-void GLWidget::cbGetWindAnimations(void * value, void * client_data)
-{
-  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._windAnimations;
-}
-void GLWidget::cbSetExposure(const void * value, void * client_data)
-{
-  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings();
-  settings._exposure = *reinterpret_cast<const float*>(value);
-  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->setSettings(settings);
-}
-void GLWidget::cbGetExposure(void * value, void * client_data)
-{
-  *reinterpret_cast<float*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._exposure;
-}
-void GLWidget::cbSetDepthPrepass(const void * value, void * client_data)
-{
-  fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings();
-  settings._depthPrePass = *reinterpret_cast<const bool*>(value);
-  (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->setSettings(settings);
-}
-void GLWidget::cbGetDepthPrepass(void * value, void * client_data)
-{
-  *reinterpret_cast<bool*>(value) = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(client_data))->getSettings()._depthPrePass;
-}
-void GLWidget::cbSetSortModeShaderMaterial(const void * value, void * clientData)
-{
-  if (*reinterpret_cast<const bool*>(value)) {
-    fly::Settings settings = (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->getSettings();
-    settings._dlSortMode = fly::DisplayListSortMode::SHADER_AND_MATERIAL;
-    (*reinterpret_cast<std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>>*>(clientData))->setSettings(settings);
-  }
 }
 
 void GLWidget::initGame()

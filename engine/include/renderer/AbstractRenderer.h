@@ -19,38 +19,49 @@
 #include <Quadtree.h>
 #include <Settings.h>
 #include <functional>
+#include <GraphicsSettings.h>
 
 namespace fly
 {
   template<class API>
-  class AbstractRenderer : public System
+  class AbstractRenderer : public System, public GraphicsSettings::Listener
   {
   public:
-    AbstractRenderer() : _api()
+    AbstractRenderer(const GraphicsSettings* gs) : _api(), _gs(gs)
     {
       _pp._near = 0.1f;
       _pp._far = 1000.f;
       _pp._fieldOfViewDegrees = 45.f;
+      normalMappingChanged(gs->getNormalMapping(), gs->getParallaxMapping(), gs->getReliefMapping());
+      shadowsChanged(gs->getShadows(), gs->getShadowsPCF(), gs->getShadowBias(), gs->getFrustumSplits());
+      compositingChanged(gs->exposureEnabled(), gs->depthPrepassEnabled(), gs->postProcessingEnabled());
+      anisotropyChanged(gs->getAnisotropy());
     }
     virtual ~AbstractRenderer() {}
-    void setSettings(const Settings& settings)
+    virtual void normalMappingChanged(bool normal_mapping, bool parallax_mapping, bool relief_mapping) override
     {
-      _api.createCompositeShaderFile(settings);
-      if (_settings._shadows != settings._shadows ||
-        _settings._shadowPercentageCloserFiltering != settings._shadowPercentageCloserFiltering ||
-        _settings._normalMapping != settings._normalMapping ||
-        _settings._parallaxMapping != settings._parallaxMapping ||
-        _settings._reliefMapping != settings._reliefMapping ||
-        _settings._windAnimations != settings._windAnimations) {
-        _api.recreateShadersAndMaterials(settings);
-        for (const auto& e : _staticMeshRenderables) {
-          e.second->init(&_api);
-        }
+      _api.recreateShadersAndMaterials(*_gs);
+      for (const auto& e : _staticMeshRenderables) {
+        e.second->init(&_api);
       }
-      _gsp._exposure = settings._exposure;
-      _settings = settings;
-      _api.setAnisotropy(settings._anisotropy);
-      if (settings._postProcessing || settings._depthPrePass) {
+    }
+    virtual void shadowsChanged(bool shadows, bool shadows_pcf, float bias, const std::vector<float>& frustum_splits) override
+    {
+      _shadowMapping = shadows || shadows_pcf;
+      _api.recreateShadersAndMaterials(*_gs);
+      for (const auto& e : _staticMeshRenderables) {
+        e.second->init(&_api);
+      }
+      shadowMapSizeChanged(_gs->getShadowMapSize());
+    }
+    virtual void shadowMapSizeChanged(unsigned size) override
+    {
+      _shadowMap = _shadowMapping ? _api.createShadowmap(size, *_gs) : nullptr;
+    }
+    virtual void compositingChanged(bool exposure_enabled, bool depth_pre_pass, bool post_processing) override
+    {
+      _offScreenRendering = depth_pre_pass || post_processing;
+      if (_offScreenRendering) {
         _lightingBuffer = _api.createRenderToTexture(_viewPortSize);
         _depthBuffer = _api.createDepthbuffer(_viewPortSize);
       }
@@ -58,78 +69,20 @@ namespace fly
         _lightingBuffer = nullptr;
         _depthBuffer = nullptr;
       }
-      _shadowMap = settings._shadows ? _api.createShadowmap(settings._shadowMapSize, settings) : nullptr;
-      if (settings._shadows) {
-        _staticMeshRenderFuncSM = [this]() {
-          std::vector<Mat4f> light_vps;
-          auto vp_shadow_volume = _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
-            inverse(_gsp._viewMatrix), _directionalLight->getViewMatrix(), static_cast<float>(_settings._shadowMapSize), _settings._smFrustumSplits, light_vps, _api.isDirectX());
-          std::vector<StaticMeshRenderable*> sm_visible_elements = _quadtree->getVisibleElements<API::isDirectX()>(vp_shadow_volume);
-          std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> sm_display_list;
-          for (const auto& e : sm_visible_elements) {
-            sm_display_list[e->_shaderDescDepth][e->_materialDesc.get()].push_back(e);
-          }
-          _api.setDepthClampEnabled<true>();
-          _api.setViewport(Vec2u(_settings._shadowMapSize));
-          for (unsigned i = 0; i < _settings._smFrustumSplits.size(); i++) {
-            _api.setRendertargets({}, _shadowMap.get(), i);
-            _api.clearRendertarget<false, true, false>(Vec4f());
-            _gsp._VP = &light_vps[i];
-            for (const auto& e : sm_display_list) {
-              _api.setupShaderDesc(*e.first, _gsp);
-              for (const auto& e1 : e.second) {
-                e1.first->setupDepth(e.first->getShader().get());
-                for (const auto& smr : e1.second) {
-                  smr->_meshRenderFuncDepth();
-                }
-              }
-            }
-          }
-          _gsp._worldToLight = light_vps;
-          _gsp._smFrustumSplits = _settings._smFrustumSplits;
-          _gsp._smBias = _settings._smBias;
-          _api.setDepthClampEnabled<false>();
-        };
-      }
-      else {
-        _staticMeshRenderFuncSM = []() {};
-      }
-      if (settings._dlSortMode == DisplayListSortMode::SHADER_AND_MATERIAL) {
-        _staticMeshRenderFunc = [this](const std::vector<StaticMeshRenderable*> & meshes) {
-          std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> display_list;
-          for (const auto& e : meshes) {
-            display_list[e->_shaderDesc][e->_materialDesc.get()].push_back(e);
-          }
-          for (const auto& e : display_list) {
-            _api.setupShaderDesc(*e.first, _gsp);
-            for (const auto& e1 : e.second) {
-              e1.first->setup(e.first->getShader().get());
-              for (const auto& smr : e1.second) {
-                smr->_meshRenderFunc();
-              }
-            }
-          }
-        };
-      }
-      else {
-        _staticMeshRenderFunc = [this](const std::vector<StaticMeshRenderable*> & meshes) {
-          std::map<typename API::ShaderDesc*, std::vector<StaticMeshRenderable*>> display_list;
-          for (const auto& e : meshes) {
-            display_list[e->_shaderDesc].push_back(e);
-          }
-          for (const auto& e : display_list) {
-            _api.setupShaderDesc(*e.first, _gsp);
-            for (const auto& smr : e.second) {
-              smr->_materialDesc->setup(e.first->getShader().get());
-              smr->_meshRenderFunc();
-            }
-          }
-        };
+      if (post_processing) {
+        _api.createCompositeShaderFile(*_gs);
       }
     }
-    const Settings& getSettings() const
+    virtual void windAnimationsChanged(bool wind_animations) override
     {
-      return _settings;
+      _api.recreateShadersAndMaterials(*_gs);
+      for (const auto& e : _staticMeshRenderables) {
+        e.second->init(&_api);
+      }
+    }
+    virtual void anisotropyChanged(unsigned anisotropy) override
+    {
+      _api.setAnisotropy(anisotropy);
     }
     virtual void onComponentsChanged(Entity* entity) override
     {
@@ -138,7 +91,7 @@ namespace fly
       auto mr = entity->getComponent<fly::StaticMeshRenderable>();
       if (mr) {
         auto mesh_renderable = std::make_shared<StaticMeshRenderable>();
-        mesh_renderable->_materialDesc = _api.createMaterial(mr->getMaterial(), _settings);
+        mesh_renderable->_materialDesc = _api.createMaterial(mr->getMaterial(), *_gs);
         mesh_renderable->_meshData = _meshGeometryStorage.addMesh(mr->getMesh());
         mesh_renderable->_smr = mr;
         mesh_renderable->init(&_api);
@@ -174,12 +127,15 @@ namespace fly
         _gsp._camPosworld = _camera->_pos;
         _gsp._lightIntensity = _directionalLight->getIntensity();
         _gsp._time = time;
+        _gsp._exposure = _gs->getExposure();
         _meshGeometryStorage.bind();
-        _staticMeshRenderFuncSM();
+        if (_gs->getShadows() || _gs->getShadowsPCF()) {
+          renderShadowMap();
+        }
         _api.setViewport(_viewPortSize);
         _gsp._VP = &_vpScene;
         auto visible_meshes = _quadtree->getVisibleElements<API::isDirectX()>(_vpScene);
-        if (_settings._depthPrePass) {
+        if (_gs->depthPrepassEnabled()) {
           _api.setRendertargets({}, _depthBuffer.get());
           _api.clearRendertarget<false, true, false>(Vec4f());
           std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> display_list;
@@ -198,19 +154,19 @@ namespace fly
           _api.setDepthWriteEnabled<false>();
           _api.setDepthFunc<API::DepthFunc::EQUAL>();
         }
-        (_settings._postProcessing || _settings._depthPrePass) ? _api.setRendertargets({ _lightingBuffer.get() }, _depthBuffer.get()) : _api.bindBackbuffer(_defaultRenderTarget);
-        _settings._depthPrePass ? _api.clearRendertarget<true, false, false>(Vec4f(0.149f, 0.509f, 0.929f, 1.f)) : _api.clearRendertarget<true, true, false>(Vec4f(0.149f, 0.509f, 0.929f, 1.f));
+        _offScreenRendering ? _api.setRendertargets({ _lightingBuffer.get() }, _depthBuffer.get()) : _api.bindBackbuffer(_defaultRenderTarget);
+        _gs->depthPrepassEnabled() ? _api.clearRendertarget<true, false, false>(Vec4f(0.149f, 0.509f, 0.929f, 1.f)) : _api.clearRendertarget<true, true, false>(Vec4f(0.149f, 0.509f, 0.929f, 1.f));
         if (_shadowMap) {
           _api.bindShadowmap(*_shadowMap);
         }
-        _staticMeshRenderFunc(visible_meshes);
-        if (_settings._debugQuadtreeNodeAABBs) {
+        renderMeshes(visible_meshes);
+        if (_gs->getDebugQuadtreeNodeAABBs()) {
           renderQuadtreeAABBs();
         }
-        if (_settings._debugObjectAABBs) {
+        if (_gs->getDebugObjectAABBs()) {
           renderObjectAABBs(visible_meshes);
         }
-        if (_settings._postProcessing || _settings._depthPrePass) {
+        if (_offScreenRendering) {
           _api.setDepthTestEnabled<false>();
           _api.bindBackbuffer(_defaultRenderTarget);
           _api.composite(_lightingBuffer.get(), _gsp);
@@ -226,10 +182,10 @@ namespace fly
         glm::perspectiveRH_ZO(glm::radians(_pp._fieldOfViewDegrees), aspect_ratio, _pp._near, _pp._far) :
         glm::perspectiveRH_NO(glm::radians(_pp._fieldOfViewDegrees), aspect_ratio, _pp._near, _pp._far);
 
-      setSettings(_settings);
+      compositingChanged(_gs->exposureEnabled(), _gs->depthPrepassEnabled(), _gs->postProcessingEnabled());
     }
     inline void setDefaultRendertarget(unsigned rt) { _defaultRenderTarget = rt; }
-    inline void reloadShaders() { _api.reloadShaders(); }
+    API* getApi() { return &_api; }
     const Vec3f& getSceneMin() const { return _sceneMin; }
     const Vec3f& getSceneMax() const { return _sceneMax; }
     std::vector<std::shared_ptr<Material>> getAllMaterials() { return _api.getAllMaterials(); }
@@ -237,17 +193,19 @@ namespace fly
     API _api;
     ProjectionParams _pp;
     GlobalShaderParams _gsp;
-    Vec2f _viewPortSize;
+    Vec2f _viewPortSize = Vec2f(1.f);
     std::shared_ptr<Camera> _camera;
     std::shared_ptr<DirectionalLight> _directionalLight;
     Vec3f _sceneMin = Vec3f(std::numeric_limits<float>::max());
     Vec3f _sceneMax = Vec3f(std::numeric_limits<float>::lowest());
-    Settings _settings;
+    const GraphicsSettings* _gs;
     std::unique_ptr<typename API::RTT> _lightingBuffer;
     std::unique_ptr<typename API::Depthbuffer> _depthBuffer;
     std::unique_ptr<typename API::Shadowmap> _shadowMap;
     unsigned _defaultRenderTarget = 0;
     Mat4f _vpScene;
+    bool _offScreenRendering;
+    bool _shadowMapping;
 
     // Wrapper for StaticMeshRenderable
     struct StaticMeshRenderable
@@ -285,8 +243,6 @@ namespace fly
     typename API::MeshGeometryStorage _meshGeometryStorage;
     std::map<Entity*, std::shared_ptr<StaticMeshRenderable>> _staticMeshRenderables;
     std::unique_ptr<Quadtree<StaticMeshRenderable>> _quadtree;
-    std::function<void(const std::vector<StaticMeshRenderable*> &)> _staticMeshRenderFunc;
-    std::function<void()> _staticMeshRenderFuncSM;
 
     void buildQuadtree()
     {
@@ -319,6 +275,53 @@ namespace fly
         }
         _api.renderAABBs(aabbs, _vpScene, Vec3f(0.f, 1.f, 0.f));
       }
+    }
+    void renderMeshes(const std::vector<StaticMeshRenderable*>& meshes)
+    {
+      std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> display_list;
+      for (const auto& e : meshes) {
+        display_list[e->_shaderDesc][e->_materialDesc.get()].push_back(e);
+      }
+      for (const auto& e : display_list) {
+        _api.setupShaderDesc(*e.first, _gsp);
+        for (const auto& e1 : e.second) {
+          e1.first->setup(e.first->getShader().get());
+          for (const auto& smr : e1.second) {
+            smr->_meshRenderFunc();
+          }
+        }
+      }
+    }
+    void renderShadowMap()
+    {
+      std::vector<Mat4f> light_vps;
+      auto vp_shadow_volume = _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
+        inverse(_gsp._viewMatrix), _directionalLight->getViewMatrix(), static_cast<float>(_gs->getShadowMapSize()), _gs->getFrustumSplits(), light_vps, _api.isDirectX());
+      std::vector<StaticMeshRenderable*> sm_visible_elements = _quadtree->getVisibleElements<API::isDirectX()>(vp_shadow_volume);
+      std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> sm_display_list;
+      for (const auto& e : sm_visible_elements) {
+        sm_display_list[e->_shaderDescDepth][e->_materialDesc.get()].push_back(e);
+      }
+      _api.setDepthClampEnabled<true>();
+      _api.setViewport(Vec2u(_gs->getShadowMapSize()));
+      for (unsigned i = 0; i < _gs->getFrustumSplits().size(); i++) {
+        _api.setRendertargets({}, _shadowMap.get(), i);
+        _api.clearRendertarget<false, true, false>(Vec4f());
+        _gsp._VP = &light_vps[i];
+        for (const auto& e : sm_display_list) {
+          _api.setupShaderDesc(*e.first, _gsp);
+          for (const auto& e1 : e.second) {
+            e1.first->setupDepth(e.first->getShader().get());
+            for (const auto& smr : e1.second) {
+              smr->_meshRenderFuncDepth();
+            }
+          }
+        }
+      }
+      _gsp._worldToLight = light_vps;
+      _gsp._smFrustumSplits = _gs->getFrustumSplits();
+      _gsp._smBias = _gs->getShadowBias();
+      _api.setDepthClampEnabled<false>();
     }
   };
 }

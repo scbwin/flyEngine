@@ -18,6 +18,7 @@
 #include <renderer/RenderParams.h>
 #include <opengl/GLSampler.h>
 #include <WindParamsLocal.h>
+#include <GraphicsSettings.h>
 
 namespace fly
 {
@@ -37,8 +38,8 @@ namespace fly
     auto tex = SOIL_load_OGL_texture(path.c_str(), SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_TEXTURE_REPEATS | SOIL_FLAG_COMPRESS_TO_DXT);
     return tex != 0 ? std::make_shared<GLTexture>(tex, GL_TEXTURE_2D) : nullptr;
   })),
-    _matDescCache(SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>, const std::shared_ptr<Material>&, const Settings&>(
-      [this](const std::shared_ptr<Material>& material, const Settings&  settings) {
+    _matDescCache(SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>, const std::shared_ptr<Material>&, const GraphicsSettings&>(
+      [this](const std::shared_ptr<Material>& material, const GraphicsSettings&  settings) {
     return std::make_shared<MaterialDesc>(material, this, settings);
   })),
     _shaderDescCache(SoftwareCache<std::shared_ptr<GLShaderProgram>, std::shared_ptr<ShaderDesc>, const std::shared_ptr<GLShaderProgram>&, unsigned>(
@@ -91,7 +92,7 @@ namespace fly
   void OpenGLAPI::beginFrame() const
   {
     if (_anisotropy > 1) {
-      for (unsigned i = 0; i <= 3; i++) {
+      for (unsigned i = 0; i <= heightTexUnit(); i++) {
         _samplerAnisotropic->bind(i);
       }
     }
@@ -186,7 +187,7 @@ namespace fly
   }
   void OpenGLAPI::endFrame() const
   {
-    for (unsigned i = 0; i <= 3; i++) {
+    for (unsigned i = 0; i <= heightTexUnit(); i++) {
       _samplerAnisotropic->unbind(i);
     }
   }
@@ -203,7 +204,7 @@ namespace fly
   {
     return _textureCache.getOrCreate(path, path);
   }
-  std::shared_ptr<OpenGLAPI::MaterialDesc> OpenGLAPI::createMaterial(const std::shared_ptr<Material>& material, const Settings& settings)
+  std::shared_ptr<OpenGLAPI::MaterialDesc> OpenGLAPI::createMaterial(const std::shared_ptr<Material>& material, const GraphicsSettings& settings)
   {
     return _matDescCache.getOrCreate(material, material, settings);
   }
@@ -238,25 +239,25 @@ namespace fly
     tex->image2D(0, GL_DEPTH_COMPONENT24, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
     return tex;
   }
-  std::unique_ptr<OpenGLAPI::Shadowmap> OpenGLAPI::createShadowmap(const Vec2u & size, const Settings& settings)
+  std::unique_ptr<OpenGLAPI::Shadowmap> OpenGLAPI::createShadowmap(const Vec2u & size, const GraphicsSettings& settings)
   {
     auto tex = std::make_unique<GLTexture>(GL_TEXTURE_2D_ARRAY);
     tex->bind();
-    GLint filter = settings._shadowPercentageCloserFiltering ? GL_LINEAR : GL_NEAREST;
+    GLint filter = settings.getShadowsPCF() ? GL_LINEAR : GL_NEAREST;
     tex->param(GL_TEXTURE_MIN_FILTER, filter);
     tex->param(GL_TEXTURE_MAG_FILTER, filter);
     tex->param(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
     tex->param(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
     tex->param(GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
     tex->param(GL_TEXTURE_BORDER_COLOR, Vec4f(std::numeric_limits<float>::max()).ptr());
-    if (settings._shadowPercentageCloserFiltering) {
+    if (settings.getShadowsPCF()) {
       tex->param(GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
       tex->param(GL_TEXTURE_COMPARE_FUNC, GL_GREATER);
     }
-    tex->image3D(0, GL_DEPTH_COMPONENT24, Vec3u(size, static_cast<unsigned>(settings._smFrustumSplits.size())), 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    tex->image3D(0, GL_DEPTH_COMPONENT24, Vec3u(size, static_cast<unsigned>(settings.getFrustumSplits().size())), 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
     return tex;
   }
-  void OpenGLAPI::recreateShadersAndMaterials(const Settings& settings)
+  void OpenGLAPI::recreateShadersAndMaterials(const GraphicsSettings& settings)
   {
     _shaderGenerator->regenerateShaders(settings);
     _shaderCache.clear();
@@ -266,16 +267,16 @@ namespace fly
     }
     createCompositeShaderFile(settings);
   }
-  void OpenGLAPI::createCompositeShaderFile(const Settings & settings)
+  void OpenGLAPI::createCompositeShaderFile(const GraphicsSettings & gs)
   {
     std::string vs_c, fs_c;
     unsigned flags = GLSLShaderGenerator::CompositeFlag::CP_NONE;
     unsigned ss_flags = ShaderSetupFlags::NONE;
-    if (settings._exposureEnabled) {
+    if (gs.exposureEnabled()) {
       flags |= GLSLShaderGenerator::CompositeFlag::EXPOSURE;
       ss_flags |= ShaderSetupFlags::EXPOSURE;
     }
-    _shaderGenerator->createCompositeShaderFiles(flags, settings, vs_c, fs_c);
+    _shaderGenerator->createCompositeShaderFiles(flags, gs, vs_c, fs_c);
     _compositeShaderDesc = createShaderDesc(createShader(vs_c, fs_c), ss_flags);
   }
   std::vector<std::shared_ptr<Material>> OpenGLAPI::getAllMaterials()
@@ -352,15 +353,15 @@ namespace fly
   {
     return _meshDataCache.getOrCreate(mesh, mesh);
   }
-  OpenGLAPI::MaterialDesc::MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI * api, const Settings& settings) : _material(material)
+  OpenGLAPI::MaterialDesc::MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI * api, const GraphicsSettings& settings) : _material(material)
   {
     create(material, api, settings);
   }
-  void OpenGLAPI::MaterialDesc::create(OpenGLAPI * api, const Settings & settings)
+  void OpenGLAPI::MaterialDesc::create(OpenGLAPI * api, const GraphicsSettings & settings)
   {
     create(_material, api, settings);
   }
-  void OpenGLAPI::MaterialDesc::create(const std::shared_ptr<Material>& material, OpenGLAPI* api, const Settings& settings)
+  void OpenGLAPI::MaterialDesc::create(const std::shared_ptr<Material>& material, OpenGLAPI* api, const GraphicsSettings& settings)
   {
     _materialSetupFuncs.clear();
     _materialSetupFuncsDepth.clear();
@@ -392,7 +393,7 @@ namespace fly
       });
       _materialSetupFuncsDepth.push_back(_materialSetupFuncs.back());
     }
-    if (_normalMap && settings._normalMapping) {
+    if (_normalMap && settings.getNormalMapping()) {
       flag |= FLAG::NORMAL_MAP;
       _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
         GL_CHECK(glActiveTexture(GL_TEXTURE0 + normalTexUnit()));
@@ -400,7 +401,7 @@ namespace fly
         setScalar(shader->uniformLocation(GLSLShaderGenerator::normalSampler()), normalTexUnit());
       });
     }
-    if (_normalMap &&_heightMap && (settings._normalMapping && (settings._parallaxMapping || settings._reliefMapping))) {
+    if (_normalMap &&_heightMap && (settings.getNormalMapping() && (settings.getParallaxMapping() || settings.getReliefMapping()))) {
       flag |= FLAG::PARALLAX_MAP;
       _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
         GL_CHECK(glActiveTexture(GL_TEXTURE0 + heightTexUnit()));
@@ -408,7 +409,7 @@ namespace fly
         setScalar(shader->uniformLocation(GLSLShaderGenerator::heightSampler()), heightTexUnit());
         setScalar(shader->uniformLocation(GLSLShaderGenerator::parallaxHeightScale()), _material->getParallaxHeightScale());
       });
-      if (settings._reliefMapping) {
+      if (settings.getReliefMapping()) {
         _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
           setScalar(shader->uniformLocation(GLSLShaderGenerator::parallaxMinSteps()), _material->getParallaxMinSteps());
           setScalar(shader->uniformLocation(GLSLShaderGenerator::parallaxMaxSteps()), _material->getParallaxMaxSteps());
@@ -419,12 +420,12 @@ namespace fly
     auto fragment_file = api->_shaderGenerator->createMeshFragmentShaderFile(flag, settings);
     auto vertex_file = api->_shaderGenerator->createMeshVertexShaderFile(flag, settings);
     unsigned ss_flags = ShaderSetupFlags::LIGHTING | ShaderSetupFlags::VP;;
-    if (settings._shadows || settings._shadowPercentageCloserFiltering) {
+    if (settings.getShadows() || settings.getShadowsPCF()) {
       ss_flags |= ShaderSetupFlags::SHADOWS;
     }
     _meshShaderDesc = api->createShaderDesc(api->createShader(vertex_file, fragment_file), ss_flags);
     vertex_file = api->_shaderGenerator->createMeshVertexShaderFile(flag | FLAG::WIND, settings);
-    if (settings._windAnimations) {
+    if (settings.getWindAnimations()) {
       ss_flags |= ShaderSetupFlags::WIND | ShaderSetupFlags::TIME;
     }
     _meshShaderDescWind = api->createShaderDesc(api->createShader(vertex_file, fragment_file), ss_flags);
@@ -435,7 +436,7 @@ namespace fly
     auto fragment_shadow_file_wind = api->_shaderGenerator->createMeshFragmentShaderFileDepth(flag | FLAG::WIND, settings);
     _meshShaderDescDepth = api->createShaderDesc(api->createShader(vertex_shadow_file, fragment_shadow_file), ShaderSetupFlags::VP);
     ss_flags = ShaderSetupFlags::VP;
-    if (settings._windAnimations) {
+    if (settings.getWindAnimations()) {
       ss_flags |= ShaderSetupFlags::WIND | ShaderSetupFlags::TIME;
     }
     _meshShaderDescWindDepth = api->createShaderDesc(api->createShader(vertex_shadow_file_wind, fragment_shadow_file_wind), ss_flags);

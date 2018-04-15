@@ -8,11 +8,13 @@ set(CMAKE_AUTOMOC ON)
 
 set(HEADER_FILES
 	include/GLWidget.h
+	include/AntWrapper.h
 )
 
 set(SOURCE_FILES
 	source/GLWidget.cpp
 	source/main.cpp
+	source/AntWrapper.cpp
 )
 
 find_package(Qt5Widgets)
