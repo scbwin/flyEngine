@@ -13,8 +13,7 @@ namespace fly
   public:
     AABB(const Vec3f& bb_min, const Vec3f& bb_max);
     AABB(const AABB& aabb_local, const Mat4f& world_matrix);
-    AABB(const AABB& other);
-    const std::array<Vec3f, 8>& getVertices() const;
+    const Vec3f* getVertices() const;
     const Vec3f& getMin() const;
     const Vec3f& getMax() const;
     const Vec3f& center() const;
@@ -65,7 +64,7 @@ namespace fly
         inside_near = false;
       }
       for (const auto& v : _vertices) {
-        auto pos_h = mvp * Vec4f({ v[0], v[1], v[2], 1.f });
+        auto pos_h = mvp * Vec4f( v[0], v[1], v[2], 1.f );
         inside_left = inside_left || pos_h[0] >= -pos_h[3];
         inside_right = inside_right || pos_h[0] <= pos_h[3];
         inside_bottom = inside_bottom || pos_h[1] >= -pos_h[3];
@@ -88,7 +87,7 @@ namespace fly
       return visible;
     }
   private:
-    std::array<Vec3f, 8> _vertices;
+    Vec3f _vertices [8];
     Vec3f _bbMin, _bbMax;
     Vec3f _center;
   };

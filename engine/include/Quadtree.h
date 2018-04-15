@@ -21,7 +21,7 @@ namespace fly
     public:
       Node(const Vec2f& min, const Vec2f& size, const Vec3f& bb_min, const Vec3f& bb_max) : _min(min), _size(size)
       {
-        _aabbWorld = std::unique_ptr<AABB>(new AABB(bb_min, bb_max));
+        _aabbWorld = std::make_unique<AABB>(bb_min, bb_max);
       }
       inline const Vec2f& getMin() const { return _min; }
       inline Vec2f getMax() const { return _min + _size; }
@@ -84,7 +84,7 @@ namespace fly
       template<bool directx>
       void getVisibleElements(const Mat4f& vp, std::vector<TPtr>& visible_elements) const
       {
-        if (hasChildren() || _elements.size()) {
+        if (_elements.size() || hasChildren()) {
           if (_aabbWorld->isFullyVisible<directx>(vp)) {
             visible_elements.insert(visible_elements.end(), _elements.begin(), _elements.end());
             for (const auto& c : _children) {
@@ -111,7 +111,7 @@ namespace fly
       void getVisibleElementsWithDetailCulling(const std::vector<Mat4f>& vp, const Vec3f& cam_pos, 
         const DetailCullingParams& detail_culling_params, std::vector<TPtr>& visible_elements) const
       {
-        if ((hasChildren() || _elements.size()) && _aabbWorld->isVisible<directx, ignore_near>(vp)) {
+        if ((_elements.size() || hasChildren()) && _aabbWorld->isVisible<directx, ignore_near>(vp)) {
           for (const auto& e : _elements) {
             if (e->getAABBWorld()->isVisible<directx, ignore_near>(vp)) {
               visible_elements.push_back(e);
@@ -170,7 +170,7 @@ namespace fly
       /**
       * Indices: 0 = South west, 1 = South east, 2 = North east, 3 = North west
       */
-      std::array<std::unique_ptr<Node>, 4> _children;
+      std::unique_ptr<Node> _children [4];
       // Node position
       Vec2f _min;
       // Node size
@@ -256,7 +256,7 @@ namespace fly
     void rebuild(const Vec2f& new_min, const Vec2f& new_size)
     {
       auto all_elements = getAllElements();
-      _root = std::unique_ptr<Node>(new Node(new_min, new_size, Vec3f(std::numeric_limits<float>::max()), Vec3f(std::numeric_limits<float>::lowest())));
+      _root = std::make_unique<Node>(new_min, new_size, Vec3f(std::numeric_limits<float>::max()), Vec3f(std::numeric_limits<float>::lowest()));
       for (const auto& e : all_elements) {
         insert(e);
       }
