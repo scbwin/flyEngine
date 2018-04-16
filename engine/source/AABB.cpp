@@ -28,7 +28,7 @@ namespace fly
     }
     _center = (_bbMin + _bbMax) * 0.5f;
   }
-  const Vec3f* AABB::getVertices() const
+  const Vec3f (& AABB::getVertices() const)[8]
   {
     return _vertices;
   }

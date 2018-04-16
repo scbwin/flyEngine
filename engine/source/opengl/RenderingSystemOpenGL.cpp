@@ -2588,14 +2588,14 @@ namespace fly
     Vec3f min(std::numeric_limits<float>::max());
     Vec3f max(std::numeric_limits<float>::lowest());
     Mat4f model_view = glm::mat4(rs->_viewMatrix) * transform;
-    for  (unsigned i = 0; i < 8; i++) {
-      auto v_view = (model_view * Vec4f(tree_model->getMeshes()[0]->getAABB()->getVertices()[i], 1.f)).xyz();
+    for  (const auto& v : tree_model->getMeshes()[0]->getAABB()->getVertices()) {
+      auto v_view = (model_view * Vec4f(v, 1.f)).xyz();
       v_view[2] *= -1.f;
       min = minimum(min, v_view);
       max = maximum(max, v_view);
     }
-    for (unsigned i = 0; i < 8; i++) {
-      auto v_view = (model_view * Vec4f(leaf_model->getMeshes()[0]->getAABB()->getVertices()[i], 1.f)).xyz();
+    for (const auto& v : leaf_model->getMeshes()[0]->getAABB()->getVertices()) {
+      auto v_view = (model_view * Vec4f(v, 1.f)).xyz();
       v_view[2] *= -1.f;
       min = minimum(min, v_view);
       max = maximum(max, v_view);
