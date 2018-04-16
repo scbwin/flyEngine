@@ -115,7 +115,7 @@ namespace fly
   void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & model_matrix) const
   {
     setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::modelMatrix()), model_matrix);
-    GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, GL_UNSIGNED_INT, mesh_data._indices, mesh_data._baseVertex));
+    GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, mesh_data._type, mesh_data._indices, mesh_data._baseVertex));
   }
   void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse) const
   {
@@ -139,7 +139,7 @@ namespace fly
   void OpenGLAPI::renderMeshMVP(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & mvp) const
   {
     setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::modelViewProjectionMatrix()), mvp);
-    GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, GL_UNSIGNED_INT, mesh_data._indices, mesh_data._baseVertex));
+    GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, mesh_data._type, mesh_data._indices, mesh_data._baseVertex));
   }
   void OpenGLAPI::renderAABBs(const std::vector<AABB*>& aabbs, const Mat4f& transform, const Vec3f& col)
   {
@@ -315,10 +315,22 @@ namespace fly
     mesh_data._count = static_cast<GLsizei>(mesh->getIndices().size());
     mesh_data._baseVertex = static_cast<GLint>(_baseVertex);
     mesh_data._indices = reinterpret_cast<GLvoid*>(_indices);
-    _indices += mesh->getIndices().size() * sizeof(mesh->getIndices().front());
     _baseVertex += mesh->getVertices().size();
     _vboAppend->appendData(mesh->getVertices().data(), mesh->getVertices().size());
-    _iboAppend->appendData(mesh->getIndices().data(), mesh->getIndices().size());
+    if (mesh->getVertices().size() - 1 <= static_cast<size_t>(std::numeric_limits<unsigned short>::max())) {
+      std::vector<unsigned short> indices;
+      for (const auto& i : mesh->getIndices()) {
+        indices.push_back(static_cast<unsigned short>(i));
+      }
+      _indices += indices.size() * sizeof(indices.front());
+      _iboAppend->appendData(indices.data(), indices.size());
+      mesh_data._type = GL_UNSIGNED_SHORT;
+    }
+    else {
+      _indices += mesh->getIndices().size() * sizeof(mesh->getIndices().front());
+      _iboAppend->appendData(mesh->getIndices().data(), mesh->getIndices().size());
+      mesh_data._type = GL_UNSIGNED_INT;
+    }
     _vao = std::make_unique<GLVertexArray>();
     _vao->bind();
     _vboAppend->getBuffer()->bind();

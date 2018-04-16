@@ -106,6 +106,7 @@ namespace fly
         GLvoid* _indices; // Byte offset into the index buffer
         GLint _baseVertex; // Offset into the vertex buffer
         inline unsigned numTriangles() const {return static_cast<unsigned>(_count / 3);}
+        GLenum _type;
       };
       MeshGeometryStorage();
       ~MeshGeometryStorage();
