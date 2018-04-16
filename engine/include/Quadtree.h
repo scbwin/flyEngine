@@ -166,6 +166,22 @@ namespace fly
           }
         }
       }
+      bool removeElement(const TPtr& element)
+      {
+        for (unsigned i = 0; i < _elements.size(); i++) {
+          if (_elements[i] == element) {
+            _elements.erase(_elements.begin() + i);
+            return true;
+          }
+        }
+        for (const auto& c : _children) {
+          if (c && c->removeElement(element)) {
+            return true;
+          }
+        }
+        std::cout << "Attempting to remove element from the quadtree that wasn't added. This should never happen." << std::endl;
+        return false;
+      }
     private:
       /**
       * Indices: 0 = South west, 1 = South east, 2 = North east, 3 = North west
@@ -198,13 +214,6 @@ namespace fly
     }
     void insert(const TPtr& element)
     {
-     /* Vec2f root_min({ _root->getAABBWorld()->getMin()[0], _root->getAABBWorld()->getMin()[2] });
-      Vec2f root_max({ _root->getAABBWorld()->getMax()[0], _root->getAABBWorld()->getMax()[2] });
-      Vec2f elem_min({ element->getAABBWorld()->getMin()[0], element->getAABBWorld()->getMin()[2] });
-      Vec2f elem_max({ element->getAABBWorld()->getMax()[0], element->getAABBWorld()->getMax()[2] });
-      if (root_min > elem_min || root_max < elem_max) { // The root node doesn't enclose the new element, we have to rebuild the whole tree
-        rebuild(minimum(elem_min, root_min), maximum(root_max, elem_max) - minimum(root_min, elem_min));
-      }*/
       _root->insert(element);
     }
     void print() const
@@ -249,8 +258,8 @@ namespace fly
     */
     void rebuild()
     {
-      Vec2f new_min({ _root->getAABBWorld()->getMin()[0], _root->getAABBWorld()->getMin()[2] });
-      Vec2f new_size({ _root->getAABBWorld()->getMax()[0] - new_min[0], _root->getAABBWorld()->getMax()[2] - new_min[1] });
+      Vec2f new_min( _root->getAABBWorld()->getMin()[0], _root->getAABBWorld()->getMin()[2] );
+      Vec2f new_size( _root->getAABBWorld()->getMax()[0] - new_min[0], _root->getAABBWorld()->getMax()[2] - new_min[1] );
       rebuild(new_min, new_size);
     }
     void rebuild(const Vec2f& new_min, const Vec2f& new_size)
@@ -265,6 +274,10 @@ namespace fly
     {
       _detailCullingParams = params;
       //std::cout << params._errorExponent << " " << params._errorThreshold << std::endl;
+    }
+    bool removeElement(const TPtr& element)
+    {
+      return _root->removeElement(element);
     }
   private:
     Vec2f _min;

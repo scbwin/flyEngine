@@ -90,8 +90,11 @@ namespace fly
         _sceneMax = maximum(_sceneMax, mr->getAABBWorld()->getMax());
       }
       else {
-        _staticMeshRenderables.erase(entity);
-        // TODO: erase the renderable from the quadtree as well
+        auto it = _staticMeshRenderables.find(entity);
+        if (it != _staticMeshRenderables.end()) {
+          _quadtree->removeElement(it->second.get());
+          _staticMeshRenderables.erase(it->first);
+        }
       }
       if (camera) {
         _camera = camera;
@@ -275,7 +278,7 @@ namespace fly
 
     void buildQuadtree()
     {
-      _quadtree = std::make_unique<Quadtree<StaticMeshRenderable>>(Vec2f({ _sceneMin[0], _sceneMin[2] }), Vec2f({ _sceneMax[0], _sceneMax[2] }));
+      _quadtree = std::make_unique<Quadtree<StaticMeshRenderable>>(Vec2f(_sceneMin[0], _sceneMin[2]), Vec2f(_sceneMax[0], _sceneMax[2]));
       for (const auto& e : _staticMeshRenderables) {
         _quadtree->insert(e.second.get());
       }
