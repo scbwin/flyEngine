@@ -167,6 +167,20 @@ void GLWidget::initGame()
     }
   }
 
+  fly::Vec3f sponza_scale (0.01f);
+  std::vector<std::shared_ptr<btCollisionShape>> _sponzaShapes;
+  for (const auto& mesh : sponza_model->getMeshes()) {
+    _triangleMeshes.push_back(std::make_shared<btTriangleMesh>());
+    for (unsigned i = 0; i < mesh->getIndices().size(); i += 3) {
+      auto v0 = mesh->getVertices()[mesh->getIndices()[i]]._position;
+      auto v1 = mesh->getVertices()[mesh->getIndices()[i + 1]]._position;
+      auto v2 = mesh->getVertices()[mesh->getIndices()[i + 2]]._position;
+      _triangleMeshes.back()->addTriangle(btVector3(v0[0], v0[1], v0[2]), btVector3(v1[0], v1[1], v1[2]), btVector3(v2[0], v2[1], v2[2]));
+    }
+    _sponzaShapes.push_back(std::make_shared<btBvhTriangleMeshShape>(_triangleMeshes.back().get(), true, true));
+    _sponzaShapes.back()->setLocalScaling(btVector3(sponza_scale[0], sponza_scale[1], sponza_scale[2]));
+  }
+
 #if SPONZA_MANY
   for (int x = 0; x < 10; x++) {
     for (int y = 0; y < 10; y++) {
@@ -182,21 +196,13 @@ void GLWidget::initGame()
         }
         entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(mesh,
 #if SPONZA_MANY
-          sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(x * 60.f, 0.f, y * 60.f), fly::Vec3f(0.01f)).getModelMatrix(), has_wind, aabb_offset));
+          sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(x * 60.f, 0.f, y * 60.f), fly::Vec3f(sponza_scale)).getModelMatrix(), has_wind, aabb_offset));
 #else
-          sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(0.f), fly::Vec3f(0.01f)).getModelMatrix(), has_wind, aabb_offset));
+          sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(0.f), sponza_scale).getModelMatrix(), has_wind, aabb_offset));
 #endif
 #if PHYSICS
-        auto smr = entity->getComponent<fly::StaticMeshRenderable>();
-        _triangleMeshes.push_back((std::make_shared<btTriangleMesh>()));
-        for (unsigned i = 0; i < mesh->getIndices().size(); i += 3) {
-          auto v0 = smr->getModelMatrix() * fly::Vec4f(mesh->getVertices()[mesh->getIndices()[i]]._position, 1.f);
-          auto v1 = smr->getModelMatrix() * fly::Vec4f(mesh->getVertices()[mesh->getIndices()[i+1]]._position, 1.f);
-          auto v2 = smr->getModelMatrix() * fly::Vec4f(mesh->getVertices()[mesh->getIndices()[i+2]]._position, 1.f);
-          _triangleMeshes.back()->addTriangle(btVector3(v0[0], v0[1], v0[2]), btVector3(v1[0], v1[1], v1[2]), btVector3(v2[0], v2[1], v2[2]));
-        }
-        auto shape = std::make_shared<btBvhTriangleMeshShape>(_triangleMeshes.back().get(), true, true);
-        entity->addComponent(std::make_shared<fly::RigidBody>(fly::Vec3f(0.f), 0.f, shape, 0.f));
+        const auto& model_matrix = entity->getComponent<fly::StaticMeshRenderable>()->getModelMatrix();
+        entity->addComponent(std::make_shared<fly::RigidBody>(model_matrix[3].xyz(), 0.f, _sponzaShapes[index], 0.f));
 #endif
         index++;
       }
