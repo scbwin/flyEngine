@@ -21,6 +21,7 @@ namespace fly
       virtual void compositingChanged(bool exposure_enabled, bool depth_pre_pass, bool post_processing) = 0;
       virtual void windAnimationsChanged(bool wind_animations) = 0;
       virtual void anisotropyChanged(unsigned anisotropy) = 0;
+      virtual void cameraLerpingChanged(bool enabled, float alpha) = 0;
     };
     void addListener(const std::shared_ptr<Listener>& listener);
     void setNormalMapping(bool normal_mapping);
@@ -55,6 +56,10 @@ namespace fly
     void setDebugObjectAABBs(bool enable);
     unsigned getAnisotropy() const;
     void setAnisotropy(unsigned anisotropy);
+    bool getCameraLerping() const;
+    float getCameraLerpAlpha() const;
+    void setCameraLerping(bool enable);
+    void setCameraLerping(float alpha);
 
   private:
     std::set<std::weak_ptr<Listener>, std::owner_less<std::weak_ptr<Listener>>> _listeners;
@@ -74,6 +79,8 @@ namespace fly
     bool _postProcessing = true;
     bool _debugQuadtreeNodeAABBs = false;
     bool _debugObjectAABBs = false;
+    bool _cameraLerping = true;
+    float _cameraLerpAlpha = 0.95f;
 
     void notifiyNormalMappingChanged();
     void notifyShadowsChanged();

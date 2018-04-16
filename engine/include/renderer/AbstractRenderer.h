@@ -9,6 +9,7 @@
 #include <math/FlyMath.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/transform.hpp>
+#include <glm/gtx/quaternion.hpp>
 #include <map>
 #include <Model.h>
 #include <memory>
@@ -38,6 +39,8 @@ namespace fly
       shadowsChanged(gs->getShadows(), gs->getShadowsPCF(), gs->getShadowBias(), gs->getFrustumSplits());
       compositingChanged(gs->exposureEnabled(), gs->depthPrepassEnabled(), gs->postProcessingEnabled());
       anisotropyChanged(gs->getAnisotropy());
+      cameraLerpingChanged(gs->getCameraLerping(), gs->getCameraLerpAlpha());
+      _gsp._camPosworld = Vec3f(0.f);
     }
     virtual ~AbstractRenderer() {}
     virtual void normalMappingChanged(bool normal_mapping, bool parallax_mapping, bool relief_mapping) override
@@ -72,6 +75,10 @@ namespace fly
     virtual void windAnimationsChanged(bool wind_animations) override
     {
       graphicsSettingsChanged();
+    }
+    virtual void cameraLerpingChanged(bool enabled, float alpha) override
+    {
+      _cameraLerpAlpha = enabled ? alpha : 0.f;
     }
     virtual void anisotropyChanged(unsigned anisotropy) override
     {
@@ -115,19 +122,20 @@ namespace fly
 #if RENDERER_STATS
       _stats = {};
 #endif
-      if (_quadtree == nullptr) {
-        buildQuadtree();
-      }
       if (_camera && _directionalLight) {
+        if (!_quadtree) {
+          buildQuadtree();
+        }
         _api.beginFrame();
-        _gsp._viewMatrix = _camera->getViewMatrix(_camera->_pos, _camera->_eulerAngles);
+        _gsp._camPosworld = glm::mix(_camera->_pos, glm::vec3(_gsp._camPosworld), _cameraLerpAlpha);
+        _camEulerAngles = glm::eulerAngles(glm::slerp(glm::quat(_camera->_eulerAngles), glm::quat(_camEulerAngles), _cameraLerpAlpha));
+        _gsp._viewMatrix = _camera->getViewMatrix(_gsp._camPosworld, _camEulerAngles);
         _vpScene = _gsp._projectionMatrix * _gsp._viewMatrix;
         _api.setDepthTestEnabled<true>();
         _api.setFaceCullingEnabled<true>();
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
         _api.setDepthWriteEnabled<true>();
         _gsp._lightPosWorld = _directionalLight->_pos;
-        _gsp._camPosworld = _camera->_pos;
         _gsp._lightIntensity = _directionalLight->getIntensity();
         _gsp._time = time;
         _gsp._exposure = _gs->getExposure();
@@ -210,6 +218,7 @@ namespace fly
     ProjectionParams _pp;
     GlobalShaderParams _gsp;
     Vec2f _viewPortSize = Vec2f(1.f);
+    Vec3f _camEulerAngles = Vec3f(0.f);
     std::shared_ptr<Camera> _camera;
     std::shared_ptr<DirectionalLight> _directionalLight;
     Vec3f _sceneMin = Vec3f(std::numeric_limits<float>::max());
@@ -222,6 +231,7 @@ namespace fly
     Mat4f _vpScene;
     bool _offScreenRendering;
     bool _shadowMapping;
+    float _cameraLerpAlpha;
 
 #if RENDERER_STATS
     RendererStats _stats;
@@ -315,14 +325,6 @@ namespace fly
     std::map<Entity*, std::shared_ptr<StaticMeshRenderable>> _staticMeshRenderables;
     std::map<Entity*, std::shared_ptr<DynamicMeshRenderable>> _dynamicMeshRenderables;
     std::unique_ptr<Quadtree<MeshRenderable>> _quadtree;
-
-    void buildQuadtree()
-    {
-      _quadtree = std::make_unique<Quadtree<MeshRenderable>>(Vec2f(_sceneMin[0], _sceneMin[2]), Vec2f(_sceneMax[0], _sceneMax[2]));
-      for (const auto& e : _staticMeshRenderables) {
-        _quadtree->insert(e.second.get());
-      }
-    }
     void renderQuadtreeAABBs()
     {
       auto visible_nodes = _quadtree->getVisibleNodes(_vpScene);
@@ -411,6 +413,13 @@ namespace fly
       _api.recreateShadersAndMaterials(*_gs);
       for (const auto& e : _staticMeshRenderables) {
         e.second->fetchShaderDescs();
+      }
+    }
+    void buildQuadtree()
+    {
+      _quadtree = std::make_unique<Quadtree<MeshRenderable>>(_sceneMin, _sceneMax);
+      for (const auto& e : _staticMeshRenderables) {
+        _quadtree->insert(e.second.get());
       }
     }
   };

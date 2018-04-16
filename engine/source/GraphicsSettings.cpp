@@ -1,5 +1,6 @@
 #include <GraphicsSettings.h>
 #include <algorithm>
+#include <glm/glm.hpp>
 
 namespace fly
 {
@@ -147,6 +148,28 @@ namespace fly
     _anisotropy = anisotropy;
     notifiyListeners([this](const std::shared_ptr<Listener>& l) {
       l->anisotropyChanged(getAnisotropy());
+    });
+  }
+  bool GraphicsSettings::getCameraLerping() const
+  {
+    return _cameraLerping;
+  }
+  float GraphicsSettings::getCameraLerpAlpha() const
+  {
+    return _cameraLerpAlpha;
+  }
+  void GraphicsSettings::setCameraLerping(float alpha)
+  {
+    _cameraLerpAlpha = glm::clamp(alpha, 0.f, 0.99f);
+    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
+      l->cameraLerpingChanged(getCameraLerping(), getCameraLerpAlpha());
+    });
+  }
+  void GraphicsSettings::setCameraLerping(bool enable)
+  {
+    _cameraLerping = enable;
+    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
+      l->cameraLerpingChanged(getCameraLerping(), getCameraLerpAlpha());
     });
   }
   void GraphicsSettings::setExposureEnabled(bool exposure)

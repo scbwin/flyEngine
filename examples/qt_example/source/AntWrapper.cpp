@@ -15,6 +15,8 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "Exposure", TwType::TW_TYPE_FLOAT, cbSetExposure, cbGetExposure, gs, "step = 0.01f");
   TwAddVarCB(bar, "Debug quadtree", TwType::TW_TYPE_BOOLCPP, cbSetDebugQuadtree, cbGetDebugQuadtree, gs, nullptr);
   TwAddVarCB(bar, "Debug object AABBs", TwType::TW_TYPE_BOOLCPP, cbSetDebugAABBs, cbGetDebugAABBs, gs, nullptr);
+  TwAddVarCB(bar, "Camera lerping", TwType::TW_TYPE_BOOLCPP, setCameraLerping, getCameraLerping, gs, nullptr);
+  TwAddVarCB(bar, "Camera lerp amount", TwType::TW_TYPE_FLOAT, setCameraLerpAmount, getCameraLerpAmount, gs, "step=0.001f");
   TwAddButton(bar, "Reload shaders", cbReloadShaders, api, nullptr);
 }
 
@@ -131,4 +133,24 @@ void AntWrapper::cbGetDebugAABBs(void * value, void * client_data)
 void AntWrapper::cbReloadShaders(void * client_data)
 {
   cast<fly::OpenGLAPI>(client_data)->reloadShaders();
+}
+
+void AntWrapper::setCameraLerping(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setCameraLerping(*cast<bool>(value));
+}
+
+void AntWrapper::getCameraLerping(void * value, void * client_data)
+{
+  *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getCameraLerping();
+}
+
+void AntWrapper::setCameraLerpAmount(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setCameraLerping(*cast<float>(value));
+}
+
+void AntWrapper::getCameraLerpAmount(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getCameraLerpAlpha();
 }

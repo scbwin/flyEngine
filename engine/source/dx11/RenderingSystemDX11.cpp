@@ -330,7 +330,7 @@ namespace fly
   void RenderingSystemDX11::buildQuadtree()
   {
     Timing timing;
-    _quadtree = std::make_unique<Quadtree<DX11StaticModelRenderable>>(Vec2f({ _sceneMin[0], _sceneMin[2] }), Vec2f({ _sceneMax[0], _sceneMax[2] }));
+    _quadtree = std::make_unique<Quadtree<DX11StaticModelRenderable>>(_sceneMin, _sceneMax);
     _quadtree->setDetailCullingParams(_settings._detailCullingParams);
     for (const auto& r : _staticModelRenderables) {
       _quadtree->insert(r.second.get());
@@ -641,6 +641,7 @@ namespace fly
 #endif
       }
     }
+    HR(_fxShadowMap->SetResource(nullptr));
   }
 
   void RenderingSystemDX11::renderTerrain() const

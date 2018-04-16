@@ -138,7 +138,7 @@ namespace fly
     /**
     * Comparison operators
     */
-    inline bool operator < (const Vector& b) 
+    inline bool operator < (const Vector& b) const
     {
       for (unsigned i = 0; i < Dim; i++) {
         if (!(_data[i] < b[i])) {
@@ -147,7 +147,7 @@ namespace fly
       }
       return true;
     }
-    inline bool operator > (const Vector& b)
+    inline bool operator > (const Vector& b) const
     {
       for (unsigned i = 0; i < Dim; i++) {
         if (!(_data[i] > b[i])) {
@@ -156,7 +156,7 @@ namespace fly
       }
       return true;
     }
-    inline bool operator <= (const Vector& b)
+    inline bool operator <= (const Vector& b) const
     {
       for (unsigned i = 0; i < Dim; i++) {
         if (!(_data[i] <= b[i])) {
@@ -165,7 +165,7 @@ namespace fly
       }
       return true;
     }
-    inline bool operator >= (const Vector& b)
+    inline bool operator >= (const Vector& b) const
     {
       for (unsigned i = 0; i < Dim; i++) {
         if (!(_data[i] >= b[i])) {

@@ -19,14 +19,17 @@ namespace fly
     class Node
     {
     public:
-      Node(const Vec2f& min, const Vec2f& size, const Vec3f& bb_min, const Vec3f& bb_max) : _min(min), _size(size)
+      Node(const Vec2f& min, const Vec2f& size) : 
+        _min(min),
+        _size(size),
+        _aabbWorld(Vec3f(std::numeric_limits<float>::max()), Vec3f(std::numeric_limits<float>::lowest()))
       {
-        _aabbWorld = std::make_unique<AABB>(bb_min, bb_max);
       }
       inline const Vec2f& getMin() const { return _min; }
       inline Vec2f getMax() const { return _min + _size; }
       inline const Vec2f& getSize() const { return _size; }
-      inline AABB* getAABBWorld() const { return _aabbWorld.get(); }
+      inline void setAABBWorld(const AABB& aabb) { _aabbWorld = aabb; }
+      inline AABB* getAABBWorld() { return &_aabbWorld; }
       inline bool hasChildren() const
       {
         for (const auto& c : _children) {
@@ -39,28 +42,19 @@ namespace fly
       void insert(const TPtr& element)
       {
         AABB* aabb_el = element->getAABBWorld();
-        _aabbWorld = std::make_unique<AABB>(minimum(_aabbWorld->getMin(), aabb_el->getMin()), maximum(_aabbWorld->getMax(), aabb_el->getMax()));
-        Vec2f bb_min_el(aabb_el->getMin()[0], aabb_el->getMin()[2]);
-        Vec2f bb_max_el(aabb_el->getMax()[0], aabb_el->getMax()[2]);
+        _aabbWorld = _aabbWorld.getUnion(*aabb_el);
         std::array<Vec2f, 4> child_min, child_max;
         getChildBounds(child_min, child_max);
         for (unsigned i = 0; i < 4; i++) {
-          if (bb_min_el >= child_min[i] && bb_max_el <= child_max[i]) { // The node encloses the object entirely, therefore insert it
+          if (child_min[i] <= Vec2f(aabb_el->getMin()[0], aabb_el->getMin()[2]) && child_max[i] >= Vec2f(aabb_el->getMax()[0], aabb_el->getMax()[2])) { // The child node encloses the element entirely, therefore push it further down the tree.
             if (_children[i] == nullptr) { // Create the node if not yet constructed
-              _children[i] = std::make_unique<Node>(child_min[i], _size * 0.5f, aabb_el->getMin(), aabb_el->getMax());
+              _children[i] = std::make_unique<Node>(child_min[i], _size * 0.5f);
             }
             _children[i]->insert(element);
             return;
           }
         }
-        //if (bb_min_el >= _min && bb_max_el <= getMax()) {
-          _elements.push_back(element);
-       // }
-      /*  else {
-          std::stringstream ss;
-          ss << "Could not add element:" << std::endl << "Chil bounds:" << bb_min_el << " " << bb_max_el << std::endl << "Node bounds:" << _min << " " << getMax() << std::endl << "Check the bounds of the quadtree.";
-          throw std::exception(ss.str().c_str());
-        }*/
+        _elements.push_back(element);
       }
       void print(unsigned level) const
       {
@@ -68,7 +62,7 @@ namespace fly
         for (unsigned i = 0; i < level; i++) {
           indent += "  ";
         }
-        std::cout << indent << "Node bounds:" << _min << " " << getMax() << " extents:" << _aabbWorld->getMin() << " " << _aabbWorld->getMax() << std::endl;
+        std::cout << indent << "Node bounds:" << _min << " " << getMax() << " extents:" << _aabbWorld.getMin() << " " << _aabbWorld.getMax() << std::endl;
         if (_elements.size()) {
           std::cout << indent << "Element aabbs world:" << std::endl;
           for (const auto& e : _elements) {
@@ -85,7 +79,7 @@ namespace fly
       void getVisibleElements(const Mat4f& vp, std::vector<TPtr>& visible_elements) const
       {
         if (_elements.size() || hasChildren()) {
-          if (_aabbWorld->isFullyVisible<directx>(vp)) {
+          if (_aabbWorld.isFullyVisible<directx>(vp)) {
             visible_elements.insert(visible_elements.end(), _elements.begin(), _elements.end());
             for (const auto& c : _children) {
               if (c) {
@@ -93,7 +87,7 @@ namespace fly
               }
             }
           }
-          else if (_aabbWorld->intersectsFrustum<directx>(vp)) {
+          else if (_aabbWorld.intersectsFrustum<directx>(vp)) {
             for (const auto& e : _elements) {
               if (e->getAABBWorld()->intersectsFrustum<directx>(vp)) {
                 visible_elements.push_back(e);
@@ -111,13 +105,13 @@ namespace fly
       void getVisibleElementsWithDetailCulling(const std::vector<Mat4f>& vp, const Vec3f& cam_pos, 
         const DetailCullingParams& detail_culling_params, std::vector<TPtr>& visible_elements) const
       {
-        if ((_elements.size() || hasChildren()) && _aabbWorld->isVisible<directx, ignore_near>(vp)) {
+        if ((_elements.size() || hasChildren()) && _aabbWorld.isVisible<directx, ignore_near>(vp)) {
           for (const auto& e : _elements) {
             if (e->getAABBWorld()->isVisible<directx, ignore_near>(vp)) {
               visible_elements.push_back(e);
             }
           }
-          float error = (_aabbWorld->getMax() - _aabbWorld->getMin()).length() / (cam_pos - _aabbWorld->center()).length();
+          float error = (_aabbWorld.getMax() - _aabbWorld.getMin()).length() / (cam_pos - _aabbWorld.center()).length();
           error = pow(error, detail_culling_params._errorExponent);
           if (error > detail_culling_params._errorThreshold) {
             for (const auto& c : _children) {
@@ -149,7 +143,7 @@ namespace fly
       template<bool directx>
       void getVisibleNodes(std::vector<Node*>& visible_nodes, const Mat4f& vp)
       {
-        if (_aabbWorld->isFullyVisible<directx>(vp)) {
+        if (_aabbWorld.isFullyVisible<directx>(vp)) {
           visible_nodes.push_back(this);
           for (const auto& c : _children) {
             if (c) {
@@ -157,7 +151,7 @@ namespace fly
             }
           }
         }
-        else if (_aabbWorld->intersectsFrustum<directx>(vp)) {
+        else if (_aabbWorld.intersectsFrustum<directx>(vp)) {
           visible_nodes.push_back(this);
           for (const auto& c : _children) {
             if (c) {
@@ -192,15 +186,15 @@ namespace fly
       // Node size
       Vec2f _size;
       // Axis aligned bounding box for the enclosed elements
-      std::unique_ptr<AABB> _aabbWorld;
+      AABB _aabbWorld;
       std::vector<TPtr> _elements;
       void getChildBounds(std::array<Vec2f, 4>& min, std::array<Vec2f, 4>& max) const
       {
         auto new_size = _size * 0.5f;
         min[0] = _min;
-        min[1] = _min + Vec2f({ new_size[0], 0.f });
+        min[1] = _min + Vec2f( new_size[0], 0.f );
         min[2] = _min + new_size;
-        min[3] = _min + Vec2f({ 0.f, new_size[1] });
+        min[3] = _min + Vec2f( 0.f, new_size[1] );
         max[0] = min[0] + new_size;
         max[1] = min[1] + new_size;
         max[2] = min[2] + new_size;
@@ -208,13 +202,28 @@ namespace fly
       }
     };
 
-    Quadtree(const Vec2f& min, const Vec2f& max) : _min(min), _size(max - min)
+    Quadtree(const Vec3f& min, const Vec3f& max)
     {
-      _root = std::unique_ptr<Node>(new Node(_min, _size, Vec3f(std::numeric_limits<float>::max()), Vec3f(std::numeric_limits<float>::lowest())));
+      Vec2f node_min(min[0], min[2]);
+      Vec2f node_max(max[0], max[2]);
+      _root = std::make_unique<Node>(node_min, node_max - node_min);
+      _root->setAABBWorld(AABB(min, max));
     }
     void insert(const TPtr& element)
     {
-      _root->insert(element);
+      if (_root->getAABBWorld()->contains(*element->getAABBWorld())) {
+        _root->insert(element);
+      }
+      else {
+        auto all_elements = getAllElements();
+        AABB aabb_new = _root->getAABBWorld()->getUnion(*element->getAABBWorld());
+        _root = std::make_unique<Node>(Vec2f(aabb_new.getMin()[0], aabb_new.getMin()[2]), Vec2f(aabb_new.getMax()[0] - aabb_new.getMin()[0], aabb_new.getMax()[2] - aabb_new.getMin()[2]));
+        _root->setAABBWorld(aabb_new);
+        _root->insert(element);
+        for (const auto& e : all_elements) {
+          _root->insert(e);
+        }
+      }
     }
     void print() const
     {
@@ -253,35 +262,15 @@ namespace fly
       _root->getVisibleNodes<directx>(visible_nodes, vp);
       return visible_nodes;
     }
-    /**
-    * Use this method as soon as all elements are added to the quadtree in order to get the tightest possible fit for the given elements.
-    */
-    void rebuild()
-    {
-      Vec2f new_min( _root->getAABBWorld()->getMin()[0], _root->getAABBWorld()->getMin()[2] );
-      Vec2f new_size( _root->getAABBWorld()->getMax()[0] - new_min[0], _root->getAABBWorld()->getMax()[2] - new_min[1] );
-      rebuild(new_min, new_size);
-    }
-    void rebuild(const Vec2f& new_min, const Vec2f& new_size)
-    {
-      auto all_elements = getAllElements();
-      _root = std::make_unique<Node>(new_min, new_size, Vec3f(std::numeric_limits<float>::max()), Vec3f(std::numeric_limits<float>::lowest()));
-      for (const auto& e : all_elements) {
-        insert(e);
-      }
-    }
     void setDetailCullingParams(const DetailCullingParams& params)
     {
       _detailCullingParams = params;
-      //std::cout << params._errorExponent << " " << params._errorThreshold << std::endl;
     }
     bool removeElement(const TPtr& element)
     {
       return _root->removeElement(element);
     }
   private:
-    Vec2f _min;
-    Vec2f _size;
     std::unique_ptr<Node> _root;
     DetailCullingParams _detailCullingParams = { 1.f, 1.f };
   };

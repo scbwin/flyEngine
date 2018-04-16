@@ -104,11 +104,23 @@ void GLWidget::paintGL()
 void GLWidget::keyPressEvent(QKeyEvent * e)
 {
   _keysPressed.insert(e->key());
+  if (e->key() == Qt::Key::Key_Shift) {
+    _camController->acceleratePressed();
+  }
+  if (e->key() == Qt::Key::Key_Control) {
+    _camController->deceleratePressed();
+  }
 }
 
 void GLWidget::keyReleaseEvent(QKeyEvent * e)
 {
   _keysPressed.erase(e->key());
+  if (e->key() == Qt::Key::Key_Shift) {
+    _camController->accelerateReleased();
+  }
+  if (e->key() == Qt::Key::Key_Control) {
+    _camController->decelerateReleased();
+  }
 }
 
 void GLWidget::mousePressEvent(QMouseEvent * e)

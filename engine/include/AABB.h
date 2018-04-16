@@ -11,15 +11,18 @@ namespace fly
   class AABB
   {
   public:
-    AABB(const Vec3f& bb_min, const Vec3f& bb_max);
+    AABB(const Vec3f& bb_min, const Vec3f& bb_max, bool compute_vertices = true);
     AABB(const AABB& aabb_local, const Mat4f& world_matrix);
     const Vec3f (& getVertices() const) [8];
     const Vec3f& getMin() const;
     const Vec3f& getMax() const;
     const Vec3f& center() const;
+    bool contains(const AABB& other) const;
+    AABB getUnion(const AABB& other) const;
+    AABB getIntersection(const AABB& other) const;
 
     template<bool directx>
-    inline bool isFullyVisible(const Mat4f& transform)
+    inline bool isFullyVisible(const Mat4f& transform) const
     {
       for (const auto& v : _vertices) {
         auto pos_h = transform * Vec4f(v, 1.f);
@@ -38,7 +41,7 @@ namespace fly
     }
 
     template<bool directx>
-    inline bool intersectsFrustum(const Mat4f& transform)
+    inline bool intersectsFrustum(const Mat4f& transform) const
     {
       unsigned char intersects = 0;
       for (const auto& v : _vertices) {
@@ -90,6 +93,7 @@ namespace fly
     Vec3f _vertices [8];
     Vec3f _bbMin, _bbMax;
     Vec3f _center;
+    void computeVertices();
   };
 }
 

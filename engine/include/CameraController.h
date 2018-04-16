@@ -19,6 +19,10 @@ namespace fly
     void stepRight(float delta_time) const;
     void stepUp(float delta_time) const;
     void stepDown(float delta_time) const;
+    void acceleratePressed();
+    void accelerateReleased();
+    void deceleratePressed();
+    void decelerateReleased();
     void mousePress(const Vec3f& mouse_pos);
     void mouseMove(const Vec3f& mouse_pos);
     void mouseRelease();
@@ -31,6 +35,7 @@ namespace fly
     bool _pressed = false;
     float _speed;
     float _mouseSpeed = 0.01f;
+    float _accelerate = 1.f;
     Vec3f _mousePos = Vec3f(0.f);
   };
 }
