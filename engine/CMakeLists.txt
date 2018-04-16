@@ -5,6 +5,7 @@ set (IDIR include)
 set (SDIR source)
 
 set(BUILD_DX11 "" CACHE BOOL "")
+set(BUILD_PHYSICS "" CACHE BOOL "")
 
 set (HEADER_FILES
 	${IDIR}/AABB.h ${IDIR}/Animation.h ${IDIR}/AnimationSystem.h ${IDIR}/AssimpImporter.h ${IDIR}/Billboard.h ${IDIR}/Camera.h ${IDIR}/Component.h ${IDIR}/Engine.h ${IDIR}/Entity.h ${IDIR}/EntityManager.h ${IDIR}/FixedTimestepSystem.h
@@ -19,6 +20,9 @@ set (HEADER_FILES
 	${IDIR}/opengl/GLSLShaderGenerator.h ${IDIR}/SoftwareCache.h ${IDIR}/opengl/GLSampler.h ${IDIR}/WindParams.h ${IDIR}/WindParamsLocal.h
 )
 
+if(${BUILD_PHYSICS})
+	set(HEADER_FILES ${HEADER_FILES} ${IDIR}/physics/Bullet3PhysicsSystem.h ${IDIR}/physics/RigidBody.h ${IDIR}/DynamicMeshRenderable.h )
+endif()
 if(${BUILD_DX11})
 	set(HEADER_FILES ${HEADER_FILES} ${IDIR}/dx11/DX11States.h ${IDIR}/dx11/DXUtils.h ${IDIR}/dx11/Effects.h ${IDIR}/dx11/RenderingSystemDX11.h)
 endif()
@@ -34,6 +38,9 @@ set (SOURCE_FILES
 	${SDIR}/opengl/GLSLShaderGenerator.cpp ${SDIR}/opengl/GLSampler.cpp ${SDIR}/GraphicsSettings.cpp
 )
 
+if(${BUILD_PHYSICS})
+	set(SOURCE_FILES ${SOURCE_FILES} ${SDIR}/physics/Bullet3PhysicsSystem.cpp ${SDIR}/physics/RigidBody.cpp ${SDIR}/DynamicMeshRenderable.cpp)
+endif()
 if(${BUILD_DX11})
 	set(SOURCE_FILES ${SOURCE_FILES} ${SDIR}/dx11/DX11States.cpp ${SDIR}/dx11/Effects.cpp ${SDIR}/dx11/RenderingSystemDX11.cpp)
 endif()
@@ -56,6 +63,9 @@ ENDIF()
 find_package(OpenGL)
 find_package(assimp REQUIRED)
 find_package(OpenCV REQUIRED)
+if(${BUILD_PHYSICS})
+find_package(Bullet REQUIRED)
+endif()
 
 set(INCLUDE_DIRS 
 ${IDIR} 
@@ -66,6 +76,9 @@ ${ASSIMP_INCLUDE_DIRS}
 ${OpenCV_DIRS}
 )
 
+if(${BUILD_PHYSICS})
+	set(INCLUDE_DIRS ${INCLUDE_DIRS} ${BULLET_INCLUDE_DIRS})
+endif()
 if(${BUILD_DX11})
 	set(INCLUDE_DIRS ${INCLUDE_DIRS} ${DXUT_DIR} ${FX11_DIR} ${DXTEX_DIR} ${DXTK_DIR})
 endif()
@@ -79,6 +92,9 @@ ${ASSIMP_LIBRARY_DIRS}/${ASSIMP_LIBRARIES}.lib
 ${OpenCV_LIBRARIES}
 )
 
+if(${BUILD_PHYSICS})
+	set(LIBRARIES ${LIBRARIES} ${BULLET_LIBRARIES})
+endif()
 if(${BUILD_DX11})
 	set(LIBRARIES ${LIBRARIES} ${DXUT_LIB} ${FX11_LIB} ${DXTEX_LIB} ${DXTK_LIB} d3d11.lib comctl32.lib)
 endif()

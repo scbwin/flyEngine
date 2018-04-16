@@ -1,6 +1,7 @@
 #include <opengl/OpenGLAPI.h>
 #include <GLWidget.h>
 #include <AssimpImporter.h>
+#include <btBulletDynamicsCommon.h>
 #include <Leakcheck.h>
 #include <renderer/AbstractRenderer.h>
 #include <iostream>
@@ -12,7 +13,10 @@
 #include <AntTweakBar.h>
 #include <LevelOfDetail.h>
 #include <StaticMeshRenderable.h>
+#include <DynamicMeshRenderable.h>
 #include <AntWrapper.h>
+#include <physics/Bullet3PhysicsSystem.h>
+#include <physics/RigidBody.h>
 
 GLWidget::GLWidget()
 {
@@ -31,6 +35,8 @@ void GLWidget::initializeGL()
   _renderer = std::make_shared<fly::AbstractRenderer<fly::OpenGLAPI>>(&_graphicsSettings);
   _graphicsSettings.addListener(_renderer);
   _engine->addSystem(_renderer);
+  _physicsSystem = std::make_shared<fly::Bullet3PhysicsSystem>();
+  _engine->addSystem(_physicsSystem);
   initGame();
   auto timer = new QTimer(this);
   QObject::connect(timer, &QTimer::timeout, this, static_cast<void(GLWidget::*)()>(&GLWidget::update));
@@ -180,12 +186,40 @@ void GLWidget::initGame()
 #else
           sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(0.f), fly::Vec3f(0.01f)).getModelMatrix(), has_wind, aabb_offset));
 #endif
+#if PHYSICS
+        auto smr = entity->getComponent<fly::StaticMeshRenderable>();
+        _triangleMeshes.push_back((std::make_shared<btTriangleMesh>()));
+        for (unsigned i = 0; i < mesh->getIndices().size(); i += 3) {
+          auto v0 = smr->getModelMatrix() * fly::Vec4f(mesh->getVertices()[mesh->getIndices()[i]]._position, 1.f);
+          auto v1 = smr->getModelMatrix() * fly::Vec4f(mesh->getVertices()[mesh->getIndices()[i+1]]._position, 1.f);
+          auto v2 = smr->getModelMatrix() * fly::Vec4f(mesh->getVertices()[mesh->getIndices()[i+2]]._position, 1.f);
+          _triangleMeshes.back()->addTriangle(btVector3(v0[0], v0[1], v0[2]), btVector3(v1[0], v1[1], v1[2]), btVector3(v2[0], v2[1], v2[2]));
+        }
+        auto shape = std::make_shared<btBvhTriangleMeshShape>(_triangleMeshes.back().get(), true, true);
+        entity->addComponent(std::make_shared<fly::RigidBody>(fly::Vec3f(0.f), 0.f, shape, 0.f));
+#endif
         index++;
       }
 #if SPONZA_MANY
     }
   }
 #endif
+#endif
+#if PHYSICS
+  _graphicsSettings.setDebugObjectAABBs(true);
+  auto sphere_model = importer->loadModel("assets/sphere.obj");
+  for (const auto& m : sphere_model->getMeshes()) {
+    auto ent = _engine->getEntityManager()->createEntity();
+    auto vec = m->getAABB()->getMax() - m->getAABB()->getMin();
+    float radius = std::max(vec[0], std::max(vec[1], vec[2])) * 0.5f;
+    auto col_shape = std::make_shared<btSphereShape>(radius);
+    float scale = 0.5f;
+    col_shape->setLocalScaling(btVector3(scale, scale, scale));
+    float mass = 0.1f;
+    float restitution = 1.f;
+    ent->addComponent(std::make_shared<fly::RigidBody>(fly::Vec3f(0.f, 30.f, 0.f), mass, col_shape, restitution));
+    ent->addComponent(std::make_shared<fly::DynamicMeshRenderable>(m, sphere_model->getMaterials()[m->getMaterialIndex()], ent->getComponent<fly::RigidBody>()));
+  }
 #endif
 
 #if SPONZA_MANY || TREE_SCENE
@@ -214,7 +248,7 @@ void GLWidget::initGame()
 #endif
 
   auto cam_entity = _engine->getEntityManager()->createEntity();
-  cam_entity->addComponent(std::make_shared<fly::Camera>(glm::vec3(0.f, 0.f, -100.f), glm::vec3(0.f)));
+  cam_entity->addComponent(std::make_shared<fly::Camera>(glm::vec3(4.f, 2.f, 0.f), glm::vec3(glm::radians(270.f), 0.f, 0.f)));
   auto dl_entity = _engine->getEntityManager()->createEntity();
   _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(-1000.f, 2000.f, -1000.f), glm::vec3(-500.f, 0.f, -500.f));
   dl_entity->addComponent(_dl);

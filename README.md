@@ -22,6 +22,7 @@ You have to download/clone and build the dependencies by yourself. Use CMake to 
 * [OpenCV](https://github.com/opencv/opencv)
 * [AntTweakBar](http://anttweakbar.sourceforge.net/doc/)
 * Qt 5.10.1 (Open Source version)
+* [Bullet Physics] (https://github.com/bulletphysics/bullet3)
 
 DXUT, FX11, DirectXTex, and DirectXTK repositories contain solution files for Visual Studio 2017. GLM is header-only, SOIL, Assimp and OpenCV are shipped with their own CMake files. Qt offers an installer that contains pre-built binaries. For GLEW and AntTweakBar you can use the pre-build binaries too.
 
@@ -31,7 +32,7 @@ Possible improvements are:
 * <s>Rendering API abstraction layer: Write an abstract renderer that encapsulates the logic of the rendering loop and resource allocation. Specific implementations for DirectX/OpenGL/Vulkan should be realized by C++ templates and policy-based design for maximum performance.</s>
 * Implement different rendering paths that can be switched at runtime: Forward Renderer, Deferred Renderer, Forward+ Renderer
 * Multithreading support
-* Physics engine integration (e.g. [Bullet Physics Engine](https://github.com/bulletphysics/bullet3))
+* <s>Physics engine integration (e.g. [Bullet Physics Engine](https://github.com/bulletphysics/bullet3))</s>
 * Character animations
 * Spatial data structures: The engine should be capable of rendering large outdoor environments for open world games. Possible candidates are Octrees/<s>Quadtrees</s> for static objects and regular grids for dynamic objects. Implement all of them and see what fits best for the application.
 * Tessellation for arbitrary objects, not only terrain

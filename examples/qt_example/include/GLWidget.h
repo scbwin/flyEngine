@@ -8,6 +8,9 @@
 
 #define SPONZA_MANY 0
 #define TREE_SCENE 0
+#define PHYSICS 0
+
+class btTriangleMesh;
 
 namespace fly
 {
@@ -19,6 +22,7 @@ namespace fly
   class CameraController;
   class DirectionalLight;
   class Model;
+  class Bullet3PhysicsSystem;
 }
 
 struct CTwBar;
@@ -50,9 +54,11 @@ private:
   std::unique_ptr<fly::Engine> _engine;
   fly::GraphicsSettings _graphicsSettings;
   std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>> _renderer;
+  std::shared_ptr<fly::Bullet3PhysicsSystem> _physicsSystem;
   std::unique_ptr<fly::GameTimer> _gameTimer;
   std::unique_ptr<fly::CameraController> _camController;
   std::shared_ptr<fly::DirectionalLight> _dl;
+  std::vector<std::shared_ptr<btTriangleMesh>> _triangleMeshes;
   void initGame();
   float _measure = 0.f;
   unsigned _fps = 0;

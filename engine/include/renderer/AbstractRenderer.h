@@ -2,7 +2,7 @@
 #define ABSTRACTRENDERER_H
 
 #include <StaticMeshRenderable.h>
-#include <StaticModelRenderable.h>
+#include <DynamicMeshRenderable.h>
 #include <System.h>
 #include <renderer/ProjectionParams.h>
 #include <renderer/RenderParams.h>
@@ -82,6 +82,7 @@ namespace fly
       auto camera = entity->getComponent<Camera>();
       auto dl = entity->getComponent<DirectionalLight>();
       auto mr = entity->getComponent<fly::StaticMeshRenderable>();
+      auto dmr = entity->getComponent<fly::DynamicMeshRenderable>();
       if (mr) {
         _staticMeshRenderables[entity] = mr->hasWind() ? 
           std::make_shared<StaticMeshRenderableWind>(mr, _api.createMaterial(mr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(mr->getMesh())) :
@@ -95,6 +96,12 @@ namespace fly
           _quadtree->removeElement(it->second.get());
           _staticMeshRenderables.erase(it->first);
         }
+      }
+      if (dmr) {
+        _dynamicMeshRenderables[entity] = std::make_shared<DynamicMeshRenderable>(dmr, _api.createMaterial(dmr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(dmr->getMesh()));
+      }
+      else {
+        _dynamicMeshRenderables.erase(entity);
       }
       if (camera) {
         _camera = camera;
@@ -130,11 +137,14 @@ namespace fly
         }
         _api.setViewport(_viewPortSize);
         _gsp._VP = &_vpScene;
-        auto visible_meshes = _quadtree->getVisibleElements<API::isDirectX()>(_vpScene);
+        std::vector<MeshRenderable*> visible_meshes = _quadtree->getVisibleElements<API::isDirectX()>(_vpScene);
+        for (const auto& e : _dynamicMeshRenderables) {
+          visible_meshes.push_back(e.second.get());
+        }
         if (_gs->depthPrepassEnabled()) {
           _api.setRendertargets({}, _depthBuffer.get());
           _api.clearRendertarget<false, true, false>(Vec4f());
-          std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> display_list;
+          std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<MeshRenderable*>>> display_list;
           for (const auto& e : visible_meshes) {
             display_list[e->_shaderDescDepth][e->_materialDesc.get()].push_back(e);
           }
@@ -217,37 +227,66 @@ namespace fly
     RendererStats _stats;
 #endif
 
-    // Wrapper for StaticMeshRenderable
-    struct StaticMeshRenderable
+    struct MeshRenderable
     {
       std::shared_ptr<typename API::MaterialDesc> _materialDesc;
       typename API::MeshGeometryStorage::MeshData _meshData;
-      std::shared_ptr<fly::StaticMeshRenderable> _smr;
       typename API::ShaderDesc* _shaderDesc;
       typename API::ShaderDesc* _shaderDescDepth;
-      StaticMeshRenderable(const std::shared_ptr<fly::StaticMeshRenderable>& smr, 
-        const std::shared_ptr<typename API::MaterialDesc>& material_desc, const typename API::MeshGeometryStorage::MeshData& mesh_data) :
-        _smr(smr),
-        _materialDesc(material_desc),
-        _meshData(mesh_data)
-      {
-        fetchShaderDescs();
-      }
-      virtual ~StaticMeshRenderable() = default;
+      virtual void render(const API& api) = 0;
+      virtual void renderDepth(const API& api) = 0;
+      MeshRenderable(const std::shared_ptr<typename API::MaterialDesc>& material_desc, const typename API::MeshGeometryStorage::MeshData& mesh_data) : 
+      _materialDesc(material_desc), _meshData(mesh_data)
+      {}
       virtual void fetchShaderDescs()
       {
         _shaderDesc = _materialDesc->getMeshShaderDesc(false).get();
         _shaderDescDepth = _materialDesc->getMeshShaderDescDepth(false).get();
       }
-      virtual void render(const API& api)
+      virtual AABB* getAABBWorld() const = 0;
+    };
+
+    struct DynamicMeshRenderable : public MeshRenderable
+    {
+      DynamicMeshRenderable(const std::shared_ptr<fly::DynamicMeshRenderable>& dmr,
+        const std::shared_ptr<typename API::MaterialDesc>& material_desc, const typename API::MeshGeometryStorage::MeshData& mesh_data) :
+        MeshRenderable(material_desc, mesh_data),
+        _dmr(dmr)
+      {
+        fetchShaderDescs();
+      }
+      std::shared_ptr<fly::DynamicMeshRenderable> _dmr;
+      virtual void render(const API& api) override
+      {
+        const auto& model_matrix = _dmr->getModelMatrix();
+        api.renderMesh(_meshData, model_matrix, _dmr->getModelMatrixInverse());
+      }
+      virtual void renderDepth(const API& api) override
+      {
+        api.renderMesh(_meshData, _dmr->getModelMatrix());
+      }
+      virtual AABB* getAABBWorld() const override { return _dmr->getAABBWorld(); }
+    };
+    struct StaticMeshRenderable : public MeshRenderable
+    {
+      std::shared_ptr<fly::StaticMeshRenderable> _smr;
+      StaticMeshRenderable(const std::shared_ptr<fly::StaticMeshRenderable>& smr, 
+        const std::shared_ptr<typename API::MaterialDesc>& material_desc, const typename API::MeshGeometryStorage::MeshData& mesh_data) :
+        MeshRenderable(material_desc, mesh_data),
+        _smr(smr)
+      {
+        fetchShaderDescs();
+      }
+      virtual ~StaticMeshRenderable() = default;
+      virtual void render(const API& api) override
       {
         api.renderMesh(_meshData, _smr->getModelMatrix(), _smr->getModelMatrixInverse());
       }
-      virtual void renderDepth(const API& api)
+      virtual void renderDepth(const API& api) override
       {
         api.renderMesh(_meshData, _smr->getModelMatrix());
       }
-      inline AABB* getAABBWorld() const { return _smr->getAABBWorld(); }
+      virtual AABB* getAABBWorld() const override { return _smr->getAABBWorld(); }
     };
     struct StaticMeshRenderableWind : public StaticMeshRenderable
     {
@@ -258,27 +297,28 @@ namespace fly
         fetchShaderDescs();
       }
       virtual ~StaticMeshRenderableWind() = default;
-      virtual void fetchShaderDescs()
+      virtual void fetchShaderDescs() override
       {
         _shaderDesc = _materialDesc->getMeshShaderDesc(true).get();
         _shaderDescDepth = _materialDesc->getMeshShaderDescDepth(true).get();
       }
-      virtual void render(const API& api)
+      virtual void render(const API& api) override
       {
         api.renderMesh(_meshData, _smr->getModelMatrix(), _smr->getModelMatrixInverse(), _smr->getWindParams(), *getAABBWorld());
       }
-      virtual void renderDepth(const API& api)
+      virtual void renderDepth(const API& api) override
       {
         api.renderMesh(_meshData, _smr->getModelMatrix(), _smr->getWindParams(), *getAABBWorld());
       }
     };
     typename API::MeshGeometryStorage _meshGeometryStorage;
     std::map<Entity*, std::shared_ptr<StaticMeshRenderable>> _staticMeshRenderables;
-    std::unique_ptr<Quadtree<StaticMeshRenderable>> _quadtree;
+    std::map<Entity*, std::shared_ptr<DynamicMeshRenderable>> _dynamicMeshRenderables;
+    std::unique_ptr<Quadtree<MeshRenderable>> _quadtree;
 
     void buildQuadtree()
     {
-      _quadtree = std::make_unique<Quadtree<StaticMeshRenderable>>(Vec2f(_sceneMin[0], _sceneMin[2]), Vec2f(_sceneMax[0], _sceneMax[2]));
+      _quadtree = std::make_unique<Quadtree<MeshRenderable>>(Vec2f(_sceneMin[0], _sceneMin[2]), Vec2f(_sceneMax[0], _sceneMax[2]));
       for (const auto& e : _staticMeshRenderables) {
         _quadtree->insert(e.second.get());
       }
@@ -296,7 +336,7 @@ namespace fly
         _api.renderAABBs(aabbs, _vpScene, Vec3f(1.f, 0.f, 0.f));
       }
     }
-    void renderObjectAABBs(const std::vector<StaticMeshRenderable*>& visible_elements)
+    void renderObjectAABBs(const std::vector<MeshRenderable*>& visible_elements)
     {
       if (visible_elements.size()) {
         _api.setDepthWriteEnabled<true>();
@@ -308,9 +348,9 @@ namespace fly
         _api.renderAABBs(aabbs, _vpScene, Vec3f(0.f, 1.f, 0.f));
       }
     }
-    void renderMeshes(const std::vector<StaticMeshRenderable*>& meshes)
+    void renderMeshes(const std::vector<MeshRenderable*>& meshes)
     {
-      std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> display_list;
+      std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<MeshRenderable*>>> display_list;
       for (const auto& e : meshes) {
         display_list[e->_shaderDesc][e->_materialDesc.get()].push_back(e);
       }
@@ -333,9 +373,12 @@ namespace fly
       std::vector<Mat4f> light_vps;
       auto vp_shadow_volume = _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
         inverse(_gsp._viewMatrix), _directionalLight->getViewMatrix(), static_cast<float>(_gs->getShadowMapSize()), _gs->getFrustumSplits(), light_vps, _api.isDirectX());
-      std::vector<StaticMeshRenderable*> sm_visible_elements = _quadtree->getVisibleElements<API::isDirectX()>(vp_shadow_volume);
-      std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<StaticMeshRenderable*>>> sm_display_list;
-      for (const auto& e : sm_visible_elements) {
+      auto visible_meshes = _quadtree->getVisibleElements<API::isDirectX()>(vp_shadow_volume);
+      for (const auto& e : _dynamicMeshRenderables) {
+        visible_meshes.push_back(e.second.get());
+      }
+      std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<MeshRenderable*>>> sm_display_list;
+      for (const auto& e : visible_meshes) {
         sm_display_list[e->_shaderDescDepth][e->_materialDesc.get()].push_back(e);
       }
       _api.setDepthClampEnabled<true>();
