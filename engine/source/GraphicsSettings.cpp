@@ -165,6 +165,14 @@ namespace fly
       l->cameraLerpingChanged(getCameraLerping(), getCameraLerpAlpha());
     });
   }
+  bool GraphicsSettings::getDetailCulling() const
+  {
+    return _detailCulling;
+  }
+  void GraphicsSettings::setDetailCulling(bool enabled)
+  {
+    _detailCulling = enabled;
+  }
   void GraphicsSettings::setCameraLerping(bool enable)
   {
     _cameraLerping = enable;

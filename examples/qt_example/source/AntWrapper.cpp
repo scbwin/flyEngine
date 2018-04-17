@@ -17,6 +17,7 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "Debug object AABBs", TwType::TW_TYPE_BOOLCPP, cbSetDebugAABBs, cbGetDebugAABBs, gs, nullptr);
   TwAddVarCB(bar, "Camera lerping", TwType::TW_TYPE_BOOLCPP, setCameraLerping, getCameraLerping, gs, nullptr);
   TwAddVarCB(bar, "Camera lerp amount", TwType::TW_TYPE_FLOAT, setCameraLerpAmount, getCameraLerpAmount, gs, "step=0.001f");
+  TwAddVarCB(bar, "Detail culling", TwType::TW_TYPE_BOOLCPP, setDetailCulling, getDetailCulling, gs, nullptr);
   TwAddButton(bar, "Reload shaders", cbReloadShaders, api, nullptr);
 }
 
@@ -153,4 +154,14 @@ void AntWrapper::setCameraLerpAmount(const void * value, void * client_data)
 void AntWrapper::getCameraLerpAmount(void * value, void * client_data)
 {
   *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getCameraLerpAlpha();
+}
+
+void AntWrapper::setDetailCulling(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setDetailCulling(*cast<bool>(value));
+}
+
+void AntWrapper::getDetailCulling(void * value, void * client_data)
+{
+  *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getDetailCulling();
 }

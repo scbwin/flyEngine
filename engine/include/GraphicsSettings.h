@@ -60,6 +60,8 @@ namespace fly
     float getCameraLerpAlpha() const;
     void setCameraLerping(bool enable);
     void setCameraLerping(float alpha);
+    bool getDetailCulling() const;
+    void setDetailCulling(bool enabled);
 
   private:
     std::set<std::weak_ptr<Listener>, std::owner_less<std::weak_ptr<Listener>>> _listeners;
@@ -81,6 +83,7 @@ namespace fly
     bool _debugObjectAABBs = false;
     bool _cameraLerping = true;
     float _cameraLerpAlpha = 0.95f;
+    bool _detailCulling = false;
 
     void notifiyNormalMappingChanged();
     void notifyShadowsChanged();

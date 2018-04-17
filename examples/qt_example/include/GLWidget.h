@@ -6,7 +6,7 @@
 #include <set>
 #include <GraphicsSettings.h>
 
-#define SPONZA_MANY 0
+#define SPONZA_MANY 1
 #define TREE_SCENE 0
 #define PHYSICS 0
 

@@ -17,9 +17,11 @@ namespace fly
     const Vec3f& getMin() const;
     const Vec3f& getMax() const;
     const Vec3f& center() const;
+    float size() const;
     bool contains(const AABB& other) const;
     AABB getUnion(const AABB& other) const;
     AABB getIntersection(const AABB& other) const;
+    bool isDetail(const Vec3f& cam_pos, float error_tresh) const;
 
     template<bool directx>
     inline bool isFullyVisible(const Mat4f& transform) const
@@ -93,6 +95,7 @@ namespace fly
     Vec3f _vertices [8];
     Vec3f _bbMin, _bbMax;
     Vec3f _center;
+    float _size;
     void computeVertices();
   };
 }

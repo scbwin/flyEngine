@@ -5,7 +5,8 @@ namespace fly
   AABB::AABB(const Vec3f & bb_min, const Vec3f & bb_max, bool compute_vertices) :
     _bbMin(bb_min),
     _bbMax(bb_max), 
-    _center((_bbMin + _bbMax) * 0.5f)
+    _center((_bbMin + _bbMax) * 0.5f),
+    _size(distance(_bbMin, _bbMax))
   {
     if (compute_vertices) {
       computeVertices();
@@ -23,6 +24,7 @@ namespace fly
       i++;
     }
     _center = (_bbMin + _bbMax) * 0.5f;
+    _size = distance(_bbMin, _bbMax);
     computeVertices();
   }
   const Vec3f (& AABB::getVertices() const)[8]
@@ -41,6 +43,10 @@ namespace fly
   {
     return _center;
   }
+  float AABB::size() const
+  {
+    return _size;
+  }
   bool AABB::contains(const AABB & other) const
   {
     return _bbMin <= other._bbMin && _bbMax >= other._bbMax;
@@ -52,6 +58,12 @@ namespace fly
   AABB AABB::getIntersection(const AABB & other) const
   {
     return AABB(maximum(_bbMin, other._bbMin), minimum(_bbMax, other._bbMax));
+  }
+  bool AABB::isDetail(const Vec3f & cam_pos, float error_tresh) const
+  {
+    float cam_dist = distance(_center, cam_pos);
+    float error = size() / cam_dist;
+    return error < error_tresh;
   }
   void AABB::computeVertices()
   {

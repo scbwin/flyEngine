@@ -21,8 +21,9 @@
 #include <Settings.h>
 #include <functional>
 #include <GraphicsSettings.h>
+#include <Timing.h>
 
-#define RENDERER_STATS 0
+#define RENDERER_STATS 1
 
 namespace fly
 {
@@ -33,7 +34,7 @@ namespace fly
     AbstractRenderer(const GraphicsSettings* gs) : _api(), _gs(gs)
     {
       _pp._near = 0.1f;
-      _pp._far = 1000.f;
+      _pp._far = 10000.f;
       _pp._fieldOfViewDegrees = 45.f;
       normalMappingChanged(gs->getNormalMapping(), gs->getParallaxMapping(), gs->getReliefMapping());
       shadowsChanged(gs->getShadows(), gs->getShadowsPCF(), gs->getShadowBias(), gs->getFrustumSplits());
@@ -145,7 +146,9 @@ namespace fly
         }
         _api.setViewport(_viewPortSize);
         _gsp._VP = &_vpScene;
-        std::vector<MeshRenderable*> visible_meshes = _quadtree->getVisibleElements<API::isDirectX()>(_vpScene);
+        std::vector<MeshRenderable*> visible_meshes = _gs->getDetailCulling() ?
+          _quadtree->getVisibleElementsWithDetailCulling<API::isDirectX()>(_vpScene, _gsp._camPosworld) :
+          _quadtree->getVisibleElements<API::isDirectX()>(_vpScene);
         for (const auto& e : _dynamicMeshRenderables) {
           visible_meshes.push_back(e.second.get());
         }
@@ -375,7 +378,9 @@ namespace fly
       std::vector<Mat4f> light_vps;
       auto vp_shadow_volume = _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
         inverse(_gsp._viewMatrix), _directionalLight->getViewMatrix(), static_cast<float>(_gs->getShadowMapSize()), _gs->getFrustumSplits(), light_vps, _api.isDirectX());
-      auto visible_meshes = _quadtree->getVisibleElements<API::isDirectX()>(vp_shadow_volume);
+      auto visible_meshes = _gs->getDetailCulling() ?
+        _quadtree->getVisibleElementsWithDetailCulling<API::isDirectX()>(vp_shadow_volume, _gsp._camPosworld) :
+        _quadtree->getVisibleElements<API::isDirectX()>(vp_shadow_volume);
       for (const auto& e : _dynamicMeshRenderables) {
         visible_meshes.push_back(e.second.get());
       }

@@ -41,6 +41,8 @@ private:
   static void getCameraLerping(void* value, void* client_data);
   static void setCameraLerpAmount(const void* value, void* client_data);
   static void getCameraLerpAmount(void* value, void* client_data);
+  static void setDetailCulling(const void* value, void* client_data);
+  static void getDetailCulling(void* value, void* client_data);
   template<typename T> static T* cast(void* data){return reinterpret_cast<T*>(data);}
   template<typename T> static const T* cast(const void* data) { return reinterpret_cast<const T*>(data); }
 };

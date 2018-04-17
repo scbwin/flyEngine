@@ -13,13 +13,13 @@ namespace fly
   template<typename T>
   class Quadtree
   {
-   // using TPtr = std::shared_ptr<T>;
-    using TPtr = T* ;
+    // using TPtr = std::shared_ptr<T>;
+    using TPtr = T * ;
   public:
     class Node
     {
     public:
-      Node(const Vec2f& min, const Vec2f& size) : 
+      Node(const Vec2f& min, const Vec2f& size) :
         _min(min),
         _size(size),
         _aabbWorld(Vec3f(std::numeric_limits<float>::max()), Vec3f(std::numeric_limits<float>::lowest()))
@@ -101,8 +101,66 @@ namespace fly
           }
         }
       }
+
+      void getAllElementsWithDetailCulling(const Vec3f& cam_pos,
+        const DetailCullingParams& detail_culling_params, std::vector<TPtr>& all_elements)
+      {
+        if (!_aabbWorld.isDetail(cam_pos, detail_culling_params._errorThreshold)) {
+          for (const auto& e : _elements) {
+            if (!e->getAABBWorld()->isDetail(cam_pos, detail_culling_params._errorThreshold)) {
+              all_elements.push_back(e);
+            }
+          }
+          for (const auto& c : _children) {
+            if (c) {
+              c->getAllElementsWithDetailCulling(cam_pos, detail_culling_params, all_elements);
+            }
+          }
+        }
+      }
+
+      template<bool directx>
+      void getVisibleElementsWithDetailCulling(const Mat4f& vp, const Vec3f& cam_pos,
+        const DetailCullingParams& detail_culling_params, std::vector<TPtr>& visible_elements) const
+      {
+        if ((_elements.size() || hasChildren()) && !_aabbWorld.isDetail(cam_pos, detail_culling_params._errorThreshold)) {
+          if (_aabbWorld.isFullyVisible<directx>(vp)) {
+            for (const auto& e : _elements) {
+              if (!e->getAABBWorld()->isDetail(cam_pos, detail_culling_params._errorThreshold)) {
+                visible_elements.push_back(e);
+              }
+            }
+            for (const auto& c : _children) {
+              if (c) {
+                c->getAllElementsWithDetailCulling(cam_pos, detail_culling_params, visible_elements);
+              }
+            }
+          }
+          else if (_aabbWorld.intersectsFrustum<directx>(vp)) {
+            for (const auto& e : _elements) {
+              if (!e->getAABBWorld()->isDetail(cam_pos, detail_culling_params._errorThreshold) && e->getAABBWorld()->intersectsFrustum<directx>(vp)) {
+                visible_elements.push_back(e);
+              }
+            }
+            for (const auto& c : _children) {
+              if (c) {
+                c->getVisibleElementsWithDetailCulling<directx>(vp, cam_pos, detail_culling_params, visible_elements);
+              }
+            }
+          }
+        }
+      }
+      void getAllElements(std::vector<TPtr>& all_elements) const
+      {
+        all_elements.insert(all_elements.end(), _elements.begin(), _elements.end());
+        for (const auto& c : _children) {
+          if (c) {
+            c->getAllElements(all_elements);
+          }
+        }
+      }
       template<bool directx, bool ignore_near>
-      void getVisibleElementsWithDetailCulling(const std::vector<Mat4f>& vp, const Vec3f& cam_pos, 
+      void getVisibleElementsWithDetailCulling(const std::vector<Mat4f>& vp, const Vec3f& cam_pos,
         const DetailCullingParams& detail_culling_params, std::vector<TPtr>& visible_elements) const
       {
         if ((_elements.size() || hasChildren()) && _aabbWorld.isVisible<directx, ignore_near>(vp)) {
@@ -119,15 +177,6 @@ namespace fly
                 c->getVisibleElementsWithDetailCulling<directx, ignore_near>(vp, cam_pos, detail_culling_params, visible_elements);
               }
             }
-          }
-        }
-      }
-      void getAllElements(std::vector<TPtr>& all_elements) const
-      {
-        all_elements.insert(all_elements.end(), _elements.begin(), _elements.end());
-        for (const auto& c : _children) {
-          if (c) {
-            c->getAllElements(all_elements);
           }
         }
       }
@@ -180,7 +229,7 @@ namespace fly
       /**
       * Indices: 0 = South west, 1 = South east, 2 = North east, 3 = North west
       */
-      std::unique_ptr<Node> _children [4];
+      std::unique_ptr<Node> _children[4];
       // Node position
       Vec2f _min;
       // Node size
@@ -192,9 +241,9 @@ namespace fly
       {
         auto new_size = _size * 0.5f;
         min[0] = _min;
-        min[1] = _min + Vec2f( new_size[0], 0.f );
+        min[1] = _min + Vec2f(new_size[0], 0.f);
         min[2] = _min + new_size;
-        min[3] = _min + Vec2f( 0.f, new_size[1] );
+        min[3] = _min + Vec2f(0.f, new_size[1]);
         max[0] = min[0] + new_size;
         max[1] = min[1] + new_size;
         max[2] = min[2] + new_size;
@@ -243,6 +292,13 @@ namespace fly
       _root->getVisibleElementsWithDetailCulling<directx, ignore_near>(vp, cam_pos, _detailCullingParams, visible_elements);
       return visible_elements;
     }
+    template<bool directx>
+    std::vector<TPtr> getVisibleElementsWithDetailCulling(const Mat4f& vp, const Vec3f& cam_pos) const
+    {
+      std::vector<TPtr> visible_elements;
+      _root->getVisibleElementsWithDetailCulling<directx>(vp, cam_pos, _detailCullingParams, visible_elements);
+      return visible_elements;
+    }
     std::vector<TPtr> getAllElements() const
     {
       std::vector<TPtr> all_elements;
@@ -272,7 +328,7 @@ namespace fly
     }
   private:
     std::unique_ptr<Node> _root;
-    DetailCullingParams _detailCullingParams = { 1.f, 1.f };
+    DetailCullingParams _detailCullingParams = { 0.0125f, 1.f };
   };
 }
 
