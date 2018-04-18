@@ -15,7 +15,7 @@ set (HEADER_FILES
 	${IDIR}/math/FlyMath.h ${IDIR}/math/FlyMatrix.h ${IDIR}/math/FlyVector.h ${IDIR}/math/Helpers.h ${IDIR}/math/Meta.h
 	${IDIR}/opengl/GLVertexArray.h ${IDIR}/opengl/GLBuffer.h ${IDIR}/opengl/GLTexture.h ${IDIR}/opengl/GLAppendBuffer.h
 	${IDIR}/opengl/GLWrappers.h ${IDIR}/opengl/OpenGLUtils.h ${IDIR}/opengl/RenderingSystemOpenGL.h ${IDIR}/opengl/OpenGLAPI.h ${IDIR}/renderer/ProjectionParams.h ${IDIR}/renderer/RenderParams.h
-	${IDIR}/physics/ParticleSystem.h ${IDIR}/physics/PhysicsSystem.h ${IDIR}/Quadtree.h ${IDIR}/Settings.h ${IDIR}/GraphicsSettings.h ${IDIR}/LevelOfDetail.h ${IDIR}/Timing.h ${IDIR}/renderer/AbstractRenderer.h
+	${IDIR}/physics/ParticleSystem.h ${IDIR}/physics/PhysicsSystem.h ${IDIR}/Quadtree.h ${IDIR}/Octree.h ${IDIR}/Settings.h ${IDIR}/GraphicsSettings.h ${IDIR}/LevelOfDetail.h ${IDIR}/Timing.h ${IDIR}/renderer/AbstractRenderer.h
 	${IDIR}/StaticModelRenderable.h ${IDIR}/CameraController.h ${IDIR}/StaticMeshRenderable.h ${IDIR}/opengl/GLShaderInterface.h ${IDIR}/opengl/GLFramebuffer.h
 	${IDIR}/opengl/GLSLShaderGenerator.h ${IDIR}/SoftwareCache.h ${IDIR}/opengl/GLSampler.h ${IDIR}/WindParams.h ${IDIR}/WindParamsLocal.h
 )

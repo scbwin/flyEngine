@@ -22,6 +22,11 @@ namespace fly
     AABB getUnion(const AABB& other) const;
     AABB getIntersection(const AABB& other) const;
     bool isDetail(const Vec3f& cam_pos, float error_tresh) const;
+    bool isDetail(const Vec3f& cam_pos, float error_tresh, float size) const;
+    inline Vec3f closestPoint(const Vec3f& point) const
+    {
+      return clamp(point, _bbMin, _bbMax);
+    }
 
     template<bool directx>
     inline bool isFullyVisible(const Mat4f& transform) const

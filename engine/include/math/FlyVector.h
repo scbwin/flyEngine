@@ -72,6 +72,11 @@ namespace fly
       static_assert(Dim >= 3, "Vector dimension too small");
       return Vector<3, T>(_data[0], _data[1], _data[2]);
     }
+    inline Vector<2, T> xz() const
+    {
+      static_assert(Dim >= 3, "Vector dimension too small");
+      return Vector<2, T>(_data[0], _data[2]);
+    }
     /**
     * Vector/vector calculations
     */

@@ -1,6 +1,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <Model.h>
 #include <Mesh.h>
+#include <map>
 
 namespace fly
 {
@@ -57,6 +58,27 @@ namespace fly
     std::sort(_meshes.begin(), _meshes.end(), [](const std::shared_ptr<Mesh>& m1, const std::shared_ptr<Mesh>& m2) {
       return m1->getMaterialIndex() > m2->getMaterialIndex();
     });
+  }
+  void Model::mergeMeshesByMaterial()
+  {
+    std::map<unsigned, std::vector<std::shared_ptr<Mesh>>> _meshesGrouped;
+    for (const auto& m : _meshes) {
+      _meshesGrouped[m->getMaterialIndex()].push_back(m);
+    }
+    _meshes.clear();
+    for (const auto& e : _meshesGrouped) {
+      unsigned base_vertex = 0;
+      std::vector<Vertex> vertices;
+      std::vector<unsigned> indices;
+      for (const auto& m : e.second) {
+        vertices.insert(vertices.end(), m->getVertices().begin(), m->getVertices().end());
+        for (const auto& i : m->getIndices()) {
+          indices.push_back(i + base_vertex);
+        }
+        base_vertex += m->getVertices().size();
+      }
+      _meshes.push_back(std::make_shared<Mesh>(vertices, indices, e.first));
+    }
   }
   AABB * Model::getAABB() const
   {

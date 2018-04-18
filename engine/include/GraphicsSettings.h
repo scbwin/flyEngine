@@ -83,7 +83,7 @@ namespace fly
     bool _debugObjectAABBs = false;
     bool _cameraLerping = true;
     float _cameraLerpAlpha = 0.95f;
-    bool _detailCulling = false;
+    bool _detailCulling = true;
 
     void notifiyNormalMappingChanged();
     void notifyShadowsChanged();

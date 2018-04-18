@@ -61,8 +61,12 @@ namespace fly
   }
   bool AABB::isDetail(const Vec3f & cam_pos, float error_tresh) const
   {
-    float cam_dist = distance(_center, cam_pos);
-    float error = size() / cam_dist;
+    float error = _size / distance(closestPoint(cam_pos), cam_pos);
+    return error < error_tresh;
+  }
+  bool AABB::isDetail(const Vec3f & cam_pos, float error_tresh, float size) const
+  {
+    float error = size / distance(closestPoint(cam_pos), cam_pos);
     return error < error_tresh;
   }
   void AABB::computeVertices()

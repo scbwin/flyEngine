@@ -49,6 +49,8 @@ void GLWidget::initializeGL()
   TwAddButton(_bar, _renderedMeshesShadowName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _renderedTrianglesName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _renderedTrianglesShadowName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _bvhTraversalName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _sceneRenderingCPUName, nullptr, nullptr, nullptr);
 #endif
   auto settings_bar = TwNewBar("Settings");
   AntWrapper(settings_bar, &_graphicsSettings, _renderer->getApi());
@@ -95,6 +97,8 @@ void GLWidget::paintGL()
     TwSetParam(_bar, _renderedMeshesShadowName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Meshes SM:" + formatNumber(stats._renderedMeshesShadow)).c_str());
     TwSetParam(_bar, _renderedTrianglesName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Triangles:" + formatNumber(stats._renderedTriangles)).c_str());
     TwSetParam(_bar, _renderedTrianglesShadowName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Triangles SM:" + formatNumber(stats._renderedTrianglesShadow)).c_str());
+    TwSetParam(_bar, _bvhTraversalName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("BVH traversal microseconds:" + formatNumber(stats._bvhTraversalMicroSeconds)).c_str());
+    TwSetParam(_bar, _sceneRenderingCPUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Scene render CPU microseconds:" + formatNumber(stats._sceneRenderingCPUMicroSeconds)).c_str());
 #endif
     _fps = 0;
   }
@@ -162,10 +166,15 @@ void GLWidget::initGame()
 {
   auto importer = std::make_shared<fly::AssimpImporter>();
 #if TREE_SCENE
-  auto tree_model = importer->loadModel("assets/Tree1/Tree1.obj");
-  for (const auto& m : tree_model->getMeshes()) {
-    auto entity = _engine->getEntityManager()->createEntity();
-    entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(m, tree_model->getMaterials()[m->getMaterialIndex()], fly::Transform().getModelMatrix(), false));
+  auto tree_model = importer->loadModel("assets/tree.obj");
+  tree_model->mergeMeshesByMaterial();
+  for (unsigned i = 0; i < 100; i++) {
+    for (unsigned j = 0; j < 100; j++) {
+      for (const auto& m : tree_model->getMeshes()) {
+        auto entity = _engine->getEntityManager()->createEntity();
+        entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(m, tree_model->getMaterials()[m->getMaterialIndex()], fly::Transform(fly::Vec3f(i * 5.f, 0.f, j * 5.f), fly::Vec3f(0.01f)).getModelMatrix(), false));
+      }
+    }
   }
 #else
   auto sponza_model = importer->loadModel("assets/sponza/sponza.obj");
@@ -173,13 +182,16 @@ void GLWidget::initGame()
     m->setSpecularExponent(32.f);
     if (m->getDiffusePath() == "assets/sponza/textures\\spnza_bricks_a_diff.tga") {
       m->setHeightPath("assets/DisplacementMap.png");
+      m->setParallaxHeightScale(0.05f);
     }
     else if (m->getDiffusePath() == "assets/sponza/textures\\sponza_floor_a_diff.tga") {
       m->setHeightPath("assets/height.png");
+      m->setParallaxHeightScale(0.021f);
     }
   }
 
-  fly::Vec3f sponza_scale (0.01f);
+  fly::Vec3f sponza_scale(0.01f);
+#if PHYSICS
   std::vector<std::shared_ptr<btCollisionShape>> _sponzaShapes;
   for (const auto& mesh : sponza_model->getMeshes()) {
     _triangleMeshes.push_back(std::make_shared<btTriangleMesh>());
@@ -192,25 +204,29 @@ void GLWidget::initGame()
     _sponzaShapes.push_back(std::make_shared<btBvhTriangleMeshShape>(_triangleMeshes.back().get(), true, true));
     _sponzaShapes.back()->setLocalScaling(btVector3(sponza_scale[0], sponza_scale[1], sponza_scale[2]));
   }
+#endif
 
 #if SPONZA_MANY
-  for (int x = 0; x < 10; x++) {
-    for (int y = 0; y < 10; y++) {
+  for (int x = 0; x < 100; x++) {
+    for (int y = 0; y < 100; y++) {
 #endif
       unsigned index = 0;
       for (const auto& mesh : sponza_model->getMeshes()) {
         auto entity = _engine->getEntityManager()->createEntity();
         bool has_wind = index >= 44 && index <= 62;
         fly::Vec3f aabb_offset = has_wind ? fly::Vec3f(0.f, 0.f, 0.25f) : fly::Vec3f(0.f);
+        fly::Vec3f translation(0.f);
         if (index == sponza_model->getMeshes().size() - 28) {
           has_wind = true;
           aabb_offset = fly::Vec3f(0.f, 0.f, 0.25f);
+          mesh->setMaterialIndex(sponza_model->getMeshes()[44]->getMaterialIndex());
+          translation[1] = 1.f;
         }
         entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(mesh,
 #if SPONZA_MANY
           sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(x * 60.f, 0.f, y * 60.f), fly::Vec3f(sponza_scale)).getModelMatrix(), has_wind, aabb_offset));
 #else
-          sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(0.f), sponza_scale).getModelMatrix(), has_wind, aabb_offset));
+          sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(translation, sponza_scale).getModelMatrix(), has_wind, aabb_offset));
 #endif
 #if PHYSICS
         const auto& model_matrix = entity->getComponent<fly::StaticMeshRenderable>()->getModelMatrix();
@@ -250,7 +266,7 @@ void GLWidget::initGame()
     std::vector<fly::Vertex> vertices_new;
     for (const auto& v : m->getVertices()) {
       fly::Vertex v_new = v;
-      v_new._uv *= 120.f;
+      v_new._uv *= (_renderer->getSceneMax().xz() - _renderer->getSceneMin().xz()) * 0.65f;
       vertices_new.push_back(v_new);
     }
     m->setVertices(vertices_new);

@@ -18,6 +18,7 @@
 #include <Light.h>
 #include <iostream>
 #include <Quadtree.h>
+#include <Octree.h>
 #include <Settings.h>
 #include <functional>
 #include <GraphicsSettings.h>
@@ -31,6 +32,18 @@ namespace fly
   class AbstractRenderer : public System, public GraphicsSettings::Listener
   {
   public:
+#if RENDERER_STATS
+    struct RendererStats
+    {
+      unsigned _renderedTriangles;
+      unsigned _renderedTrianglesShadow;
+      unsigned _renderedMeshes;
+      unsigned _renderedMeshesShadow;
+      unsigned _bvhTraversalMicroSeconds;
+      unsigned _sceneRenderingCPUMicroSeconds;
+    };
+    const RendererStats& getStats() const { return _stats; }
+#endif
     AbstractRenderer(const GraphicsSettings* gs) : _api(), _gs(gs)
     {
       _pp._near = 0.1f;
@@ -101,7 +114,7 @@ namespace fly
       else {
         auto it = _staticMeshRenderables.find(entity);
         if (it != _staticMeshRenderables.end()) {
-          _quadtree->removeElement(it->second.get());
+          _bvh->removeElement(it->second.get());
           _staticMeshRenderables.erase(it->first);
         }
       }
@@ -124,12 +137,16 @@ namespace fly
       _stats = {};
 #endif
       if (_camera && _directionalLight) {
-        if (!_quadtree) {
-          buildQuadtree();
+        if (!_bvh) {
+          buildBVH();
         }
         _api.beginFrame();
-        _gsp._camPosworld = glm::mix(_camera->_pos, glm::vec3(_gsp._camPosworld), _cameraLerpAlpha);
-        _camEulerAngles = glm::eulerAngles(glm::slerp(glm::quat(_camera->_eulerAngles), glm::quat(_camEulerAngles), _cameraLerpAlpha));
+        _acc += delta_time;
+        while (_acc >= _dt) {
+          _gsp._camPosworld = glm::mix(_camera->_pos, glm::vec3(_gsp._camPosworld), _cameraLerpAlpha);
+          _camEulerAngles = glm::eulerAngles(glm::slerp(glm::quat(_camera->_eulerAngles), glm::quat(_camEulerAngles), _cameraLerpAlpha));
+          _acc -= _dt;
+        }
         _gsp._viewMatrix = _camera->getViewMatrix(_gsp._camPosworld, _camEulerAngles);
         _vpScene = _gsp._projectionMatrix * _gsp._viewMatrix;
         _api.setDepthTestEnabled<true>();
@@ -146,9 +163,15 @@ namespace fly
         }
         _api.setViewport(_viewPortSize);
         _gsp._VP = &_vpScene;
+#if RENDERER_STATS
+        Timing timing;
+#endif
         std::vector<MeshRenderable*> visible_meshes = _gs->getDetailCulling() ?
-          _quadtree->getVisibleElementsWithDetailCulling<API::isDirectX()>(_vpScene, _gsp._camPosworld) :
-          _quadtree->getVisibleElements<API::isDirectX()>(_vpScene);
+          _bvh->getVisibleElementsWithDetailCulling<API::isDirectX()>(_vpScene, _gsp._camPosworld) :
+          _bvh->getVisibleElements<API::isDirectX()>(_vpScene);
+#if RENDERER_STATS
+        _stats._bvhTraversalMicroSeconds = timing.duration<std::chrono::microseconds>();
+#endif
         for (const auto& e : _dynamicMeshRenderables) {
           visible_meshes.push_back(e.second.get());
         }
@@ -176,7 +199,13 @@ namespace fly
         if (_shadowMap) {
           _api.bindShadowmap(*_shadowMap);
         }
+#if RENDERER_STATS
+        timing.start();
+#endif
         renderMeshes(visible_meshes);
+#if RENDERER_STATS
+        _stats._sceneRenderingCPUMicroSeconds = timing.duration<std::chrono::microseconds>();
+#endif
         if (_gs->getDebugQuadtreeNodeAABBs()) {
           renderQuadtreeAABBs();
         }
@@ -206,16 +235,6 @@ namespace fly
     const Vec3f& getSceneMin() const { return _sceneMin; }
     const Vec3f& getSceneMax() const { return _sceneMax; }
     std::vector<std::shared_ptr<Material>> getAllMaterials() { return _api.getAllMaterials(); }
-#if RENDERER_STATS
-    struct RendererStats
-    {
-      unsigned _renderedTriangles;
-      unsigned _renderedTrianglesShadow;
-      unsigned _renderedMeshes;
-      unsigned _renderedMeshesShadow;
-    };
-    const RendererStats& getStats() const { return _stats; }
-#endif
   private:
     API _api;
     ProjectionParams _pp;
@@ -235,6 +254,8 @@ namespace fly
     bool _offScreenRendering;
     bool _shadowMapping;
     float _cameraLerpAlpha;
+    float _acc = 0.f;
+    float _dt = 1.f / 30.f;
 
 #if RENDERER_STATS
     RendererStats _stats;
@@ -327,10 +348,13 @@ namespace fly
     typename API::MeshGeometryStorage _meshGeometryStorage;
     std::map<Entity*, std::shared_ptr<StaticMeshRenderable>> _staticMeshRenderables;
     std::map<Entity*, std::shared_ptr<DynamicMeshRenderable>> _dynamicMeshRenderables;
-    std::unique_ptr<Quadtree<MeshRenderable>> _quadtree;
+    using BVH = Quadtree<MeshRenderable>;
+    std::unique_ptr<BVH> _bvh;
     void renderQuadtreeAABBs()
     {
-      auto visible_nodes = _quadtree->getVisibleNodes(_vpScene);
+      auto visible_nodes = _gs->getDetailCulling() 
+        ? _bvh->getVisibleNodesWithDetailCulling<API::isDirectX()>(_vpScene, _gsp._camPosworld) 
+        : _bvh->getVisibleNodes(_vpScene);
       if (visible_nodes.size()) {
         _api.setDepthWriteEnabled<true>();
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
@@ -379,8 +403,8 @@ namespace fly
       auto vp_shadow_volume = _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
         inverse(_gsp._viewMatrix), _directionalLight->getViewMatrix(), static_cast<float>(_gs->getShadowMapSize()), _gs->getFrustumSplits(), light_vps, _api.isDirectX());
       auto visible_meshes = _gs->getDetailCulling() ?
-        _quadtree->getVisibleElementsWithDetailCulling<API::isDirectX()>(vp_shadow_volume, _gsp._camPosworld) :
-        _quadtree->getVisibleElements<API::isDirectX()>(vp_shadow_volume);
+        _bvh->getVisibleElementsWithDetailCulling<API::isDirectX()>(vp_shadow_volume, _gsp._camPosworld) :
+        _bvh->getVisibleElements<API::isDirectX()>(vp_shadow_volume);
       for (const auto& e : _dynamicMeshRenderables) {
         visible_meshes.push_back(e.second.get());
       }
@@ -420,11 +444,11 @@ namespace fly
         e.second->fetchShaderDescs();
       }
     }
-    void buildQuadtree()
+    void buildBVH()
     {
-      _quadtree = std::make_unique<Quadtree<MeshRenderable>>(_sceneMin, _sceneMax);
+      _bvh = std::make_unique<BVH>(_sceneMin, _sceneMax);
       for (const auto& e : _staticMeshRenderables) {
-        _quadtree->insert(e.second.get());
+        _bvh->insert(e.second.get());
       }
     }
   };

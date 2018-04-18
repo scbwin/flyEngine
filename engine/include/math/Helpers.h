@@ -36,6 +36,12 @@ namespace fly
   }
 
   template<unsigned Dim, typename T>
+  inline Vector<Dim, T> clamp(const Vector<Dim, T>& a, const Vector<Dim, T>& min_val, const Vector<Dim, T>& max_val)
+  {
+    return minimum(max_val, maximum(min_val, a));
+  }
+
+  template<unsigned Dim, typename T>
   inline T distance(const Vector<Dim, T>& a, const Vector<Dim, T>& b)
   {
     return (b - a).length();

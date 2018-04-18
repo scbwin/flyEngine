@@ -68,6 +68,8 @@ private:
   const char* _renderedTrianglesShadowName = "Triangles shadow";
   const char* _renderedMeshesName = "Meshes";
   const char* _renderedMeshesShadowName = "Meshes shadow";
+  const char* _bvhTraversalName = "BVH traversal microseconds";
+  const char* _sceneRenderingCPUName = "CPU scene rendering time";
   std::string formatNumber(unsigned number);
 };
 
