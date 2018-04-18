@@ -82,7 +82,7 @@ namespace fly
     bool _debugQuadtreeNodeAABBs = false;
     bool _debugObjectAABBs = false;
     bool _cameraLerping = true;
-    float _cameraLerpAlpha = 0.95f;
+    float _cameraLerpAlpha = 0.8f;
     bool _detailCulling = true;
 
     void notifiyNormalMappingChanged();

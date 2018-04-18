@@ -71,6 +71,8 @@ namespace fly
     _offScreenFramebuffer = std::make_unique<GLFramebuffer>();
     _aabbShader = createShader("assets/opengl/vs_aabb.glsl", "assets/opengl/fs_aabb.glsl", "assets/opengl/gs_aabb.glsl");
     _samplerAnisotropic = std::make_unique<GLSampler>();
+    _skydomeShader = createShader("assets/opengl/vs_skybox.glsl", "assets/opengl/fs_skydome_new.glsl");
+    _skydomeShaderDesc = createShaderDesc(_skydomeShader, ShaderSetupFlags::VP);
   }
   OpenGLAPI::~OpenGLAPI()
   {
@@ -88,6 +90,7 @@ namespace fly
     for (const auto& e : _shaderCache.getElements()) {
       e->reload();
     }
+    _skydomeShader->reload();
   }
   void OpenGLAPI::beginFrame() const
   {
@@ -112,10 +115,14 @@ namespace fly
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + shadowTexUnit()));
     shadowmap.bind();
   }
+  void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data) const
+  {
+    GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, mesh_data._type, mesh_data._indices, mesh_data._baseVertex));
+  }
   void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & model_matrix) const
   {
     setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::modelMatrix()), model_matrix);
-    GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, mesh_data._type, mesh_data._indices, mesh_data._baseVertex));
+    renderMesh(mesh_data);
   }
   void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse) const
   {
@@ -280,6 +287,10 @@ namespace fly
       materials.push_back(e->getMaterial());
     }
     return materials;
+  }
+  const std::shared_ptr<OpenGLAPI::ShaderDesc>& OpenGLAPI::getSkyboxShaderDesc() const
+  {
+    return _skydomeShaderDesc;
   }
   void OpenGLAPI::checkFramebufferStatus()
   {

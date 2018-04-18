@@ -78,7 +78,7 @@ namespace fly
         }
       }
       template<bool directx>
-      void getVisibleElements(const Mat4f& vp, std::vector<TPtr>& visible_elements) const
+      inline void getVisibleElements(const Mat4f& vp, std::vector<TPtr>& visible_elements) const
       {
         if (_elements.size() || hasChildren()) {
           if (_aabbWorld.isFullyVisible<directx>(vp)) {
@@ -122,7 +122,7 @@ namespace fly
       }
 
       template<bool directx>
-      void getVisibleElementsWithDetailCulling(const Mat4f& vp, const Vec3f& cam_pos,
+      inline void getVisibleElementsWithDetailCulling(const Mat4f& vp, const Vec3f& cam_pos,
         const DetailCullingParams& detail_culling_params, std::vector<TPtr>& visible_elements) const
       {
         if ((_elements.size() || hasChildren()) && !_aabbWorld.isDetail(cam_pos, detail_culling_params._errorThreshold, _largestElementAABBWorldSize)) {
@@ -162,7 +162,7 @@ namespace fly
         }
       }
       template<bool directx, bool ignore_near>
-      void getVisibleElementsWithDetailCulling(const std::vector<Mat4f>& vp, const Vec3f& cam_pos,
+      inline void getVisibleElementsWithDetailCulling(const std::vector<Mat4f>& vp, const Vec3f& cam_pos,
         const DetailCullingParams& detail_culling_params, std::vector<TPtr>& visible_elements) const
       {
         if ((_elements.size() || hasChildren()) && _aabbWorld.isVisible<directx, ignore_near>(vp)) {
@@ -191,7 +191,7 @@ namespace fly
           }
         }
       }
-      void getAllNodesWithDetailCulling(std::vector<Node*>& nodes, const Vec3f& cam_pos,
+      inline void getAllNodesWithDetailCulling(std::vector<Node*>& nodes, const Vec3f& cam_pos,
         const DetailCullingParams& detail_culling_params)
       {
         if (!_aabbWorld.isDetail(cam_pos, detail_culling_params._errorThreshold, _largestElementAABBWorldSize)) {
@@ -204,7 +204,7 @@ namespace fly
         }
       }
       template<bool directx>
-      void getVisibleNodesWithDetailCulling(std::vector<Node*>& visible_nodes, const Vec3f& cam_pos,
+      inline void getVisibleNodesWithDetailCulling(std::vector<Node*>& visible_nodes, const Vec3f& cam_pos,
         const DetailCullingParams& detail_culling_params, const Mat4f& vp)
       {
         if (!_aabbWorld.isDetail(cam_pos, detail_culling_params._errorThreshold, _largestElementAABBWorldSize)) {
@@ -227,7 +227,7 @@ namespace fly
         }
       }
       template<bool directx>
-      void getVisibleNodes(std::vector<Node*>& visible_nodes, const Mat4f& vp)
+      inline void getVisibleNodes(std::vector<Node*>& visible_nodes, const Mat4f& vp)
       {
         if (_aabbWorld.isFullyVisible<directx>(vp)) {
           visible_nodes.push_back(this);
@@ -335,13 +335,13 @@ namespace fly
       _root->getVisibleElementsWithDetailCulling<directx>(vp, cam_pos, _detailCullingParams, visible_elements);
       return visible_elements;
     }
-    std::vector<TPtr> getAllElements() const
+    inline std::vector<TPtr> getAllElements() const
     {
       std::vector<TPtr> all_elements;
       _root->getAllElements(all_elements);
       return all_elements;
     }
-    std::vector<Node*> getAllNodes()
+    inline std::vector<Node*> getAllNodes()
     {
       std::vector<Node*> all_nodes;
       _root->getAllNodes(all_nodes);
@@ -349,7 +349,7 @@ namespace fly
     }
 
     template<bool directx = false>
-    std::vector<Node*> getVisibleNodesWithDetailCulling(const Mat4f& vp, const Vec3f& cam_pos) const
+    inline std::vector<Node*> getVisibleNodesWithDetailCulling(const Mat4f& vp, const Vec3f& cam_pos) const
     {
       std::vector<Node*> visible_nodes;
       _root->getVisibleNodesWithDetailCulling<directx>(visible_nodes, cam_pos, _detailCullingParams, vp);
@@ -357,7 +357,7 @@ namespace fly
     }
 
     template<bool directx = false>
-    std::vector<Node*> getVisibleNodes(const Mat4f& vp)
+    inline std::vector<Node*> getVisibleNodes(const Mat4f& vp)
     {
       std::vector<Node*> visible_nodes;
       _root->getVisibleNodes<directx>(visible_nodes, vp);

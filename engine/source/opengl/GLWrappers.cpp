@@ -107,6 +107,11 @@ namespace fly
     link();
   }
 
+  const std::vector<std::string>& GLShaderProgram::getFileNames() const
+  {
+    return _fnames;
+  }
+
   void GLShaderProgram::add(const std::string & fname, ShaderType type)
   {
     GLenum shader_type;

@@ -87,6 +87,11 @@ namespace fly
       }
       GL_CHECK(glDepthFunc(func));
     }
+    enum class CullMode{BACK, FRONT};
+    template<CullMode m> inline void setCullMode() const
+    {
+      GL_CHECK(glCullFace(m == CullMode::BACK ? GL_BACK : GL_FRONT));
+    }
     void reloadShaders();
     using RTT = GLTexture;
     using Depthbuffer = GLTexture;
@@ -179,6 +184,7 @@ namespace fly
     void bindShader(GLShaderProgram* shader);
     void setupShaderDesc(const ShaderDesc& desc, const GlobalShaderParams& params);
     void bindShadowmap(const Shadowmap& shadowmap) const;
+    void renderMesh(const MeshGeometryStorage::MeshData& mesh_data) const;
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix) const;
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse) const;
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const WindParamsLocal& wind_params, const AABB& aabb) const;
@@ -201,6 +207,7 @@ namespace fly
     void recreateShadersAndMaterials(const GraphicsSettings& gs);
     void createCompositeShaderFile(const GraphicsSettings& gs);
     std::vector<std::shared_ptr<Material>> getAllMaterials();
+    const std::shared_ptr<ShaderDesc>& getSkyboxShaderDesc() const;
   private:
     GLShaderProgram * _activeShader;
     SoftwareCache<std::string, std::shared_ptr<GLTexture>, const std::string& > _textureCache;
@@ -209,6 +216,8 @@ namespace fly
     SoftwareCache<std::shared_ptr<GLShaderProgram>, std::shared_ptr<ShaderDesc>, const std::shared_ptr<GLShaderProgram>&, unsigned> _shaderDescCache;
     std::shared_ptr<GLShaderProgram> _aabbShader;
     std::shared_ptr<ShaderDesc> _compositeShaderDesc;
+    std::shared_ptr<ShaderDesc> _skydomeShaderDesc;
+    std::shared_ptr<GLShaderProgram> _skydomeShader;
     std::shared_ptr<GLVertexArray> _vaoAABB;
     std::shared_ptr<GLBuffer> _vboAABB;
     std::unique_ptr<GLFramebuffer> _offScreenFramebuffer;

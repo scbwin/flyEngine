@@ -46,6 +46,7 @@ namespace fly
    // std::unordered_map<std::string, GLint> _uniformLocations;
     SoftwareCache<std::string, GLint, const std::string&> _uniformLocations;
     void reload();
+    const std::vector<std::string>& getFileNames() const;
   private:
     GLuint _id;
     void add(const std::string& fname, ShaderType type);

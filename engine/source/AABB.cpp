@@ -59,16 +59,6 @@ namespace fly
   {
     return AABB(maximum(_bbMin, other._bbMin), minimum(_bbMax, other._bbMax));
   }
-  bool AABB::isDetail(const Vec3f & cam_pos, float error_tresh) const
-  {
-    float error = _size / distance(closestPoint(cam_pos), cam_pos);
-    return error < error_tresh;
-  }
-  bool AABB::isDetail(const Vec3f & cam_pos, float error_tresh, float size) const
-  {
-    float error = size / distance(closestPoint(cam_pos), cam_pos);
-    return error < error_tresh;
-  }
   void AABB::computeVertices()
   {
     _vertices[0] = Vec3f(_bbMin[0], _bbMin[1], _bbMin[2]);

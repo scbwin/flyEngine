@@ -14,6 +14,7 @@
 #include <LevelOfDetail.h>
 #include <StaticMeshRenderable.h>
 #include <DynamicMeshRenderable.h>
+#include <SkydomeRenderable.h>
 #include <AntWrapper.h>
 #include <physics/Bullet3PhysicsSystem.h>
 #include <physics/RigidBody.h>
@@ -35,8 +36,10 @@ void GLWidget::initializeGL()
   _renderer = std::make_shared<fly::AbstractRenderer<fly::OpenGLAPI>>(&_graphicsSettings);
   _graphicsSettings.addListener(_renderer);
   _engine->addSystem(_renderer);
+#if PHYSICS
   _physicsSystem = std::make_shared<fly::Bullet3PhysicsSystem>();
   _engine->addSystem(_physicsSystem);
+#endif
   initGame();
   auto timer = new QTimer(this);
   QObject::connect(timer, &QTimer::timeout, this, static_cast<void(GLWidget::*)()>(&GLWidget::update));
@@ -207,8 +210,8 @@ void GLWidget::initGame()
 #endif
 
 #if SPONZA_MANY
-  for (int x = 0; x < 100; x++) {
-    for (int y = 0; y < 100; y++) {
+  for (int x = 0; x < NUM_OBJECTS; x++) {
+    for (int y = 0; y < NUM_OBJECTS; y++) {
 #endif
       unsigned index = 0;
       for (const auto& mesh : sponza_model->getMeshes()) {
@@ -239,9 +242,15 @@ void GLWidget::initGame()
   }
 #endif
 #endif
+#if PHYSICS || SKYDOME
+  auto sphere_model = importer->loadModel("assets/sphere.obj");
+#endif
+#if SKYDOME
+  auto skydome_entity = _engine->getEntityManager()->createEntity();
+  skydome_entity->addComponent(std::make_shared<fly::SkydomeRenderable>(sphere_model->getMeshes().front()));
+#endif
 #if PHYSICS
   _graphicsSettings.setDebugObjectAABBs(true);
-  auto sphere_model = importer->loadModel("assets/sphere.obj");
   for (const auto& m : sphere_model->getMeshes()) {
     auto ent = _engine->getEntityManager()->createEntity();
     auto vec = m->getAABB()->getMax() - m->getAABB()->getMin();

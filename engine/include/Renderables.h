@@ -12,11 +12,16 @@ namespace fly
   class Model;
   class AABB;
   class Transform;
+  class Mesh;
   class SkyboxRenderable : public Component
   {
   public:
-    SkyboxRenderable() = default;
+    SkyboxRenderable(const std::shared_ptr<Mesh>& mesh);
     virtual ~SkyboxRenderable() = default;
+    const std::shared_ptr<Mesh>& getMesh() const;
+
+  private:
+    std::shared_ptr<Mesh> _mesh;
   };
   class ProceduralTerrainRenderable : public Component
   {

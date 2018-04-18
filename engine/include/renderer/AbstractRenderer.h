@@ -23,6 +23,7 @@
 #include <functional>
 #include <GraphicsSettings.h>
 #include <Timing.h>
+#include <SkydomeRenderable.h>
 
 #define RENDERER_STATS 1
 
@@ -92,7 +93,10 @@ namespace fly
     }
     virtual void cameraLerpingChanged(bool enabled, float alpha) override
     {
-      _cameraLerpAlpha = enabled ? alpha : 0.f;
+      if (enabled) {
+        _acc = 0.f;
+        _cameraLerpAlpha = alpha;
+      }
     }
     virtual void anisotropyChanged(unsigned anisotropy) override
     {
@@ -104,6 +108,7 @@ namespace fly
       auto dl = entity->getComponent<DirectionalLight>();
       auto mr = entity->getComponent<fly::StaticMeshRenderable>();
       auto dmr = entity->getComponent<fly::DynamicMeshRenderable>();
+      auto sbr = entity->getComponent<fly::SkydomeRenderable>();
       if (mr) {
         _staticMeshRenderables[entity] = mr->hasWind() ? 
           std::make_shared<StaticMeshRenderableWind>(mr, _api.createMaterial(mr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(mr->getMesh())) :
@@ -130,6 +135,9 @@ namespace fly
       if (dl) {
         _directionalLight = dl;
       }
+      if (sbr) {
+        _skydomeRenderable = std::make_shared<SkydomeRenderable>(_meshGeometryStorage.addMesh(sbr->getMesh()), _api.getSkyboxShaderDesc().get());
+      }
     }
     virtual void update(float time, float delta_time) override
     {
@@ -141,16 +149,23 @@ namespace fly
           buildBVH();
         }
         _api.beginFrame();
-        _acc += delta_time;
-        while (_acc >= _dt) {
-          _gsp._camPosworld = glm::mix(_camera->_pos, glm::vec3(_gsp._camPosworld), _cameraLerpAlpha);
-          _camEulerAngles = glm::eulerAngles(glm::slerp(glm::quat(_camera->_eulerAngles), glm::quat(_camEulerAngles), _cameraLerpAlpha));
-          _acc -= _dt;
+        if (_gs->getCameraLerping()) {
+          _acc += delta_time;
+          while (_acc >= _dt) {
+            _gsp._camPosworld = glm::mix(_camera->_pos, glm::vec3(_gsp._camPosworld), _cameraLerpAlpha);
+            _camEulerAngles = glm::eulerAngles(glm::slerp(glm::quat(_camera->_eulerAngles), glm::quat(_camEulerAngles), _cameraLerpAlpha));
+            _acc -= _dt;
+          }
+        }
+        else {
+          _gsp._camPosworld = _camera->_pos;
+          _camEulerAngles = _camera->_eulerAngles;
         }
         _gsp._viewMatrix = _camera->getViewMatrix(_gsp._camPosworld, _camEulerAngles);
         _vpScene = _gsp._projectionMatrix * _gsp._viewMatrix;
         _api.setDepthTestEnabled<true>();
         _api.setFaceCullingEnabled<true>();
+        _api.setCullMode<API::CullMode::BACK>();
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
         _api.setDepthWriteEnabled<true>();
         _gsp._lightPosWorld = _directionalLight->_pos;
@@ -195,7 +210,14 @@ namespace fly
           _api.setDepthFunc<API::DepthFunc::EQUAL>();
         }
         _offScreenRendering ? _api.setRendertargets({ _lightingBuffer.get() }, _depthBuffer.get()) : _api.bindBackbuffer(_defaultRenderTarget);
-        _gs->depthPrepassEnabled() ? _api.clearRendertarget<true, false, false>(Vec4f(0.149f, 0.509f, 0.929f, 1.f)) : _api.clearRendertarget<true, true, false>(Vec4f(0.149f, 0.509f, 0.929f, 1.f));
+        if (_skydomeRenderable) { // No need to clear color if every pixel is overdrawn anyway
+          if (!_gs->depthPrepassEnabled()) { // Clear depth only if no depth pre pass
+            _api.clearRendertarget<false, true, false>(Vec4f());
+          }
+        }
+        else {
+          _gs->depthPrepassEnabled() ? _api.clearRendertarget<true, false, false>(Vec4f(0.149f, 0.509f, 0.929f, 1.f)) : _api.clearRendertarget<true, true, false>(Vec4f(0.149f, 0.509f, 0.929f, 1.f));
+        }
         if (_shadowMap) {
           _api.bindShadowmap(*_shadowMap);
         }
@@ -203,6 +225,16 @@ namespace fly
         timing.start();
 #endif
         renderMeshes(visible_meshes);
+        if (_skydomeRenderable) {
+          _api.setCullMode<API::CullMode::FRONT>();
+          Mat4f view_matrix_sky_dome = glm::mat4(glm::mat3(_gsp._viewMatrix)); // Removes the translational part of the view matrix
+          auto skydome_vp = _gsp._projectionMatrix * view_matrix_sky_dome;
+          _gsp._VP = &skydome_vp;
+          _api.setupShaderDesc(*_skydomeRenderable->_shaderDesc, _gsp);
+          _skydomeRenderable->render(_api);
+          _gsp._VP = &_vpScene; // Restore view projection matrix
+          _api.setCullMode<API::CullMode::BACK>();
+        }
 #if RENDERER_STATS
         _stats._sceneRenderingCPUMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
@@ -279,7 +311,24 @@ namespace fly
       }
       virtual AABB* getAABBWorld() const = 0;
     };
-
+    struct SkydomeRenderable : public MeshRenderable
+    {
+      SkydomeRenderable(const typename API::MeshGeometryStorage::MeshData& mesh_data, typename API::ShaderDesc* shader_desc) : 
+        MeshRenderable(nullptr, mesh_data)
+      {
+        _shaderDesc = shader_desc;
+      }
+      virtual AABB* getAABBWorld() const
+      {
+        return nullptr;
+      }
+      virtual void render(const API& api)
+      {
+        api.renderMesh(_meshData);
+      }
+      virtual void renderDepth(const API& api)
+      {}
+    };
     struct DynamicMeshRenderable : public MeshRenderable
     {
       DynamicMeshRenderable(const std::shared_ptr<fly::DynamicMeshRenderable>& dmr,
@@ -348,6 +397,7 @@ namespace fly
     typename API::MeshGeometryStorage _meshGeometryStorage;
     std::map<Entity*, std::shared_ptr<StaticMeshRenderable>> _staticMeshRenderables;
     std::map<Entity*, std::shared_ptr<DynamicMeshRenderable>> _dynamicMeshRenderables;
+    std::shared_ptr<MeshRenderable> _skydomeRenderable;
     using BVH = Quadtree<MeshRenderable>;
     std::unique_ptr<BVH> _bvh;
     void renderQuadtreeAABBs()
