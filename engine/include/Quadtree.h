@@ -31,15 +31,6 @@ namespace fly
       inline const Vec2f& getSize() const { return _size; }
       inline void setAABBWorld(const AABB& aabb) { _aabbWorld = aabb; }
       inline AABB* getAABBWorld() { return &_aabbWorld; }
-      inline bool hasChildren() const
-      {
-        for (const auto& c : _children) {
-          if (c) {
-            return true;
-          }
-        }
-        return false;
-      }
       void insert(const TPtr& element)
       {
         AABB* aabb_element = element->getAABBWorld();
@@ -80,7 +71,6 @@ namespace fly
       template<bool directx>
       inline void getVisibleElements(const Mat4f& vp, std::vector<TPtr>& visible_elements) const
       {
-        if (_elements.size() || hasChildren()) {
           if (_aabbWorld.isFullyVisible<directx>(vp)) {
             visible_elements.insert(visible_elements.end(), _elements.begin(), _elements.end());
             for (const auto& c : _children) {
@@ -101,7 +91,6 @@ namespace fly
               }
             }
           }
-        }
       }
 
       void getAllElementsWithDetailCulling(const Vec3f& cam_pos,
@@ -125,7 +114,7 @@ namespace fly
       inline void getVisibleElementsWithDetailCulling(const Mat4f& vp, const Vec3f& cam_pos,
         const DetailCullingParams& detail_culling_params, std::vector<TPtr>& visible_elements) const
       {
-        if ((_elements.size() || hasChildren()) && !_aabbWorld.isDetail(cam_pos, detail_culling_params._errorThreshold, _largestElementAABBWorldSize)) {
+        if (!_aabbWorld.isDetail(cam_pos, detail_culling_params._errorThreshold, _largestElementAABBWorldSize)) {
           if (_aabbWorld.isFullyVisible<directx>(vp)) {
             for (const auto& e : _elements) {
               if (!e->getAABBWorld()->isDetail(cam_pos, detail_culling_params._errorThreshold)) {
@@ -158,27 +147,6 @@ namespace fly
         for (const auto& c : _children) {
           if (c) {
             c->getAllElements(all_elements);
-          }
-        }
-      }
-      template<bool directx, bool ignore_near>
-      inline void getVisibleElementsWithDetailCulling(const std::vector<Mat4f>& vp, const Vec3f& cam_pos,
-        const DetailCullingParams& detail_culling_params, std::vector<TPtr>& visible_elements) const
-      {
-        if ((_elements.size() || hasChildren()) && _aabbWorld.isVisible<directx, ignore_near>(vp)) {
-          for (const auto& e : _elements) {
-            if (e->getAABBWorld()->isVisible<directx, ignore_near>(vp)) {
-              visible_elements.push_back(e);
-            }
-          }
-          float error = (_aabbWorld.getMax() - _aabbWorld.getMin()).length() / (cam_pos - _aabbWorld.center()).length();
-          error = pow(error, detail_culling_params._errorExponent);
-          if (error > detail_culling_params._errorThreshold) {
-            for (const auto& c : _children) {
-              if (c) {
-                c->getVisibleElementsWithDetailCulling<directx, ignore_near>(vp, cam_pos, detail_culling_params, visible_elements);
-              }
-            }
           }
         }
       }
@@ -319,13 +287,6 @@ namespace fly
     {
       std::vector<TPtr> visible_elements;
       _root->getVisibleElements<directx>(vp, visible_elements);
-      return visible_elements;
-    }
-    template<bool directx, bool ignore_near>
-    std::vector<TPtr> getVisibleElementsWithDetailCulling(const std::vector<Mat4f>& vp, const Vec3f& cam_pos) const
-    {
-      std::vector<TPtr> visible_elements;
-      _root->getVisibleElementsWithDetailCulling<directx, ignore_near>(vp, cam_pos, _detailCullingParams, visible_elements);
       return visible_elements;
     }
     template<bool directx>

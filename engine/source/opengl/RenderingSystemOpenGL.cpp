@@ -832,17 +832,13 @@ namespace fly
     auto dl = (*_directionalLights.begin())->getComponent<DirectionalLight>();
     auto shadow_map = _shadowMaps[*_directionalLights.begin()];
     std::vector<Mat4f> vp;
-    dl->getViewProjectionMatrices(_aspectRatio, _zNear, _fov, inverse(_viewMatrix), dl->getViewMatrix(), shadow_map->width(), _settings._smFrustumSplits, vp);
+    auto light_volume = dl->getViewProjectionMatrices(_aspectRatio, _zNear, _fov, inverse(_viewMatrix), dl->getViewMatrix(), shadow_map->width(), _settings._smFrustumSplits, vp);
     for (auto& t : _terrainRenderables) {
       t.second->_visibleNodes.clear();
       t.second->_visibleNodesShadowMap.clear();
       auto model_matrix = t.second->_transform->getModelMatrix();
       t.second->_terrain->getTreeNodesForRendering(glm::inverse(glm::mat4(model_matrix)) * glm::vec4(_camPos, 1.f), t.second->_visibleNodes, _VP * glm::mat4(model_matrix), nullptr);
-      std::vector<Mat4f> light_mvps;
-      for (unsigned i = 0; i < _settings._smFrustumSplits.size(); ++i) {
-        light_mvps.push_back(vp[i] * model_matrix);
-      }
-      t.second->_terrain->getTreeNodesForRendering(glm::inverse(glm::mat4(model_matrix)) * glm::vec4(_camPos, 1.f), t.second->_visibleNodesShadowMap, _VP * glm::mat4(model_matrix), (*_directionalLights.begin())->getComponent<DirectionalLight>().get(), light_mvps);
+      t.second->_terrain->getTreeNodesForRendering(glm::inverse(glm::mat4(model_matrix)) * glm::vec4(_camPos, 1.f), t.second->_visibleNodesShadowMap, _VP * glm::mat4(model_matrix), (*_directionalLights.begin())->getComponent<DirectionalLight>().get(), light_volume * model_matrix);
     }
 
 #if PROFILE
@@ -1215,7 +1211,7 @@ namespace fly
           Vec3f bb_min({ static_cast<float>(node_pos_model_space.x),static_cast<float>(min_height), static_cast<float>(node_pos_model_space.y) });
           Vec3f bb_max({ static_cast<float>(node_pos_model_space.x + patch_size), max_height, static_cast<float>(node_pos_model_space.y + patch_size) });
 
-          if (!AABB(bb_min, bb_max).isVisible<false, false>(mvp)) {
+          if (!AABB(bb_min, bb_max).intersectsFrustum<false>(mvp)) {
             continue;
           }
           GL_CHECK(glUniform2f(shader->uniformLocation("grassStart"), node_pos_model_space.x, node_pos_model_space.y));
@@ -2854,7 +2850,7 @@ namespace fly
   bool RenderingSystemOpenGL::isCulled(const std::shared_ptr<Mesh>& mesh, const glm::mat4 & model_matrix)
   {
     auto mvp = _VP * model_matrix;
-    return !mesh->getAABB()->isVisible<false, false>(mvp);
+    return !mesh->getAABB()->intersectsFrustum<false>(mvp);
   }
 
   void RenderingSystemOpenGL::initFramebuffers()

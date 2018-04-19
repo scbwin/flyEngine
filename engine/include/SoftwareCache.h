@@ -18,9 +18,9 @@ namespace fly
       if (it != _elements.end()) { // Element with this key already exists
         return it->second;
       }
-      auto Val = _createFunc(args...); // Create new element
-      _elements[key] = Val; // Add the new element to the cache
-      return Val;
+      auto val = _createFunc(args...); // Create new element
+      _elements[key] = val; // Add the new element to the cache
+      return val;
     }
     std::vector<Val> getElements()
     {

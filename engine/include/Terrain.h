@@ -90,7 +90,7 @@ namespace fly
     std::shared_ptr<Model> getTreeModelLod0();
     std::shared_ptr<Model> getTreeModelLod1();
     void getAllNodes(std::vector<TreeNode*>& nodes);
-    void getTreeNodesForRendering(const glm::vec3& cam_pos_model_space, std::vector<TreeNode*>& nodes, const Mat4f& mvp, DirectionalLight* dl, const std::vector<Mat4f>& light_mvps = std::vector<Mat4f>());
+    void getTreeNodesForRendering(const glm::vec3& cam_pos_model_space, std::vector<TreeNode*>& nodes, const Mat4f& mvp, DirectionalLight* dl, const Mat4f& light_mvp = Mat4f());
     struct Tile
     {
       Tile(const glm::ivec2& pos, Terrain* g);
@@ -109,7 +109,7 @@ namespace fly
   private:
     glm::vec2 _min, _max;
     void getAllNodes(TreeNode* node, std::vector<TreeNode*>& nodes);
-    void getTreeNodesForRendering(TreeNode* node, const glm::vec3& cam_pos_model_space, std::vector<TreeNode*>& nodes, const glm::mat4& mvp, DirectionalLight* dl, const std::vector<Mat4f>& light_mvps);
+    void getTreeNodesForRendering(TreeNode* node, const glm::vec3& cam_pos_model_space, std::vector<TreeNode*>& nodes, const glm::mat4& mvp, DirectionalLight* dl, const Mat4f& light_mvps);
     std::map<int, std::map<int, unsigned>> _indexMap;
 
     int _tileSize;

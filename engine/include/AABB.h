@@ -11,16 +11,15 @@ namespace fly
   class AABB
   {
   public:
-    AABB(const Vec3f& bb_min, const Vec3f& bb_max, bool compute_vertices = true);
+    AABB(const Vec3f& bb_min, const Vec3f& bb_max);
     AABB(const AABB& aabb_local, const Mat4f& world_matrix);
-    const Vec3f (& getVertices() const) [8];
     const Vec3f& getMin() const;
     const Vec3f& getMax() const;
-    const Vec3f& center() const;
     float size() const;
     bool contains(const AABB& other) const;
     AABB getUnion(const AABB& other) const;
     AABB getIntersection(const AABB& other) const;
+    std::array<Vec3f, 8> getVertices() const;
     inline bool isDetail(const Vec3f& cam_pos, float error_tresh, float size) const
     {
       return (size / distance(closestPoint(cam_pos), cam_pos)) < error_tresh;
@@ -33,12 +32,22 @@ namespace fly
     {
       return clamp(point, _bbMin, _bbMax);
     }
+    /*
+    * Returns the aabb vertex for an index between 0 and 7, the result is
+    * undefined if the index is not between 0 and 7.
+    */
+    inline Vec3f getVertex(unsigned char index) const
+    {
+      return Vec3f(index & 4 ? _bbMin[0] : _bbMax[0],
+        index & 2 ? _bbMin[1] : _bbMax[1], 
+        index & 1 ? _bbMin[2] : _bbMax[2]);
+    }
 
     template<bool directx>
     inline bool isFullyVisible(const Mat4f& transform) const
     {
-      for (const auto& v : _vertices) {
-        auto pos_h = transform * Vec4f(v, 1.f);
+      for (unsigned i = 0; i < 8; i++) {
+        auto pos_h = transform * Vec4f(getVertex(i), 1.f);
         for (unsigned i = 0; i < 3; i++) {
           if (pos_h[i] > pos_h[3]) {
             return false;
@@ -57,8 +66,8 @@ namespace fly
     inline bool intersectsFrustum(const Mat4f& transform) const
     {
       unsigned char intersects = 0;
-      for (const auto& v : _vertices) {
-        auto pos_h = transform * Vec4f(v, 1.f);
+      for (unsigned i = 0; i < 8; i++) {
+        auto pos_h = transform * Vec4f(getVertex(i), 1.f);
         for (unsigned i = 0; i < 3; i++) {
           intersects |= (pos_h[i] <= pos_h[3]) << i;
         }
@@ -71,43 +80,9 @@ namespace fly
       }
       return false;
     }
-
-    template<bool directx, bool ignore_near>
-    inline bool isVisible(const Mat4f& mvp) const
-    {
-      bool inside_left = false, inside_right = false, inside_bottom = false, inside_top = false, inside_far = false, inside_near;
-      if (!ignore_near) {
-        inside_near = false;
-      }
-      for (const auto& v : _vertices) {
-        auto pos_h = mvp * Vec4f( v[0], v[1], v[2], 1.f );
-        inside_left = inside_left || pos_h[0] >= -pos_h[3];
-        inside_right = inside_right || pos_h[0] <= pos_h[3];
-        inside_bottom = inside_bottom || pos_h[1] >= -pos_h[3];
-        inside_top = inside_top || pos_h[1] <= pos_h[3];
-        if (!ignore_near) {
-          inside_near = inside_near || pos_h[2] >= (directx ? 0.f : -pos_h[3]);
-        }
-        inside_far = inside_far || pos_h[2] <= pos_h[3];
-      }
-      bool is_visible = inside_left && inside_right && inside_bottom && inside_top && inside_far;
-      return ignore_near ? is_visible : is_visible && inside_near;
-    }
-    template<bool directx, bool ignore_near>
-    inline bool isVisible(const std::vector<Mat4f>& vps) const
-    {
-      bool visible = false;
-      for (const auto& vp : vps) {
-        visible = visible || isVisible<directx, ignore_near>(vp);
-      }
-      return visible;
-    }
   private:
-    Vec3f _vertices [8];
     Vec3f _bbMin, _bbMax;
-    Vec3f _center;
     float _size;
-    void computeVertices();
   };
 }
 

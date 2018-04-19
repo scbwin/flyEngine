@@ -282,6 +282,7 @@ namespace fly
     Mat4f _vpInverseVPBefore;
     Mat4f _VPBefore;
     std::vector<Mat4f> _lightVP;
+    Mat4f _lightVolume;
     Vec2u _viewportSize;
     float _aspectRatio = 1.f;
     float _fov = 45.f;

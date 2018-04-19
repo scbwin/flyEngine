@@ -312,9 +312,9 @@ namespace fly
     getAllNodes(_rootNode.get(), nodes);
   }
 
-  void Terrain::getTreeNodesForRendering(const glm::vec3 & cam_pos_model_space, std::vector<TreeNode*>& nodes, const Mat4f& mvp, DirectionalLight* dl, const std::vector<Mat4f>& light_mvps)
+  void Terrain::getTreeNodesForRendering(const glm::vec3 & cam_pos_model_space, std::vector<TreeNode*>& nodes, const Mat4f& mvp, DirectionalLight* dl, const Mat4f& light_mvp)
   {
-    getTreeNodesForRendering(_rootNode.get(), cam_pos_model_space, nodes, mvp, dl, light_mvps);
+    getTreeNodesForRendering(_rootNode.get(), cam_pos_model_space, nodes, mvp, dl, light_mvp);
   }
 
   void Terrain::generateTiles()
@@ -369,25 +369,25 @@ namespace fly
     }
   }
 
-  void Terrain::getTreeNodesForRendering(TreeNode * node, const glm::vec3 & cam_pos_model_space, std::vector<TreeNode*>& nodes, const glm::mat4& mvp, DirectionalLight* dl, const std::vector<Mat4f>& light_mvps)
+  void Terrain::getTreeNodesForRendering(TreeNode * node, const glm::vec3 & cam_pos_model_space, std::vector<TreeNode*>& nodes, const glm::mat4& mvp, DirectionalLight* dl, const Mat4f& light_mvp)
   {
     float dist = glm::distance(cam_pos_model_space, node->center());
     float error = node->_size / dist;
     if (error > _errorThreshold && node->_southWest) {
-      getTreeNodesForRendering(node->_southWest, cam_pos_model_space, nodes, mvp, dl, light_mvps);
-      getTreeNodesForRendering(node->_southEast, cam_pos_model_space, nodes, mvp, dl, light_mvps);
-      getTreeNodesForRendering(node->_northWest, cam_pos_model_space, nodes, mvp, dl, light_mvps);
-      getTreeNodesForRendering(node->_northEast, cam_pos_model_space, nodes, mvp, dl, light_mvps);
+      getTreeNodesForRendering(node->_southWest, cam_pos_model_space, nodes, mvp, dl, light_mvp);
+      getTreeNodesForRendering(node->_southEast, cam_pos_model_space, nodes, mvp, dl, light_mvp);
+      getTreeNodesForRendering(node->_northWest, cam_pos_model_space, nodes, mvp, dl, light_mvp);
+      getTreeNodesForRendering(node->_northEast, cam_pos_model_space, nodes, mvp, dl, light_mvp);
     }
     else {
       if (!dl) {
-        if ((node->_transforms.size() || node->_cloudBillboardPositionsAndScales.size()) && node->_aabb->isVisible<false, false>(mvp)) {
+        if ((node->_transforms.size() || node->_cloudBillboardPositionsAndScales.size()) && node->_aabb->intersectsFrustum<false>(mvp)) {
           node->_lod = (node->_size / _minNodeSize) - 1;
           nodes.push_back(node);
         }
       }
       else {
-        if ((node->_transforms.size() || node->_cloudBillboardPositionsAndScales.size()) && node->_aabb->isVisible<false, true>(light_mvps)) {
+        if ((node->_transforms.size() || node->_cloudBillboardPositionsAndScales.size()) && node->_aabb->intersectsFrustum<false>(light_mvp)) {
           node->_lod = (node->_size / _minNodeSize) - 1;
           nodes.push_back(node);
         }

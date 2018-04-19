@@ -486,7 +486,7 @@ namespace fly
     _VPBefore = _VP;
     auto view_matrix_light = _directionalLight._dl->getViewMatrix();
     _lightVP.clear();
-    _directionalLight._dl->getViewProjectionMatrices(_aspectRatio, _near, _fov, v_inverse,
+    _lightVolume = _directionalLight._dl->getViewProjectionMatrices(_aspectRatio, _near, _fov, v_inverse,
       view_matrix_light, static_cast<float>(_directionalLight._shadowMap->_size), _settings._smFrustumSplits, _lightVP, true);
     HR(_fxLightVPs->SetMatrixTransposeArray(_lightVP.front().ptr(), 0, static_cast<uint32_t>(_lightVP.size())));
     HR(_fxCascDistances->SetFloatArray(&_settings._smFrustumSplits[0], 0, _directionalLight._shadowMap->_numCascades));
@@ -515,13 +515,13 @@ namespace fly
     _context->OMSetRenderTargets(1, rtv, _directionalLight._shadowMap->_dsv);
     _context->ClearDepthStencilView(_directionalLight._shadowMap->_dsv, D3D11_CLEAR_FLAG::D3D11_CLEAR_DEPTH, 1.f, 0);
     UINT offset = 0, stride = sizeof(Vertex);
-    auto visible_elements = _quadtree->getVisibleElementsWithDetailCulling<true, true>(_lightVP, _camPos);
+    auto visible_elements = _quadtree->getVisibleElementsWithDetailCulling<true>(_lightVolume, _camPos);
 #if DX11_STATS
     _stats._visibleModelsShadow += visible_elements.size();
 #endif
     for (const auto& r : visible_elements) {
       //if (!_directionalLight._dl->aabbVisible<true>(light_mvps, *m_rdable._model->getAABB())) {
-      if (!r->getAABBWorld()->isVisible<true, true>(_lightVP)) {
+      if (!r->getAABBWorld()->intersectsFrustum<true>(_lightVolume)) {
         continue;
       }
       std::vector<Mat4f> light_mvps;
@@ -536,7 +536,7 @@ namespace fly
       int material_index = -1;
       for (const auto& mesh_desc : model_data->_meshDesc) {
         if (model_data->_meshDesc.size() > 1) { // The model is visible, only do fine-grained culling if it consists of more than one mesh.
-          if (!mesh_desc._mesh->getAABB()->isVisible<true, true>(light_mvps)) {
+          if (!mesh_desc._mesh->getAABB()->intersectsFrustum<true>(_lightVolume)) {
             continue;
           }
         }
@@ -592,7 +592,7 @@ namespace fly
     HR(_fxLightColor->SetFloatVector(_directionalLight._dl->_color.ptr()));
     HR(_fxShadowMap->SetResource(_directionalLight._shadowMap->_srv));
     //auto visible_elements = _quadtree->getVisibleElements<true>(_VP);
-    auto visible_elements = _quadtree->getVisibleElementsWithDetailCulling<true, false>({ _VP }, _camPos);
+    auto visible_elements = _quadtree->getVisibleElementsWithDetailCulling<true>(_VP , _camPos);
 #if DX11_STATS
     _stats._visibleModels += visible_elements.size();
 #endif
@@ -608,7 +608,7 @@ namespace fly
       int material_index = -1;
       for (const auto& mesh_desc : model_data->_meshDesc) {
         if (model_data->_meshDesc.size() > 1) { // The model is visible, only do fine-grained culling if it consists of more than one mesh.
-          if (!mesh_desc._mesh->getAABB()->isVisible<true, true>(mvp)) {
+          if (!mesh_desc._mesh->getAABB()->intersectsFrustum<true>(mvp)) {
             continue;
           }
         }
