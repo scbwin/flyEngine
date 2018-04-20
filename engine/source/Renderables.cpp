@@ -60,11 +60,7 @@ namespace fly
   {
     _frequencyScale = frequency_scale;
   }
-  SkyboxRenderable::SkyboxRenderable(const std::shared_ptr<Mesh>& mesh) : _mesh(mesh)
+  SkyboxRenderable::SkyboxRenderable()
   {
-  }
-  const std::shared_ptr<Mesh>& SkyboxRenderable::getMesh() const
-  {
-    return _mesh;
   }
 }

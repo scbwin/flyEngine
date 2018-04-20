@@ -17,6 +17,7 @@ namespace fly
     const Vec3f& getMax() const;
     float size() const;
     bool contains(const AABB& other) const;
+    bool intersects(const AABB& other) const;
     AABB getUnion(const AABB& other) const;
     AABB getIntersection(const AABB& other) const;
     std::array<Vec3f, 8> getVertices() const;

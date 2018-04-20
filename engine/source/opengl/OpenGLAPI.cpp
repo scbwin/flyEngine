@@ -393,7 +393,7 @@ namespace fly
       _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
         GL_CHECK(glActiveTexture(GL_TEXTURE0 + diffuseTexUnit()));
         _diffuseMap->bind();
-        setScalar(shader->uniformLocation(GLSLShaderGenerator::diffuseSampler()), 0);
+        setScalar(shader->uniformLocation(GLSLShaderGenerator::diffuseSampler()), diffuseTexUnit());
       });
     }
     else {

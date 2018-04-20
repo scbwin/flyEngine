@@ -18,6 +18,7 @@
 #include <AntWrapper.h>
 #include <physics/Bullet3PhysicsSystem.h>
 #include <physics/RigidBody.h>
+#include <random>
 
 GLWidget::GLWidget()
 {
@@ -54,6 +55,9 @@ void GLWidget::initializeGL()
   TwAddButton(_bar, _renderedTrianglesShadowName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _bvhTraversalName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _sceneRenderingCPUName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _smRenderingCPUName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _sceneMeshGroupingUName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _shadowMapGroupingUName, nullptr, nullptr, nullptr);
 #endif
   auto settings_bar = TwNewBar("Settings");
   AntWrapper(settings_bar, &_graphicsSettings, _renderer->getApi());
@@ -102,6 +106,9 @@ void GLWidget::paintGL()
     TwSetParam(_bar, _renderedTrianglesShadowName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Triangles SM:" + formatNumber(stats._renderedTrianglesShadow)).c_str());
     TwSetParam(_bar, _bvhTraversalName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("BVH traversal microseconds:" + formatNumber(stats._bvhTraversalMicroSeconds)).c_str());
     TwSetParam(_bar, _sceneRenderingCPUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Scene render CPU microseconds:" + formatNumber(stats._sceneRenderingCPUMicroSeconds)).c_str());
+    TwSetParam(_bar, _smRenderingCPUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Shadow map render CPU microseconds:" + formatNumber(stats._shadowMapRenderCPUMicroSeconds)).c_str());
+    TwSetParam(_bar, _sceneMeshGroupingUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Scene mesh grouping microseconds:" + formatNumber(stats._sceneMeshGroupingMicroSeconds)).c_str());
+    TwSetParam(_bar, _shadowMapGroupingUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Shadow map grouping microseconds:" + formatNumber(stats._shadowMapGroupingMicroSeconds)).c_str());
 #endif
     _fps = 0;
   }
@@ -209,34 +216,65 @@ void GLWidget::initGame()
   }
 #endif
 
+#if TOWERS
+  std::mt19937 gen;
+  std::uniform_real_distribution<float> scale_dist(50.f, 250.f);
+  std::vector<std::shared_ptr<fly::StaticMeshRenderable>> towers;
+  auto tower_model = importer->loadModel("assets/cube.obj");
+  for (int x = 0; x < NUM_TOWERS; x++) {
+    for (int y = 0; y < NUM_TOWERS; y++) {
+      auto tower = _engine->getEntityManager()->createEntity();
+      float scale = scale_dist(gen);
+      tower->addComponent(std::make_shared<fly::StaticMeshRenderable>(tower_model->getMeshes().front(), tower_model->getMeshes().front()->getMaterial() , fly::Transform(fly::Vec3f(x * 350.f, scale, y * 350.f), fly::Vec3f(scale / 3.f, scale, scale / 3.f)).getModelMatrix(), false));
+      towers.push_back(tower->getComponent<fly::StaticMeshRenderable>());
+    }
+  }
+#endif
+
 #if SPONZA_MANY
   for (int x = 0; x < NUM_OBJECTS; x++) {
     for (int y = 0; y < NUM_OBJECTS; y++) {
+      auto model_matrix = fly::Transform(fly::Vec3f(x * 60.f, -sponza_model->getAABB()->getMin()[1] * sponza_scale[1], y * 60.f), fly::Vec3f(sponza_scale)).getModelMatrix();
 #endif
-      unsigned index = 0;
-      for (const auto& mesh : sponza_model->getMeshes()) {
-        auto entity = _engine->getEntityManager()->createEntity();
-        bool has_wind = index >= 44 && index <= 62;
-        fly::Vec3f aabb_offset = has_wind ? fly::Vec3f(0.f, 0.f, 0.25f) : fly::Vec3f(0.f);
-        fly::Vec3f translation(0.f);
-        if (index == sponza_model->getMeshes().size() - 28) {
-          has_wind = true;
-          aabb_offset = fly::Vec3f(0.f, 0.f, 0.25f);
-          mesh->setMaterialIndex(sponza_model->getMeshes()[44]->getMaterialIndex());
-          translation[1] = 1.f;
+#if TOWERS && SPONZA_MANY
+      fly::AABB sponza_aabb_world(*sponza_model->getAABB(), model_matrix);
+      bool intersects = false;
+      for (const auto& t : towers) {
+        if (t->getAABBWorld()->intersects(sponza_aabb_world)) {
+          intersects = true;
         }
-        entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(mesh,
+      }
+#endif
+#if TOWERS && SPONZA_MANY
+      if (!intersects) {
+#endif
+        unsigned index = 0;
+        for (const auto& mesh : sponza_model->getMeshes()) {
+          auto entity = _engine->getEntityManager()->createEntity();
+          bool has_wind = index >= 44 && index <= 62;
+          fly::Vec3f aabb_offset = has_wind ? fly::Vec3f(0.f, 0.f, 0.25f) : fly::Vec3f(0.f);
+          fly::Vec3f translation(0.f);
+          if (index == sponza_model->getMeshes().size() - 28) {
+            has_wind = true;
+            aabb_offset = fly::Vec3f(0.f, 0.f, 0.25f);
+            mesh->setMaterial(sponza_model->getMeshes()[44]->getMaterial());
+            translation[1] = 1.f;
+          }
+          entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(mesh,
 #if SPONZA_MANY
-          sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(fly::Vec3f(x * 60.f, 0.f, y * 60.f), fly::Vec3f(sponza_scale)).getModelMatrix(), has_wind, aabb_offset));
+            mesh->getMaterial(), model_matrix, has_wind, aabb_offset));
 #else
-          sponza_model->getMaterials()[mesh->getMaterialIndex()], fly::Transform(translation, sponza_scale).getModelMatrix(), has_wind, aabb_offset));
+            mesh->getMaterial(), fly::Transform(translation, sponza_scale).getModelMatrix(), has_wind, aabb_offset));
 #endif
 #if PHYSICS
-        const auto& model_matrix = entity->getComponent<fly::StaticMeshRenderable>()->getModelMatrix();
-        entity->addComponent(std::make_shared<fly::RigidBody>(model_matrix[3].xyz(), 0.f, _sponzaShapes[index], 0.f));
+          const auto& model_matrix = entity->getComponent<fly::StaticMeshRenderable>()->getModelMatrix();
+          entity->addComponent(std::make_shared<fly::RigidBody>(model_matrix[3].xyz(), 0.f, _sponzaShapes[index], 0.f));
 #endif
-        index++;
+          index++;
+        }
+#if TOWERS
       }
+#endif
 #if SPONZA_MANY
     }
   }

@@ -17,15 +17,15 @@ namespace fly
     auto scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_CalcTangentSpace | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_FlipUVs);
     std::vector<std::shared_ptr<Mesh>> meshes(scene->mNumMeshes);
     std::vector<std::shared_ptr<Material>> materials(scene->mNumMaterials);
-    for (unsigned int i = 0; i < scene->mNumMeshes; i++) {
-      meshes[i] = processMesh(scene->mMeshes[i]);
-    }
     for (unsigned int i = 0; i < scene->mNumMaterials; i++) {
       materials[i] = processMaterial(scene->mMaterials[i], path);
     }
+    for (unsigned int i = 0; i < scene->mNumMeshes; i++) {
+      meshes[i] = processMesh(scene->mMeshes[i], materials);
+    }
     return std::make_shared<Model>(meshes, materials);
   }
-  std::shared_ptr<Mesh> AssimpImporter::processMesh(aiMesh * mesh)
+  std::shared_ptr<Mesh> AssimpImporter::processMesh(aiMesh * mesh, const std::vector<std::shared_ptr<Material>>& materials)
   {
     std::vector<Vertex> vertices(mesh->mNumVertices);
     for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
@@ -45,7 +45,9 @@ namespace fly
         indices.push_back(mesh->mFaces[i].mIndices[j]);
       }
     }
-    return std::make_shared<Mesh>(vertices, indices, mesh->mMaterialIndex);
+    auto m = std::make_shared<Mesh>(vertices, indices, mesh->mMaterialIndex);
+    m->setMaterial(materials[mesh->mMaterialIndex]);
+    return m;
   }
   std::shared_ptr<Material> AssimpImporter::processMaterial(aiMaterial * material, const std::string & path)
   {

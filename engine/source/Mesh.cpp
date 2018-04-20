@@ -53,4 +53,12 @@ namespace fly
   {
     _materialIndex = material_index;
   }
+  void Mesh::setMaterial(const std::shared_ptr<Material>& material)
+  {
+    _material = material;
+  }
+  const std::shared_ptr<Material>& Mesh::getMaterial() const
+  {
+    return _material;
+  }
 }

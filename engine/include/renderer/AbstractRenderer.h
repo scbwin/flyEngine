@@ -42,6 +42,9 @@ namespace fly
       unsigned _renderedMeshesShadow;
       unsigned _bvhTraversalMicroSeconds;
       unsigned _sceneRenderingCPUMicroSeconds;
+      unsigned _shadowMapRenderCPUMicroSeconds;
+      unsigned _sceneMeshGroupingMicroSeconds;
+      unsigned _shadowMapGroupingMicroSeconds;
     };
     const RendererStats& getStats() const { return _stats; }
 #endif
@@ -173,13 +176,19 @@ namespace fly
         _gsp._time = time;
         _gsp._exposure = _gs->getExposure();
         _meshGeometryStorage.bind();
+#if RENDERER_STATS
+        Timing timing;
+#endif
         if (_shadowMapping) {
           renderShadowMap();
         }
+#if RENDERER_STATS
+        _stats._shadowMapRenderCPUMicroSeconds = timing.duration<std::chrono::microseconds>();
+#endif
         _api.setViewport(_viewPortSize);
         _gsp._VP = &_vpScene;
 #if RENDERER_STATS
-        Timing timing;
+        timing.start();
 #endif
         std::vector<MeshRenderable*> visible_meshes = _gs->getDetailCulling() ?
           _bvh->getVisibleElementsWithDetailCulling<API::isDirectX()>(_vpScene, _gsp._camPosworld) :
@@ -429,10 +438,16 @@ namespace fly
     }
     void renderMeshes(const std::vector<MeshRenderable*>& meshes)
     {
+#if RENDERER_STATS
+      Timing timing;
+#endif
       std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<MeshRenderable*>>> display_list;
       for (const auto& e : meshes) {
         display_list[e->_shaderDesc][e->_materialDesc.get()].push_back(e);
       }
+#if RENDERER_STATS
+      _stats._sceneMeshGroupingMicroSeconds = timing.duration<std::chrono::microseconds>();
+#endif
       for (const auto& e : display_list) {
         _api.setupShaderDesc(*e.first, _gsp);
         for (const auto& e1 : e.second) {
@@ -458,10 +473,16 @@ namespace fly
       for (const auto& e : _dynamicMeshRenderables) {
         visible_meshes.push_back(e.second.get());
       }
+#if RENDERER_STATS
+      Timing timing;
+#endif
       std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<MeshRenderable*>>> sm_display_list;
       for (const auto& e : visible_meshes) {
         sm_display_list[e->_shaderDescDepth][e->_materialDesc.get()].push_back(e);
       }
+#if RENDERER_STATS
+      _stats._shadowMapGroupingMicroSeconds = timing.duration<std::chrono::microseconds>();
+#endif
       _api.setDepthClampEnabled<true>();
       _api.setViewport(Vec2u(_gs->getShadowMapSize()));
       for (unsigned i = 0; i < _gs->getFrustumSplits().size(); i++) {

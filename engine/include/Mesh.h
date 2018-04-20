@@ -10,6 +10,8 @@
 
 namespace fly
 {
+  class Material;
+
   class Mesh
   {
   public:
@@ -23,11 +25,14 @@ namespace fly
     unsigned int getMaterialIndex() const;
     AABB* getAABB() const;
     void setMaterialIndex(unsigned material_index);
+    void setMaterial(const std::shared_ptr<Material>& material);
+    const std::shared_ptr<Material>& getMaterial() const;
 
   private:
     std::vector<Vertex> _vertices;
     std::vector<unsigned int> _indices;
     unsigned int _materialIndex;
+    std::shared_ptr<Material> _material;
     std::unique_ptr<AABB> _aabb;
 
   };

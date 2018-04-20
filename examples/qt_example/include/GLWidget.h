@@ -7,10 +7,12 @@
 #include <GraphicsSettings.h>
 
 #define SPONZA_MANY 1
+#define TOWERS 1
 #define TREE_SCENE 0
 #define PHYSICS 0
 #define SKYDOME 1
 #define NUM_OBJECTS 100
+#define NUM_TOWERS 15
 
 class btTriangleMesh;
 
@@ -72,6 +74,9 @@ private:
   const char* _renderedMeshesShadowName = "Meshes shadow";
   const char* _bvhTraversalName = "BVH traversal microseconds";
   const char* _sceneRenderingCPUName = "CPU scene rendering time";
+  const char* _smRenderingCPUName = "CPU shadow map rendering time";
+  const char* _sceneMeshGroupingUName = "Scene mesh grouping time";
+  const char* _shadowMapGroupingUName = "Shadow map grouping time";
   std::string formatNumber(unsigned number);
 };
 

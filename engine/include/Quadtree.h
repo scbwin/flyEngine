@@ -36,12 +36,12 @@ namespace fly
         AABB* aabb_element = element->getAABBWorld();
         _aabbWorld = _aabbWorld.getUnion(*aabb_element);
         _largestElementAABBWorldSize = std::max(_largestElementAABBWorldSize, aabb_element->size());
-        std::array<Vec2f, 4> child_min, child_max;
-        getChildBounds(child_min, child_max);
-        for (unsigned i = 0; i < 4; i++) {
-          if (child_min[i] <= aabb_element->getMin().xz() && child_max[i] >= aabb_element->getMax().xz()) { // The child node encloses the element entirely, therefore push it further down the tree.
+        for (unsigned char i = 0; i < 4; i++) {
+          Vec2f child_min, child_max;
+          getChildBounds(child_min, child_max, i);
+          if (child_min <= aabb_element->getMin().xz() && child_max >= aabb_element->getMax().xz()) { // The child node encloses the element entirely, therefore push it further down the tree.
             if (_children[i] == nullptr) { // Create the node if not yet constructed
-              _children[i] = std::make_unique<Node>(child_min[i], _size * 0.5f);
+              _children[i] = std::make_unique<Node>(child_min, _size * 0.5f);
             }
             _children[i]->insert(element);
             return;
@@ -242,16 +242,11 @@ namespace fly
       float _largestElementAABBWorldSize;
       // Pointers to the elements
       std::vector<TPtr> _elements;
-      void getChildBounds(std::array<Vec2f, 4>& min, std::array<Vec2f, 4>& max) const
+      void getChildBounds(Vec2f& min, Vec2f& max, unsigned char index) const
       {
         auto new_size = _size * 0.5f;
-        min[0] = _min;
-        min[1] = _min + Vec2f(new_size[0], 0.f);
-        min[2] = _min + new_size;
-        min[3] = _min + Vec2f(0.f, new_size[1]);
-        for (unsigned i = 0; i < 4; i++) {
-          max[i] = min[i] + new_size;
-        } 
+        min = _min + Vec2f(index & 2 ? new_size[0] : 0.f, index & 1 ? new_size[1] : 0.f);
+        max = min + new_size;
       }
     };
 
