@@ -19,6 +19,7 @@
 #include <opengl/GLSampler.h>
 #include <WindParamsLocal.h>
 #include <GraphicsSettings.h>
+#include <opengl/GLMaterialSetup.h>
 
 namespace fly
 {
@@ -45,7 +46,8 @@ namespace fly
     _shaderDescCache(SoftwareCache<std::shared_ptr<GLShaderProgram>, std::shared_ptr<ShaderDesc>, const std::shared_ptr<GLShaderProgram>&, unsigned>(
       [this](const std::shared_ptr<GLShaderProgram>& shader, unsigned flags) {
     return std::make_shared<ShaderDesc>(shader, flags);
-  }))
+  })),
+    _materialSetup(std::make_unique<GLMaterialSetup>())
   {
     glewExperimental = true;
     auto result = glewInit();
@@ -390,48 +392,25 @@ namespace fly
     unsigned flag = FLAG::NONE;
     if (_diffuseMap) {
       flag |= FLAG::DIFFUSE_MAP;
-      _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
-        GL_CHECK(glActiveTexture(GL_TEXTURE0 + diffuseTexUnit()));
-        _diffuseMap->bind();
-        setScalar(shader->uniformLocation(GLSLShaderGenerator::diffuseSampler()), diffuseTexUnit());
-      });
+      _materialSetupFuncs.push_back(api->_materialSetup->getDiffuseSetup());
     }
     else {
-      _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
-        setVector(shader->uniformLocation(GLSLShaderGenerator::diffuseColor()), _material->getDiffuseColor());
-      });
+      _materialSetupFuncs.push_back(api->_materialSetup->getDiffuseColorSetup());
     }
     if (_alphaMap) {
       flag |= FLAG::ALPHA_MAP;
-      _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
-        GL_CHECK(glActiveTexture(GL_TEXTURE0 + alphaTexUnit()));
-        _alphaMap->bind();
-        setScalar(shader->uniformLocation(GLSLShaderGenerator::alphaSampler()), alphaTexUnit());
-      });
-      _materialSetupFuncsDepth.push_back(_materialSetupFuncs.back());
+      _materialSetupFuncs.push_back(api->_materialSetup->getAlphaSetup());
+      _materialSetupFuncsDepth.push_back(api->_materialSetup->getAlphaSetup());
     }
     if (_normalMap && settings.getNormalMapping()) {
       flag |= FLAG::NORMAL_MAP;
-      _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
-        GL_CHECK(glActiveTexture(GL_TEXTURE0 + normalTexUnit()));
-        _normalMap->bind();
-        setScalar(shader->uniformLocation(GLSLShaderGenerator::normalSampler()), normalTexUnit());
-      });
+      _materialSetupFuncs.push_back(api->_materialSetup->getNormalSetup());
     }
-    if (_normalMap &&_heightMap && (settings.getNormalMapping() && (settings.getParallaxMapping() || settings.getReliefMapping()))) {
+    if (_normalMap &&_heightMap && settings.getNormalMapping() && (settings.getParallaxMapping() || settings.getReliefMapping())) {
       flag |= FLAG::PARALLAX_MAP;
-      _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
-        GL_CHECK(glActiveTexture(GL_TEXTURE0 + heightTexUnit()));
-        _heightMap->bind();
-        setScalar(shader->uniformLocation(GLSLShaderGenerator::heightSampler()), heightTexUnit());
-        setScalar(shader->uniformLocation(GLSLShaderGenerator::parallaxHeightScale()), _material->getParallaxHeightScale());
-      });
+      _materialSetupFuncs.push_back(api->_materialSetup->getHeightSetup());
       if (settings.getReliefMapping()) {
-        _materialSetupFuncs.push_back([this](GLShaderProgram* shader) {
-          setScalar(shader->uniformLocation(GLSLShaderGenerator::parallaxMinSteps()), _material->getParallaxMinSteps());
-          setScalar(shader->uniformLocation(GLSLShaderGenerator::parallaxMaxSteps()), _material->getParallaxMaxSteps());
-          setScalar(shader->uniformLocation(GLSLShaderGenerator::parallaxBinarySearchSteps()), _material->getParallaxBinarySearchSteps());
-        });
+        _materialSetupFuncs.push_back(api->_materialSetup->getReliefMappingSetup());
       }
     }
     auto fragment_file = api->_shaderGenerator->createMeshFragmentShaderFile(flag, settings);
@@ -461,7 +440,7 @@ namespace fly
   void OpenGLAPI::MaterialDesc::setup(GLShaderProgram* shader) const
   {
     for (const auto& f : _materialSetupFuncs) {
-      f(shader);
+      f->setup(shader, *this);
     }
     setScalar(shader->uniformLocation(GLSLShaderGenerator::ambientConstant()), _material->getKa());
     setScalar(shader->uniformLocation(GLSLShaderGenerator::diffuseConstant()), _material->getKd());
@@ -471,7 +450,7 @@ namespace fly
   void OpenGLAPI::MaterialDesc::setupDepth(GLShaderProgram * shader) const
   {
     for (const auto& f : _materialSetupFuncsDepth) {
-      f(shader);
+      f->setup(shader, *this);
     }
   }
   const std::shared_ptr<OpenGLAPI::ShaderDesc>& OpenGLAPI::MaterialDesc::getMeshShaderDesc(bool has_wind) const
@@ -485,6 +464,22 @@ namespace fly
   const std::shared_ptr<Material>& OpenGLAPI::MaterialDesc::getMaterial() const
   {
     return _material;
+  }
+  const std::shared_ptr<GLTexture>& OpenGLAPI::MaterialDesc::diffuseMap() const
+  {
+    return _diffuseMap;
+  }
+  const std::shared_ptr<GLTexture>& OpenGLAPI::MaterialDesc::normalMap() const
+  {
+    return _normalMap;
+  }
+  const std::shared_ptr<GLTexture>& OpenGLAPI::MaterialDesc::alphaMap() const
+  {
+    return _alphaMap;
+  }
+  const std::shared_ptr<GLTexture>& OpenGLAPI::MaterialDesc::heightMap() const
+  {
+    return _heightMap;
   }
   OpenGLAPI::ShaderDesc::ShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, unsigned flags) : _shader(shader)
   {

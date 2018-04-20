@@ -28,12 +28,14 @@ namespace fly
   class GLSampler;
   struct WindParamsLocal;
   class GraphicsSettings;
+  class GLMaterialSetup;
+  class IMaterialSetup;
 
   class OpenGLAPI
   {
   public:
     OpenGLAPI();
-    virtual ~OpenGLAPI();
+    ~OpenGLAPI();
     ZNearMapping getZNearMapping() const;
     void setViewport(const Vec2u& size) const;
     template<bool color, bool depth, bool stencil>
@@ -167,10 +169,14 @@ namespace fly
       const std::shared_ptr<ShaderDesc>& getMeshShaderDesc(bool has_wind) const;
       const std::shared_ptr<ShaderDesc>& getMeshShaderDescDepth(bool has_wind) const;
       const std::shared_ptr<Material>& getMaterial() const;
+      const std::shared_ptr<GLTexture>& diffuseMap() const;
+      const std::shared_ptr<GLTexture>& normalMap() const;
+      const std::shared_ptr<GLTexture>& alphaMap() const;
+      const std::shared_ptr<GLTexture>& heightMap() const;
     private:
       std::shared_ptr<Material> _material;
-      std::vector<std::function<void(GLShaderProgram*)>> _materialSetupFuncs;
-      std::vector<std::function<void(GLShaderProgram*)>> _materialSetupFuncsDepth;
+      std::vector<IMaterialSetup*> _materialSetupFuncs;
+      std::vector<IMaterialSetup*> _materialSetupFuncsDepth;
       std::shared_ptr<ShaderDesc> _meshShaderDesc;
       std::shared_ptr<ShaderDesc> _meshShaderDescWind;
       std::shared_ptr<ShaderDesc> _meshShaderDescDepth;
@@ -225,6 +231,7 @@ namespace fly
     std::unique_ptr<GLSampler> _samplerAnisotropic;
     GLint _glVersionMajor, _glVersionMinor;
     unsigned _anisotropy = 1u;
+    std::unique_ptr<GLMaterialSetup> _materialSetup;
 
     void checkFramebufferStatus();
     void setColorBuffers(const std::vector<RTT*>& rtts);

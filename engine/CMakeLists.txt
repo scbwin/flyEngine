@@ -18,7 +18,7 @@ set (HEADER_FILES
 	${IDIR}/physics/ParticleSystem.h ${IDIR}/physics/PhysicsSystem.h ${IDIR}/Quadtree.h ${IDIR}/Octree.h ${IDIR}/Settings.h ${IDIR}/GraphicsSettings.h ${IDIR}/LevelOfDetail.h ${IDIR}/Timing.h ${IDIR}/renderer/AbstractRenderer.h
 	${IDIR}/StaticModelRenderable.h ${IDIR}/CameraController.h ${IDIR}/StaticMeshRenderable.h ${IDIR}/opengl/GLShaderInterface.h ${IDIR}/opengl/GLFramebuffer.h
 	${IDIR}/opengl/GLSLShaderGenerator.h ${IDIR}/SoftwareCache.h ${IDIR}/opengl/GLSampler.h ${IDIR}/WindParams.h ${IDIR}/WindParamsLocal.h
-	${IDIR}/SkydomeRenderable.h
+	${IDIR}/SkydomeRenderable.h ${IDIR}/opengl/GLMaterialSetup.h
 )
 
 if(${BUILD_PHYSICS})
@@ -37,7 +37,7 @@ set (SOURCE_FILES
 	${SDIR}/opengl/GLVertexArray.cpp ${SDIR}/opengl/GLBuffer.cpp ${SDIR}/opengl/GLAppendBuffer.cpp
 	${SDIR}/StaticModelRenderable.cpp ${SDIR}/CameraController.cpp ${SDIR}/StaticMeshRenderable.cpp ${SDIR}/opengl/GLFramebuffer.cpp
 	${SDIR}/opengl/GLSLShaderGenerator.cpp ${SDIR}/opengl/GLSampler.cpp ${SDIR}/GraphicsSettings.cpp
-	${SDIR}/SkydomeRenderable.cpp
+	${SDIR}/SkydomeRenderable.cpp ${SDIR}/opengl/GLMaterialSetup.cpp
 )
 
 if(${BUILD_PHYSICS})
