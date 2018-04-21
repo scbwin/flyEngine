@@ -19,16 +19,16 @@ namespace fly
     class Node
     {
     public:
-      Node(const Vec2f& min, const Vec2f& size) :
+      Node(const Vec2f& min, const Vec2f& max) :
         _min(min),
-        _size(size),
+        _max(max),
         _aabbWorld(Vec3f(std::numeric_limits<float>::max()), Vec3f(std::numeric_limits<float>::lowest())),
         _largestElementAABBWorldSize(0.f)
       {
       }
       inline const Vec2f& getMin() const { return _min; }
-      inline Vec2f getMax() const { return _min + _size; }
-      inline const Vec2f& getSize() const { return _size; }
+      inline const Vec2f& getMax() const { return _max; }
+      inline Vec2f getSize() const { return _max - _min; }
       inline void setAABBWorld(const AABB& aabb) { _aabbWorld = aabb; }
       inline AABB* getAABBWorld() { return &_aabbWorld; }
       void insert(const TPtr& element)
@@ -41,7 +41,7 @@ namespace fly
           getChildBounds(child_min, child_max, i);
           if (child_min <= aabb_element->getMin().xz() && child_max >= aabb_element->getMax().xz()) { // The child node encloses the element entirely, therefore push it further down the tree.
             if (_children[i] == nullptr) { // Create the node if not yet constructed
-              _children[i] = std::make_unique<Node>(child_min, _size * 0.5f);
+              _children[i] = std::make_unique<Node>(child_min, child_max);
             }
             _children[i]->insert(element);
             return;
@@ -232,10 +232,8 @@ namespace fly
       }
     private:
       std::unique_ptr<Node> _children[4];
-      // Node position
-      Vec2f _min;
-      // Node size
-      Vec2f _size;
+      // Node min max
+      Vec2f _min, _max;
       // Axis aligned bounding box for the enclosed elements (union)
       AABB _aabbWorld;
       // Largest element aabb size that is enclosed by this node, useful for detail culling
@@ -244,17 +242,15 @@ namespace fly
       std::vector<TPtr> _elements;
       void getChildBounds(Vec2f& min, Vec2f& max, unsigned char index) const
       {
-        auto new_size = _size * 0.5f;
-        min = _min + Vec2f(index & 2 ? new_size[0] : 0.f, index & 1 ? new_size[1] : 0.f);
+        auto new_size = getSize() * 0.5f;
+        min = _min + Vec2f(static_cast<float>(index % 2), static_cast<float>(index / 2)) * new_size;
         max = min + new_size;
       }
     };
 
     Quadtree(const Vec3f& min, const Vec3f& max)
     {
-      Vec2f node_min(min[0], min[2]);
-      Vec2f node_max(max[0], max[2]);
-      _root = std::make_unique<Node>(node_min, node_max - node_min);
+      _root = std::make_unique<Node>(min.xz(), max.xz());
       _root->setAABBWorld(AABB(min, max));
     }
     void insert(const TPtr& element)

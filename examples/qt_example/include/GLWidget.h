@@ -7,11 +7,11 @@
 #include <GraphicsSettings.h>
 
 #define SPONZA_MANY 1
-#define TOWERS 0
+#define TOWERS 1
 #define TREE_SCENE 0
 #define PHYSICS 0
 #define SKYDOME 1
-#define NUM_OBJECTS 10
+#define NUM_OBJECTS 100
 #define NUM_TOWERS 15
 
 class btTriangleMesh;
