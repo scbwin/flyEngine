@@ -96,9 +96,8 @@ namespace fly
       global_max = maximum(global_max, bb_max);
     }
 
-    // Shadow casters can be outside the view frustum but inside the light frustum, therefore include everything that is in front of the light.
-    return Mat4f(directx ? glm::orthoZO(0.f, global_max[0], global_min[1], global_max[1], global_min[2], global_max[2])
-      : glm::orthoNO(0.f, global_max[0], global_min[1], global_max[1], global_min[2], global_max[2])) * view_matrix_light;
+    return Mat4f(directx ? glm::orthoZO(global_min[0], global_max[0], global_min[1], global_max[1], global_min[2], global_max[2])
+      : glm::orthoNO(global_min[0], global_max[0], global_min[1], global_max[1], global_min[2], global_max[2])) * view_matrix_light;
   }
 
   glm::mat4 DirectionalLight::getViewMatrix()
