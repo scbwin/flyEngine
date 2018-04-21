@@ -261,7 +261,7 @@ namespace fly
       else {
         auto all_elements = getAllElements();
         AABB aabb_new = _root->getAABBWorld()->getUnion(*element->getAABBWorld());
-        _root = std::make_unique<Node>(Vec2f(aabb_new.getMin()[0], aabb_new.getMin()[2]), Vec2f(aabb_new.getMax()[0] - aabb_new.getMin()[0], aabb_new.getMax()[2] - aabb_new.getMin()[2]));
+        _root = std::make_unique<Node>(aabb_new.getMin().xz(), aabb_new.getMax().xz());
         _root->setAABBWorld(aabb_new);
         _root->insert(element);
         for (const auto& e : all_elements) {
