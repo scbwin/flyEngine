@@ -41,6 +41,7 @@ namespace fly
       unsigned _renderedMeshes;
       unsigned _renderedMeshesShadow;
       unsigned _bvhTraversalMicroSeconds;
+      unsigned _bvhTraversalShadowMapMicroSeconds;
       unsigned _sceneRenderingCPUMicroSeconds;
       unsigned _shadowMapRenderCPUMicroSeconds;
       unsigned _sceneMeshGroupingMicroSeconds;
@@ -467,14 +468,20 @@ namespace fly
       std::vector<Mat4f> light_vps;
       auto vp_shadow_volume = _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
         inverse(_gsp._viewMatrix), _directionalLight->getViewMatrix(), static_cast<float>(_gs->getShadowMapSize()), _gs->getFrustumSplits(), light_vps, _api.isDirectX());
+#if RENDERER_STATS
+      Timing timing;
+#endif
       auto visible_meshes = _gs->getDetailCulling() ?
         _bvh->getVisibleElementsWithDetailCulling<API::isDirectX()>(vp_shadow_volume, _gsp._camPosworld) :
         _bvh->getVisibleElements<API::isDirectX()>(vp_shadow_volume);
+#if RENDERER_STATS
+      _stats._bvhTraversalShadowMapMicroSeconds = timing.duration<std::chrono::microseconds>();
+#endif
       for (const auto& e : _dynamicMeshRenderables) {
         visible_meshes.push_back(e.second.get());
       }
 #if RENDERER_STATS
-      Timing timing;
+      timing.start();
 #endif
       std::map<typename API::ShaderDesc*, std::map<typename API::MaterialDesc*, std::vector<MeshRenderable*>>> sm_display_list;
       for (const auto& e : visible_meshes) {

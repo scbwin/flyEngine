@@ -54,6 +54,7 @@ void GLWidget::initializeGL()
   TwAddButton(_bar, _renderedTrianglesName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _renderedTrianglesShadowName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _bvhTraversalName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _bvhTraversalShadowMapName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _sceneRenderingCPUName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _smRenderingCPUName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _sceneMeshGroupingUName, nullptr, nullptr, nullptr);
@@ -105,6 +106,7 @@ void GLWidget::paintGL()
     TwSetParam(_bar, _renderedTrianglesName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Triangles:" + formatNumber(stats._renderedTriangles)).c_str());
     TwSetParam(_bar, _renderedTrianglesShadowName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Triangles SM:" + formatNumber(stats._renderedTrianglesShadow)).c_str());
     TwSetParam(_bar, _bvhTraversalName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("BVH traversal microseconds:" + formatNumber(stats._bvhTraversalMicroSeconds)).c_str());
+    TwSetParam(_bar, _bvhTraversalShadowMapName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("BVH traversal shadow map microseconds:" + formatNumber(stats._bvhTraversalShadowMapMicroSeconds)).c_str());
     TwSetParam(_bar, _sceneRenderingCPUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Scene render CPU microseconds:" + formatNumber(stats._sceneRenderingCPUMicroSeconds)).c_str());
     TwSetParam(_bar, _smRenderingCPUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Shadow map render CPU microseconds:" + formatNumber(stats._shadowMapRenderCPUMicroSeconds)).c_str());
     TwSetParam(_bar, _sceneMeshGroupingUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Scene mesh grouping microseconds:" + formatNumber(stats._sceneMeshGroupingMicroSeconds)).c_str());
