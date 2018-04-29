@@ -1,9 +1,9 @@
 # flyEngine
 flyEngine is an Open Source 3D engine based on the OpenGL and Direct3D graphics APIs. The CPU-part is entirely written in C++, whereas on the GPU GLSL and HLSL are used. Features include Normal Mapping, Terrain Rendering, Procedural Terrain, Procedural Grass, Post Processing (Depth Of Field, Bloom, Lens Flare, Screen Space Reflections, Volumetric Light), Hierarchical View Frustum Culling, wind animations, parallax and relief mapping.
 
-![](https://github.com/fleissna/flyEngine/blob/master/screenshots/MyDX11Window%2014.03.2018%2017_28_13.png)
-![](https://github.com/fleissna/flyEngine/blob/master/screenshots/MyDX11Window%2014.03.2018%2017_42_48.png)
-![](https://github.com/fleissna/flyEngine/blob/master/screenshots/opengl_example%27.04.2018%18_21_26.png)
+![](https://github.com/fleissna/flyEngine/blob/master/screenshots/screenshot0.png)
+![](https://github.com/fleissna/flyEngine/blob/master/screenshots/screenshot1.png)
+![](https://github.com/fleissna/flyEngine/blob/master/screenshots/screenshot2.png)
 
 ## Installation
 You have to download/clone and build the dependencies by yourself. Use CMake to resolve them and to generate project files for Visual Studio. flyEngine is built as a static library, make sure to <s>link against it in your application</s> include it with CMake's ```find_package```. Two examples are included that demonstrate how to integrate the library, one for OpenGL and another one for DirectX. You can switch between Crytek's Sponza scene and a terrain scene through the SPONZA preprocessor define.
