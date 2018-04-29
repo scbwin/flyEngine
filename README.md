@@ -3,6 +3,7 @@ flyEngine is an Open Source 3D engine based on the OpenGL and Direct3D graphics 
 
 ![](https://github.com/fleissna/flyEngine/blob/master/screenshots/MyDX11Window%2014.03.2018%2017_28_13.png)
 ![](https://github.com/fleissna/flyEngine/blob/master/screenshots/MyDX11Window%2014.03.2018%2017_42_48.png)
+![](https://github.com/fleissna/flyEngine/blob/master/screenshots/opengl_example%27.04.2018%18_21_26.png)
 
 ## Installation
 You have to download/clone and build the dependencies by yourself. Use CMake to resolve them and to generate project files for Visual Studio. flyEngine is built as a static library, make sure to <s>link against it in your application</s> include it with CMake's ```find_package```. Two examples are included that demonstrate how to integrate the library, one for OpenGL and another one for DirectX. You can switch between Crytek's Sponza scene and a terrain scene through the SPONZA preprocessor define.
@@ -22,7 +23,7 @@ You have to download/clone and build the dependencies by yourself. Use CMake to 
 * [OpenCV](https://github.com/opencv/opencv)
 * [AntTweakBar](http://anttweakbar.sourceforge.net/doc/)
 * Qt 5.10.1 (Open Source version)
-* [Bullet Physics] (https://github.com/bulletphysics/bullet3)
+* [Bullet Physics](https://github.com/bulletphysics/bullet3)
 
 DXUT, FX11, DirectXTex, and DirectXTK repositories contain solution files for Visual Studio 2017. GLM is header-only, SOIL, Assimp and OpenCV are shipped with their own CMake files. Qt offers an installer that contains pre-built binaries. For GLEW and AntTweakBar you can use the pre-build binaries too.
 
@@ -44,7 +45,7 @@ Possible improvements are:
 * Avoid dynamic memory allocations in the rendering loop if possible.
 * Avoid file I/O during the rendering loop. If you have to, do it asynchronously and synchronize if you need to.
 * Use Nvidia Nsight for graphics debugging.
-* Test your changes and watch for the framerate.
+* Test your changes and always watch out for frame timings.
 
 If you have any questions (project setup, engine stuff), send me an e-mail to [p.fleissner@student.tugraz.at](mailto:p.fleissner@student.tugraz.at) or [phips10@gmx.at](mailto:phips10@gmx.at).
 
