@@ -83,6 +83,16 @@ namespace fly
   }
 
   template<unsigned Dim, typename T>
+  inline Vector<Dim, T> abs(const Vector<Dim, T>& a)
+  {
+    Vector<Dim, T> result;
+    for (unsigned i = 0; i < Dim; i++) {
+      result[i] = std::abs(a[i]);
+    }
+    return result;
+  }
+
+  template<unsigned Dim, typename T>
   inline Matrix<Dim, Dim, T> identity()
   {
     Matrix<Dim, Dim, T> ret;

@@ -73,6 +73,10 @@ namespace fly
   {
     _speed = speed;
   }
+  float CameraController::getSpeed() const
+  {
+    return _speed;
+  }
   bool CameraController::isPressed() const
   {
     return _pressed;
@@ -84,5 +88,9 @@ namespace fly
   void CameraController::setMouseSpeed(float speed)
   {
     _mouseSpeed = speed;
+  }
+  const std::shared_ptr<Camera>& CameraController::getCamera() const
+  {
+    return _camera;
   }
 }

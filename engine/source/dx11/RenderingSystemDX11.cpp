@@ -56,7 +56,7 @@ namespace fly
 
     initEffects();
 
-    setSettings({ true, true, false, false, false, false, false, glm::vec3(0.f, 4.f, 5250.f), glm::vec3(13.f, 24.f, 42.f) / 255.f, 1.9f, 3.2f, 1.f, 8, 16, 3.f, 24.f, 10000, 1.f, {1.f, 1.f} });
+    setSettings({ true, true, false, false, false, false, false, glm::vec3(0.f, 4.f, 5250.f), glm::vec3(13.f, 24.f, 42.f) / 255.f, 1.9f, 3.2f, 1.f, 8, 16, 3.f, 24.f, 10000, 1.f});
 
     _commonStates = std::make_unique<DirectX::CommonStates>(_device);
     _dx11States = std::make_unique<DX11States>(_device);
@@ -331,7 +331,6 @@ namespace fly
   {
     Timing timing;
     _quadtree = std::make_unique<Quadtree<DX11StaticModelRenderable>>(_sceneMin, _sceneMax);
-    _quadtree->setDetailCullingParams(_settings._detailCullingParams);
     for (const auto& r : _staticModelRenderables) {
       _quadtree->insert(r.second.get());
     }
@@ -376,10 +375,6 @@ namespace fly
     rast_desc.SlopeScaledDepthBias = settings._smSlopeScaledDepthBias;
     _rastStateShadowMap = nullptr;
     HR(_device->CreateRasterizerState(&rast_desc, &_rastStateShadowMap));
-
-    if (_quadtree) {
-      _quadtree->setDetailCullingParams(settings._detailCullingParams);
-    }
 
     initAdditionalRenderTargets();
   }
@@ -515,7 +510,8 @@ namespace fly
     _context->OMSetRenderTargets(1, rtv, _directionalLight._shadowMap->_dsv);
     _context->ClearDepthStencilView(_directionalLight._shadowMap->_dsv, D3D11_CLEAR_FLAG::D3D11_CLEAR_DEPTH, 1.f, 0);
     UINT offset = 0, stride = sizeof(Vertex);
-    auto visible_elements = _quadtree->getVisibleElementsWithDetailCulling<true>(_lightVolume, _camPos);
+    _camera->extractFrustumPlanes(_lightVolume, true);
+    auto visible_elements = _quadtree->getVisibleElementsWithDetailCulling(*_camera);
 #if DX11_STATS
     _stats._visibleModelsShadow += visible_elements.size();
 #endif
@@ -592,7 +588,8 @@ namespace fly
     HR(_fxLightColor->SetFloatVector(_directionalLight._dl->_color.ptr()));
     HR(_fxShadowMap->SetResource(_directionalLight._shadowMap->_srv));
     //auto visible_elements = _quadtree->getVisibleElements<true>(_VP);
-    auto visible_elements = _quadtree->getVisibleElementsWithDetailCulling<true>(_VP , _camPos);
+    _camera->extractFrustumPlanes(_VP, true);
+    auto visible_elements = _quadtree->getVisibleElementsWithDetailCulling(*_camera);
 #if DX11_STATS
     _stats._visibleModels += visible_elements.size();
 #endif

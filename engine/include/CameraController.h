@@ -27,9 +27,11 @@ namespace fly
     void mouseMove(const Vec3f& mouse_pos);
     void mouseRelease();
     void setSpeed(float speed);
+    float getSpeed() const;
     bool isPressed() const;
     float getMouseSpeed() const;
     void setMouseSpeed(float speed);
+    const std::shared_ptr<Camera>& getCamera() const;
   private:
     std::shared_ptr<Camera> _camera;
     bool _pressed = false;

@@ -1,8 +1,10 @@
 #include <AntWrapper.h>
 #include <GraphicsSettings.h>
 #include <opengl/OpenGLAPI.h>
+#include <Camera.h>
+#include <CameraController.h>
 
-AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api)
+AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, fly::Camera* camera, fly::CameraController* camera_controller)
 {
   TwAddVarCB(bar, "Shadows", TwType::TW_TYPE_BOOLCPP, cbSetShadows, cbGetShadows, gs, nullptr);
   TwAddVarCB(bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, cbSetPCF, cbGetPCF, gs, nullptr);
@@ -18,6 +20,8 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "Camera lerping", TwType::TW_TYPE_BOOLCPP, setCameraLerping, getCameraLerping, gs, nullptr);
   TwAddVarCB(bar, "Camera lerp amount", TwType::TW_TYPE_FLOAT, setCameraLerpAmount, getCameraLerpAmount, gs, "step=0.001f");
   TwAddVarCB(bar, "Detail culling", TwType::TW_TYPE_BOOLCPP, setDetailCulling, getDetailCulling, gs, nullptr);
+  TwAddVarCB(bar, "Detail culling threshold", TwType::TW_TYPE_FLOAT, setDetailCullingThreshold, getDetailCullingThreshold, camera, "step=0.0001f");
+  TwAddVarCB(bar, "Camera speed", TwType::TW_TYPE_FLOAT, setCamSpeed, getCamSpeed, camera_controller, "step=0.1f");
   TwAddButton(bar, "Reload shaders", cbReloadShaders, api, nullptr);
 }
 
@@ -164,4 +168,24 @@ void AntWrapper::setDetailCulling(const void * value, void * client_data)
 void AntWrapper::getDetailCulling(void * value, void * client_data)
 {
   *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getDetailCulling();
+}
+
+void AntWrapper::setDetailCullingThreshold(const void * value, void * client_data)
+{
+  cast<fly::Camera>(client_data)->setDetailCullingThreshold(*cast<float>(value));
+}
+
+void AntWrapper::getDetailCullingThreshold(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::Camera>(client_data)->getDetailCullingThreshold();
+}
+
+void AntWrapper::setCamSpeed(const void * value, void * client_data)
+{
+  cast<fly::CameraController>(client_data)->setSpeed(*cast<float>(value));
+}
+
+void AntWrapper::getCamSpeed(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::CameraController>(client_data)->getSpeed();
 }

@@ -3,9 +3,17 @@
 
 #include <math/FlyMath.h>
 #include "Component.h"
+#include <array>
 
 namespace fly
 {
+  enum IntersectionResult
+  {
+    OUTSIDE, INSIDE, INTERSECTING
+  };
+
+  class AABB;
+
   class Camera : public Component
   {
   public:
@@ -21,13 +29,20 @@ namespace fly
     void setEulerAngles(const Vec3f& euler_angles);
     bool isActive() const;
     void setActive(bool active);
+    const std::array<Vec4f, 6>& extractFrustumPlanes(const Mat4f& vp, bool directx = false);
+    IntersectionResult intersectPlaneAABB(const Vec4f& plane, const AABB& aabb) const;
+    IntersectionResult intersectFrustumAABB(const AABB& aabb) const;
+    float getDetailCullingThreshold() const;
+    void setDetailCullingThreshold(float threshold);
   private:
     Vec3f _pos;
     Vec3f _eulerAngles;
     Vec3f _right;
     Vec3f _direction;
     Vec3f _up;
+    std::array<Vec4f, 6> _frustumPlanes;
     bool _isActive = true;
+    float _detailCullingThreshold = 0.0125f;
   };
 }
 

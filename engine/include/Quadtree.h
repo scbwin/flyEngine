@@ -7,6 +7,7 @@
 #include <memory>
 #include <sstream>
 #include <Settings.h>
+#include <Camera.h>
 
 namespace fly
 {
@@ -68,10 +69,10 @@ namespace fly
           }
         }
       }
-      template<bool directx>
-      inline void getVisibleElements(const Mat4f& vp, std::vector<TPtr>& visible_elements) const
+      inline void getVisibleElements(std::vector<TPtr>& visible_elements, const Camera& camera) const
       {
-          if (_aabbWorld.isFullyVisible<directx>(vp)) {
+        auto result = camera.intersectFrustumAABB(_aabbWorld);
+          if (result == IntersectionResult::INSIDE) {
             visible_elements.insert(visible_elements.end(), _elements.begin(), _elements.end());
             for (const auto& c : _children) {
               if (c) {
@@ -79,63 +80,61 @@ namespace fly
               }
             }
           }
-          else if (_aabbWorld.intersectsFrustum<directx>(vp)) {
+          else if (result == IntersectionResult::INTERSECTING) {
             for (const auto& e : _elements) {
-              if (e->getAABBWorld()->intersectsFrustum<directx>(vp)) {
+              if (camera.intersectFrustumAABB(*e->getAABBWorld()) != IntersectionResult::OUTSIDE) {
                 visible_elements.push_back(e);
               }
             }
             for (const auto& c : _children) {
               if (c) {
-                c->getVisibleElements<directx>(vp, visible_elements);
+                c->getVisibleElements(visible_elements, camera);
               }
             }
           }
       }
 
-      void getAllElementsWithDetailCulling(const Vec3f& cam_pos,
-        const DetailCullingParams& detail_culling_params, std::vector<TPtr>& all_elements)
+      void getAllElementsWithDetailCulling(std::vector<TPtr>& all_elements, const Camera& camera)
       {
-        if (!_aabbWorld.isDetail(cam_pos, detail_culling_params._errorThreshold, _largestElementAABBWorldSize)) {
+        if (!_aabbWorld.isDetail(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
           for (const auto& e : _elements) {
-            if (!e->getAABBWorld()->isDetail(cam_pos, detail_culling_params._errorThreshold)) {
+            if (!e->getAABBWorld()->isDetail(camera.getPosition(), camera.getDetailCullingThreshold())) {
               all_elements.push_back(e);
             }
           }
           for (const auto& c : _children) {
             if (c) {
-              c->getAllElementsWithDetailCulling(cam_pos, detail_culling_params, all_elements);
+              c->getAllElementsWithDetailCulling(all_elements, camera);
             }
           }
         }
       }
 
-      template<bool directx>
-      inline void getVisibleElementsWithDetailCulling(const Mat4f& vp, const Vec3f& cam_pos,
-        const DetailCullingParams& detail_culling_params, std::vector<TPtr>& visible_elements) const
+      inline void getVisibleElementsWithDetailCulling(std::vector<TPtr>& visible_elements, const Camera& camera) const
       {
-        if (!_aabbWorld.isDetail(cam_pos, detail_culling_params._errorThreshold, _largestElementAABBWorldSize)) {
-          if (_aabbWorld.isFullyVisible<directx>(vp)) {
+        if (!_aabbWorld.isDetail(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
+          auto result = camera.intersectFrustumAABB(_aabbWorld);
+          if (result == IntersectionResult::INSIDE) {
             for (const auto& e : _elements) {
-              if (!e->getAABBWorld()->isDetail(cam_pos, detail_culling_params._errorThreshold)) {
+              if (!e->getAABBWorld()->isDetail(camera.getPosition(), camera.getDetailCullingThreshold())) {
                 visible_elements.push_back(e);
               }
             }
             for (const auto& c : _children) {
               if (c) {
-                c->getAllElementsWithDetailCulling(cam_pos, detail_culling_params, visible_elements);
+                c->getAllElementsWithDetailCulling(visible_elements, camera);
               }
             }
           }
-          else if (_aabbWorld.intersectsFrustum<directx>(vp)) {
+          else if (result == IntersectionResult::INTERSECTING) {
             for (const auto& e : _elements) {
-              if (!e->getAABBWorld()->isDetail(cam_pos, detail_culling_params._errorThreshold) && e->getAABBWorld()->intersectsFrustum<directx>(vp)) {
+              if (!e->getAABBWorld()->isDetail(camera.getPosition(), camera.getDetailCullingThreshold()) && camera.intersectFrustumAABB(*e->getAABBWorld()) != IntersectionResult::OUTSIDE) {
                 visible_elements.push_back(e);
               }
             }
             for (const auto& c : _children) {
               if (c) {
-                c->getVisibleElementsWithDetailCulling<directx>(vp, cam_pos, detail_culling_params, visible_elements);
+                c->getVisibleElementsWithDetailCulling(visible_elements, camera);
               }
             }
           }
@@ -159,45 +158,43 @@ namespace fly
           }
         }
       }
-      inline void getAllNodesWithDetailCulling(std::vector<Node*>& nodes, const Vec3f& cam_pos,
-        const DetailCullingParams& detail_culling_params)
+      inline void getAllNodesWithDetailCulling(std::vector<Node*>& nodes, const Camera& camera)
       {
-        if (!_aabbWorld.isDetail(cam_pos, detail_culling_params._errorThreshold, _largestElementAABBWorldSize)) {
+        if (!_aabbWorld.isDetail(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
           nodes.push_back(this);
           for (const auto& c : _children) {
             if (c) {
-              c->getAllNodesWithDetailCulling(nodes, cam_pos, detail_culling_params);
+              c->getAllNodesWithDetailCulling(nodes, camera);
             }
           }
         }
       }
-      template<bool directx>
-      inline void getVisibleNodesWithDetailCulling(std::vector<Node*>& visible_nodes, const Vec3f& cam_pos,
-        const DetailCullingParams& detail_culling_params, const Mat4f& vp)
+      inline void getVisibleNodesWithDetailCulling(std::vector<Node*>& visible_nodes, const Camera& camera)
       {
-        if (!_aabbWorld.isDetail(cam_pos, detail_culling_params._errorThreshold, _largestElementAABBWorldSize)) {
-          if (_aabbWorld.isFullyVisible<directx>(vp)) {
+        if (!_aabbWorld.isDetail(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
+          auto result = camera.intersectFrustumAABB(_aabbWorld);
+          if (result == IntersectionResult::INSIDE) {
             visible_nodes.push_back(this);
             for (const auto& c : _children) {
               if (c) {
-                c->getAllNodesWithDetailCulling(visible_nodes, cam_pos, detail_culling_params);
+                c->getAllNodesWithDetailCulling(visible_nodes, camera);
               }
             }
           }
-          else if (_aabbWorld.intersectsFrustum<directx>(vp)) {
+          else if (result == IntersectionResult::INTERSECTING) {
             visible_nodes.push_back(this);
             for (const auto& c : _children) {
               if (c) {
-                c->getVisibleNodesWithDetailCulling<directx>(visible_nodes, cam_pos, detail_culling_params, vp);
+                c->getVisibleNodesWithDetailCulling(visible_nodes, camera);
               }
             }
           }
         }
       }
-      template<bool directx>
-      inline void getVisibleNodes(std::vector<Node*>& visible_nodes, const Mat4f& vp)
+      inline void getVisibleNodes(std::vector<Node*>& visible_nodes, const Camera& camera)
       {
-        if (_aabbWorld.isFullyVisible<directx>(vp)) {
+        auto result = camera.intersectFrustumAABB(_aabbWorld);
+        if (result == IntersectionResult::INSIDE) {
           visible_nodes.push_back(this);
           for (const auto& c : _children) {
             if (c) {
@@ -205,11 +202,11 @@ namespace fly
             }
           }
         }
-        else if (_aabbWorld.intersectsFrustum<directx>(vp)) {
+        else if (result == IntersectionResult::INTERSECTING) {
           visible_nodes.push_back(this);
           for (const auto& c : _children) {
             if (c) {
-              c->getVisibleNodes<directx>(visible_nodes, vp);
+              c->getVisibleNodes(visible_nodes, camera);
             }
           }
         }
@@ -273,18 +270,16 @@ namespace fly
     {
       _root->print(0);
     }
-    template<bool directx = false>
-    std::vector<TPtr> getVisibleElements(const Mat4f& vp) const
+    std::vector<TPtr> getVisibleElements(const Camera& camera) const
     {
       std::vector<TPtr> visible_elements;
-      _root->getVisibleElements<directx>(vp, visible_elements);
+      _root->getVisibleElements(visible_elements, camera);
       return visible_elements;
     }
-    template<bool directx>
-    std::vector<TPtr> getVisibleElementsWithDetailCulling(const Mat4f& vp, const Vec3f& cam_pos) const
+    std::vector<TPtr> getVisibleElementsWithDetailCulling(const Camera& camera) const
     {
       std::vector<TPtr> visible_elements;
-      _root->getVisibleElementsWithDetailCulling<directx>(vp, cam_pos, _detailCullingParams, visible_elements);
+      _root->getVisibleElementsWithDetailCulling(visible_elements, camera);
       return visible_elements;
     }
     inline std::vector<TPtr> getAllElements() const
@@ -300,24 +295,18 @@ namespace fly
       return all_nodes;
     }
 
-    template<bool directx = false>
-    inline std::vector<Node*> getVisibleNodesWithDetailCulling(const Mat4f& vp, const Vec3f& cam_pos) const
+    inline std::vector<Node*> getVisibleNodesWithDetailCulling(const Camera& camera) const
     {
       std::vector<Node*> visible_nodes;
-      _root->getVisibleNodesWithDetailCulling<directx>(visible_nodes, cam_pos, _detailCullingParams, vp);
+      _root->getVisibleNodesWithDetailCulling(visible_nodes, camera);
       return visible_nodes;
     }
 
-    template<bool directx = false>
-    inline std::vector<Node*> getVisibleNodes(const Mat4f& vp)
+    inline std::vector<Node*> getVisibleNodes(const Camera& camera)
     {
       std::vector<Node*> visible_nodes;
-      _root->getVisibleNodes<directx>(visible_nodes, vp);
+      _root->getVisibleNodes(visible_nodes, camera);
       return visible_nodes;
-    }
-    void setDetailCullingParams(const DetailCullingParams& params)
-    {
-      _detailCullingParams = params;
     }
     bool removeElement(const TPtr& element)
     {
@@ -325,7 +314,6 @@ namespace fly
     }
   private:
     std::unique_ptr<Node> _root;
-    DetailCullingParams _detailCullingParams = { 0.0125f, 1.f };
   };
 }
 

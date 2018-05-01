@@ -133,7 +133,7 @@ void DX11App::onMouseMove(WPARAM w_param, LPARAM l_param)
   // glm::vec2 mouse_delta = glm::vec2(pos.x, pos.y) - glm::vec2(_windowSize) / 2.f;
   if ((w_param & MK_LBUTTON) != 0) {
     auto mouse_delta = glm::vec2(pos.x, pos.y) - _mousePosBefore;
-    _camera->_eulerAngles -= glm::vec3(mouse_delta.x, mouse_delta.y, 0.f) * 0.005f;
+    _camera->setEulerAngles(_camera->getEulerAngles() - glm::vec3(mouse_delta.x, mouse_delta.y, 0.f) * 0.005f);
   }
   _mousePosBefore = glm::vec2(pos.x, pos.y);
   /*  POINT center = { _windowSize.x / 2, _windowSize.y / 2 };
@@ -386,6 +386,7 @@ void DX11App::initGame()
   auto cam_entity = _engine->getEntityManager()->createEntity();
   _camera = std::make_shared<fly::Camera>(glm::vec3(0.f, 3.f, 0.f), glm::vec3(0.f));
   cam_entity->addComponent(_camera);
+  _camController = std::make_unique<fly::CameraController>(_camera, _camSpeed);
 
   auto dl_entity = _engine->getEntityManager()->createEntity();
 #if SPONZA
@@ -452,8 +453,7 @@ void DX11App::initGame()
   TwAddVarCB(bar, "Bright bias", TW_TYPE_FLOAT, TwSetBrightBias, TwGetBrightBias, _rs.get(), "group=PostProcessing min=0 step=0.005");
   TwAddVarCB(bar, "SM depth bias", TW_TYPE_INT32, TwSetSmDepthBias, TwGetSmDepthBias, _rs.get(), "group=Renderer min=0 max=2000000 step=350");
   TwAddVarCB(bar, "SM sloped scaled bias", TW_TYPE_FLOAT, TwSetSmSlopeScaledDepthBias, TwGetSmSlopeScaledDepthBias, _rs.get(), "group=Renderer min=0 max=1000 step = 0.05");
-  TwAddVarCB(bar, "Detail culling error threshold", TW_TYPE_FLOAT, TwSetDetailCullingErrorThreshold, TwGetDetailCullingErrorThreshold, _rs.get(), "group=Renderer min=0 max=100 step = 0.01");
-  TwAddVarCB(bar, "Detail culling error exponent", TW_TYPE_FLOAT, TwSetDetailCullingErrorExponent, TwGetDetailCullingErrorExponent, _rs.get(), "group=Renderer min=0.1 max=100 step = 0.005");
+  TwAddVarCB(bar, "Detail culling error threshold", TW_TYPE_FLOAT, TwSetDetailCullingErrorThreshold, TwGetDetailCullingErrorThreshold, _camera.get(), "group=Renderer min=0 max=100 step = 0.01");
 #if SPONZA
   TwAddVarCB(bar, "Screen space reflections (SSR)", TW_TYPE_BOOLCPP, TwSetSSR, TwGetSSR, _rs.get(), "group=PostProcessing");
   TwAddVarCB(bar, "SSR blend weight", TW_TYPE_FLOAT, TwSetSSRWeight, TwGetSSRWeight, _rs.get(), "group=PostProcessing min=0 max=1 step=0.0035");
@@ -480,22 +480,22 @@ void DX11App::initGame()
 void DX11App::handleInput()
 {
   if (keyPressed('W')) {
-    _camera->_pos += _camera->_direction * _gameTimer.getDeltaTimeSeconds() * getCamSpeed();
+    _camController->stepForward(_gameTimer.getDeltaTimeSeconds());
   }
   if (keyPressed('A')) {
-    _camera->_pos -= _camera->_right * _gameTimer.getDeltaTimeSeconds() * getCamSpeed();
+    _camController->stepLeft(_gameTimer.getDeltaTimeSeconds());
   }
   if (keyPressed('S')) {
-    _camera->_pos -= _camera->_direction * _gameTimer.getDeltaTimeSeconds() * getCamSpeed();
+    _camController->stepBackward(_gameTimer.getDeltaTimeSeconds());
   }
   if (keyPressed('D')) {
-    _camera->_pos += _camera->_right * _gameTimer.getDeltaTimeSeconds() * getCamSpeed();
+    _camController->stepRight(_gameTimer.getDeltaTimeSeconds());
   }
   if (keyPressed(VK_SPACE)) {
-    _camera->_pos += _camera->_up * _gameTimer.getDeltaTimeSeconds() * getCamSpeed();
+    _camController->stepUp(_gameTimer.getDeltaTimeSeconds());
   }
   if (keyPressed('C')) {
-    _camera->_pos -= _camera->_up * _gameTimer.getDeltaTimeSeconds() * getCamSpeed();
+    _camController->stepDown(_gameTimer.getDeltaTimeSeconds());
   }
   float light_speed = 10.f;
   if (keyPressed(VK_LEFT)) {
@@ -858,28 +858,13 @@ void DX11App::TwGetSmSlopeScaledDepthBias(void * value, void * client_data)
 
 void DX11App::TwSetDetailCullingErrorThreshold(const void * value, void * client_data)
 {
-  auto rs = reinterpret_cast<fly::RenderingSystemDX11*>(client_data);
-  auto settings = rs->getSettings();
-  settings._detailCullingParams._errorThreshold = *reinterpret_cast<const float*>(value);
-  rs->setSettings(settings);
+  auto camera = reinterpret_cast<fly::Camera*>(client_data);
+  camera->setDetailCullingThreshold(*reinterpret_cast<const float*>(value));
 }
 
 void DX11App::TwGetDetailCullingErrorThreshold(void * value, void * client_data)
 {
-  *reinterpret_cast<float*>(value) = reinterpret_cast<fly::RenderingSystemDX11*>(client_data)->getSettings()._detailCullingParams._errorThreshold;
-}
-
-void DX11App::TwSetDetailCullingErrorExponent(const void * value, void * client_data)
-{
-  auto rs = reinterpret_cast<fly::RenderingSystemDX11*>(client_data);
-  auto settings = rs->getSettings();
-  settings._detailCullingParams._errorExponent = *reinterpret_cast<const float*>(value);
-  rs->setSettings(settings);
-}
-
-void DX11App::TwGetDetailCullingErrorExponent(void * value, void * client_data)
-{
-  *reinterpret_cast<float*>(value) = reinterpret_cast<fly::RenderingSystemDX11*>(client_data)->getSettings()._detailCullingParams._errorExponent;
+  *reinterpret_cast<float*>(value) = reinterpret_cast<fly::Camera*>(client_data)->getDetailCullingThreshold();
 }
 
 int DX11App::execute()

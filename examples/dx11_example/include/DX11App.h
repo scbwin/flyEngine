@@ -18,6 +18,7 @@
 #include <CommonStates.h>
 #include <AntTweakBar.h>
 #include <SpriteFont.h>
+#include <CameraController.h>
 
 #define SPONZA 1
 #define SPONZA_LARGE 1
@@ -47,6 +48,7 @@ private:
   std::shared_ptr<fly::RenderingSystemDX11> _rs;
   std::shared_ptr<fly::Camera> _camera;
   std::shared_ptr<fly::DirectionalLight> _dl;
+  std::unique_ptr<fly::CameraController> _camController;
  // std::shared_ptr<fly::Transform> _dlTransform;
   fly::GameTimer _gameTimer;
 #if SPONZA
@@ -129,8 +131,6 @@ private:
   static void TwGetSmSlopeScaledDepthBias(void* value, void* client_data);
   static void TwSetDetailCullingErrorThreshold(const void* value, void* client_data);
   static void TwGetDetailCullingErrorThreshold(void* value, void* client_data);
-  static void TwSetDetailCullingErrorExponent(const void* value, void* client_data);
-  static void TwGetDetailCullingErrorExponent(void* value, void* client_data);
 };
 
 #endif // !DX11APP_H

@@ -17,6 +17,7 @@
 #include <Model.h>
 #include <random>
 #include <GameTimer.h>
+#include <CameraController.h>
 
 
 #define SPONZA 0
@@ -42,6 +43,7 @@ private:
   std::shared_ptr<fly::Engine> _engine;
   std::shared_ptr<fly::RenderingSystemOpenGL> _rs;
   std::vector<std::shared_ptr<fly::Entity>> _cameras;
+  std::unique_ptr<fly::CameraController> _camController;
   std::vector<std::shared_ptr<fly::Entity>> _lights;
   bool _guiWasHidden = false;
   const std::chrono::high_resolution_clock::time_point _timePointStart;

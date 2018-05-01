@@ -7,12 +7,14 @@ namespace fly
 {
   class GraphicsSettings;
   class OpenGLAPI;
+  class Camera;
+  class CameraController;
 }
 
 class AntWrapper
 {
 public:
-  AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api);
+  AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, fly::Camera* camera, fly::CameraController* camera_controller);
 private:
   static void cbSetShadows(const void* value, void* client_data);
   static void cbGetShadows(void* value, void* client_data);
@@ -43,6 +45,10 @@ private:
   static void getCameraLerpAmount(void* value, void* client_data);
   static void setDetailCulling(const void* value, void* client_data);
   static void getDetailCulling(void* value, void* client_data);
+  static void setDetailCullingThreshold(const void* value, void* client_data);
+  static void getDetailCullingThreshold(void* value, void* client_data);
+  static void setCamSpeed(const void* value, void* client_data);
+  static void getCamSpeed(void* value, void* client_data);
   template<typename T> static T* cast(void* data){return reinterpret_cast<T*>(data);}
   template<typename T> static const T* cast(const void* data) { return reinterpret_cast<const T*>(data); }
 };

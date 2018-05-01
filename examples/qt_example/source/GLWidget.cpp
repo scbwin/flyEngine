@@ -61,7 +61,7 @@ void GLWidget::initializeGL()
   TwAddButton(_bar, _shadowMapGroupingUName, nullptr, nullptr, nullptr);
 #endif
   auto settings_bar = TwNewBar("Settings");
-  AntWrapper(settings_bar, &_graphicsSettings, _renderer->getApi());
+  AntWrapper(settings_bar, &_graphicsSettings, _renderer->getApi(), _camController->getCamera().get(), _camController.get());
   TwSetTopBar(_bar);
 }
 

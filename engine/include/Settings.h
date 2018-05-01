@@ -6,18 +6,9 @@
 
 namespace fly
 {
-  struct DetailCullingParams
-  {
-    float _errorThreshold;
-    float _errorExponent;
-  };
-
-  enum class DisplayListSortMode
-  {
-    SHADER,
-    SHADER_AND_MATERIAL
-  };
-
+  /**
+  * Deprecated
+  */
   struct Settings
   {
     bool _lensflareEnabled;
@@ -38,8 +29,6 @@ namespace fly
     float _ssrMinRayLen;
     int _smDepthBias;
     float _smSlopeScaledDepthBias;
-    DetailCullingParams _detailCullingParams;
-    DisplayListSortMode _dlSortMode = DisplayListSortMode::SHADER_AND_MATERIAL;
     bool _debugQuadtreeNodeAABBs = false;
     bool _debugObjectAABBs = false;
     bool _postProcessing = true;

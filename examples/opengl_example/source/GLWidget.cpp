@@ -299,6 +299,7 @@ void GLWidget::initializeGL()
 
   auto camera = _engine->getEntityManager()->createEntity();
   camera->addComponent(std::make_shared<fly::Camera>(glm::vec3(0.f, 2.5f, 0.f), glm::vec3(0.f, 0.f, 0.f)));
+  _camController = std::make_unique<fly::CameraController>(camera->getComponent<fly::Camera>(), 200.f);
   _cameras.push_back(camera);
 
   _lights.push_back(_engine->getEntityManager()->createEntity());
@@ -410,8 +411,8 @@ void GLWidget::keyReleaseEvent(QKeyEvent * e)
 
     else if (_mode == Mode::CAMERA && e->key() == Qt::Key_Insert) {
       auto camera = _engine->getEntityManager()->createEntity();
-      auto cam = std::make_shared<fly::Camera>(_cameras.front()->getComponent<fly::Camera>()->_pos, _cameras.front()->getComponent<fly::Camera>()->_eulerAngles);
-      cam->_isActive = false;
+      auto cam = std::make_shared<fly::Camera>(_cameras.front()->getComponent<fly::Camera>()->getPosition(), _cameras.front()->getComponent<fly::Camera>()->getEulerAngles());
+      cam->setActive(false);
       camera->addComponent(cam);
       _cameras.push_back(camera);
     }
@@ -424,9 +425,9 @@ void GLWidget::keyReleaseEvent(QKeyEvent * e)
         std::rotate(_cameras.begin(), _cameras.end() - 1, _cameras.end());
       }
       for (auto& c : _cameras) {
-        c->getComponent<fly::Camera>()->_isActive = false;
+        c->getComponent<fly::Camera>()->setActive(false);
       }
-      _cameras.front()->getComponent<fly::Camera>()->_isActive = true;
+      _cameras.front()->getComponent<fly::Camera>()->setActive(true);
     }
 
     if (_mode == Mode::LIGHT && (e->key() == Qt::Key_Left || e->key() == Qt::Key_Right) && _lights.back()->getComponent<fly::Animation>() == nullptr) {
@@ -467,7 +468,7 @@ void GLWidget::mousePressEvent(QMouseEvent * e)
   if (e->button() == Qt::MouseButton::LeftButton) {
     _buttonsPressed.insert(Qt::MouseButton::LeftButton);
     if (_lights.back() != nullptr) {
-      _lightDistWhenClicked = glm::distance(glm::vec3(_lights.back()->getComponent<fly::Light>()->_pos), _cameras.front()->getComponent<fly::Camera>()->_pos);
+      _lightDistWhenClicked = distance(_lights.back()->getComponent<fly::Light>()->_pos, _cameras.front()->getComponent<fly::Camera>()->getPosition());
     }
   }
   if (e->button() == Qt::MouseButton::RightButton) {
@@ -830,31 +831,33 @@ void GLWidget::handleKeyEvents()
   auto cam = _cameras.front()->getComponent<fly::Camera>();
   //std::cout << glm::to_string(cam->_pos) << std::endl;
   if (_keysPressed.find(Qt::Key_W) != _keysPressed.end()) {
-    cam->_pos += cam->_direction * cam_speed;
+    _camController->stepForward(_gameTimer.getDeltaTimeSeconds());
   }
   if (_keysPressed.find(Qt::Key_A) != _keysPressed.end()) {
-    cam->_pos -= cam->_right * cam_speed;
+    _camController->stepLeft(_gameTimer.getDeltaTimeSeconds());
   }
   if (_keysPressed.find(Qt::Key_S) != _keysPressed.end()) {
-    cam->_pos -= cam->_direction * cam_speed;
+    _camController->stepBackward(_gameTimer.getDeltaTimeSeconds());
   }
   if (_keysPressed.find(Qt::Key_D) != _keysPressed.end()) {
-    cam->_pos += cam->_right * cam_speed;
+    _camController->stepRight(_gameTimer.getDeltaTimeSeconds());
   }
   if (_keysPressed.find(Qt::Key_Space) != _keysPressed.end()) {
-    cam->_pos += cam->_up * cam_speed;
+    _camController->stepUp(_gameTimer.getDeltaTimeSeconds());
   }
   if (_keysPressed.find(Qt::Key_C) != _keysPressed.end()) {
-    cam->_pos -= cam->_up * cam_speed;
+    _camController->stepDown(_gameTimer.getDeltaTimeSeconds());
   }
 #if !SPONZA
   auto geo_mip_map = _geoMipMapEntity->getComponent<fly::Terrain>();
   auto g_model_mat = _geoMipMapEntity->getComponent<fly::Transform>()->getModelMatrix();
-  auto cam_pos_terrain = glm::mat4(inverse(g_model_mat)) * glm::vec4(cam->_pos, 1.f);
+  auto cam_pos_terrain = glm::mat4(inverse(g_model_mat)) * fly::Vec4f(cam->getPosition(), 1.f);
   if (cam_pos_terrain.x >= 0.f && cam_pos_terrain.x <= geo_mip_map->getHeightMap().cols && cam_pos_terrain.z >= 0.f && cam_pos_terrain.z <= geo_mip_map->getHeightMap().rows) {
     float height = geo_mip_map->getHeight(cam_pos_terrain.x, cam_pos_terrain.z);
     float height_world = (glm::mat4(g_model_mat) * glm::vec4(0.f, height, 0.f, 1.f)).y;
-    cam->_pos.y = std::max(height_world + _rs->_zNear * 2.f, cam->_pos.y);
+    auto cam_pos = cam->getPosition();
+    cam_pos[1] = std::max(height_world + _rs->_zNear * 2.f, cam_pos[1]);
+    cam->setPosition(cam_pos);
   }
 #endif
   glm::vec3 mouse_move(_mouseDelta.x, _mouseDelta.y, 0.f);
@@ -869,13 +872,13 @@ void GLWidget::handleKeyEvents()
   if (_rs->getRenderWireFrame()) {
     mouse_speed *= 10.f;
   }
-  cam->_eulerAngles -= mouse_move * mouse_speed;
+  cam->setEulerAngles(cam->getEulerAngles() - mouse_move * mouse_speed);
 
-  glm::vec3 euler_target(cam->_eulerAngles.x, cam->_eulerAngles.y, 0.f);
+  glm::vec3 euler_target(cam->getEulerAngles()[0], cam->getEulerAngles()[1], 0.f);
   glm::quat target_quat(euler_target);
-  glm::quat current_quat(cam->_eulerAngles);
+  glm::quat current_quat(cam->getEulerAngles());
   auto interpolated_quat = glm::slerp(target_quat, current_quat, 0.99f);
-  cam->_eulerAngles = glm::eulerAngles(interpolated_quat);
+  cam->setEulerAngles(glm::eulerAngles(interpolated_quat));
 
   if (_lights.size() && _mode == Mode::LIGHT_MOVE) {
    // auto& light_translation = _lights.back()->getComponent<fly::Transform>()->getTranslation();
@@ -895,7 +898,7 @@ void GLWidget::handleKeyEvents()
     }
     float alpha = 0.99f;
     if (_buttonsPressed.find(Qt::MouseButton::LeftButton) != _buttonsPressed.end()) {
-      light->_pos = (1.f - alpha) * (cam->_pos + cam->_direction * _lightDistWhenClicked) + glm::vec3(light->_pos * alpha);
+      light->_pos = (cam->getPosition() + cam->getDirection() * _lightDistWhenClicked) * (1.f - alpha) + glm::vec3(light->_pos * alpha);
     }
     if (_buttonsPressed.find(Qt::MouseButton::RightButton) != _buttonsPressed.end()) {
       float scene_depth = _rs->getSceneDepth(glm::ivec2(width() / 2, height() / 2));

@@ -191,9 +191,10 @@ namespace fly
 #if RENDERER_STATS
         timing.start();
 #endif
+        _camera->extractFrustumPlanes(_vpScene);
         std::vector<MeshRenderable*> visible_meshes = _gs->getDetailCulling() ?
-          _bvh->getVisibleElementsWithDetailCulling<API::isDirectX()>(_vpScene, _gsp._camPosworld) :
-          _bvh->getVisibleElements<API::isDirectX()>(_vpScene);
+          _bvh->getVisibleElementsWithDetailCulling(*_camera) :
+          _bvh->getVisibleElements(*_camera);
 #if RENDERER_STATS
         _stats._bvhTraversalMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
@@ -413,8 +414,8 @@ namespace fly
     void renderQuadtreeAABBs()
     {
       auto visible_nodes = _gs->getDetailCulling() 
-        ? _bvh->getVisibleNodesWithDetailCulling<API::isDirectX()>(_vpScene, _gsp._camPosworld) 
-        : _bvh->getVisibleNodes(_vpScene);
+        ? _bvh->getVisibleNodesWithDetailCulling(*_camera) 
+        : _bvh->getVisibleNodes(*_camera);
       if (visible_nodes.size()) {
         _api.setDepthWriteEnabled<true>();
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
@@ -471,9 +472,10 @@ namespace fly
 #if RENDERER_STATS
       Timing timing;
 #endif
+      _camera->extractFrustumPlanes(vp_shadow_volume);
       auto visible_meshes = _gs->getDetailCulling() ?
-        _bvh->getVisibleElementsWithDetailCulling<API::isDirectX()>(vp_shadow_volume, _gsp._camPosworld) :
-        _bvh->getVisibleElements<API::isDirectX()>(vp_shadow_volume);
+        _bvh->getVisibleElementsWithDetailCulling(*_camera) :
+        _bvh->getVisibleElements(*_camera);
 #if RENDERER_STATS
       _stats._bvhTraversalShadowMapMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif

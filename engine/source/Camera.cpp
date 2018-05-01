@@ -1,5 +1,6 @@
 #include "Camera.h"
 #include <glm/gtc/matrix_transform.hpp>
+#include <AABB.h>
 
 namespace fly
 {
@@ -56,5 +57,57 @@ namespace fly
   void Camera::setActive(bool active)
   {
     _isActive = active;
+  }
+  const std::array<Vec4f, 6>& Camera::extractFrustumPlanes(const Mat4f & vp, bool directx)
+  {
+    _frustumPlanes[0] = (vp.row(3) + vp.row(0)) * -1.f; // left plane
+    _frustumPlanes[1] = (vp.row(3) - vp.row(0)) * -1.f; // right plane
+    _frustumPlanes[2] = (vp.row(3) + vp.row(1)) * -1.f; // bottom plane
+    _frustumPlanes[3] = (vp.row(3) - vp.row(1)) * -1.f; // top plane
+    _frustumPlanes[4] = (directx ? vp.row(2) : (vp.row(3) + vp.row(2))) * -1.f; // near plane
+    _frustumPlanes[5] = (vp.row(3) - vp.row(2)) * -1.f; // far plane
+
+    return _frustumPlanes;
+  }
+  IntersectionResult Camera::intersectPlaneAABB(const Vec4f & plane, const AABB & aabb) const
+  {
+    auto c = (aabb.getMin() + aabb.getMax()) * 0.5f;
+    auto h = (aabb.getMax() - aabb.getMin()) * 0.5f;
+    auto e = dot(h, abs(plane.xyz()));
+    auto s = dot(Vec4f(c, 1.f), plane);
+    if (s - e > 0) {
+      return IntersectionResult::OUTSIDE;
+    }
+    if (s + e < 0) {
+      return IntersectionResult::INSIDE;
+    }
+    return IntersectionResult::INTERSECTING;
+  }
+  IntersectionResult Camera::intersectFrustumAABB(const AABB & aabb) const
+  {
+    bool intersecting = false;
+    for (const auto& p : _frustumPlanes) {
+      auto result = intersectPlaneAABB(p, aabb);
+      if (result == IntersectionResult::OUTSIDE) {
+        return IntersectionResult::OUTSIDE;
+      }
+      else if (result == IntersectionResult::INTERSECTING) {
+        intersecting = true;
+      }
+    }
+    if (intersecting) {
+      return IntersectionResult::INTERSECTING;
+    }
+    else {
+      return IntersectionResult::INSIDE;
+    }
+  }
+  float Camera::getDetailCullingThreshold() const
+  {
+    return _detailCullingThreshold;
+  }
+  void Camera::setDetailCullingThreshold(float threshold)
+  {
+    _detailCullingThreshold = std::max(0.f, threshold);
   }
 }
