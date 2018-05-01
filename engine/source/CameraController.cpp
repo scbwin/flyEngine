@@ -10,27 +10,27 @@ namespace fly
   }
   void CameraController::stepForward(float delta_time) const
   {
-    _camera->_pos += _camera->_direction * delta_time * _speed * _accelerate;
+    _camera->setPosition(_camera->getPosition() + _camera->getDirection() * delta_time * _speed * _accelerate);
   }
   void CameraController::stepBackward(float delta_time) const
   {
-    _camera->_pos -= _camera->_direction * delta_time * _speed *_accelerate;
+    _camera->setPosition(_camera->getPosition() - _camera->getDirection() * delta_time * _speed *_accelerate);
   }
   void CameraController::stepLeft(float delta_time) const
   {
-    _camera->_pos -= _camera->_right * delta_time * _speed * _accelerate;
+    _camera->setPosition(_camera->getPosition() - _camera->getRight() * delta_time * _speed * _accelerate);
   }
   void CameraController::stepRight(float delta_time) const
   {
-    _camera->_pos += _camera->_right * delta_time * _speed * _accelerate;
+    _camera->setPosition(_camera->getPosition() + _camera->getRight() * delta_time * _speed * _accelerate);
   }
   void CameraController::stepUp(float delta_time) const
   {
-    _camera->_pos += _camera->_up * delta_time * _speed * _accelerate;
+    _camera->setPosition(_camera->getPosition() + _camera->getUp() * delta_time * _speed * _accelerate);
   }
   void CameraController::stepDown(float delta_time) const
   {
-    _camera->_pos -= _camera->_up * delta_time * _speed * _accelerate;
+    _camera->setPosition(_camera->getPosition() - _camera->getUp() * delta_time * _speed * _accelerate);
   }
   void CameraController::acceleratePressed()
   {
@@ -57,11 +57,13 @@ namespace fly
   {
     if (_pressed) {
       auto delta = mouse_pos - _mousePos;
-      _camera->_eulerAngles -= glm::vec3(delta) * _mouseSpeed;
+      _camera->setEulerAngles( _camera->getEulerAngles() - delta * _mouseSpeed);
     }
     _mousePos = mouse_pos;
      const float eps = 0.01f;
-    _camera->_eulerAngles.y = glm::clamp(_camera->_eulerAngles.y, -glm::half_pi<float>() + eps, glm::half_pi<float>() - eps);
+     auto euler_angles = _camera->getEulerAngles();
+     euler_angles[1] = glm::clamp(euler_angles[1], -glm::half_pi<float>() + eps, glm::half_pi<float>() - eps);
+     _camera->setEulerAngles(euler_angles);
   }
   void CameraController::mouseRelease()
   {

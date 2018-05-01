@@ -3,7 +3,7 @@
 
 namespace fly
 {
-  Camera::Camera(const glm::vec3& pos, const glm::vec3& euler_angles) : _pos(pos), _eulerAngles(euler_angles)
+  Camera::Camera(const Vec3f& pos, const Vec3f& euler_angles) : _pos(pos), _eulerAngles(euler_angles)
   {
   }
 
@@ -11,14 +11,50 @@ namespace fly
   {
   }
 
-  glm::mat4 Camera::getViewMatrix(const glm::vec3& pos, const glm::vec3& euler_angles)
+  Mat4f Camera::getViewMatrix(const Vec3f& pos, const Vec3f& euler_angles)
   {
-    _direction = glm::vec3(cos(euler_angles.y) * sin(euler_angles.x), sin(euler_angles.y), cos(euler_angles.y) * cos(euler_angles.x));
-    _right = glm::vec3(sin(euler_angles.x - glm::half_pi<float>()), sin(euler_angles.z), cos(euler_angles.x - glm::half_pi<float>()));
-    _up = cross(_right, _direction);
+    _direction = Vec3f(cos(euler_angles[1]) * sin(euler_angles[0]), sin(euler_angles[1]), cos(euler_angles[1]) * cos(euler_angles[0]));
+    _right = Vec3f(sin(euler_angles[0] - glm::half_pi<float>()), sin(euler_angles[2]), cos(euler_angles[0] - glm::half_pi<float>()));
+    _up = cross(glm::vec3(_right), glm::vec3(_direction));
 
-    glm::vec3 target = pos + _direction;
+    Vec3f target = pos + _direction;
 
-    return glm::lookAt(pos, target, _up);
+    return glm::lookAt(glm::vec3(pos), glm::vec3(target), glm::vec3(_up));
+  }
+  const Vec3f & Camera::getPosition() const
+  {
+    return _pos;
+  }
+  const Vec3f & Camera::getDirection() const
+  {
+    return _direction;
+  }
+  const Vec3f & Camera::getRight() const
+  {
+    return _right;
+  }
+  const Vec3f & Camera::getUp() const
+  {
+    return _up;
+  }
+  const Vec3f & Camera::getEulerAngles() const
+  {
+    return _eulerAngles;
+  }
+  void Camera::setPosition(const Vec3f & position)
+  {
+    _pos = position;
+  }
+  void Camera::setEulerAngles(const Vec3f & euler_angles)
+  {
+    _eulerAngles = euler_angles;
+  }
+  bool Camera::isActive() const
+  {
+    return _isActive;
+  }
+  void Camera::setActive(bool active)
+  {
+    _isActive = active;
   }
 }

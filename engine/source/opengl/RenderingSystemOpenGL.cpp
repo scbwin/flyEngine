@@ -802,7 +802,7 @@ namespace fly
     }
     auto active_camera = (*_cameras.begin())->getComponent<Camera>();
     for (auto& c : _cameras) {
-      if (c->getComponent<Camera>()->_isActive) {
+      if (c->getComponent<Camera>()->isActive()) {
         active_camera = c->getComponent<Camera>();
         break;
       }
@@ -811,15 +811,15 @@ namespace fly
     _fpsFactor = delta_time > 0.f ? glm::mix(1.f / delta_time / target_fps, _fpsFactor, _lerpAlpha) : 1.f;
     glm::vec3 euler_angles;
     if (_smoothCamera) {
-      _camPos = glm::mix(active_camera->_pos, _camPosBefore, _lerpAlpha);
+      _camPos = glm::mix(glm::vec3(active_camera->getPosition()), _camPosBefore, _lerpAlpha);
       glm::quat q_before(_eulerAnglesBefore);
-      glm::quat q_now(active_camera->_eulerAngles);
+      glm::quat q_now(active_camera->getEulerAngles());
       auto q_new = glm::slerp(q_before, q_now, 1.f - _lerpAlpha);
       euler_angles = eulerAngles(q_new);
     }
     else {
-      _camPos = active_camera->_pos;
-      euler_angles = active_camera->_eulerAngles;
+      _camPos = active_camera->getPosition();
+      euler_angles = active_camera->getEulerAngles();
     }
 
     _viewMatrix = active_camera->getViewMatrix(_camPos, euler_angles);

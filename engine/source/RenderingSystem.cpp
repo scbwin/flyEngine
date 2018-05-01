@@ -75,8 +75,8 @@ namespace fly
 
     if (camera != nullptr) {
       _cameras.insert(entity);
-      _camPosBefore = camera->_pos;
-      _eulerAnglesBefore = camera->_eulerAngles;
+      _camPosBefore = camera->getPosition();
+      _eulerAnglesBefore = camera->getEulerAngles();
     }
     else {
       _cameras.erase(entity);

@@ -156,14 +156,14 @@ namespace fly
         if (_gs->getCameraLerping()) {
           _acc += delta_time;
           while (_acc >= _dt) {
-            _gsp._camPosworld = glm::mix(_camera->_pos, glm::vec3(_gsp._camPosworld), _cameraLerpAlpha);
-            _camEulerAngles = glm::eulerAngles(glm::slerp(glm::quat(_camera->_eulerAngles), glm::quat(_camEulerAngles), _cameraLerpAlpha));
+            _gsp._camPosworld = glm::mix(glm::vec3(_camera->getPosition()), glm::vec3(_gsp._camPosworld), _cameraLerpAlpha);
+            _camEulerAngles = glm::eulerAngles(glm::slerp(glm::quat(_camera->getEulerAngles()), glm::quat(_camEulerAngles), _cameraLerpAlpha));
             _acc -= _dt;
           }
         }
         else {
-          _gsp._camPosworld = _camera->_pos;
-          _camEulerAngles = _camera->_eulerAngles;
+          _gsp._camPosworld = _camera->getPosition();
+          _camEulerAngles = _camera->getEulerAngles();
         }
         _gsp._viewMatrix = _camera->getViewMatrix(_gsp._camPosworld, _camEulerAngles);
         _vpScene = _gsp._projectionMatrix * _gsp._viewMatrix;

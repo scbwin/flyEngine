@@ -107,8 +107,8 @@ namespace fly
 
     if (cam) {
       _camera = cam;
-      _camPos = _camera->_pos;
-      _camEulerAngles = glm::quat(_camera->_eulerAngles);
+      _camPos = _camera->getPosition();
+      _camEulerAngles = glm::quat(_camera->getEulerAngles());
     }
 
     if (dl) {
@@ -464,12 +464,12 @@ namespace fly
     _time = time;
     _deltaTime = delta_time;
     _deltaTimeFiltered = glm::mix(delta_time, _deltaTime, _lerpAlpha);
-    _camPos = glm::mix(_camera->_pos, glm::vec3(_camPos), _lerpAlpha);
-    _camEulerAngles = glm::slerp(glm::quat(_camera->_eulerAngles), _camEulerAngles, _lerpAlpha);
+    _camPos = glm::mix(glm::vec3(_camera->getPosition()), glm::vec3(_camPos), _lerpAlpha);
+    _camEulerAngles = glm::slerp(glm::quat(_camera->getEulerAngles()), _camEulerAngles, _lerpAlpha);
     _fpsFactor = _deltaTimeFiltered > 0.f ? glm::mix(1.f / _deltaTimeFiltered / _targetFPS, _fpsFactor, _lerpAlpha) : 1.f;
 
     _reflectiveSurfacesVisible = false;
-    HR(_fxCamPosWorld->SetFloatVector(&_camera->_pos.r));
+    HR(_fxCamPosWorld->SetFloatVector(&_camera->getPosition()[0]));
     HR(_fxMotionBlurStrength->SetFloat(_fpsFactor));
     _viewMatrix = _camera->getViewMatrix(_camPos, glm::eulerAngles(_camEulerAngles));
     _VP = _projectionMatrix * _viewMatrix;
@@ -490,8 +490,8 @@ namespace fly
       view_matrix_light, static_cast<float>(_directionalLight._shadowMap->_size), _settings._smFrustumSplits, _lightVP, true);
     HR(_fxLightVPs->SetMatrixTransposeArray(_lightVP.front().ptr(), 0, static_cast<uint32_t>(_lightVP.size())));
     HR(_fxCascDistances->SetFloatArray(&_settings._smFrustumSplits[0], 0, _directionalLight._shadowMap->_numCascades));
-    HR(_fxCamRightWorld->SetFloatVector(&_camera->_right.r));
-    HR(_fxCamUpWorld->SetFloatVector(&_camera->_up.r));
+    HR(_fxCamRightWorld->SetFloatVector(_camera->getRight().ptr()));
+    HR(_fxCamUpWorld->SetFloatVector(_camera->getUp().ptr()));
     HR(_fxNumCascades->SetInt(_directionalLight._shadowMap->_numCascades));
     _context->ClearDepthStencilView(_depthStencilView, D3D11_CLEAR_FLAG::D3D11_CLEAR_DEPTH | (_settings._ssrEnabled ? D3D11_CLEAR_FLAG::D3D11_CLEAR_STENCIL : 0), 1.f, 0);
     if (!_skyboxRenderable) {
