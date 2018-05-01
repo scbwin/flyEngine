@@ -177,19 +177,13 @@ namespace fly
         _gsp._time = time;
         _gsp._exposure = _gs->getExposure();
         _meshGeometryStorage.bind();
-#if RENDERER_STATS
-        Timing timing;
-#endif
         if (_shadowMapping) {
           renderShadowMap();
         }
-#if RENDERER_STATS
-        _stats._shadowMapRenderCPUMicroSeconds = timing.duration<std::chrono::microseconds>();
-#endif
         _api.setViewport(_viewPortSize);
         _gsp._VP = &_vpScene;
 #if RENDERER_STATS
-        timing.start();
+        Timing timing;
 #endif
         _camera->extractFrustumPlanes(_vpScene);
         std::vector<MeshRenderable*> visible_meshes = _gs->getDetailCulling() ?
@@ -491,6 +485,7 @@ namespace fly
       }
 #if RENDERER_STATS
       _stats._shadowMapGroupingMicroSeconds = timing.duration<std::chrono::microseconds>();
+      timing.start();
 #endif
       _api.setDepthClampEnabled<true>();
       _api.setViewport(Vec2u(_gs->getShadowMapSize()));
@@ -512,6 +507,9 @@ namespace fly
           }
         }
       }
+#if RENDERER_STATS
+      _stats._shadowMapRenderCPUMicroSeconds = timing.duration<std::chrono::microseconds>();
+#endif
       _gsp._worldToLight = light_vps;
       _gsp._smFrustumSplits = _gs->getFrustumSplits();
       _gsp._smBias = _gs->getShadowBias();

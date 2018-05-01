@@ -69,7 +69,7 @@ namespace fly
           }
         }
       }
-      inline void getVisibleElements(std::vector<TPtr>& visible_elements, const Camera& camera) const
+      void getVisibleElements(std::vector<TPtr>& visible_elements, const Camera& camera) const
       {
         auto result = camera.intersectFrustumAABB(_aabbWorld);
           if (result == IntersectionResult::INSIDE) {
@@ -110,7 +110,7 @@ namespace fly
         }
       }
 
-      inline void getVisibleElementsWithDetailCulling(std::vector<TPtr>& visible_elements, const Camera& camera) const
+      void getVisibleElementsWithDetailCulling(std::vector<TPtr>& visible_elements, const Camera& camera) const
       {
         if (!_aabbWorld.isDetail(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
           auto result = camera.intersectFrustumAABB(_aabbWorld);
@@ -158,7 +158,7 @@ namespace fly
           }
         }
       }
-      inline void getAllNodesWithDetailCulling(std::vector<Node*>& nodes, const Camera& camera)
+      void getAllNodesWithDetailCulling(std::vector<Node*>& nodes, const Camera& camera)
       {
         if (!_aabbWorld.isDetail(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
           nodes.push_back(this);
@@ -169,7 +169,7 @@ namespace fly
           }
         }
       }
-      inline void getVisibleNodesWithDetailCulling(std::vector<Node*>& visible_nodes, const Camera& camera)
+      void getVisibleNodesWithDetailCulling(std::vector<Node*>& visible_nodes, const Camera& camera)
       {
         if (!_aabbWorld.isDetail(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
           auto result = camera.intersectFrustumAABB(_aabbWorld);
@@ -191,7 +191,7 @@ namespace fly
           }
         }
       }
-      inline void getVisibleNodes(std::vector<Node*>& visible_nodes, const Camera& camera)
+      void getVisibleNodes(std::vector<Node*>& visible_nodes, const Camera& camera)
       {
         auto result = camera.intersectFrustumAABB(_aabbWorld);
         if (result == IntersectionResult::INSIDE) {
@@ -282,27 +282,27 @@ namespace fly
       _root->getVisibleElementsWithDetailCulling(visible_elements, camera);
       return visible_elements;
     }
-    inline std::vector<TPtr> getAllElements() const
+    std::vector<TPtr> getAllElements() const
     {
       std::vector<TPtr> all_elements;
       _root->getAllElements(all_elements);
       return all_elements;
     }
-    inline std::vector<Node*> getAllNodes()
+    std::vector<Node*> getAllNodes()
     {
       std::vector<Node*> all_nodes;
       _root->getAllNodes(all_nodes);
       return all_nodes;
     }
 
-    inline std::vector<Node*> getVisibleNodesWithDetailCulling(const Camera& camera) const
+    std::vector<Node*> getVisibleNodesWithDetailCulling(const Camera& camera) const
     {
       std::vector<Node*> visible_nodes;
       _root->getVisibleNodesWithDetailCulling(visible_nodes, camera);
       return visible_nodes;
     }
 
-    inline std::vector<Node*> getVisibleNodes(const Camera& camera)
+    std::vector<Node*> getVisibleNodes(const Camera& camera)
     {
       std::vector<Node*> visible_nodes;
       _root->getVisibleNodes(visible_nodes, camera);
