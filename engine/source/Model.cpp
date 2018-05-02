@@ -78,6 +78,7 @@ namespace fly
         base_vertex += m->getVertices().size();
       }
       _meshes.push_back(std::make_shared<Mesh>(vertices, indices, e.first));
+      _meshes.back()->setMaterial(_materials[e.first]);
     }
   }
   AABB * Model::getAABB() const

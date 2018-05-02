@@ -240,7 +240,7 @@ namespace fly
       void getChildBounds(Vec3f& min, Vec3f& max, unsigned char index) const
       {
         auto new_size = getSize() * 0.5f;
-        min = _min + Vec3f(static_cast<float>(index % 3), static_cast<float>((index / 3) % 3), static_cast<float>(index / (3 * 3))) * new_size;
+        min = _min + Vec3f(static_cast<float>(index % 2), static_cast<float>((index / 2) % 2), static_cast<float>(index / 4)) * new_size;
         max = min + new_size;
       }
     };
