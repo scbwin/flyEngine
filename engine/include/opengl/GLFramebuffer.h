@@ -14,6 +14,8 @@ namespace fly
   public:
     GLFramebuffer();
     ~GLFramebuffer();
+    GLFramebuffer(const GLFramebuffer& other) = delete;
+    GLFramebuffer& operator=(const GLFramebuffer& other) = delete;
     void bind() const;
     void texture(GLenum attachment, const GLTexture* tex, GLint level);
     void textureLayer(GLenum attachment, const GLTexture* tex, GLint level, GLint layer);

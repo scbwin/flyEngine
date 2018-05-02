@@ -32,14 +32,16 @@ namespace fly
     {
       VERTEX, FRAGMENT, COMPUTE, GEOMETRY
     };
+    GLShaderProgram();
+    ~GLShaderProgram();
+    GLShaderProgram(const GLShaderProgram& other) = delete;
+    GLShaderProgram& operator=(const GLShaderProgram& other) = delete;
     void create();
     void addShaderFromFile(const std::string& fname, ShaderType type);
     void link();
     void bind() const;
     GLuint id();
     GLint uniformLocation(const std::string& name);
-    GLShaderProgram();
-    ~GLShaderProgram();
     std::vector<std::string> _fnames;
     std::vector<ShaderType> _types;
     std::vector<GLuint> _shaders;

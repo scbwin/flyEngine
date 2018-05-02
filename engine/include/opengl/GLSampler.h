@@ -10,6 +10,8 @@ namespace fly
   public:
     GLSampler();
     ~GLSampler();
+    GLSampler(const GLSampler& other) = delete;
+    GLSampler& operator=(const GLSampler& other) = delete;
     void param(GLenum name, GLfloat param) const;
     void bind(GLuint tex_unit) const;
     void unbind(GLuint tex_unit) const;

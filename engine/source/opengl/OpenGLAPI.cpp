@@ -320,8 +320,8 @@ namespace fly
     GL_CHECK(glDrawBuffers(static_cast<GLsizei>(draw_buffers.size()), draw_buffers.data()));
   }
   OpenGLAPI::MeshGeometryStorage::MeshGeometryStorage() :
-    _vboAppend(std::make_unique<GLAppendBuffer>(GL_ARRAY_BUFFER)),
-    _iboAppend(std::make_unique<GLAppendBuffer>(GL_ELEMENT_ARRAY_BUFFER)),
+    _vboAppend(GL_ARRAY_BUFFER),
+    _iboAppend(GL_ELEMENT_ARRAY_BUFFER),
     _meshDataCache(SoftwareCache<std::shared_ptr<Mesh>, MeshData, const std::shared_ptr<Mesh>&>([this](
       const std::shared_ptr<Mesh>& mesh) {
     MeshData mesh_data;
@@ -329,25 +329,24 @@ namespace fly
     mesh_data._baseVertex = static_cast<GLint>(_baseVertex);
     mesh_data._indices = reinterpret_cast<GLvoid*>(_indices);
     _baseVertex += mesh->getVertices().size();
-    _vboAppend->appendData(mesh->getVertices().data(), mesh->getVertices().size());
+    _vboAppend.appendData(mesh->getVertices().data(), mesh->getVertices().size());
     if (mesh->getVertices().size() - 1 <= static_cast<size_t>(std::numeric_limits<unsigned short>::max())) {
       std::vector<unsigned short> indices;
       for (const auto& i : mesh->getIndices()) {
         indices.push_back(static_cast<unsigned short>(i));
       }
       _indices += indices.size() * sizeof(indices.front());
-      _iboAppend->appendData(indices.data(), indices.size());
+      _iboAppend.appendData(indices.data(), indices.size());
       mesh_data._type = GL_UNSIGNED_SHORT;
     }
     else {
       _indices += mesh->getIndices().size() * sizeof(mesh->getIndices().front());
-      _iboAppend->appendData(mesh->getIndices().data(), mesh->getIndices().size());
+      _iboAppend.appendData(mesh->getIndices().data(), mesh->getIndices().size());
       mesh_data._type = GL_UNSIGNED_INT;
     }
-    _vao = std::make_unique<GLVertexArray>();
-    _vao->bind();
-    _vboAppend->getBuffer()->bind();
-    _iboAppend->getBuffer()->bind();
+    _vao.bind();
+    _vboAppend.getBuffer()->bind();
+    _iboAppend.getBuffer()->bind();
     for (unsigned i = 0; i < 5; i++) {
       GL_CHECK(glEnableVertexAttribArray(i));
     }
@@ -366,7 +365,7 @@ namespace fly
   }
   void OpenGLAPI::MeshGeometryStorage::bind() const
   {
-    _vao->bind();
+    _vao.bind();
   }
   OpenGLAPI::MeshGeometryStorage::MeshData OpenGLAPI::MeshGeometryStorage::addMesh(const std::shared_ptr<Mesh>& mesh)
   {

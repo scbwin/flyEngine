@@ -8,7 +8,23 @@ namespace fly
   }
   GLBuffer::~GLBuffer()
   {
-    GL_CHECK(glDeleteBuffers(1, &_id));
+    if (_id) {
+      GL_CHECK(glDeleteBuffers(1, &_id));
+    }
+  }
+  GLBuffer::GLBuffer(GLBuffer && other)
+  {
+    _id = other._id;
+    other._id = 0;
+  }
+  GLBuffer & GLBuffer::operator=(GLBuffer && other)
+  {
+    if (_id) {
+      GL_CHECK(glDeleteBuffers(1, &_id));
+    }
+    _id = other._id;
+    other._id = 0;
+    return *this;
   }
   void GLBuffer::bind() const
   {

@@ -95,12 +95,7 @@ namespace fly
         intersecting = true;
       }
     }
-    if (intersecting) {
-      return IntersectionResult::INTERSECTING;
-    }
-    else {
-      return IntersectionResult::INSIDE;
-    }
+    return intersecting ? IntersectionResult::INTERSECTING : IntersectionResult::INSIDE;
   }
   float Camera::getDetailCullingThreshold() const
   {

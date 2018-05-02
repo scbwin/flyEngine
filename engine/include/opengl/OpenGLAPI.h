@@ -11,15 +11,15 @@
 #include <functional>
 #include <opengl/GLTexture.h>
 #include <SoftwareCache.h>
+#include <opengl/GLVertexArray.h>
+#include <opengl/GLAppendBuffer.h>
 
 namespace fly
 {
   class GLBuffer;
-  class GLVertexArray;
   class GLShaderProgram;
   class Mesh;
   class AABB;
-  class GLAppendBuffer;
   class GLMaterialSetup;
   class Material;
   class GLFramebuffer;
@@ -120,9 +120,9 @@ namespace fly
       void bind() const;
       MeshData addMesh(const std::shared_ptr<Mesh>& mesh);
     private:
-      std::unique_ptr<GLVertexArray> _vao;
-      std::unique_ptr<GLAppendBuffer> _vboAppend;
-      std::unique_ptr<GLAppendBuffer> _iboAppend;
+      GLVertexArray _vao;
+      GLAppendBuffer _vboAppend;
+      GLAppendBuffer _iboAppend;
       SoftwareCache<std::shared_ptr<Mesh>, MeshData, const std::shared_ptr<Mesh>&> _meshDataCache;
       size_t _indices = 0;
       size_t _baseVertex = 0;

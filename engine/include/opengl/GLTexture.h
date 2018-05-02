@@ -11,6 +11,8 @@ namespace fly
   public:
     GLTexture(GLenum target);
     GLTexture(GLuint id, GLenum target);
+    GLTexture(const GLTexture& other) = delete;
+    GLTexture& operator=(const GLTexture& other) = delete;
     GLuint id() const;
     void bind() const;
     void image2D(GLint level, GLint internal_format, const Vec2u& size, GLint border, GLenum format, GLenum type, const void* data);
