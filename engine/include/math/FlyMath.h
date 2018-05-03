@@ -1,7 +1,7 @@
 #ifndef FLYMATH_H
 #define FLYMATH_H
 
-#include <math/Helpers.h>
+#include <math/MatVecHelpers.h>
 #include <math/FlyMatrix.h>
 
 namespace fly

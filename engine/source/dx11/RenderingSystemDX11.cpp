@@ -482,7 +482,7 @@ namespace fly
     auto view_matrix_light = _directionalLight._dl->getViewMatrix();
     _lightVP.clear();
     _lightVolume = _directionalLight._dl->getViewProjectionMatrices(_aspectRatio, _near, _fov, v_inverse,
-      view_matrix_light, static_cast<float>(_directionalLight._shadowMap->_size), _settings._smFrustumSplits, _lightVP, true);
+      view_matrix_light, static_cast<float>(_directionalLight._shadowMap->_size), _settings._smFrustumSplits, _lightVP, ZNearMapping::ZERO);
     HR(_fxLightVPs->SetMatrixTransposeArray(_lightVP.front().ptr(), 0, static_cast<uint32_t>(_lightVP.size())));
     HR(_fxCascDistances->SetFloatArray(&_settings._smFrustumSplits[0], 0, _directionalLight._shadowMap->_numCascades));
     HR(_fxCamRightWorld->SetFloatVector(_camera->getRight().ptr()));

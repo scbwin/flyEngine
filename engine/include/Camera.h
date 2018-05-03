@@ -42,7 +42,7 @@ namespace fly
     Vec3f _up;
     std::array<Vec4f, 6> _frustumPlanes;
     bool _isActive = true;
-    float _detailCullingThreshold = 0.0125f;
+    float _detailCullingThreshold = 0.000175f;
   };
 }
 

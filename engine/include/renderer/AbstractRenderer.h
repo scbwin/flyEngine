@@ -3,12 +3,10 @@
 
 #include <StaticMeshRenderable.h>
 #include <DynamicMeshRenderable.h>
+#include <math/MathHelpers.h>
 #include <System.h>
 #include <renderer/ProjectionParams.h>
-#include <renderer/RenderParams.h>
 #include <math/FlyMath.h>
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/transform.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <map>
 #include <Model.h>
@@ -260,11 +258,7 @@ namespace fly
     void onResize(const Vec2u& window_size)
     {
       _viewPortSize = window_size;
-      float aspect_ratio = _viewPortSize[0] / _viewPortSize[1];
-      _gsp._projectionMatrix = _api.getZNearMapping() == ZNearMapping::ZERO ?
-        glm::perspectiveRH_ZO(glm::radians(_pp._fieldOfViewDegrees), aspect_ratio, _pp._near, _pp._far) :
-        glm::perspectiveRH_NO(glm::radians(_pp._fieldOfViewDegrees), aspect_ratio, _pp._near, _pp._far);
-
+      _gsp._projectionMatrix = MathHelpers::getProjectionMatrixPerspective(_pp._fieldOfViewDegrees, _viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._far, _api.getZNearMapping());
       compositingChanged(_gs->exposureEnabled(), _gs->depthPrepassEnabled(), _gs->postProcessingEnabled());
     }
     inline void setDefaultRendertarget(unsigned rt) { _defaultRenderTarget = rt; }
@@ -462,7 +456,7 @@ namespace fly
     {
       std::vector<Mat4f> light_vps;
       auto vp_shadow_volume = _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
-        inverse(_gsp._viewMatrix), _directionalLight->getViewMatrix(), static_cast<float>(_gs->getShadowMapSize()), _gs->getFrustumSplits(), light_vps, _api.isDirectX());
+        inverse(_gsp._viewMatrix), _directionalLight->getViewMatrix(), static_cast<float>(_gs->getShadowMapSize()), _gs->getFrustumSplits(), light_vps, _api.getZNearMapping());
 #if RENDERER_STATS
       Timing timing;
 #endif

@@ -41,7 +41,7 @@ namespace fly
     Mat4f _projectionMatrix;
     float _zNear = 1.f;
     float _zFar = 10000.f;
-    float _fov = 60.f;
+    float _fovDegrees = 60.f;
     float _reflectanceStepsize = 0.1f;
     int _raytracingStepsReflections = 32;
     unsigned int _godRaySamples = 48;

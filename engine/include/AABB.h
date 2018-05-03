@@ -15,7 +15,14 @@ namespace fly
     AABB(const AABB& aabb_local, const Mat4f& world_matrix);
     const Vec3f& getMin() const;
     const Vec3f& getMax() const;
-    float size() const;
+    inline Vec3f center() const
+    {
+      return (_bbMin + _bbMax) * 0.5f;
+    }
+    inline float size() const
+    {
+      return distance2(_bbMin, _bbMax);
+    }
     bool contains(const AABB& other) const;
     bool intersects(const AABB& other) const;
     AABB getUnion(const AABB& other) const;
@@ -23,11 +30,11 @@ namespace fly
     std::array<Vec3f, 8> getVertices() const;
     inline bool isDetail(const Vec3f& cam_pos, float error_tresh, float size) const
     {
-      return (size / distance(closestPoint(cam_pos), cam_pos)) < error_tresh;
+      return (size / distance2(closestPoint(cam_pos), cam_pos)) < error_tresh;
     }
     inline bool isDetail(const Vec3f& cam_pos, float error_tresh) const
     {
-      return isDetail(cam_pos, error_tresh, _size);
+      return isDetail(cam_pos, error_tresh, size());
     }
     inline Vec3f closestPoint(const Vec3f& point) const
     {
@@ -83,7 +90,6 @@ namespace fly
     }
   private:
     Vec3f _bbMin, _bbMax;
-    float _size;
   };
 }
 

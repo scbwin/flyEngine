@@ -187,6 +187,13 @@ namespace fly
       return std::sqrt(dot(*this, *this));
     }
     /**
+    * Squared Vector length
+    */
+    inline T length2() const
+    {
+      return dot(*this, *this);
+    }
+    /**
     * Conversion from/to glm
     */
     inline Vector(const glm::vec<Dim, T>& vec)

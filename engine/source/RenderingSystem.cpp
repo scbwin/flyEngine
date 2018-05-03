@@ -140,7 +140,7 @@ namespace fly
     if (width == 0 || height == 0) {
       return glm::mat4();
     }
-    return glm::perspective(glm::radians(_fov), static_cast<float>(width) / static_cast<float>(height), _zNear, _zFar);
+    return glm::perspective(glm::radians(_fovDegrees), static_cast<float>(width) / static_cast<float>(height), _zNear, _zFar);
   }
   bool RenderingSystem::isBloomEnabled()
   {

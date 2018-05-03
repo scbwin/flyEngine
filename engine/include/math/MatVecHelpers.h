@@ -1,11 +1,12 @@
-#ifndef HELPERS_H
-#define HELPERS_H
+#ifndef MATVECHELPERS_H
+#define MATVECHELPERS_H
 
 #include <math/FlyVector.h>
 #include <math/FlyMatrix.h>
 #include <math/Meta.h>
 #include <algorithm>
 #include <glm/glm.hpp>
+#include <array>
 
 namespace fly
 {
@@ -45,6 +46,15 @@ namespace fly
   inline T distance(const Vector<Dim, T>& a, const Vector<Dim, T>& b)
   {
     return (b - a).length();
+  }
+
+  /**
+  * Squared distance, doesn't involve expensive square root evaluation
+  */
+  template<unsigned Dim, typename T>
+  inline T distance2(const Vector<Dim, T>& a, const Vector<Dim, T>& b)
+  {
+    return (b - a).length2();
   }
 
   template<unsigned Dim, typename T>
@@ -131,4 +141,4 @@ namespace fly
   }
 }
 
-#endif // !HELPERS_H
+#endif

@@ -71,17 +71,13 @@ namespace fly
   }
   IntersectionResult Camera::intersectPlaneAABB(const Vec4f & plane, const AABB & aabb) const
   {
-    auto c = (aabb.getMin() + aabb.getMax()) * 0.5f;
     auto h = (aabb.getMax() - aabb.getMin()) * 0.5f;
     auto e = dot(h, abs(plane.xyz()));
-    auto s = dot(Vec4f(c, 1.f), plane);
+    auto s = dot(Vec4f(aabb.center(), 1.f), plane);
     if (s - e > 0) {
       return IntersectionResult::OUTSIDE;
     }
-    if (s + e < 0) {
-      return IntersectionResult::INSIDE;
-    }
-    return IntersectionResult::INTERSECTING;
+    return s + e < 0 ? IntersectionResult::INSIDE : IntersectionResult::INTERSECTING;
   }
   IntersectionResult Camera::intersectFrustumAABB(const AABB & aabb) const
   {

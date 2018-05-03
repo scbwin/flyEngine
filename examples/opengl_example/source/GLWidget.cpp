@@ -666,9 +666,9 @@ void GLWidget::initGui()
   fov_layout->addWidget(fov_label);
   QSlider* fov_slider = new QSlider(Qt::Horizontal);
   fov_slider->setRange(20, 180);
-  fov_slider->setValue(_rs->_fov);
+  fov_slider->setValue(_rs->_fovDegrees);
   QObject::connect(fov_slider, &QSlider::valueChanged, this, [this](int value) {
-    _rs->_fov = value;
+    _rs->_fovDegrees = value;
   });
   fov_layout->addWidget(fov_slider);
   gui_left_layout->addWidget(fov_widget);
