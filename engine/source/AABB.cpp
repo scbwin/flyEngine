@@ -14,8 +14,8 @@ namespace fly
     _bbMin = Vec3f(std::numeric_limits<float>::max());
     _bbMax = Vec3f(std::numeric_limits<float>::lowest());
     for (unsigned i = 0; i < 8; i++) {
-      _bbMin = minimum(_bbMin, (world_matrix * Vec4f(getVertex(i), 1.f)).xyz());
-      _bbMax = maximum(_bbMax, (world_matrix * Vec4f(getVertex(i), 1.f)).xyz());
+      _bbMin = minimum(_bbMin, (world_matrix * Vec4f(aabb_local.getVertex(i), 1.f)).xyz());
+      _bbMax = maximum(_bbMax, (world_matrix * Vec4f(aabb_local.getVertex(i), 1.f)).xyz());
     }
   //  _size = distance2(_bbMin, _bbMax);
    // _center = (_bbMin + _bbMax) * 0.5f;
