@@ -47,36 +47,38 @@ namespace fly
     };
     const RendererStats& getStats() const { return _stats; }
 #endif
-    AbstractRenderer(const GraphicsSettings* gs) : _api(), _gs(gs)
+    AbstractRenderer(GraphicsSettings const * const gs) : _api(), _gs(gs)
     {
       _pp._near = 0.1f;
       _pp._far = 10000.f;
       _pp._fieldOfViewDegrees = 45.f;
-      normalMappingChanged(gs->getNormalMapping(), gs->getParallaxMapping(), gs->getReliefMapping());
-      shadowsChanged(gs->getShadows(), gs->getShadowsPCF(), gs->getShadowBias(), gs->getFrustumSplits());
-      compositingChanged(gs->exposureEnabled(), gs->depthPrepassEnabled(), gs->postProcessingEnabled());
-      anisotropyChanged(gs->getAnisotropy());
-      cameraLerpingChanged(gs->getCameraLerping(), gs->getCameraLerpAlpha());
+      normalMappingChanged(gs);
+      shadowsChanged(gs);
+      compositingChanged(gs);
+      anisotropyChanged(gs);
+      cameraLerpingChanged(gs);
       _gsp._camPosworld = Vec3f(0.f);
     }
     virtual ~AbstractRenderer() {}
-    virtual void normalMappingChanged(bool normal_mapping, bool parallax_mapping, bool relief_mapping) override
+    virtual void normalMappingChanged(GraphicsSettings const * const gs) override
     {
       graphicsSettingsChanged();
     }
-    virtual void shadowsChanged(bool shadows, bool shadows_pcf, float bias, const std::vector<float>& frustum_splits) override
+    virtual void shadowsChanged(GraphicsSettings const * const gs) override
     {
-      _shadowMapping = shadows || shadows_pcf;
+      _shadowMapping = gs->getShadows() || gs->getShadowsPCF();
       graphicsSettingsChanged();
-      shadowMapSizeChanged(_gs->getShadowMapSize());
+      _shadowMap = _shadowMapping ? _api.createShadowmap(*_gs) : nullptr;
     }
-    virtual void shadowMapSizeChanged(unsigned size) override
+    virtual void shadowMapSizeChanged(GraphicsSettings const * const gs) override
     {
-      _shadowMap = _shadowMapping ? _api.createShadowmap(size, *_gs) : nullptr;
+      if (_shadowMap) {
+        _api.resizeShadowmap(_shadowMap.get(), *_gs);
+      }
     }
-    virtual void compositingChanged(bool exposure_enabled, bool depth_pre_pass, bool post_processing) override
+    virtual void compositingChanged(GraphicsSettings const * const gs) override
     {
-      _offScreenRendering = depth_pre_pass || post_processing;
+      _offScreenRendering = gs->depthPrepassEnabled() || gs->postProcessingEnabled();
       if (_offScreenRendering) {
         _lightingBuffer = _api.createRenderToTexture(_viewPortSize);
         _depthBuffer = _api.createDepthbuffer(_viewPortSize);
@@ -85,24 +87,24 @@ namespace fly
         _lightingBuffer = nullptr;
         _depthBuffer = nullptr;
       }
-      if (post_processing) {
+      if (gs->postProcessingEnabled()) {
         _api.createCompositeShaderFile(*_gs);
       }
     }
-    virtual void windAnimationsChanged(bool wind_animations) override
+    virtual void windAnimationsChanged(GraphicsSettings const * const gs) override
     {
       graphicsSettingsChanged();
     }
-    virtual void cameraLerpingChanged(bool enabled, float alpha) override
+    virtual void cameraLerpingChanged(GraphicsSettings const * const gs) override
     {
-      if (enabled) {
+      if (gs->getCameraLerping()) {
         _acc = 0.f;
-        _cameraLerpAlpha = alpha;
+        _cameraLerpAlpha = gs->getCameraLerpAlpha();
       }
     }
-    virtual void anisotropyChanged(unsigned anisotropy) override
+    virtual void anisotropyChanged(GraphicsSettings const * const gs) override
     {
-      _api.setAnisotropy(anisotropy);
+      _api.setAnisotropy(gs->getAnisotropy());
     }
     virtual void onComponentsChanged(Entity* entity) override
     {
@@ -259,7 +261,7 @@ namespace fly
     {
       _viewPortSize = window_size;
       _gsp._projectionMatrix = MathHelpers::getProjectionMatrixPerspective(_pp._fieldOfViewDegrees, _viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._far, _api.getZNearMapping());
-      compositingChanged(_gs->exposureEnabled(), _gs->depthPrepassEnabled(), _gs->postProcessingEnabled());
+      compositingChanged(_gs);
     }
     inline void setDefaultRendertarget(unsigned rt) { _defaultRenderTarget = rt; }
     API* getApi() { return &_api; }
@@ -276,7 +278,7 @@ namespace fly
     std::shared_ptr<DirectionalLight> _directionalLight;
     Vec3f _sceneMin = Vec3f(std::numeric_limits<float>::max());
     Vec3f _sceneMax = Vec3f(std::numeric_limits<float>::lowest());
-    const GraphicsSettings* _gs;
+    GraphicsSettings const * const _gs;
     std::unique_ptr<typename API::RTT> _lightingBuffer;
     std::unique_ptr<typename API::Depthbuffer> _depthBuffer;
     std::unique_ptr<typename API::Shadowmap> _shadowMap;

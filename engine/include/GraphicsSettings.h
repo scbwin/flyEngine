@@ -15,13 +15,13 @@ namespace fly
     {
     public:
       virtual ~Listener() = default;
-      virtual void normalMappingChanged(bool normal_mapping, bool parallax_mapping, bool relief_mapping) = 0;
-      virtual void shadowsChanged(bool shadows, bool pcf, float bias, const std::vector<float>& frustum_splits) = 0;
-      virtual void shadowMapSizeChanged(unsigned size) = 0;
-      virtual void compositingChanged(bool exposure_enabled, bool depth_pre_pass, bool post_processing) = 0;
-      virtual void windAnimationsChanged(bool wind_animations) = 0;
-      virtual void anisotropyChanged(unsigned anisotropy) = 0;
-      virtual void cameraLerpingChanged(bool enabled, float alpha) = 0;
+      virtual void normalMappingChanged(GraphicsSettings const * const gs) = 0;
+      virtual void shadowsChanged(GraphicsSettings const * const gs) = 0;
+      virtual void shadowMapSizeChanged(GraphicsSettings const * const gs) = 0;
+      virtual void compositingChanged(GraphicsSettings const * const gs) = 0;
+      virtual void windAnimationsChanged(GraphicsSettings const * const gs) = 0;
+      virtual void anisotropyChanged(GraphicsSettings const * const gs) = 0;
+      virtual void cameraLerpingChanged(GraphicsSettings const * const gs) = 0;
     };
     void addListener(const std::shared_ptr<Listener>& listener);
     void setNormalMapping(bool normal_mapping);

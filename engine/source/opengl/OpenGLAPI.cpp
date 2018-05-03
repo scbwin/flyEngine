@@ -242,7 +242,7 @@ namespace fly
     tex->image2D(0, GL_DEPTH_COMPONENT24, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
     return tex;
   }
-  std::unique_ptr<OpenGLAPI::Shadowmap> OpenGLAPI::createShadowmap(const Vec2u & size, const GraphicsSettings& settings)
+  std::unique_ptr<OpenGLAPI::Shadowmap> OpenGLAPI::createShadowmap(const GraphicsSettings& settings)
   {
     auto tex = std::make_unique<GLTexture>(GL_TEXTURE_2D_ARRAY);
     tex->bind();
@@ -257,8 +257,12 @@ namespace fly
       tex->param(GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
       tex->param(GL_TEXTURE_COMPARE_FUNC, GL_GREATER);
     }
-    tex->image3D(0, GL_DEPTH_COMPONENT24, Vec3u(size, static_cast<unsigned>(settings.getFrustumSplits().size())), 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    resizeShadowmap(tex.get(), settings);
     return tex;
+  }
+  void OpenGLAPI::resizeShadowmap(Shadowmap * const shadow_map, const GraphicsSettings& settings)
+  {
+    shadow_map->image3D(0, GL_DEPTH_COMPONENT24, Vec3u(Vec2u(settings.getShadowMapSize()), static_cast<unsigned>(settings.getFrustumSplits().size())), 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
   }
   void OpenGLAPI::recreateShadersAndMaterials(const GraphicsSettings& settings)
   {

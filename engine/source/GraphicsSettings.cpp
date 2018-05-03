@@ -59,7 +59,7 @@ namespace fly
   {
     _shadowMapSize = std::max(1u, size);
     notifiyListeners([this](const std::shared_ptr<Listener>& l) {
-      l->shadowMapSizeChanged(getShadowMapSize());
+      l->shadowMapSizeChanged(this);
     });
   }
   bool GraphicsSettings::getShadows() const
@@ -120,7 +120,7 @@ namespace fly
   {
     _windAnimations = enabled;
     notifiyListeners([this](const std::shared_ptr<Listener>& l) {
-      l->windAnimationsChanged(getWindAnimations());
+      l->windAnimationsChanged(this);
     });
   }
   bool GraphicsSettings::getDebugQuadtreeNodeAABBs() const
@@ -147,7 +147,7 @@ namespace fly
   {
     _anisotropy = anisotropy;
     notifiyListeners([this](const std::shared_ptr<Listener>& l) {
-      l->anisotropyChanged(getAnisotropy());
+      l->anisotropyChanged(this);
     });
   }
   bool GraphicsSettings::getCameraLerping() const
@@ -162,7 +162,7 @@ namespace fly
   {
     _cameraLerpAlpha = glm::clamp(alpha, 0.f, 0.99f);
     notifiyListeners([this](const std::shared_ptr<Listener>& l) {
-      l->cameraLerpingChanged(getCameraLerping(), getCameraLerpAlpha());
+      l->cameraLerpingChanged(this);
     });
   }
   bool GraphicsSettings::getDetailCulling() const
@@ -177,7 +177,7 @@ namespace fly
   {
     _cameraLerping = enable;
     notifiyListeners([this](const std::shared_ptr<Listener>& l) {
-      l->cameraLerpingChanged(getCameraLerping(), getCameraLerpAlpha());
+      l->cameraLerpingChanged(this);
     });
   }
   void GraphicsSettings::setExposureEnabled(bool exposure)
@@ -188,19 +188,19 @@ namespace fly
   void GraphicsSettings::notifiyNormalMappingChanged()
   {
     notifiyListeners([this](const std::shared_ptr<Listener>& l) {
-      l->normalMappingChanged(getNormalMapping(), getParallaxMapping(), getReliefMapping());
+      l->normalMappingChanged(this);
     });
   }
   void GraphicsSettings::notifyShadowsChanged()
   {
     notifiyListeners([this](const std::shared_ptr<Listener>& l) {
-      l->shadowsChanged(getShadows(), getShadowsPCF(), getShadowBias(), getFrustumSplits());
+      l->shadowsChanged(this);
     });
   }
   void GraphicsSettings::notifyCompositingChanged()
   {
     notifiyListeners([this](const std::shared_ptr<Listener>& l) {
-      l->compositingChanged(exposureEnabled(), depthPrepassEnabled(), postProcessingEnabled());
+      l->compositingChanged(this);
     });
   }
   void GraphicsSettings::notifiyListeners(const std::function<void(const std::shared_ptr<Listener>&)>& notify_func)

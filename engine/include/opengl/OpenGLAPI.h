@@ -209,7 +209,8 @@ namespace fly
     std::shared_ptr<ShaderDesc> createShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, unsigned flags);
     std::unique_ptr<RTT> createRenderToTexture(const Vec2u& size);
     std::unique_ptr<Depthbuffer> createDepthbuffer(const Vec2u& size);
-    std::unique_ptr<Shadowmap> createShadowmap(const Vec2u& size, const GraphicsSettings& settings);
+    std::unique_ptr<Shadowmap> createShadowmap(const GraphicsSettings& settings);
+    void resizeShadowmap(Shadowmap* const shadow_map, const GraphicsSettings& settings);
     void recreateShadersAndMaterials(const GraphicsSettings& gs);
     void createCompositeShaderFile(const GraphicsSettings& gs);
     std::vector<std::shared_ptr<Material>> getAllMaterials();
