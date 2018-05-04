@@ -9,12 +9,13 @@ namespace fly
   class OpenGLAPI;
   class Camera;
   class CameraController;
+  class Entity;
 }
 
 class AntWrapper
 {
 public:
-  AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, fly::Camera* camera, fly::CameraController* camera_controller);
+  AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, fly::Camera* camera, fly::CameraController* camera_controller, fly::Entity* skydome);
 private:
   static void cbSetShadows(const void* value, void* client_data);
   static void cbGetShadows(void* value, void* client_data);
@@ -49,6 +50,8 @@ private:
   static void getDetailCullingThreshold(void* value, void* client_data);
   static void setCamSpeed(const void* value, void* client_data);
   static void getCamSpeed(void* value, void* client_data);
+  static void setSkydome(const void* value, void* client_data);
+  static void getSkydome(void* value, void* client_data);
   template<typename T> static T* cast(void* data){return reinterpret_cast<T*>(data);}
   template<typename T> static const T* cast(const void* data) { return reinterpret_cast<const T*>(data); }
 };

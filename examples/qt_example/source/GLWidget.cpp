@@ -61,7 +61,7 @@ void GLWidget::initializeGL()
   TwAddButton(_bar, _shadowMapGroupingUName, nullptr, nullptr, nullptr);
 #endif
   auto settings_bar = TwNewBar("Settings");
-  AntWrapper(settings_bar, &_graphicsSettings, _renderer->getApi(), _camController->getCamera().get(), _camController.get());
+  AntWrapper(settings_bar, &_graphicsSettings, _renderer->getApi(), _camController->getCamera().get(), _camController.get(), _skydome.get());
   TwSetTopBar(_bar);
 }
 
@@ -286,8 +286,9 @@ void GLWidget::initGame()
   auto sphere_model = importer->loadModel("assets/sphere.obj");
 #endif
 #if SKYDOME
-  auto skydome_entity = _engine->getEntityManager()->createEntity();
-  skydome_entity->addComponent(std::make_shared<fly::SkydomeRenderable>(sphere_model->getMeshes().front()));
+  _skydome = _engine->getEntityManager()->createEntity();
+  _skydome->addComponent(sphere_model);
+  _skydome->addComponent(std::make_shared<fly::SkydomeRenderable>(sphere_model->getMeshes().front()));
 #endif
 #if PHYSICS
   _graphicsSettings.setDebugObjectAABBs(true);

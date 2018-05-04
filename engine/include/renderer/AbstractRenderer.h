@@ -112,7 +112,7 @@ namespace fly
       auto dl = entity->getComponent<DirectionalLight>();
       auto mr = entity->getComponent<fly::StaticMeshRenderable>();
       auto dmr = entity->getComponent<fly::DynamicMeshRenderable>();
-      auto sbr = entity->getComponent<fly::SkydomeRenderable>();
+      auto sdr = entity->getComponent<fly::SkydomeRenderable>();
       if (mr) {
         _staticMeshRenderables[entity] = mr->hasWind() ? 
           std::make_shared<StaticMeshRenderableWind>(mr, _api.createMaterial(mr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(mr->getMesh())) :
@@ -139,8 +139,11 @@ namespace fly
       if (dl) {
         _directionalLight = dl;
       }
-      if (sbr) {
-        _skydomeRenderable = std::make_shared<SkydomeRenderable>(_meshGeometryStorage.addMesh(sbr->getMesh()), _api.getSkyboxShaderDesc().get());
+      if (sdr) {
+        _skydomeRenderable = std::make_shared<SkydomeRenderable>(entity, _meshGeometryStorage.addMesh(sdr->getMesh()), _api.getSkyboxShaderDesc().get());
+      }
+      else if (_skydomeRenderable && _skydomeRenderable->_entity == entity) {
+        _skydomeRenderable = nullptr;
       }
     }
     virtual void update(float time, float delta_time) override
@@ -314,8 +317,10 @@ namespace fly
     };
     struct SkydomeRenderable : public MeshRenderable
     {
-      SkydomeRenderable(const typename API::MeshGeometryStorage::MeshData& mesh_data, typename API::ShaderDesc* shader_desc) : 
-        MeshRenderable(nullptr, mesh_data)
+      Entity* _entity;
+      SkydomeRenderable(Entity* entity, const typename API::MeshGeometryStorage::MeshData& mesh_data, typename API::ShaderDesc* shader_desc) : 
+        MeshRenderable(nullptr, mesh_data),
+        _entity(entity)
       {
         _shaderDesc = shader_desc;
       }
@@ -398,7 +403,7 @@ namespace fly
     typename API::MeshGeometryStorage _meshGeometryStorage;
     std::map<Entity*, std::shared_ptr<StaticMeshRenderable>> _staticMeshRenderables;
     std::map<Entity*, std::shared_ptr<DynamicMeshRenderable>> _dynamicMeshRenderables;
-    std::shared_ptr<MeshRenderable> _skydomeRenderable;
+    std::shared_ptr<SkydomeRenderable> _skydomeRenderable;
     using BVH = Quadtree<MeshRenderable>;
     std::unique_ptr<BVH> _bvh;
     void renderQuadtreeAABBs()

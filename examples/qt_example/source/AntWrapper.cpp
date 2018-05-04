@@ -3,8 +3,11 @@
 #include <opengl/OpenGLAPI.h>
 #include <Camera.h>
 #include <CameraController.h>
+#include <Entity.h>
+#include <SkydomeRenderable.h>
+#include <Model.h>
 
-AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, fly::Camera* camera, fly::CameraController* camera_controller)
+AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, fly::Camera* camera, fly::CameraController* camera_controller, fly::Entity* skydome)
 {
   TwAddVarCB(bar, "Shadows", TwType::TW_TYPE_BOOLCPP, cbSetShadows, cbGetShadows, gs, nullptr);
   TwAddVarCB(bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, cbSetPCF, cbGetPCF, gs, nullptr);
@@ -22,6 +25,7 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "Detail culling", TwType::TW_TYPE_BOOLCPP, setDetailCulling, getDetailCulling, gs, nullptr);
   TwAddVarCB(bar, "Detail culling threshold", TwType::TW_TYPE_FLOAT, setDetailCullingThreshold, getDetailCullingThreshold, camera, "step=0.000005f");
   TwAddVarCB(bar, "Camera speed", TwType::TW_TYPE_FLOAT, setCamSpeed, getCamSpeed, camera_controller, "step=0.1f");
+  TwAddVarCB(bar, "Skydome", TwType::TW_TYPE_BOOLCPP, setSkydome, getSkydome, skydome, nullptr);
   TwAddButton(bar, "Reload shaders", cbReloadShaders, api, nullptr);
 }
 
@@ -188,4 +192,20 @@ void AntWrapper::setCamSpeed(const void * value, void * client_data)
 void AntWrapper::getCamSpeed(void * value, void * client_data)
 {
   *cast<float>(value) = cast<fly::CameraController>(client_data)->getSpeed();
+}
+
+void AntWrapper::setSkydome(const void * value, void * client_data)
+{
+  fly::Entity* e = cast<fly::Entity>(client_data);
+  if (*cast<bool>(value)) {
+    e->addComponent(std::make_shared<fly::SkydomeRenderable>(e->getComponent<fly::Model>()->getMeshes().front()));
+  }
+  else {
+    e->removeComponent<fly::SkydomeRenderable>();
+  }
+}
+
+void AntWrapper::getSkydome(void * value, void * client_data)
+{
+  *cast<bool>(value) = cast<fly::Entity>(client_data)->getComponent<fly::SkydomeRenderable>() != nullptr;
 }

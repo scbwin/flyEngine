@@ -4,11 +4,11 @@
 #include <map>
 #include <memory>
 #include <typeindex>
+#include <EntityManager.h>
 
 namespace fly
 {
   class Component;
-  class EntityManager;
 
   class Entity
   {

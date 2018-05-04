@@ -27,6 +27,7 @@ namespace fly
   class DirectionalLight;
   class Model;
   class Bullet3PhysicsSystem;
+  class Entity;
 }
 
 struct CTwBar;
@@ -62,6 +63,7 @@ private:
   std::unique_ptr<fly::GameTimer> _gameTimer;
   std::unique_ptr<fly::CameraController> _camController;
   std::shared_ptr<fly::DirectionalLight> _dl;
+  std::shared_ptr<fly::Entity> _skydome;
   std::vector<std::shared_ptr<btTriangleMesh>> _triangleMeshes;
   void initGame();
   float _measure = 0.f;
