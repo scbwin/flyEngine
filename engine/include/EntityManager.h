@@ -22,10 +22,8 @@ namespace fly
     void addListener(const std::weak_ptr<System>& listener);
     void onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component);
     void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component);
-    void notifyListeners(Entity* entity, const std::function<void(const std::shared_ptr<System>&)>& notify_func);
-   // std::vector<Entity*> getEntities() const;
+    void notifyListeners(const std::function<void(const std::shared_ptr<System>&)>& notify_func);
   private:
-   // std::map<Entity*, std::shared_ptr<Entity>> _entities;
     std::set<std::shared_ptr<Entity>> _entities;
     std::set<std::weak_ptr<System>, std::owner_less<std::weak_ptr<System>>> _listeners;
  };

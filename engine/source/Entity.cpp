@@ -5,7 +5,7 @@
 
 namespace fly
 {
-  Entity::Entity(EntityManager* em) : _em(em)
+  Entity::Entity(EntityManager* const em) : _em(em)
   {
   }
   Entity::~Entity()

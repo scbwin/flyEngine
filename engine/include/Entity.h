@@ -13,7 +13,7 @@ namespace fly
   class Entity
   {
   public:
-    Entity(EntityManager* em);
+    Entity(EntityManager * const em);
     virtual ~Entity();
     template <typename T>
     void addComponent(const std::shared_ptr<T>& component)
@@ -41,7 +41,7 @@ namespace fly
     }
   private:
     std::map<std::type_index, std::shared_ptr<Component>> _components;
-    EntityManager* _em;
+    EntityManager* const _em;
   };
 }
 

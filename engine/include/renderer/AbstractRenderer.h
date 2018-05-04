@@ -179,8 +179,8 @@ namespace fly
         _api.setCullMode<API::CullMode::BACK>();
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
         _api.setDepthWriteEnabled<true>();
-        _gsp._lightPosWorld = _directionalLight->_pos;
-        _gsp._lightIntensity = _directionalLight->getIntensity();
+        _gsp._lightPosWorld = &_directionalLight->_pos;
+        _gsp._lightIntensity = &_directionalLight->getIntensity();
         _gsp._time = time;
         _gsp._exposure = _gs->getExposure();
         _meshGeometryStorage.bind();
@@ -309,8 +309,8 @@ namespace fly
       typename API::ShaderDesc* _shaderDescDepth;
       virtual void render(const API& api) = 0;
       virtual void renderDepth(const API& api) = 0;
-      MeshRenderable(const std::shared_ptr<typename API::MaterialDesc>& material_desc, const typename API::MeshGeometryStorage::MeshData& mesh_data) : 
-      _materialDesc(material_desc), _meshData(mesh_data)
+      MeshRenderable(const std::shared_ptr<typename API::MaterialDesc>& material_desc, const typename API::MeshGeometryStorage::MeshData& mesh_data) :
+        _materialDesc(material_desc), _meshData(mesh_data)
       {}
       virtual void fetchShaderDescs()
       {
@@ -321,7 +321,7 @@ namespace fly
     };
     struct SkydomeRenderable : public MeshRenderable
     {
-      SkydomeRenderable(const typename API::MeshGeometryStorage::MeshData& mesh_data, typename API::ShaderDesc* shader_desc) : 
+      SkydomeRenderable(const typename API::MeshGeometryStorage::MeshData& mesh_data, typename API::ShaderDesc* shader_desc) :
         MeshRenderable(nullptr, mesh_data)
       {
         _shaderDesc = shader_desc;
@@ -361,7 +361,7 @@ namespace fly
     struct StaticMeshRenderable : public MeshRenderable
     {
       std::shared_ptr<fly::StaticMeshRenderable> _smr;
-      StaticMeshRenderable(const std::shared_ptr<fly::StaticMeshRenderable>& smr, 
+      StaticMeshRenderable(const std::shared_ptr<fly::StaticMeshRenderable>& smr,
         const std::shared_ptr<typename API::MaterialDesc>& material_desc, const typename API::MeshGeometryStorage::MeshData& mesh_data) :
         MeshRenderable(material_desc, mesh_data),
         _smr(smr)
@@ -410,8 +410,8 @@ namespace fly
     std::unique_ptr<BVH> _bvh;
     void renderQuadtreeAABBs()
     {
-      auto visible_nodes = _gs->getDetailCulling() 
-        ? _bvh->getVisibleNodesWithDetailCulling(*_camera) 
+      auto visible_nodes = _gs->getDetailCulling()
+        ? _bvh->getVisibleNodesWithDetailCulling(*_camera)
         : _bvh->getVisibleNodes(*_camera);
       if (visible_nodes.size()) {
         _api.setDepthWriteEnabled<true>();
@@ -463,9 +463,8 @@ namespace fly
     }
     void renderShadowMap()
     {
-      std::vector<Mat4f> light_vps;
       auto vp_shadow_volume = _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
-        inverse(_gsp._viewMatrix), _directionalLight->getViewMatrix(), static_cast<float>(_gs->getShadowMapSize()), _gs->getFrustumSplits(), light_vps, _api.getZNearMapping());
+        inverse(_gsp._viewMatrix), _directionalLight->getViewMatrix(), static_cast<float>(_gs->getShadowMapSize()), _gs->getFrustumSplits(), _gsp._worldToLight, _api.getZNearMapping());
 #if RENDERER_STATS
       Timing timing;
 #endif
@@ -495,7 +494,7 @@ namespace fly
       for (unsigned i = 0; i < _gs->getFrustumSplits().size(); i++) {
         _api.setRendertargets({}, _shadowMap.get(), i);
         _api.clearRendertarget<false, true, false>(Vec4f());
-        _gsp._VP = &light_vps[i];
+        _gsp._VP = &_gsp._worldToLight[i];
         for (const auto& e : sm_display_list) {
           _api.setupShaderDesc(*e.first, _gsp);
           for (const auto& e1 : e.second) {
@@ -504,7 +503,7 @@ namespace fly
               smr->renderDepth(_api);
 #if RENDERER_STATS
               _stats._renderedTrianglesShadow += smr->_meshData.numTriangles();
-              _stats._renderedMeshesShadow ++;
+              _stats._renderedMeshesShadow++;
 #endif
             }
           }
@@ -513,8 +512,7 @@ namespace fly
 #if RENDERER_STATS
       _stats._shadowMapRenderCPUMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
-      _gsp._worldToLight = light_vps;
-      _gsp._smFrustumSplits = _gs->getFrustumSplits();
+      _gsp._smFrustumSplits = &_gs->getFrustumSplits();
       _gsp._smBias = _gs->getShadowBias();
       _api.setDepthClampEnabled<false>();
     }

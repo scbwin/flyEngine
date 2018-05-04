@@ -493,8 +493,8 @@ namespace fly
     }
     if (flags & ShaderSetupFlags::LIGHTING) {
       _setupFuncs.push_back([this](const GlobalShaderParams& params) {
-        setVector(_shader->uniformLocation(GLSLShaderGenerator::lightPositionWorld()), params._lightPosWorld);
-        setVector(_shader->uniformLocation(GLSLShaderGenerator::lightIntensity()), params._lightIntensity);
+        setVector(_shader->uniformLocation(GLSLShaderGenerator::lightPositionWorld()), *params._lightPosWorld);
+        setVector(_shader->uniformLocation(GLSLShaderGenerator::lightIntensity()), *params._lightIntensity);
         setVector(_shader->uniformLocation(GLSLShaderGenerator::cameraPositionWorld()), params._camPosworld);
       });
     }
@@ -503,7 +503,7 @@ namespace fly
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::shadowSampler()), shadowTexUnit());
         setMatrixArray(_shader->uniformLocation(GLSLShaderGenerator::worldToLightMatrices()), params._worldToLight.front(), static_cast<unsigned>(params._worldToLight.size()));
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::numfrustumSplits()), static_cast<int>(params._worldToLight.size()));
-        setScalarArray(_shader->uniformLocation(GLSLShaderGenerator::frustumSplits()), params._smFrustumSplits.front(), static_cast<unsigned>(params._smFrustumSplits.size()));
+        setScalarArray(_shader->uniformLocation(GLSLShaderGenerator::frustumSplits()), params._smFrustumSplits->front(), static_cast<unsigned>(params._smFrustumSplits->size()));
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::shadowMapBias()), params._smBias);
       });
     }

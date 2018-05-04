@@ -67,7 +67,7 @@ void GLWidget::initializeGL()
 
 void GLWidget::resizeGL(int width, int height)
 {
-  _renderer->onResize(fly::Vec2i( width, height ));
+  _renderer->onResize(fly::Vec2i(width, height));
   TwWindowSize(width, height);
 }
 
@@ -143,7 +143,7 @@ void GLWidget::mousePressEvent(QMouseEvent * e)
 {
   if (e->button() == Qt::MouseButton::LeftButton) {
     if (!TwMouseButton(TwMouseAction::TW_MOUSE_PRESSED, TwMouseButtonID::TW_MOUSE_LEFT)) {
-      _camController->mousePress(fly::Vec3f({ static_cast<float>(e->localPos().x()), static_cast<float>(e->localPos().y()), 0.f }));
+      _camController->mousePress(fly::Vec3f(static_cast<float>(e->localPos().x()), static_cast<float>(e->localPos().y()), 0.f));
     }
   }
 }
@@ -151,7 +151,7 @@ void GLWidget::mousePressEvent(QMouseEvent * e)
 void GLWidget::mouseMoveEvent(QMouseEvent * e)
 {
   if (_camController->isPressed()) {
-    _camController->mouseMove(fly::Vec3f({ static_cast<float>(e->localPos().x()), static_cast<float>(e->localPos().y()), 0.f }));
+    _camController->mouseMove(fly::Vec3f(static_cast<float>(e->localPos().x()), static_cast<float>(e->localPos().y()), 0.f));
   }
   else {
     TwMouseMotion(e->localPos().x(), e->localPos().y());
@@ -227,7 +227,7 @@ void GLWidget::initGame()
     for (int y = 0; y < NUM_TOWERS; y++) {
       auto tower = _engine->getEntityManager()->createEntity();
       float scale = scale_dist(gen);
-      tower->addComponent(std::make_shared<fly::StaticMeshRenderable>(tower_model->getMeshes().front(), tower_model->getMeshes().front()->getMaterial() , fly::Transform(fly::Vec3f(x * 350.f, scale, y * 350.f), fly::Vec3f(scale / 3.f, scale, scale / 3.f)).getModelMatrix(), false));
+      tower->addComponent(std::make_shared<fly::StaticMeshRenderable>(tower_model->getMeshes().front(), tower_model->getMeshes().front()->getMaterial(), fly::Transform(fly::Vec3f(x * 350.f, scale, y * 350.f), fly::Vec3f(scale / 3.f, scale, scale / 3.f)).getModelMatrix(), false));
       towers.push_back(tower->getComponent<fly::StaticMeshRenderable>());
     }
   }
@@ -336,7 +336,7 @@ void GLWidget::initGame()
   auto dl_entity = _engine->getEntityManager()->createEntity();
   _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(-1000.f, 2000.f, -1000.f), glm::vec3(-500.f, 0.f, -500.f));
   dl_entity->addComponent(_dl);
-  
+
   _camController = std::make_unique<fly::CameraController>(cam_entity->getComponent<fly::Camera>(), 20.f);
 #if SPONZA_MANY
   _camController->setSpeed(100.f);

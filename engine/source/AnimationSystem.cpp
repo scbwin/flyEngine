@@ -14,25 +14,21 @@ namespace fly
   }
   void AnimationSystem::onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component)
   {
-    if (entity->getComponent<Animation>() == component) {
-      _entities.insert(entity);
-    }
+    addIfInterested(entity, component, _animations);
   }
   void AnimationSystem::onComponentRemoved(Entity * entity, const std::shared_ptr<Component>& component)
   {
-    if (entity->getComponent<Animation>() == component) {
-      _entities.erase(entity);
-    }
+    deleteIfInterested(entity, component, _animations);
   }
   void AnimationSystem::update(float time, float delta_time)
   {
     std::vector<Entity*> to_delete;
-    for (auto& e : _entities) {
-      auto a = e->getComponent<Animation>();
+    for (const auto& e : _animations) {
+      const auto& a = e.second;
       float progress;
       if (time >= a->getTimeEnd()) {
         progress = 1.f;
-        to_delete.push_back(e);
+        to_delete.push_back(e.first);
       }
       else {
         progress = a->getInterpolator()->getInterpolation((time - a->getTimeStart()) / (a->getTimeEnd() - a->getTimeStart()));

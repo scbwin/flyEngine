@@ -2,12 +2,13 @@
 #define ANIMATIONSYSTEM_H
 
 #include <memory>
-#include <set>
+#include <map>
 #include "System.h"
 
 namespace fly
 {
   class Entity;
+  class Animation;
 
   class AnimationSystem : public System
   {
@@ -18,7 +19,7 @@ namespace fly
     virtual void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component) override;
     virtual void update(float time, float delta_time) override;
   private:
-    std::set<Entity*> _entities;
+    std::map<Entity*, std::shared_ptr<Animation>> _animations;
   };
 }
 

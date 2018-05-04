@@ -19,11 +19,11 @@ namespace fly
     Mat4f _viewMatrix;
     Mat4f* _VP;
     std::vector<Mat4f> _worldToLight;
-    std::vector<float> _smFrustumSplits;
+    std::vector<float> const * _smFrustumSplits;
     float _smBias;
-    Vec3f _lightPosWorld;
+    Vec3f const * _lightPosWorld;
     Vec3f _camPosworld;
-    Vec3f _lightIntensity;
+    Vec3f const * _lightIntensity;
     ZNearMapping _zNearMapping;
     float _time;
     WindParams _windParams;

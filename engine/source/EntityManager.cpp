@@ -22,17 +22,17 @@ namespace fly
   }
   void EntityManager::onComponentAdded(Entity * entity, const std::shared_ptr<Component>& component)
   {
-    notifyListeners(entity, [entity, component](const std::shared_ptr<System>& listener) {
+    notifyListeners([&](const std::shared_ptr<System>& listener) {
       listener->onComponentAdded(entity, component);
     });
   }
   void EntityManager::onComponentRemoved(Entity * entity, const std::shared_ptr<Component>& component)
   {
-    notifyListeners(entity, [entity, component](const std::shared_ptr<System>& listener) {
+    notifyListeners([&](const std::shared_ptr<System>& listener) {
       listener->onComponentRemoved(entity, component);
     });
   }
-  void EntityManager::notifyListeners(Entity* entity, const std::function<void(const std::shared_ptr<System>&)>& notify_func)
+  void EntityManager::notifyListeners(const std::function<void(const std::shared_ptr<System>&)>& notify_func)
   {
     std::vector<std::weak_ptr<System>> to_delete;
     if (_listeners.size()) {
