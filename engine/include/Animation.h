@@ -46,17 +46,19 @@ namespace fly
     };
 
     Animation(float duration_seconds, float current_time, 
-      const std::function<void(float)>& update_function, const std::shared_ptr<Interpolator>& interpolator = std::make_shared<LinearInterpolator>());
+      const std::function<void(float)>& update_function, const std::function<void()>& on_delete = std::function<void()>(), const std::shared_ptr<Interpolator>& interpolator = std::make_shared<LinearInterpolator>());
     float getDuration();
     float getTimeStart();
     float getTimeEnd();
     std::function<void(float)>& getUpdateFunction();
+    std::function<void()>& getOnDelete();
     std::shared_ptr<Interpolator> getInterpolator();
   private:
     float _duration;
     float _timeStart;
     float _timeEnd;
     std::function<void(float)> _updateFunction;
+    std::function<void()> _onDelete;
     std::shared_ptr<Interpolator> _interpolator;
   };
 }

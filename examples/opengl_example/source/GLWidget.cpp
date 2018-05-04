@@ -449,12 +449,12 @@ void GLWidget::keyReleaseEvent(QKeyEvent * e)
 
     if (_mode == Mode::LIGHT && e->key() == Qt::Key_Delete && _lights.size()) {
       auto l = _lights.front();
-      _engine->getEntityManager()->removeEntity(l.get());
+      _engine->getEntityManager()->removeEntity(l);
       _lights.erase(_lights.begin());
     }
     if (_mode == Mode::CAMERA && e->key() == Qt::Key_Delete && _cameras.size() > 1) {
       auto c = _cameras.front();
-      _engine->getEntityManager()->removeEntity(c.get());
+      _engine->getEntityManager()->removeEntity(c);
       _cameras.erase(_cameras.begin());
     }
     if (e->key() == Qt::Key_I) {

@@ -14,7 +14,7 @@ namespace fly
   RenderingSystem::~RenderingSystem()
   {}
 
-  void RenderingSystem::onComponentsChanged(Entity* entity)
+  void RenderingSystem::onComponentAdded(Entity * entity, const std::shared_ptr<Component>& component)
   {
     auto model = entity->getComponent<Model>();
     auto transform = entity->getComponent<Transform>();
@@ -30,47 +30,28 @@ namespace fly
     if (model != nullptr && transform != nullptr) {
       _models.insert(entity);
     }
-    else {
-      _models.erase(entity);
-    }
 
     if (geo_mip_map && transform) {
       onTerrainAdded(entity);
-    }
-    else {
-      onTerrainRemoved(entity);
     }
 
     if (directional_light != nullptr) {
       _directionalLights.insert(entity);
       onDirectionalLightAdded(entity, false);
     }
-    else {
-      _directionalLights.erase(entity);
-    }
 
     if (spot_light != nullptr) {
       _spotLights.insert(entity);
       onSpotLightAdded(entity, false);
-    }
-    else {
-      _spotLights.erase(entity);
     }
 
     if (point_light != nullptr) {
       _pointLights.insert(entity);
       onPointLightAdded(entity, false);
     }
-    else {
-      _pointLights.erase(entity);
-    }
 
     if (is_light) {
       _lights.insert(entity);
-    }
-    else {
-      _lights.erase(entity);
-      onLightRemoved(entity);
     }
 
     if (camera != nullptr) {
@@ -78,17 +59,39 @@ namespace fly
       _camPosBefore = camera->getPosition();
       _eulerAnglesBefore = camera->getEulerAngles();
     }
-    else {
-      _cameras.erase(entity);
-    }
-    
+
     if (billboard && transform) {
       _billboards.insert(entity);
     }
-    else {
-      _billboards.erase(entity);
-    }
   }
+
+  void RenderingSystem::onComponentRemoved(Entity * entity, const std::shared_ptr<Component>& component)
+  {
+    if (entity->getComponent<Model>() == component || entity->getComponent<Transform>() == component) {
+      _models.erase(entity);
+    }
+    if (entity->getComponent<Terrain>() == component || entity->getComponent<Transform>() == component) {
+      onTerrainRemoved(entity);
+    }
+    if (entity->getComponent<DirectionalLight>() == component)
+      _directionalLights.erase(entity);
+
+    if (entity->getComponent<SpotLight>() == component)
+      _spotLights.erase(entity);
+
+    if (entity->getComponent<PointLight>() == component)
+      _pointLights.erase(entity);
+
+    if (entity->getComponent<PointLight>() == component || entity->getComponent<DirectionalLight>() == component || entity->getComponent<SpotLight>() == component)
+      onLightRemoved(entity);
+
+    if (entity->getComponent<Camera>() == component)
+      _cameras.erase(entity);
+
+    if (entity->getComponent<Billboard>() == component || entity->getComponent<Transform>() == component)
+      _billboards.erase(entity);
+  }
+
 
   void RenderingSystem::onResize(const glm::ivec2& size)
   {

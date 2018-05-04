@@ -22,7 +22,8 @@ namespace fly
     virtual void setSkydome(const std::shared_ptr<Mesh>& mesh) = 0;
     virtual ~RenderingSystem();
     virtual void initShaders() = 0;
-    virtual void onComponentsChanged(Entity* entity) override;
+    virtual void onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component) override;
+    virtual void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component) override;
     virtual void onDirectionalLightAdded(Entity* entity, bool always_create) = 0;
     virtual void onSpotLightAdded(Entity* entity, bool always_create) = 0;
     virtual void onPointLightAdded(Entity* entity, bool always_create) = 0;

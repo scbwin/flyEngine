@@ -22,7 +22,8 @@ namespace fly
     void setSimulationSubsteps(int steps);
     int getSimulationSubsteps() const;
   private:
-    virtual void onComponentsChanged(Entity* entity) override;
+    virtual void onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component) override;
+    virtual void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component) override;
     virtual void update(float time, float delta_time) override;
 
     std::unique_ptr<btBroadphaseInterface> _iBroadphase;

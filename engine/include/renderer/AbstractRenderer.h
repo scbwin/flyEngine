@@ -106,43 +106,47 @@ namespace fly
     {
       _api.setAnisotropy(gs->getAnisotropy());
     }
-    virtual void onComponentsChanged(Entity* entity) override
+    virtual void onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component) override
     {
-      auto camera = entity->getComponent<Camera>();
-      auto dl = entity->getComponent<DirectionalLight>();
-      auto mr = entity->getComponent<fly::StaticMeshRenderable>();
-      auto dmr = entity->getComponent<fly::DynamicMeshRenderable>();
-      auto sdr = entity->getComponent<fly::SkydomeRenderable>();
-      if (mr) {
-        _staticMeshRenderables[entity] = mr->hasWind() ? 
-          std::make_shared<StaticMeshRenderableWind>(mr, _api.createMaterial(mr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(mr->getMesh())) :
-          std::make_shared<StaticMeshRenderable>(mr, _api.createMaterial(mr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(mr->getMesh()));
-        _sceneMin = minimum(_sceneMin, mr->getAABBWorld()->getMin());
-        _sceneMax = maximum(_sceneMax, mr->getAABBWorld()->getMax());
+      if (entity->getComponent<fly::StaticMeshRenderable>() == component) {
+        auto smr = entity->getComponent<fly::StaticMeshRenderable>();
+        _staticMeshRenderables[entity] = smr->hasWind() ?
+          std::make_shared<StaticMeshRenderableWind>(smr, _api.createMaterial(smr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(smr->getMesh())) :
+          std::make_shared<StaticMeshRenderable>(smr, _api.createMaterial(smr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(smr->getMesh()));
+        _sceneMin = minimum(_sceneMin, smr->getAABBWorld()->getMin());
+        _sceneMax = maximum(_sceneMax, smr->getAABBWorld()->getMax());
       }
-      else {
-        auto it = _staticMeshRenderables.find(entity);
-        if (it != _staticMeshRenderables.end()) {
-          _bvh->removeElement(it->second.get());
-          _staticMeshRenderables.erase(it->first);
-        }
-      }
-      if (dmr) {
+      else if (entity->getComponent<fly::DynamicMeshRenderable>() == component) {
+        auto dmr = entity->getComponent<fly::DynamicMeshRenderable>();
         _dynamicMeshRenderables[entity] = std::make_shared<DynamicMeshRenderable>(dmr, _api.createMaterial(dmr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(dmr->getMesh()));
       }
-      else {
+      else if (entity->getComponent<Camera>() == component) {
+        _camera = entity->getComponent<Camera>();
+      }
+      else if (entity->getComponent<DirectionalLight>() == component) {
+        _directionalLight = entity->getComponent<DirectionalLight>();
+      }
+      else if (entity->getComponent<fly::SkydomeRenderable>() == component) {
+        auto sdr = entity->getComponent<fly::SkydomeRenderable>();
+        _skydomeRenderable = std::make_shared<SkydomeRenderable>(_meshGeometryStorage.addMesh(sdr->getMesh()), _api.getSkyboxShaderDesc().get());
+      }
+    }
+    virtual void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component) override
+    {
+      if (entity->getComponent<fly::StaticMeshRenderable>() == component) {
+        _bvh->removeElement(_staticMeshRenderables[entity].get());
+        _staticMeshRenderables.erase(entity);
+      }
+      else if (entity->getComponent<fly::DynamicMeshRenderable>() == component) {
         _dynamicMeshRenderables.erase(entity);
       }
-      if (camera) {
-        _camera = camera;
+      else if (entity->getComponent<Camera>() == component) {
+        _camera = nullptr;
       }
-      if (dl) {
-        _directionalLight = dl;
+      else if (entity->getComponent<DirectionalLight>() == component) {
+        _directionalLight = nullptr;
       }
-      if (sdr) {
-        _skydomeRenderable = std::make_shared<SkydomeRenderable>(entity, _meshGeometryStorage.addMesh(sdr->getMesh()), _api.getSkyboxShaderDesc().get());
-      }
-      else if (_skydomeRenderable && _skydomeRenderable->_entity == entity) {
+      else if (entity->getComponent<fly::SkydomeRenderable>() == component) {
         _skydomeRenderable = nullptr;
       }
     }
@@ -317,10 +321,8 @@ namespace fly
     };
     struct SkydomeRenderable : public MeshRenderable
     {
-      Entity* _entity;
-      SkydomeRenderable(Entity* entity, const typename API::MeshGeometryStorage::MeshData& mesh_data, typename API::ShaderDesc* shader_desc) : 
-        MeshRenderable(nullptr, mesh_data),
-        _entity(entity)
+      SkydomeRenderable(const typename API::MeshGeometryStorage::MeshData& mesh_data, typename API::ShaderDesc* shader_desc) : 
+        MeshRenderable(nullptr, mesh_data)
       {
         _shaderDesc = shader_desc;
       }

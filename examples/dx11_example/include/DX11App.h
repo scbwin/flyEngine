@@ -21,7 +21,7 @@
 #include <CameraController.h>
 
 #define SPONZA 1
-#define SPONZA_LARGE 1
+#define SPONZA_LARGE 0
 
 namespace fly
 {

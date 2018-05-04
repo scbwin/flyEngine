@@ -43,7 +43,8 @@ namespace fly
   public:
     RenderingSystemDX11(HWND window, const std::array<Vec2f, 2>& quadtree_min_max);
     virtual ~RenderingSystemDX11();
-    virtual void onComponentsChanged(Entity* entity) override;
+    virtual void onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component) override;
+    virtual void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component) override;
     virtual void update(float time, float delta_time) override;
     void onResize(const Vec2u& size);
     void setSSRBlendWeight(float alpha);

@@ -3,9 +3,10 @@
 
 namespace fly
 {
-  Animation::Animation(float duration_seconds, float current_time, const std::function<void(float)>& update_function, const std::shared_ptr<Interpolator>& interpolator) :
+  Animation::Animation(float duration_seconds, float current_time, const std::function<void(float)>& update_function, const std::function<void()>& on_delete, const std::shared_ptr<Interpolator>& interpolator) :
     _duration(duration_seconds), 
     _updateFunction(update_function),
+    _onDelete(on_delete),
     _timeStart(current_time),
     _timeEnd(current_time + duration_seconds),
     _interpolator(interpolator)
@@ -26,6 +27,10 @@ namespace fly
   std::function<void(float)>& Animation::getUpdateFunction()
   {
     return _updateFunction;
+  }
+  std::function<void()>& Animation::getOnDelete()
+  {
+    return _onDelete;
   }
   std::shared_ptr<Animation::Interpolator> Animation::getInterpolator()
   {

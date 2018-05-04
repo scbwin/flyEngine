@@ -1,8 +1,8 @@
 #include "AnimationSystem.h"
 #include "Entity.h"
 #include "Animation.h"
-#include "EntityManager.h"
 #include <vector>
+#include <iostream>
 
 namespace fly
 {
@@ -12,12 +12,15 @@ namespace fly
   AnimationSystem::~AnimationSystem()
   {
   }
-  void AnimationSystem::onComponentsChanged(Entity* entity)
+  void AnimationSystem::onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component)
   {
-    if (entity->getComponent<Animation>()) {
+    if (entity->getComponent<Animation>() == component) {
       _entities.insert(entity);
     }
-    else {
+  }
+  void AnimationSystem::onComponentRemoved(Entity * entity, const std::shared_ptr<Component>& component)
+  {
+    if (entity->getComponent<Animation>() == component) {
       _entities.erase(entity);
     }
   }
@@ -37,7 +40,7 @@ namespace fly
       a->getUpdateFunction()(progress);
     }
     for (auto& e : to_delete) {
-      e->removeComponent<Animation>();
+      e->getComponent<Animation>()->getOnDelete()();
     }
   }
 }

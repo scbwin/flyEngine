@@ -76,8 +76,11 @@ void DX11App::onKeyUp(WPARAM w_param, LPARAM l_param)
   auto create_animation = [this](const std::wstring& str, bool enabled) {
     _dbgString = (str + (enabled ? L" on" : L" off"));
     auto anim_entity = _engine->getEntityManager()->createEntity();
+    std::weak_ptr<fly::Entity> anim_weak(anim_entity);
     auto animation = std::make_shared<fly::Animation>(2.f, _gameTimer.getTimeSeconds(), [this](float t) {
       _dbgStringAlpha = (t < 0.5f ? t * 2.f : (1.f - t) * 2.f);
+    }, [anim_weak, this]() {
+      _engine->getEntityManager()->removeEntity(anim_weak.lock());
     });
     anim_entity->addComponent(animation);
   };
@@ -883,6 +886,7 @@ int DX11App::execute()
       _gameTimer.tick();
       handleInput();
       _engine->update(_gameTimer.getTimeSeconds(), _gameTimer.getDeltaTimeSeconds());
+     // std::cout << _engine->getEntityManager()->getEntities().size() << std::endl;
       if (_showGUI) {
         drawDebugGUI();
       }

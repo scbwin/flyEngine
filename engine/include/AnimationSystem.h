@@ -8,12 +8,14 @@
 namespace fly
 {
   class Entity;
+
   class AnimationSystem : public System
   {
   public:
     AnimationSystem();
     virtual ~AnimationSystem();
-    virtual void onComponentsChanged(Entity* entity) override;
+    virtual void onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component) override;
+    virtual void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component) override;
     virtual void update(float time, float delta_time) override;
   private:
     std::set<Entity*> _entities;

@@ -22,12 +22,16 @@ namespace fly
   {
     return _simulationSubSteps;
   }
-  void Bullet3PhysicsSystem::onComponentsChanged(Entity* entity)
+  void Bullet3PhysicsSystem::onComponentAdded(Entity * entity, const std::shared_ptr<Component>& component)
   {
-    auto rb = entity->getComponent<RigidBody>();
-    if (rb && _rigidBodys.find(entity) == _rigidBodys.end()) {
-      _rigidBodys[entity] = rb;
-      _world->addRigidBody(rb->getBtRigidBody().get());
+    if (auto c = addIfInterested<RigidBody>(entity, component, _rigidBodys)) {
+      _world->addRigidBody(c->getBtRigidBody().get());
+    }
+  }
+  void Bullet3PhysicsSystem::onComponentRemoved(Entity * entity, const std::shared_ptr<Component>& component)
+  {
+    if (auto c = deleteIfInterested<RigidBody>(entity, component, _rigidBodys)) {
+      _world->removeRigidBody(c->getBtRigidBody().get());
     }
   }
   void Bullet3PhysicsSystem::update(float time, float delta_time)

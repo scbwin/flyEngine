@@ -1,6 +1,7 @@
 #include "Entity.h"
 #include "EntityManager.h"
 #include "Component.h"
+#include <iostream>
 
 namespace fly
 {
@@ -9,7 +10,8 @@ namespace fly
   }
   Entity::~Entity()
   {
-    _components.clear();
-    _em->notifyListeners(this);
+    for (const auto& e : _components) {
+      _em->onComponentRemoved(this, e.second);
+    }
   }
 }

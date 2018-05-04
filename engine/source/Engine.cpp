@@ -9,7 +9,7 @@ namespace fly
   void Engine::addSystem(const std::shared_ptr<System>& system)
   {
     _systems.insert(system);
-    _em->addListener(system);
+    _em.addListener(system);
   }
   void Engine::update(float time, float delta_time)
   {
@@ -17,8 +17,8 @@ namespace fly
       s->update(time, delta_time);
     }
   }
-  EntityManager* Engine::getEntityManager() const
+  EntityManager* Engine::getEntityManager()
   {
-    return _em.get();
+    return &_em;
   }
 }

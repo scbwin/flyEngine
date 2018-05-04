@@ -20,14 +20,14 @@ namespace fly
     {
       static_assert(std::is_base_of<Component, T>::value, "T must be derived from Component");
       _components[std::type_index(typeid(T))] = component;
-      _em->notifyListeners(this);
+      _em->onComponentAdded(this, component);
     }
     template <typename T>
     void removeComponent()
     {
       static_assert(std::is_base_of<Component, T>::value, "T must be derived from Component");
+      _em->onComponentRemoved(this, _components[std::type_index(typeid(T))]);
       _components.erase(std::type_index(typeid(T)));
-      _em->notifyListeners(this);
     }
     template<typename T>
     std::shared_ptr<T> getComponent()

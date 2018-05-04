@@ -3,13 +3,15 @@
 
 namespace fly
 {
-  void PhysicsSystem::onComponentsChanged(Entity * entity)
+  void PhysicsSystem::onComponentAdded(Entity * entity, const std::shared_ptr<Component>& component)
   {
-    auto ps = entity->getComponent<ParticleSystem>();
-    if (ps) {
-      _particleSystems[entity] = ps;
+    if (entity->getComponent<ParticleSystem>() == component) {
+      _particleSystems[entity] = entity->getComponent<ParticleSystem>();
     }
-    else {
+  }
+  void PhysicsSystem::onComponentRemoved(Entity * entity, const std::shared_ptr<Component>& component)
+  {
+    if (entity->getComponent<ParticleSystem>() == component) {
       _particleSystems.erase(entity);
     }
   }

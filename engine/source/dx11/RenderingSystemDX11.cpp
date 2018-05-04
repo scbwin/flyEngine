@@ -66,7 +66,7 @@ namespace fly
   {
   }
 
-  void RenderingSystemDX11::onComponentsChanged(Entity* entity)
+  void RenderingSystemDX11::onComponentAdded(Entity * entity, const std::shared_ptr<Component>& component)
   {
     auto model = entity->getComponent<Model>();
     auto transform = entity->getComponent<Transform>();
@@ -83,9 +83,6 @@ namespace fly
       _particleBillboardRenderables[entity] = { billboard, particle_system };
       createTexture(L"assets/flames.png", _particleBillboardRenderables[entity]._srv, DirectX::TEX_FILTER_FLAGS::TEX_FILTER_SRGB);
     }
-    else {
-      _particleBillboardRenderables.erase(entity);
-    }
 
     if (model && transform && particle_system) {
       if (!_modelDataCache.count(model)) {
@@ -98,19 +95,11 @@ namespace fly
       _sceneMin = minimum(_sceneMin, _staticModelRenderables[entity]->getAABBWorld()->getMin());
       _sceneMax = maximum(_sceneMax, _staticModelRenderables[entity]->getAABBWorld()->getMax());
     }
-    if (!particle_system) {
-      _particleModelRenderables.erase(entity);
-    }
-    if (!smr) {
-      _staticModelRenderables.erase(entity);
-    }
-
     if (cam) {
       _camera = cam;
       _camPos = _camera->getPosition();
       _camEulerAngles = glm::quat(_camera->getEulerAngles());
     }
-
     if (dl) {
       _directionalLight._dl = dl;
       _directionalLight._shadowMap = std::make_unique<ShadowMap>(this);
@@ -121,6 +110,29 @@ namespace fly
     }
     if (sbr && model) {
       _skyboxRenderable = std::make_unique<DX11SkyboxRenderable>(model, this);
+    }
+  }
+
+  void RenderingSystemDX11::onComponentRemoved(Entity * entity, const std::shared_ptr<Component>& component)
+  {
+    auto model = entity->getComponent<Model>();
+    auto transform = entity->getComponent<Transform>();
+    auto cam = entity->getComponent<Camera>();
+    auto dl = entity->getComponent<DirectionalLight>();
+    auto particle_system = entity->getComponent<ParticleSystem>();
+    auto billboard = entity->getComponent<Billboard>();
+    auto smr = entity->getComponent<StaticModelRenderable>();
+    auto terrain = entity->getComponent<TerrainNew>();
+    auto ptr = entity->getComponent<ProceduralTerrainRenderable>();
+    auto sbr = entity->getComponent<SkyboxRenderable>();
+    if (!(billboard && transform && particle_system))
+      _particleBillboardRenderables.erase(entity);
+
+    if (!particle_system) {
+      _particleModelRenderables.erase(entity);
+    }
+    if (!smr) {
+      _staticModelRenderables.erase(entity);
     }
   }
 
