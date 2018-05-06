@@ -176,6 +176,7 @@ void GLWidget::wheelEvent(QWheelEvent * e)
 
 void GLWidget::initGame()
 {
+  fly::Timing init_game_timing;
   auto importer = std::make_shared<fly::AssimpImporter>();
 #if TREE_SCENE
   auto tree_model = importer->loadModel("assets/tree.obj");
@@ -237,6 +238,8 @@ void GLWidget::initGame()
   for (int x = 0; x < NUM_OBJECTS; x++) {
     for (int y = 0; y < NUM_OBJECTS; y++) {
       auto model_matrix = fly::Transform(fly::Vec3f(x * 60.f, -sponza_model->getAABB()->getMin()[1] * sponza_scale[1], y * 60.f), fly::Vec3f(sponza_scale)).getModelMatrix();
+#else
+  auto model_matrix = fly::Transform(fly::Vec3f(0.f), sponza_scale).getModelMatrix();
 #endif
 #if TOWERS && SPONZA_MANY
       fly::AABB sponza_aabb_world(*sponza_model->getAABB(), model_matrix);
@@ -255,18 +258,20 @@ void GLWidget::initGame()
           auto entity = _engine->getEntityManager()->createEntity();
           bool has_wind = index >= 44 && index <= 62;
           fly::Vec3f aabb_offset = has_wind ? fly::Vec3f(0.f, 0.f, 0.25f) : fly::Vec3f(0.f);
-          fly::Vec3f translation(0.f);
+          //fly::Vec3f translation(0.f);
           if (index == sponza_model->getMeshes().size() - 28) {
             has_wind = true;
             aabb_offset = fly::Vec3f(0.f, 0.f, 0.25f);
             mesh->setMaterial(sponza_model->getMeshes()[44]->getMaterial());
-            translation[1] = 1.f;
+          //  translation[1] = 1.f;
           }
+          fly::AABB aabb_world = fly::AABB(*mesh->getAABB(), model_matrix);
+          aabb_world.expand(aabb_offset);
           entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(mesh,
 #if SPONZA_MANY
-            mesh->getMaterial(), model_matrix, has_wind, aabb_offset));
+            mesh->getMaterial(), model_matrix, has_wind, aabb_world));
 #else
-            mesh->getMaterial(), fly::Transform(translation, sponza_scale).getModelMatrix(), has_wind, aabb_offset));
+            mesh->getMaterial(), model_matrix, has_wind, aabb_offset));
 #endif
 #if PHYSICS
           const auto& model_matrix = entity->getComponent<fly::StaticMeshRenderable>()->getModelMatrix();
@@ -341,6 +346,7 @@ void GLWidget::initGame()
 #if SPONZA_MANY
   _camController->setSpeed(100.f);
 #endif
+  std::cout << "Init game took " << init_game_timing.duration<std::chrono::milliseconds>() << " milliseconds." << std::endl;
 }
 
 std::string GLWidget::formatNumber(unsigned number)

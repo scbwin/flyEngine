@@ -60,4 +60,9 @@ namespace fly
     }
     return vertices;
   }
+  void AABB::expand(const Vec3f & amount)
+  {
+    _bbMin -= amount;
+    _bbMax += amount;
+  }
 }

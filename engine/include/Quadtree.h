@@ -34,7 +34,7 @@ namespace fly
       inline AABB* getAABBWorld() { return &_aabbWorld; }
       void insert(const TPtr& element)
       {
-        AABB* aabb_element = element->getAABBWorld();
+        AABB const * aabb_element = element->getAABBWorld();
         _aabbWorld = _aabbWorld.getUnion(*aabb_element);
         _largestElementAABBWorldSize = std::max(_largestElementAABBWorldSize, aabb_element->size());
         for (unsigned char i = 0; i < 4; i++) {
@@ -72,26 +72,26 @@ namespace fly
       void getVisibleElements(std::vector<TPtr>& visible_elements, const Camera& camera) const
       {
         auto result = camera.intersectFrustumAABB(_aabbWorld);
-          if (result == IntersectionResult::INSIDE) {
-            visible_elements.insert(visible_elements.end(), _elements.begin(), _elements.end());
-            for (const auto& c : _children) {
-              if (c) {
-                c->getAllElements(visible_elements);
-              }
+        if (result == IntersectionResult::INSIDE) {
+          visible_elements.insert(visible_elements.end(), _elements.begin(), _elements.end());
+          for (const auto& c : _children) {
+            if (c) {
+              c->getAllElements(visible_elements);
             }
           }
-          else if (result == IntersectionResult::INTERSECTING) {
-            for (const auto& e : _elements) {
-              if (camera.intersectFrustumAABB(*e->getAABBWorld()) != IntersectionResult::OUTSIDE) {
-                visible_elements.push_back(e);
-              }
-            }
-            for (const auto& c : _children) {
-              if (c) {
-                c->getVisibleElements(visible_elements, camera);
-              }
+        }
+        else if (result == IntersectionResult::INTERSECTING) {
+          for (const auto& e : _elements) {
+            if (camera.intersectFrustumAABB(*e->getAABBWorld()) != IntersectionResult::OUTSIDE) {
+              visible_elements.push_back(e);
             }
           }
+          for (const auto& c : _children) {
+            if (c) {
+              c->getVisibleElements(visible_elements, camera);
+            }
+          }
+        }
       }
 
       void getAllElementsWithDetailCulling(std::vector<TPtr>& all_elements, const Camera& camera)

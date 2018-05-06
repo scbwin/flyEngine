@@ -11,6 +11,7 @@ namespace fly
   class AABB
   {
   public:
+    AABB() = default;
     AABB(const Vec3f& bb_min, const Vec3f& bb_max);
     AABB(const AABB& aabb_local, const Mat4f& world_matrix);
     const Vec3f& getMin() const;
@@ -28,6 +29,7 @@ namespace fly
     AABB getUnion(const AABB& other) const;
     AABB getIntersection(const AABB& other) const;
     std::array<Vec3f, 8> getVertices() const;
+    void expand(const Vec3f& amount);
     inline bool isDetail(const Vec3f& cam_pos, float error_tresh, float size) const
     {
       return (size / distance2(closestPoint(cam_pos), cam_pos)) < error_tresh;

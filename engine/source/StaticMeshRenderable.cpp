@@ -20,13 +20,24 @@ namespace fly
     }
     bb_min -= aabb_offset;
     bb_max += aabb_offset;
-    _aabbWorld = std::make_unique<AABB>(bb_min, bb_max);
-    _windParams._pivotWorld = _aabbWorld->getMax()[1];
+    _aabbWorld = AABB(bb_min, bb_max);
+    _windParams._pivotWorld = _aabbWorld.getMax()[1];
     _windParams._bendFactorExponent = 2.5f;
   }
-  AABB* StaticMeshRenderable::getAABBWorld() const
+  StaticMeshRenderable::StaticMeshRenderable(const std::shared_ptr<Mesh>& mesh, const std::shared_ptr<Material>& material, const Mat4f & model_matrix, bool has_wind, const AABB & aabb_world) :
+    _mesh(mesh),
+    _material(material),
+    _modelMatrix(model_matrix),
+    _modelMatrixInverse(inverse(glm::mat3(model_matrix))),
+    _hasWind(has_wind),
+    _aabbWorld(aabb_world)
   {
-    return _aabbWorld.get();
+    _windParams._pivotWorld = aabb_world.getMax()[1];
+    _windParams._bendFactorExponent = 2.5f;
+  }
+  AABB const * StaticMeshRenderable::getAABBWorld() const
+  {
+    return &_aabbWorld;
   }
   const std::shared_ptr<Mesh>& StaticMeshRenderable::getMesh() const
   {

@@ -318,7 +318,7 @@ namespace fly
         _shaderDesc = _materialDesc->getMeshShaderDesc(false).get();
         _shaderDescDepth = _materialDesc->getMeshShaderDescDepth(false).get();
       }
-      virtual AABB* getAABBWorld() const = 0;
+      virtual AABB const * getAABBWorld() const = 0;
     };
     struct SkydomeRenderable : public MeshRenderable
     {
@@ -327,7 +327,7 @@ namespace fly
       {
         _shaderDesc = shader_desc;
       }
-      virtual AABB* getAABBWorld() const
+      virtual AABB const * getAABBWorld() const
       {
         return nullptr;
       }
@@ -357,7 +357,7 @@ namespace fly
       {
         api.renderMesh(_meshData, _dmr->getModelMatrix());
       }
-      virtual AABB* getAABBWorld() const override { return _dmr->getAABBWorld(); }
+      virtual AABB const * getAABBWorld() const override { return _dmr->getAABBWorld(); }
     };
     struct StaticMeshRenderable : public MeshRenderable
     {
@@ -378,7 +378,7 @@ namespace fly
       {
         api.renderMesh(_meshData, _smr->getModelMatrix());
       }
-      virtual AABB* getAABBWorld() const override { return _smr->getAABBWorld(); }
+      virtual AABB const * getAABBWorld() const override { return _smr->getAABBWorld(); }
     };
     struct StaticMeshRenderableWind : public StaticMeshRenderable
     {
@@ -417,7 +417,7 @@ namespace fly
       if (visible_nodes.size()) {
         _api.setDepthWriteEnabled<true>();
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
-        std::vector<AABB*> aabbs;
+        std::vector<AABB const *> aabbs;
         for (const auto& n : visible_nodes) {
           aabbs.push_back(n->getAABBWorld());
         }
@@ -429,7 +429,7 @@ namespace fly
       if (visible_elements.size()) {
         _api.setDepthWriteEnabled<true>();
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
-        std::vector<AABB*> aabbs;
+        std::vector<AABB const *> aabbs;
         for (const auto& e : visible_elements) {
           aabbs.push_back(e->getAABBWorld());
         }
@@ -530,9 +530,12 @@ namespace fly
     void buildBVH()
     {
       _bvh = std::make_unique<BVH>(_sceneMin, _sceneMax);
+      std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
+      Timing timing;
       for (const auto& e : _staticMeshRenderables) {
         _bvh->insert(e.second.get());
       }
+      std::cout << "BVH construction took " << timing.duration<std::chrono::milliseconds>() << " milliseconds." << std::endl;
     }
   };
 }
