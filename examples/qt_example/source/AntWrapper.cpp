@@ -11,6 +11,7 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
 {
   TwAddVarCB(bar, "Shadows", TwType::TW_TYPE_BOOLCPP, cbSetShadows, cbGetShadows, gs, nullptr);
   TwAddVarCB(bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, cbSetPCF, cbGetPCF, gs, nullptr);
+  TwAddVarCB(bar, "Shadow darken factor", TwType::TW_TYPE_FLOAT, setShadowFactor, getShadowFactor, gs, "step = 0.005f");
   TwAddVarCB(bar, "Normal mapping", TwType::TW_TYPE_BOOLCPP, cbSetNormalMapping, cbGetNormalMapping, gs, nullptr);
   TwAddVarCB(bar, "Parallax mapping", TwType::TW_TYPE_BOOLCPP, cbSetParallaxMapping, cbGetParallaxMapping, gs, nullptr);
   TwAddVarCB(bar, "Relief mapping", TwType::TW_TYPE_BOOLCPP, cbSetReliefMapping, cbGetReliefMapping, gs, nullptr);
@@ -18,6 +19,8 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "Wind animations", TwType::TW_TYPE_BOOLCPP, cbSetWindAnimations, cbGetWindAnimations, gs, nullptr);
   TwAddVarCB(bar, "Shadow map resolution", TwType::TW_TYPE_UINT32, cbSetShadowmapsize, cbGetShadowmapsize, gs, nullptr);
   TwAddVarCB(bar, "Exposure", TwType::TW_TYPE_FLOAT, cbSetExposure, cbGetExposure, gs, "step = 0.01f");
+  TwAddVarCB(bar, "Gamma", TwType::TW_TYPE_FLOAT, cbSetGamma, cbGetGamma, gs, "step = 0.01f");
+  TwAddVarCB(bar, "Gamma enabled", TwType::TW_TYPE_BOOLCPP, cbSetGammaEnabled, cbGetGammaEnabled, gs, nullptr);
   TwAddVarCB(bar, "Debug quadtree", TwType::TW_TYPE_BOOLCPP, cbSetDebugQuadtree, cbGetDebugQuadtree, gs, nullptr);
   TwAddVarCB(bar, "Debug object AABBs", TwType::TW_TYPE_BOOLCPP, cbSetDebugAABBs, cbGetDebugAABBs, gs, nullptr);
   TwAddVarCB(bar, "Camera lerping", TwType::TW_TYPE_BOOLCPP, setCameraLerping, getCameraLerping, gs, nullptr);
@@ -119,6 +122,26 @@ void AntWrapper::cbGetExposure(void * value, void * client_data)
   *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getExposure();
 }
 
+void AntWrapper::cbSetGammaEnabled(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setGammaCorrectionEnabled(*cast<bool>(value));
+}
+
+void AntWrapper::cbGetGammaEnabled(void * value, void * client_data)
+{
+  *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->gammaEnabled();
+}
+
+void AntWrapper::cbSetGamma(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setGamma(*cast<float>(value));
+}
+
+void AntWrapper::cbGetGamma(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getGamma();
+}
+
 void AntWrapper::cbSetDebugQuadtree(const void * value, void * client_data)
 {
   cast<fly::GraphicsSettings>(client_data)->setDebugQuadtreeNodeAABBs(*cast<bool>(value));
@@ -208,4 +231,14 @@ void AntWrapper::setSkydome(const void * value, void * client_data)
 void AntWrapper::getSkydome(void * value, void * client_data)
 {
   *cast<bool>(value) = cast<fly::Entity>(client_data)->getComponent<fly::SkydomeRenderable>() != nullptr;
+}
+
+void AntWrapper::setShadowFactor(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setShadowDarkenFactor(*cast<float>(value));
+}
+
+void AntWrapper::getShadowFactor(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getShadowDarkenFactor();
 }

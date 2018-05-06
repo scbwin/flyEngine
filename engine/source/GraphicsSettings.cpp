@@ -48,7 +48,6 @@ namespace fly
   void GraphicsSettings::setShadowBias(float bias)
   {
     _smBias = bias;
-    notifyShadowsChanged();
   }
   void GraphicsSettings::setFrustumSplits(const std::vector<float>& frustum_splits)
   {
@@ -86,6 +85,10 @@ namespace fly
   {
     return _exposureEnabled;
   }
+  bool GraphicsSettings::gammaEnabled() const
+  {
+    return _gammaCorrectionEnabled;
+  }
   bool GraphicsSettings::postProcessingEnabled() const
   {
     return _postProcessing;
@@ -111,6 +114,14 @@ namespace fly
   void GraphicsSettings::setExposure(float exposure)
   {
     _exposure = exposure;
+  }
+  float GraphicsSettings::getGamma() const
+  {
+    return _gamma;
+  }
+  void GraphicsSettings::setGamma(float gamma)
+  {
+    _gamma = gamma;
   }
   bool GraphicsSettings::getWindAnimations() const
   {
@@ -173,6 +184,14 @@ namespace fly
   {
     _detailCulling = enabled;
   }
+  void GraphicsSettings::setShadowDarkenFactor(float factor)
+  {
+    _shadowDarkenFactor = glm::clamp(factor, 0.f, 1.f);
+  }
+  float GraphicsSettings::getShadowDarkenFactor() const
+  {
+    return _shadowDarkenFactor;
+  }
   void GraphicsSettings::setCameraLerping(bool enable)
   {
     _cameraLerping = enable;
@@ -184,6 +203,13 @@ namespace fly
   {
     _exposureEnabled = exposure;
     notifyCompositingChanged();
+  }
+  void GraphicsSettings::setGammaCorrectionEnabled(bool enabled)
+  {
+    _gammaCorrectionEnabled = enabled;
+    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
+      l->gammaChanged(this);
+    });
   }
   void GraphicsSettings::notifiyNormalMappingChanged()
   {

@@ -61,6 +61,9 @@ uniform vec3 " + std::string(bbMax()) + "; // AABB max xz\n" + std::string(noise
     if (settings.getShadowsPCF()) {
       fname += "_pcf";
     }
+    if (settings.gammaEnabled()) {
+      fname += "_gamma";
+    }
     fname += ".glsl";
     for (const auto& n : _fnamesFragment) {
       if (n == fname) { // File already created
@@ -109,6 +112,9 @@ uniform vec3 " + std::string(bbMax()) + "; // AABB max xz\n" + std::string(noise
     fragment_file = std::string(directory()) + "fs_composite";
     if (flags & CompositeFlag::EXPOSURE) {
       fragment_file += "_exposure";
+    }
+    if (flags & CompositeFlag::GAMMA_INVERSE) {
+      fragment_file += "_gamma";
     }
     fragment_file += ".glsl";
     for (const auto& n : _fnamesComposite) {
@@ -159,7 +165,7 @@ out vec3 tangent_world;\n\
 out vec3 bitangent_world;\n";
     if (settings.depthPrepassEnabled()) {
       shader_src += "invariant gl_Position; \n";
-  }
+    }
     if (flags & MeshRenderFlag::WIND) {
       shader_src += _windParamString;
     }
@@ -187,17 +193,17 @@ layout(location = 2) in vec2 uv;\n";
     if (settings.depthPrepassEnabled()) {
       shader_src += "invariant gl_Position; \n";
     }
-      shader_src += "uniform mat4 " + std::string(modelMatrix()) + ";\n\
+    shader_src += "uniform mat4 " + std::string(modelMatrix()) + ";\n\
 uniform mat4 " + std::string(viewProjectionMatrix()) + ";\n";
-      shader_src += _windParamString;
+    shader_src += _windParamString;
     shader_src += "out vec2 uv_out;\n\
 void main()\n\
 {\n";
-      shader_src += "  vec4 pos_world = M * vec4(position, 1.f);\n";
-      if (flags & MeshRenderFlag::WIND) {
-        shader_src += _windCodeString;
-      }
-      shader_src += "  gl_Position = VP * pos_world;\n";
+    shader_src += "  vec4 pos_world = M * vec4(position, 1.f);\n";
+    if (flags & MeshRenderFlag::WIND) {
+      shader_src += _windCodeString;
+    }
+    shader_src += "  gl_Position = VP * pos_world;\n";
     shader_src += "  uv_out = uv;\n\
 }\n";
     std::ofstream os(fname);
@@ -221,6 +227,7 @@ uniform sampler2D " + std::string(normalSampler()) + ";\n\
 uniform sampler2D " + std::string(heightSampler()) + ";\n\
 uniform float " + std::string(parallaxHeightScale()) + "; // Parallax ray scale\n\
 uniform float " + std::string(shadowMapBias()) + "; // Shadow map bias\n\
+uniform float " + std::string(shadowDarkenFactor()) + "; // Shadow darken factor\n\
 uniform float " + std::string(parallaxMinSteps()) + "; // Parallax min steps\n\
 uniform float " + std::string(parallaxMaxSteps()) + "; // Parallax max steps\n\
 uniform float " + std::string(parallaxBinarySearchSteps()) + "; // Parallax binary search steps\n\
@@ -236,6 +243,7 @@ uniform float " + std::string(ambientConstant()) + ";\n\
 uniform float " + std::string(diffuseConstant()) + ";\n\
 uniform float " + std::string(specularConstant()) + ";\n\
 uniform float " + std::string(specularExponent()) + ";\n\
+uniform float " + std::string(gamma()) + ";\n\
 void main()\n\
 {\n  vec2 uv = uv_out;\n";
     if ((flags & MeshRenderFlag::NORMAL_MAP) || (flags & MeshRenderFlag::PARALLAX_MAP)) {
@@ -294,6 +302,9 @@ void main()\n\
     else {
       shader_src += "  vec3 albedo = " + std::string(diffuseColor()) + ";\n";
     }
+    if (settings.gammaEnabled()) {
+      shader_src += " albedo = pow(albedo, vec3(" + std::string(gamma()) + "));\n";
+    }
     shader_src += "  fragmentColor = I_in * albedo * (" + std::string(ambientConstant()) + " + " + std::string(diffuseConstant()) + " * diffuse + " + std::string(specularConstant()) + " * specular);\n";
     if (settings.getShadows() || settings.getShadowsPCF()) {
       shader_src += "  int index = " + std::string(numfrustumSplits()) + "-1;\n\
@@ -307,7 +318,7 @@ void main()\n\
       if (!settings.getShadowsPCF()) {
         shader_src += "  if (all(greaterThanEqual(shadow_coord.xyz, vec3(0.f))) && all(lessThanEqual(shadow_coord.xyz, vec3(1.f)))) {\n  ";
       }
-      shader_src += std::string("  fragmentColor *= 1.f - ") + (settings.getShadowsPCF() ? "texture(" + std::string(shadowSampler()) + ", vec4(shadow_coord.xy, index, shadow_coord.z))" : "float(shadow_coord.z > texture(" + std::string(shadowSampler()) + ", vec3(shadow_coord.xy, index)).r)") + " * 0.5f;\n";
+      shader_src += std::string("  fragmentColor *= 1.f - ") + (settings.getShadowsPCF() ? "texture(" + std::string(shadowSampler()) + ", vec4(shadow_coord.xy, index, shadow_coord.z))" : "float(shadow_coord.z > texture(" + std::string(shadowSampler()) + ", vec3(shadow_coord.xy, index)).r)") + " * " + std::string(shadowDarkenFactor()) + ";\n";
       if (!settings.getShadowsPCF()) {
         shader_src += "  }\n";
       }
@@ -343,6 +354,7 @@ in vec2 uv_out;\n";
 layout(location = 0) out vec3 fragmentColor;\n\
 uniform sampler2D " + std::string(lightingSampler()) + ";\n\
 uniform float " + std::string(exposure()) + ";\n\
+uniform float " + std::string(gammaInverse()) + ";\n\
 in vec2 uv;\n\
 void main()\n\
 {\n\
@@ -350,8 +362,11 @@ void main()\n\
     if (flags & CompositeFlag::EXPOSURE) {
       shader_src += "  fragmentColor *= " + std::string(exposure()) + ";\n";
     }
-    shader_src += "  fragmentColor = fragmentColor / (1.f + fragmentColor);\n\
-}\n";
+    shader_src += "  fragmentColor = fragmentColor / (1.f + fragmentColor);\n";
+    if (flags & CompositeFlag::GAMMA_INVERSE) {
+      shader_src += "  fragmentColor = pow(fragmentColor, vec3(" + std::string(gammaInverse()) + "));\n";
+    }
+    shader_src += "}\n";
     std::ofstream os(fs_file);
     os.write(shader_src.c_str(), shader_src.size());
   }

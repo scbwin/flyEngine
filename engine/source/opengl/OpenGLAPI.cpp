@@ -282,6 +282,10 @@ namespace fly
       flags |= GLSLShaderGenerator::CompositeFlag::EXPOSURE;
       ss_flags |= ShaderSetupFlags::EXPOSURE;
     }
+    if (gs.gammaEnabled()) {
+      flags |= GLSLShaderGenerator::CompositeFlag::GAMMA_INVERSE;
+      ss_flags |= ShaderSetupFlags::GAMMA_INVERSE;
+    }
     std::string vs_c, fs_c;
     _shaderGenerator->createCompositeShaderFiles(flags, gs, vs_c, fs_c);
     _compositeShaderDesc = createShaderDesc(createShader(vs_c, fs_c), ss_flags);
@@ -418,7 +422,10 @@ namespace fly
     }
     auto fragment_file = api->_shaderGenerator->createMeshFragmentShaderFile(flag, settings);
     auto vertex_file = api->_shaderGenerator->createMeshVertexShaderFile(flag, settings);
-    unsigned ss_flags = ShaderSetupFlags::LIGHTING | ShaderSetupFlags::VP;;
+    unsigned ss_flags = ShaderSetupFlags::LIGHTING | ShaderSetupFlags::VP;
+    if (settings.gammaEnabled()) {
+      ss_flags |= ShaderSetupFlags::GAMMA;
+    }
     if (settings.getShadows() || settings.getShadowsPCF()) {
       ss_flags |= ShaderSetupFlags::SHADOWS;
     }
@@ -505,6 +512,7 @@ namespace fly
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::numfrustumSplits()), static_cast<int>(params._worldToLight.size()));
         setScalarArray(_shader->uniformLocation(GLSLShaderGenerator::frustumSplits()), params._smFrustumSplits->front(), static_cast<unsigned>(params._smFrustumSplits->size()));
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::shadowMapBias()), params._smBias);
+        setScalar(_shader->uniformLocation(GLSLShaderGenerator::shadowDarkenFactor()), params._shadowDarkenFactor);
       });
     }
     if (flags & ShaderSetupFlags::TIME) {
@@ -523,6 +531,16 @@ namespace fly
     if (flags & ShaderSetupFlags::EXPOSURE) {
       _setupFuncs.push_back([this](const GlobalShaderParams& params) {
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::exposure()), params._exposure);
+      });
+    }
+    if (flags & ShaderSetupFlags::GAMMA_INVERSE) {
+      _setupFuncs.push_back([this](const GlobalShaderParams& params) {
+        setScalar(_shader->uniformLocation(GLSLShaderGenerator::gammaInverse()), 1.f / params._gamma);
+      });
+    }
+    if (flags & ShaderSetupFlags::GAMMA) {
+      _setupFuncs.push_back([this](const GlobalShaderParams& params) {
+        setScalar(_shader->uniformLocation(GLSLShaderGenerator::gamma()), params._gamma);
       });
     }
   }

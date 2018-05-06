@@ -22,6 +22,7 @@ namespace fly
       virtual void windAnimationsChanged(GraphicsSettings const * const gs) = 0;
       virtual void anisotropyChanged(GraphicsSettings const * const gs) = 0;
       virtual void cameraLerpingChanged(GraphicsSettings const * const gs) = 0;
+      virtual void gammaChanged(GraphicsSettings const * const gs) = 0;
     };
     void addListener(const std::shared_ptr<Listener>& listener);
     void setNormalMapping(bool normal_mapping);
@@ -41,13 +42,17 @@ namespace fly
     const std::vector<float>& getFrustumSplits() const;
     unsigned getShadowMapSize() const;
     bool exposureEnabled() const;
+    bool gammaEnabled() const;
     bool postProcessingEnabled() const;
     bool depthPrepassEnabled() const;
     void setExposureEnabled(bool enabled);
+    void setGammaCorrectionEnabled(bool enabled);
     void setPostProcessingEnabled(bool enabled);
     void setDepthprepassEnabled(bool enabled);
     float getExposure() const;
     void setExposure(float exposure);
+    float getGamma() const;
+    void setGamma(float gamma);
     bool getWindAnimations() const;
     void setWindAnimations(bool enabled);
     bool getDebugQuadtreeNodeAABBs() const;
@@ -62,6 +67,8 @@ namespace fly
     void setCameraLerping(float alpha);
     bool getDetailCulling() const;
     void setDetailCulling(bool enabled);
+    void setShadowDarkenFactor(float factor);
+    float getShadowDarkenFactor() const;
 
   private:
     std::set<std::weak_ptr<Listener>, std::owner_less<std::weak_ptr<Listener>>> _listeners;
@@ -69,12 +76,15 @@ namespace fly
     bool _parallaxMapping = true;
     bool _reliefMapping = true;
     bool _exposureEnabled = true;
+    bool _gammaCorrectionEnabled = true;
     float _exposure = 1.f;
+    float _gamma = 2.2f;
     bool _windAnimations = true;
     bool _depthPrepass = false;
     bool _shadows = true;
     bool _shadowsPCF = true;
     float _smBias = 0.0035f;
+    float _shadowDarkenFactor = 0.8f;
     unsigned _shadowMapSize = 1024;
     std::vector<float> _smFrustumSplits = { 7.5f, 50.f, 500.f };
     unsigned _anisotropy = 4u;

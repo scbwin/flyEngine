@@ -142,7 +142,9 @@ namespace fly
       WIND = 4,
       VP = 8,
       LIGHTING = 16,
-      EXPOSURE = 32
+      EXPOSURE = 32,
+      GAMMA_INVERSE = 64,
+      GAMMA = 128
     };
     /**
     * Class that is used to only send uniform data to the GPU that is actually needed.

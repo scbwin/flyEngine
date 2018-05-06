@@ -25,7 +25,8 @@ namespace fly
     enum CompositeFlag : unsigned
     {
       CP_NONE = 0,
-      EXPOSURE = 1
+      EXPOSURE = 1,
+      GAMMA_INVERSE = 2
     };
     std::string createMeshVertexShaderFile(unsigned flags, const GraphicsSettings& settings);
     std::string createMeshFragmentShaderFile(unsigned flags, const GraphicsSettings& settings);
@@ -63,8 +64,11 @@ namespace fly
     static inline constexpr const char* worldToLightMatrices() { return "wtl"; };
     static inline constexpr const char* frustumSplits() { return "fs"; };
     static inline constexpr const char* numfrustumSplits() { return "nfs"; };
+    static inline constexpr const char* shadowDarkenFactor() { return "sdf"; };
     static inline constexpr const char* diffuseColor() { return "dcol"; };
     static inline constexpr const char* exposure() { return "e"; };
+    static inline constexpr const char* gammaInverse() { return "gi"; };
+    static inline constexpr const char* gamma() { return "g"; };
     static inline constexpr const char* ambientConstant() { return "ka"; };
     static inline constexpr const char* diffuseConstant() { return "kd"; };
     static inline constexpr const char* specularConstant() { return "ks"; };

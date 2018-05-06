@@ -35,6 +35,10 @@ private:
   static void cbGetShadowmapsize(void* value, void* client_data);
   static void cbSetExposure(const void* value, void* client_data);
   static void cbGetExposure(void* value, void* client_data);
+  static void cbSetGammaEnabled(const void* value, void* client_data);
+  static void cbGetGammaEnabled(void* value, void* client_data);
+  static void cbSetGamma(const void* value, void* client_data);
+  static void cbGetGamma(void* value, void* client_data);
   static void cbSetDebugQuadtree(const void* value, void* client_data);
   static void cbGetDebugQuadtree(void* value, void* client_data);
   static void cbSetDebugAABBs(const void* value, void* client_data);
@@ -52,6 +56,8 @@ private:
   static void getCamSpeed(void* value, void* client_data);
   static void setSkydome(const void* value, void* client_data);
   static void getSkydome(void* value, void* client_data);
+  static void setShadowFactor(const void* value, void* client_data);
+  static void getShadowFactor(void* value, void* client_data);
   template<typename T> static T* cast(void* data){return reinterpret_cast<T*>(data);}
   template<typename T> static const T* cast(const void* data) { return reinterpret_cast<const T*>(data); }
 };

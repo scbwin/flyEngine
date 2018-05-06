@@ -21,6 +21,7 @@ namespace fly
     std::vector<Mat4f> _worldToLight;
     std::vector<float> const * _smFrustumSplits;
     float _smBias;
+    float _shadowDarkenFactor;
     Vec3f const * _lightPosWorld;
     Vec3f _camPosworld;
     Vec3f const * _lightIntensity;
@@ -28,6 +29,7 @@ namespace fly
     float _time;
     WindParams _windParams;
     float _exposure;
+    float _gamma;
   };
 }
 

@@ -95,6 +95,11 @@ namespace fly
     {
       graphicsSettingsChanged();
     }
+    virtual void gammaChanged(GraphicsSettings const * const gs) override
+    {
+      graphicsSettingsChanged();
+      compositingChanged(gs);
+    }
     virtual void cameraLerpingChanged(GraphicsSettings const * const gs) override
     {
       if (gs->getCameraLerping()) {
@@ -183,6 +188,7 @@ namespace fly
         _gsp._lightIntensity = &_directionalLight->getIntensity();
         _gsp._time = time;
         _gsp._exposure = _gs->getExposure();
+        _gsp._gamma = _gs->getGamma();
         _meshGeometryStorage.bind();
         if (_shadowMapping) {
           renderShadowMap();
@@ -515,6 +521,7 @@ namespace fly
 #endif
       _gsp._smFrustumSplits = &_gs->getFrustumSplits();
       _gsp._smBias = _gs->getShadowBias();
+      _gsp._shadowDarkenFactor = _gs->getShadowDarkenFactor();
       _api.setDepthClampEnabled<false>();
     }
     void graphicsSettingsChanged()
