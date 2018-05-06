@@ -239,7 +239,8 @@ namespace fly
         renderMeshes(visible_meshes);
         if (_skydomeRenderable) {
           _api.setCullMode<API::CullMode::FRONT>();
-          Mat4f view_matrix_sky_dome = glm::mat4(glm::mat3(_gsp._viewMatrix)); // Removes the translational part of the view matrix
+          Mat4f view_matrix_sky_dome = _gsp._viewMatrix;
+          view_matrix_sky_dome[3] = Vec4f(Vec3f(0.f), 1.f);
           auto skydome_vp = _gsp._projectionMatrix * view_matrix_sky_dome;
           _gsp._VP = &skydome_vp;
           _api.setupShaderDesc(*_skydomeRenderable->_shaderDesc, _gsp);
@@ -520,6 +521,9 @@ namespace fly
     {
       _api.recreateShadersAndMaterials(*_gs);
       for (const auto& e : _staticMeshRenderables) {
+        e.second->fetchShaderDescs();
+      }
+      for (const auto& e : _dynamicMeshRenderables) {
         e.second->fetchShaderDescs();
       }
     }

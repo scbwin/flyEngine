@@ -2,10 +2,10 @@
 
 namespace fly
 {
-  GLAppendBuffer::GLAppendBuffer(GLenum target) : _target(target)
+  GLAppendBuffer::GLAppendBuffer(GLenum target) : _target(target), _buffer(target)
   {
   }
-  const std::shared_ptr<GLBuffer>& GLAppendBuffer::getBuffer() const
+  const GLBuffer& GLAppendBuffer::getBuffer() const
   {
     return _buffer;
   }

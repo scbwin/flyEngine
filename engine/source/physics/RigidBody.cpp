@@ -8,7 +8,7 @@ namespace fly
   {
     _motionState = std::make_unique<btDefaultMotionState>(btTransform(btQuaternion(0, 0, 0, 1), btVector3(position[0], position[1], position[2])));
     btVector3 inertia;
-    col_shape->calculateLocalInertia(mass, inertia);
+    if (mass > 0.f) col_shape->calculateLocalInertia(mass, inertia);
     btRigidBody::btRigidBodyConstructionInfo info(mass, _motionState.get(), col_shape.get(), inertia);
     _rigidBody = std::make_unique<btRigidBody>(info);
     _rigidBody->setRestitution(restitution);

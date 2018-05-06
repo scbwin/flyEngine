@@ -260,7 +260,7 @@ namespace fly
     resizeShadowmap(tex.get(), settings);
     return tex;
   }
-  void OpenGLAPI::resizeShadowmap(Shadowmap * const shadow_map, const GraphicsSettings& settings)
+  void OpenGLAPI::resizeShadowmap(Shadowmap* shadow_map, const GraphicsSettings& settings)
   {
     shadow_map->image3D(0, GL_DEPTH_COMPONENT24, Vec3u(Vec2u(settings.getShadowMapSize()), static_cast<unsigned>(settings.getFrustumSplits().size())), 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
   }
@@ -349,8 +349,8 @@ namespace fly
       mesh_data._type = GL_UNSIGNED_INT;
     }
     _vao.bind();
-    _vboAppend.getBuffer()->bind();
-    _iboAppend.getBuffer()->bind();
+    _vboAppend.getBuffer().bind();
+    _iboAppend.getBuffer().bind();
     for (unsigned i = 0; i < 5; i++) {
       GL_CHECK(glEnableVertexAttribArray(i));
     }
