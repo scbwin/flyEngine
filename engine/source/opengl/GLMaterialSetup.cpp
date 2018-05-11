@@ -1,7 +1,7 @@
 #include <opengl/GLMaterialSetup.h>
 #include <GL/glew.h>
 #include <opengl/GLShaderInterface.h>
-#include <opengl/GLWrappers.h>
+#include <opengl/GLShaderProgram.h>
 #include <opengl/OpenGLUtils.h>
 #include <opengl/OpenGLAPI.h>
 #include <opengl/GLSLShaderGenerator.h>

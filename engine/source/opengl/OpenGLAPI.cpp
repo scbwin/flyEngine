@@ -20,18 +20,18 @@
 #include <WindParamsLocal.h>
 #include <GraphicsSettings.h>
 #include <opengl/GLMaterialSetup.h>
+#include <opengl/GLShaderProgram.h>
 
 namespace fly
 {
   OpenGLAPI::OpenGLAPI() :
     _shaderGenerator(std::make_unique<GLSLShaderGenerator>()),
-    _shaderCache(SoftwareCache<std::string, std::shared_ptr<GLShaderProgram>, const std::string&,
-      const std::string&, const std::string& >([](const std::string& vs, const std::string& fs, const std::string& gs) {
+    _shaderCache(SoftwareCache<std::string, std::shared_ptr<GLShaderProgram>, GLShaderSource&,
+      GLShaderSource&, GLShaderSource& >([](GLShaderSource& vs, GLShaderSource& fs, GLShaderSource& gs) {
     auto ret = std::make_shared<GLShaderProgram>();
-    ret->create();
-    ret->addShaderFromFile(vs, GLShaderProgram::ShaderType::VERTEX);
-    if (gs != "") { ret->addShaderFromFile(gs, GLShaderProgram::ShaderType::GEOMETRY); }
-    ret->addShaderFromFile(fs, GLShaderProgram::ShaderType::FRAGMENT);
+    ret->add(vs);
+    if (gs._key != "") { ret->add(gs); }
+    ret->add(fs);
     ret->link();
     return ret;
   })),
@@ -71,10 +71,19 @@ namespace fly
     GL_CHECK(glVertexAttribPointer(1, 3, GL_FLOAT, false, 2 * sizeof(Vec3f), reinterpret_cast<const void*>(sizeof(Vec3f))));
 
     _offScreenFramebuffer = std::make_unique<GLFramebuffer>();
-    _aabbShader = createShader("assets/opengl/vs_aabb.glsl", "assets/opengl/fs_aabb.glsl", "assets/opengl/gs_aabb.glsl");
-    _samplerAnisotropic = std::make_unique<GLSampler>();
-    _skydomeShader = createShader("assets/opengl/vs_skybox.glsl", "assets/opengl/fs_skydome_new.glsl");
+
+    GLShaderSource vs_aabb, gs_aabb, fs_aabb;
+    vs_aabb.initFromFile("assets/opengl/vs_aabb.glsl", GL_VERTEX_SHADER);
+    gs_aabb.initFromFile("assets/opengl/gs_aabb.glsl", GL_GEOMETRY_SHADER);
+    fs_aabb.initFromFile("assets/opengl/fs_aabb.glsl", GL_FRAGMENT_SHADER);
+    _aabbShader = createShader(vs_aabb, fs_aabb, gs_aabb);
+    GLShaderSource vs_skydome, fs_skydome;
+    vs_skydome.initFromFile("assets/opengl/vs_skybox.glsl", GL_VERTEX_SHADER);
+    fs_skydome.initFromFile("assets/opengl/fs_skydome_new.glsl", GL_FRAGMENT_SHADER);
+    _skydomeShader = createShader(vs_skydome, fs_skydome);
     _skydomeShaderDesc = createShaderDesc(_skydomeShader, ShaderSetupFlags::VP);
+
+    _samplerAnisotropic = std::make_unique<GLSampler>();
   }
   OpenGLAPI::~OpenGLAPI()
   {
@@ -90,9 +99,9 @@ namespace fly
   void OpenGLAPI::reloadShaders()
   {
     for (const auto& e : _shaderCache.getElements()) {
-      e->reload();
+     // e->reload();
     }
-    _skydomeShader->reload();
+   // _skydomeShader->reload();
   }
   void OpenGLAPI::beginFrame() const
   {
@@ -211,10 +220,10 @@ namespace fly
   {
     return _matDescCache.getOrCreate(material, material, settings);
   }
-  std::shared_ptr<GLShaderProgram> OpenGLAPI::createShader(const std::string & vertex_file, const std::string & fragment_file, const std::string& geometry_file)
+  std::shared_ptr<GLShaderProgram> OpenGLAPI::createShader(GLShaderSource& vs, GLShaderSource& fs, GLShaderSource& gs)
   {
-    std::string key = vertex_file + fragment_file + geometry_file;
-    return _shaderCache.getOrCreate(key, vertex_file, fragment_file, geometry_file);
+    std::string key = vs._key + fs._key + gs._key;
+    return _shaderCache.getOrCreate(key, vs, fs, gs);
   }
   std::shared_ptr<OpenGLAPI::ShaderDesc> OpenGLAPI::createShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, unsigned flags)
   {
@@ -266,15 +275,15 @@ namespace fly
   }
   void OpenGLAPI::recreateShadersAndMaterials(const GraphicsSettings& settings)
   {
-    _shaderGenerator->regenerateShaders(settings);
+    _shaderGenerator->clear();
     _shaderCache.clear();
     _shaderDescCache.clear();
     for (const auto e : _matDescCache.getElements()) {
       e->create(this, settings);
     }
-    createCompositeShaderFile(settings);
+    createCompositeShader(settings);
   }
-  void OpenGLAPI::createCompositeShaderFile(const GraphicsSettings & gs)
+  void OpenGLAPI::createCompositeShader(const GraphicsSettings & gs)
   {
     unsigned flags = GLSLShaderGenerator::CompositeFlag::CP_NONE;
     unsigned ss_flags = ShaderSetupFlags::NONE;
@@ -286,9 +295,9 @@ namespace fly
       flags |= GLSLShaderGenerator::CompositeFlag::GAMMA_INVERSE;
       ss_flags |= ShaderSetupFlags::GAMMA_INVERSE;
     }
-    std::string vs_c, fs_c;
-    _shaderGenerator->createCompositeShaderFiles(flags, gs, vs_c, fs_c);
-    _compositeShaderDesc = createShaderDesc(createShader(vs_c, fs_c), ss_flags);
+    GLShaderSource vs, fs;
+    _shaderGenerator->createCompositeShaderSource(flags, gs, vs, fs);
+    _compositeShaderDesc = createShaderDesc(createShader(vs, fs), ss_flags);
   }
   std::vector<std::shared_ptr<Material>> OpenGLAPI::getAllMaterials()
   {
@@ -421,8 +430,8 @@ namespace fly
         _materialSetupFuncs.push_back(api->_materialSetup->getReliefMappingSetup());
       }
     }
-    auto fragment_file = api->_shaderGenerator->createMeshFragmentShaderFile(flag, settings);
-    auto vertex_file = api->_shaderGenerator->createMeshVertexShaderFile(flag, settings);
+    auto fragment_file = api->_shaderGenerator->createMeshFragmentShaderSource(flag, settings);
+    auto vertex_file = api->_shaderGenerator->createMeshVertexShaderSource(flag, settings);
     unsigned ss_flags = ShaderSetupFlags::LIGHTING | ShaderSetupFlags::VP;
     if (settings.gammaEnabled()) {
       ss_flags |= ShaderSetupFlags::GAMMA;
@@ -431,16 +440,16 @@ namespace fly
       ss_flags |= ShaderSetupFlags::SHADOWS;
     }
     _meshShaderDesc = api->createShaderDesc(api->createShader(vertex_file, fragment_file), ss_flags);
-    vertex_file = api->_shaderGenerator->createMeshVertexShaderFile(flag | FLAG::WIND, settings);
+    vertex_file = api->_shaderGenerator->createMeshVertexShaderSource(flag | FLAG::WIND, settings);
     if (settings.getWindAnimations()) {
       ss_flags |= ShaderSetupFlags::WIND | ShaderSetupFlags::TIME;
     }
     _meshShaderDescWind = api->createShaderDesc(api->createShader(vertex_file, fragment_file), ss_flags);
 
-    auto vertex_shadow_file = api->_shaderGenerator->createMeshVertexShaderFileDepth(flag, settings);
-    auto vertex_shadow_file_wind = api->_shaderGenerator->createMeshVertexShaderFileDepth(flag | FLAG::WIND, settings);
-    auto fragment_shadow_file = api->_shaderGenerator->createMeshFragmentShaderFileDepth(flag, settings);
-    auto fragment_shadow_file_wind = api->_shaderGenerator->createMeshFragmentShaderFileDepth(flag | FLAG::WIND, settings);
+    auto vertex_shadow_file = api->_shaderGenerator->createMeshVertexShaderDepthSource(flag, settings);
+    auto vertex_shadow_file_wind = api->_shaderGenerator->createMeshVertexShaderDepthSource(flag | FLAG::WIND, settings);
+    auto fragment_shadow_file = api->_shaderGenerator->createMeshFragmentShaderDepthSource(flag, settings);
+    auto fragment_shadow_file_wind = api->_shaderGenerator->createMeshFragmentShaderDepthSource(flag | FLAG::WIND, settings);
     _meshShaderDescDepth = api->createShaderDesc(api->createShader(vertex_shadow_file, fragment_shadow_file), ShaderSetupFlags::VP);
     ss_flags = ShaderSetupFlags::VP;
     if (settings.getWindAnimations()) {

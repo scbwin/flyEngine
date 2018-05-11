@@ -25,17 +25,17 @@ namespace fly
     GLuint _id;
   };
 
-  class GLShaderProgram
+  class GLShaderProgramOld
   {
   public:
     enum class ShaderType
     {
       VERTEX, FRAGMENT, COMPUTE, GEOMETRY
     };
-    GLShaderProgram();
-    ~GLShaderProgram();
-    GLShaderProgram(const GLShaderProgram& other) = delete;
-    GLShaderProgram& operator=(const GLShaderProgram& other) = delete;
+    GLShaderProgramOld();
+    ~GLShaderProgramOld();
+    GLShaderProgramOld(const GLShaderProgramOld& other) = delete;
+    GLShaderProgramOld& operator=(const GLShaderProgramOld& other) = delete;
     void create();
     void addShaderFromFile(const std::string& fname, ShaderType type);
     void link();

@@ -1,6 +1,4 @@
 #include <opengl/GLSLShaderGenerator.h>
-#include <fstream>
-#include <iostream>
 #include <Settings.h>
 #include <GraphicsSettings.h>
 
@@ -8,6 +6,8 @@ namespace fly
 {
   GLSLShaderGenerator::GLSLShaderGenerator()
   {
+    _compositeVertexSource.initFromFile(std::string(vertexFileComposite()), GL_VERTEX_SHADER);
+
     _windParamString = "uniform float " + std::string(time()) + "; \n\
 // Global wind params\n\
 uniform vec2 " + std::string(windDir()) + "; // Wind direction\n\
@@ -24,127 +24,131 @@ uniform vec3 " + std::string(bbMax()) + "; // AABB max xz\n" + std::string(noise
   pos_world.xz += " + std::string(windDir()) + " * (noise(pos_world.xz * " + std::string(windFrequency()) + " + " + std::string(time()) + " * " + std::string(windMovement()) + ") * 2.f - 1.f) * " + std::string(windStrength()) + " * weight;\n\
   pos_world.xz = clamp(pos_world.xz, " + std::string(bbMin()) + ".xz, " + std::string(bbMax()) + ".xz);\n";
   }
-  std::string GLSLShaderGenerator::createMeshVertexShaderFile(unsigned flags, const GraphicsSettings & settings)
+  GLShaderSource GLSLShaderGenerator::createMeshVertexShaderSource(unsigned flags, const GraphicsSettings & settings)
   {
-    std::string fname = std::string(directory()) + "vs";
+    std::string key = std::string(directory()) + "vs";
     if (flags & MeshRenderFlag::WIND) {
-      fname += "_wind";
+      key += "_wind";
     }
-    fname += ".glsl";
-    for (const auto& n : _fnamesVertex) {
-      if (n == fname) { // File already created
-        return fname;
+    key += ".glsl";
+    for (const auto& s : _vertexSources) {
+      if (s._src._key == key && s._flags == flags) { // File already created
+        return s._src;
       }
     }
-    _fnamesVertex.push_back(fname);
-    _flagsVertex.push_back(flags);
-    return createMeshVertexFile(fname, flags, settings);
+    GLShaderSource src;
+    src._key = key;
+    src._source = createMeshVertexSource(flags, settings);;
+    src._type = GL_VERTEX_SHADER;
+    _vertexSources.push_back({ src, flags });
+    return src;
   }
-  std::string GLSLShaderGenerator::createMeshFragmentShaderFile(unsigned flags, const GraphicsSettings& settings)
+  GLShaderSource GLSLShaderGenerator::createMeshFragmentShaderSource(unsigned flags, const GraphicsSettings& settings)
   {
-    std::string fname = std::string(directory()) + "fs";
+    std::string key = std::string(directory()) + "fs";
     if (flags & MeshRenderFlag::DIFFUSE_MAP) {
-      fname += "_albedo";
+      key += "_albedo";
     }
     if (flags & MeshRenderFlag::NORMAL_MAP) {
-      fname += "_normal";
+      key += "_normal";
       if (flags & MeshRenderFlag::PARALLAX_MAP) {
-        fname += "_parallax";
+        key += "_parallax";
       }
     }
     if (flags & MeshRenderFlag::ALPHA_MAP) {
-      fname += "_alpha";
+      key += "_alpha";
     }
     if (settings.getShadows() || settings.getShadowsPCF()) {
-      fname += "_shadows";
+      key += "_shadows";
     }
     if (settings.getShadowsPCF()) {
-      fname += "_pcf";
+      key += "_pcf";
     }
     if (settings.gammaEnabled()) {
-      fname += "_gamma";
+      key += "_gamma";
     }
-    fname += ".glsl";
-    for (const auto& n : _fnamesFragment) {
-      if (n == fname) { // File already created
-        return fname;
+    key += ".glsl";
+    for (const auto& s : _fragmentSources) {
+      if (s._src._key == key && s._flags == flags) { // File already created
+        return s._src;
       }
     }
-    _fnamesFragment.push_back(fname);
-    _flagsFragment.push_back(flags);
-    return createMeshFragmentFile(fname, flags, settings);
+    GLShaderSource src;
+    src._key = key;
+    src._source = createMeshFragmentSource(flags, settings);
+    src._type = GL_FRAGMENT_SHADER;
+    _fragmentSources.push_back({ src, flags });
+    return src;
   }
-  std::string GLSLShaderGenerator::createMeshVertexShaderFileDepth(unsigned flags, const GraphicsSettings & settings)
+  GLShaderSource GLSLShaderGenerator::createMeshVertexShaderDepthSource(unsigned flags, const GraphicsSettings & settings)
   {
-    std::string fname = std::string(directory()) + "vs_depth";
+    std::string key = std::string(directory()) + "vs_depth";
     if (flags & MeshRenderFlag::WIND) {
-      fname += "_wind";
+      key += "_wind";
     }
-    fname += ".glsl";
-    for (const auto& n : _fnamesVertexDepth) {
-      if (n == fname) {
-        return fname;
+    key += ".glsl";
+    for (const auto& s : _vertexDepthSources) {
+      if (s._src._key == key && s._flags == flags) { // File already created
+        return s._src;
       }
     }
-    _fnamesVertexDepth.push_back(fname);
-    _flagsVertexDepth.push_back(flags);
-    return createMeshVertexFileDepth(fname, flags, settings);
+    GLShaderSource src;
+    src._key = key;
+    src._source = createMeshVertexDepthSource(flags, settings);
+    src._type = GL_VERTEX_SHADER;
+    _vertexDepthSources.push_back({ src, flags });
+    return src;
   }
-  std::string GLSLShaderGenerator::createMeshFragmentShaderFileDepth(unsigned flags, const GraphicsSettings & settings)
+  GLShaderSource GLSLShaderGenerator::createMeshFragmentShaderDepthSource(unsigned flags, const GraphicsSettings & settings)
   {
-    std::string fname = std::string(directory()) + "fs_depth";
+    std::string key = std::string(directory()) + "fs_depth";
     if (flags & MeshRenderFlag::ALPHA_MAP) {
-      fname += "_alpha";
+      key += "_alpha";
     }
-    fname += ".glsl";
-    for (const auto& n : _fnamesFragmentDepth) {
-      if (n == fname) {
-        return fname;
+    key += ".glsl";
+    for (const auto& s : _fragmentDepthSources) {
+      if (s._src._key == key && s._flags == flags) { // File already created
+        return s._src;
       }
     }
-    _fnamesFragmentDepth.push_back(fname);
-    _flagsFragmentDepth.push_back(flags);
-    return createMeshFragmentFileDepth(fname, flags, settings);
+    GLShaderSource src;
+    src._key = key;
+    src._source = createMeshFragmentDepthSource(flags, settings);
+    src._type = GL_FRAGMENT_SHADER;
+    _fragmentDepthSources.push_back({ src, flags });
+    return src;
   }
-  void GLSLShaderGenerator::createCompositeShaderFiles(unsigned flags, const GraphicsSettings & gs, std::string & vertex_file, std::string & fragment_file)
+  void GLSLShaderGenerator::createCompositeShaderSource(unsigned flags, const GraphicsSettings & gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src)
   {
-    vertex_file = std::string(vertexFileComposite());
-    fragment_file = std::string(directory()) + "fs_composite";
+    vertex_src = _compositeVertexSource;
+    auto key = std::string(directory()) + "fs_composite";
     if (flags & CompositeFlag::EXPOSURE) {
-      fragment_file += "_exposure";
+      key += "_exposure";
     }
     if (flags & CompositeFlag::GAMMA_INVERSE) {
-      fragment_file += "_gamma";
+      key += "_gamma";
     }
-    fragment_file += ".glsl";
-    for (const auto& n : _fnamesComposite) {
-      if (n == fragment_file) { // File already exists
+    key += ".glsl";
+    for (const auto& s : _compositeSources) {
+      if (s._src._key == key && s._flags == flags) { // File already created
+        fragment_src = s._src;
         return;
       }
     }
-    _fnamesComposite.push_back(fragment_file);
-    _flagsComposite.push_back(flags);
-    createCompositeShaderFiles(fragment_file, flags, gs);
+    fragment_src._key = key;
+    fragment_src._source = createCompositeShaderSource(flags, gs);
+    fragment_src._type = GL_FRAGMENT_SHADER;
+    _compositeSources.push_back({ fragment_src, flags });
   }
-  void GLSLShaderGenerator::regenerateShaders(const GraphicsSettings& gs)
+  void GLSLShaderGenerator::clear()
   {
-    for (unsigned i = 0; i < _fnamesFragment.size(); i++) {
-      createMeshFragmentFile(_fnamesFragment[i], _flagsFragment[i], gs);
-    }
-    for (unsigned i = 0; i < _fnamesVertex.size(); i++) {
-      createMeshVertexFile(_fnamesVertex[i], _flagsVertex[i], gs);
-    }
-    for (unsigned i = 0; i < _fnamesVertexDepth.size(); i++) {
-      createMeshVertexFileDepth(_fnamesVertexDepth[i], _flagsVertexDepth[i], gs);
-    }
-    for (unsigned i = 0; i < _fnamesFragmentDepth.size(); i++) {
-      createMeshFragmentFileDepth(_fnamesFragmentDepth[i], _flagsFragmentDepth[i], gs);
-    }
-    for (unsigned i = 0; i < _fnamesComposite.size(); i++) {
-      createCompositeShaderFiles(_fnamesComposite[i], _flagsComposite[i], gs);
-    }
+    _fragmentSources.clear();
+    _vertexSources.clear();
+    _vertexDepthSources.clear();
+    _fragmentDepthSources.clear();
+    _compositeSources.clear();
   }
-  std::string GLSLShaderGenerator::createMeshVertexFile(const std::string & fname, unsigned flags, const GraphicsSettings & settings) const
+  std::string GLSLShaderGenerator::createMeshVertexSource(unsigned flags, const GraphicsSettings & settings) const
   {
     std::string shader_src;
     shader_src += "#version 330\n\
@@ -181,11 +185,9 @@ out vec3 bitangent_world;\n";
   tangent_world = normalize(M_i * tangent);\n\
   bitangent_world = normalize(M_i * bitangent);\n\
 }";
-    std::ofstream os(fname);
-    os.write(shader_src.c_str(), shader_src.size());
-    return fname;
+    return shader_src;
   }
-  std::string GLSLShaderGenerator::createMeshVertexFileDepth(const std::string & fname, unsigned flags, const GraphicsSettings & settings) const
+  std::string GLSLShaderGenerator::createMeshVertexDepthSource(unsigned flags, const GraphicsSettings & settings) const
   {
     std::string shader_src = "#version 330\n\
 layout(location = 0) in vec3 position;\n\
@@ -206,11 +208,9 @@ void main()\n\
     shader_src += "  gl_Position = VP * pos_world;\n";
     shader_src += "  uv_out = uv;\n\
 }\n";
-    std::ofstream os(fname);
-    os.write(shader_src.c_str(), shader_src.size());
-    return fname;
+    return shader_src;
   }
-  std::string GLSLShaderGenerator::createMeshFragmentFile(const std::string & fname, unsigned flags, const GraphicsSettings& settings) const
+  std::string GLSLShaderGenerator::createMeshFragmentSource(unsigned flags, const GraphicsSettings& settings) const
   {
     std::string shader_src = "#version 330 \n\
 layout(location = 0) out vec3 fragmentColor;\n\
@@ -324,12 +324,9 @@ void main()\n\
       }
     }
     shader_src += "}\n";
-
-    std::ofstream os(fname);
-    os.write(shader_src.c_str(), shader_src.size());
-    return fname;
+    return shader_src;
   }
-  std::string GLSLShaderGenerator::createMeshFragmentFileDepth(const std::string & fname, unsigned flags, const GraphicsSettings & settings) const
+  std::string GLSLShaderGenerator::createMeshFragmentDepthSource(unsigned flags, const GraphicsSettings & settings) const
   {
     std::string shader_src = "#version 330\n\
 in vec2 uv_out;\n";
@@ -344,11 +341,9 @@ in vec2 uv_out;\n";
   }\n";
     }
     shader_src += "}";
-    std::ofstream os(fname);
-    os.write(shader_src.c_str(), shader_src.size());
-    return fname;
+    return shader_src;
   }
-  void GLSLShaderGenerator::createCompositeShaderFiles(const std::string & fs_file, unsigned flags, const GraphicsSettings & gs) const
+  std::string GLSLShaderGenerator::createCompositeShaderSource(unsigned flags, const GraphicsSettings & gs) const
   {
     std::string shader_src = "#version 330\n\
 layout(location = 0) out vec3 fragmentColor;\n\
@@ -366,8 +361,6 @@ void main()\n\
     if (flags & CompositeFlag::GAMMA_INVERSE) {
       shader_src += "  fragmentColor = pow(fragmentColor, vec3(" + std::string(gammaInverse()) + "));\n";
     }
-    shader_src += "}\n";
-    std::ofstream os(fs_file);
-    os.write(shader_src.c_str(), shader_src.size());
+    return shader_src + "}\n";
   }
 }

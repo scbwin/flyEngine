@@ -2,10 +2,8 @@
 
 void CheckOpenGLError(const char* stmt, const char* fname, int line)
 {
-  GLenum err = glGetError();
-  std::string err_string = "";
-  if (err != GL_NO_ERROR)
-  {
+  if (GLenum err = glGetError() != GL_NO_ERROR) {
+    std::string err_string;
     if (err == GL_INVALID_ENUM) {
       err_string = "GL_INVALID_ENUM";
     }

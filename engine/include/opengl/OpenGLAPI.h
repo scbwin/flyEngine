@@ -13,6 +13,7 @@
 #include <SoftwareCache.h>
 #include <opengl/GLVertexArray.h>
 #include <opengl/GLAppendBuffer.h>
+#include <opengl/GLShaderSource.h>
 
 namespace fly
 {
@@ -208,20 +209,20 @@ namespace fly
     void setAnisotropy(unsigned anisotropy);
     std::shared_ptr<GLTexture> createTexture(const std::string& path);
     std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material, const GraphicsSettings& settings);
-    std::shared_ptr<GLShaderProgram> createShader(const std::string& vertex_file, const std::string& fragment_file, const std::string& geometry_file = "");
+    std::shared_ptr<GLShaderProgram> createShader(GLShaderSource& vs, GLShaderSource& fs, GLShaderSource& gs = GLShaderSource());
     std::shared_ptr<ShaderDesc> createShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, unsigned flags);
     std::unique_ptr<RTT> createRenderToTexture(const Vec2u& size);
     std::unique_ptr<Depthbuffer> createDepthbuffer(const Vec2u& size);
     std::unique_ptr<Shadowmap> createShadowmap(const GraphicsSettings& settings);
     void resizeShadowmap(Shadowmap* shadow_map, const GraphicsSettings& settings);
     void recreateShadersAndMaterials(const GraphicsSettings& gs);
-    void createCompositeShaderFile(const GraphicsSettings& gs);
+    void createCompositeShader(const GraphicsSettings& gs);
     std::vector<std::shared_ptr<Material>> getAllMaterials();
     const std::shared_ptr<ShaderDesc>& getSkyboxShaderDesc() const;
   private:
     GLShaderProgram * _activeShader;
     SoftwareCache<std::string, std::shared_ptr<GLTexture>, const std::string& > _textureCache;
-    SoftwareCache<std::string, std::shared_ptr<GLShaderProgram>, const std::string&, const std::string&, const std::string&> _shaderCache;
+    SoftwareCache<std::string, std::shared_ptr<GLShaderProgram>, GLShaderSource&, GLShaderSource&, GLShaderSource&> _shaderCache;
     SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
     SoftwareCache<std::shared_ptr<GLShaderProgram>, std::shared_ptr<ShaderDesc>, const std::shared_ptr<GLShaderProgram>&, unsigned> _shaderDescCache;
     std::shared_ptr<GLShaderProgram> _aabbShader;

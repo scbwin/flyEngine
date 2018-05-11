@@ -13,7 +13,7 @@ namespace fly
   public:
     SoftwareCache(const std::function<Val(Args...)>& create_func) : _createFunc(create_func)
     {}
-    Val getOrCreate(const Key& key, Args... args) {
+    inline Val getOrCreate(const Key& key, Args... args) {
       auto it = _elements.find(key);
       if (it != _elements.end()) { // Element with this key already exists
         return it->second;

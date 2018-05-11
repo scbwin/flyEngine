@@ -21,19 +21,19 @@ namespace fly
     GL_CHECK(glDeleteVertexArrays(1, &_id));
   }
 
-  void GLShaderProgram::create()
+  void GLShaderProgramOld::create()
   {
     GL_CHECK(_id = glCreateProgram());
   }
 
-  void GLShaderProgram::addShaderFromFile(const std::string& fname, ShaderType type)
+  void GLShaderProgramOld::addShaderFromFile(const std::string& fname, ShaderType type)
   {
     _fnames.push_back(fname);
     _types.push_back(type);
     add(fname, type);
   }
 
-  void GLShaderProgram::link()
+  void GLShaderProgramOld::link()
   {
     GL_CHECK(glLinkProgram(_id));
 
@@ -59,19 +59,19 @@ namespace fly
       GL_CHECK(glDeleteShader(s));
     }
   }
-  void GLShaderProgram::bind() const
+  void GLShaderProgramOld::bind() const
   {
     GL_CHECK(glUseProgram(_id));
   }
-  GLuint GLShaderProgram::id() const
+  GLuint GLShaderProgramOld::id() const
   {
     return _id;
   }
-  GLint GLShaderProgram::uniformLocation(const std::string& name)
+  GLint GLShaderProgramOld::uniformLocation(const std::string& name)
   {
     return _uniformLocations.getOrCreate(name, name);
   }
-  GLShaderProgram::GLShaderProgram() :
+  GLShaderProgramOld::GLShaderProgramOld() :
     _uniformLocations(SoftwareCache<std::string, GLint, const std::string&>([this](const std::string& name) {
     auto loc = glGetUniformLocation(_id, name.c_str());
 #ifdef _DEBUG
@@ -88,12 +88,12 @@ namespace fly
   }))
   {
   }
-  GLShaderProgram::~GLShaderProgram()
+  GLShaderProgramOld::~GLShaderProgramOld()
   {
     GL_CHECK(glDeleteProgram(_id));
   }
 
-  void GLShaderProgram::reload()
+  void GLShaderProgramOld::reload()
   {
     if (_id) {
       GL_CHECK(glDeleteProgram(_id));
@@ -107,12 +107,12 @@ namespace fly
     link();
   }
 
-  const std::vector<std::string>& GLShaderProgram::getFileNames() const
+  const std::vector<std::string>& GLShaderProgramOld::getFileNames() const
   {
     return _fnames;
   }
 
-  void GLShaderProgram::add(const std::string & fname, ShaderType type)
+  void GLShaderProgramOld::add(const std::string & fname, ShaderType type)
   {
     GLenum shader_type;
     switch (type)

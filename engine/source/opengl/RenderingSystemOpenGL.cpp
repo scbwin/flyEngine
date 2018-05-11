@@ -548,15 +548,15 @@ namespace fly
     }
   }
 
-  void RenderingSystemOpenGL::createShader(std::shared_ptr<GLShaderProgram>& shader, const std::string & vs, const std::string & fs, const std::string & gs)
+  void RenderingSystemOpenGL::createShader(std::shared_ptr<GLShaderProgramOld>& shader, const std::string & vs, const std::string & fs, const std::string & gs)
   {
-    shader = std::make_shared<GLShaderProgram>();
+    shader = std::make_shared<GLShaderProgramOld>();
     shader->create();
-    shader->addShaderFromFile(vs, GLShaderProgram::ShaderType::VERTEX);
+    shader->addShaderFromFile(vs, GLShaderProgramOld::ShaderType::VERTEX);
     if (gs != "") {
-      shader->addShaderFromFile(gs, GLShaderProgram::ShaderType::GEOMETRY);
+      shader->addShaderFromFile(gs, GLShaderProgramOld::ShaderType::GEOMETRY);
     }
-    shader->addShaderFromFile(fs, GLShaderProgram::ShaderType::FRAGMENT);
+    shader->addShaderFromFile(fs, GLShaderProgramOld::ShaderType::FRAGMENT);
     shader->link();
   }
 
@@ -1122,7 +1122,7 @@ namespace fly
 
   void RenderingSystemOpenGL::renderTerrain(RenderingSystemOpenGL::TerrainRenderMode mode)
   {
-    std::shared_ptr<GLShaderProgram> shader;
+    std::shared_ptr<GLShaderProgramOld> shader;
     if (mode == TerrainRenderMode::NORMAL) {
       shader = _terrainShader;
     }

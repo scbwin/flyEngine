@@ -88,7 +88,7 @@ namespace fly
         _depthBuffer = nullptr;
       }
       if (gs->postProcessingEnabled()) {
-        _api.createCompositeShaderFile(*_gs);
+        _api.createCompositeShader(*_gs);
       }
     }
     virtual void windAnimationsChanged(GraphicsSettings const * const gs) override
