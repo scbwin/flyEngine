@@ -40,7 +40,7 @@ namespace fly
     void addShaderFromFile(const std::string& fname, ShaderType type);
     void link();
     void bind() const;
-    GLuint id();
+    GLuint id() const;
     GLint uniformLocation(const std::string& name);
     std::vector<std::string> _fnames;
     std::vector<ShaderType> _types;

@@ -206,7 +206,9 @@ namespace fly
         _stats._bvhTraversalMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
         for (const auto& e : _dynamicMeshRenderables) {
-          visible_meshes.push_back(e.second.get());
+          if (_camera->intersectFrustumAABB(*e.second->getAABBWorld()) != IntersectionResult::OUTSIDE) {
+            visible_meshes.push_back(e.second.get());
+          }
         }
         if (_gs->depthPrepassEnabled()) {
           _api.setRendertargets({}, _depthBuffer.get());
@@ -218,7 +220,7 @@ namespace fly
           for (const auto& e : display_list) {
             _api.setupShaderDesc(*e.first, _gsp);
             for (const auto& e1 : e.second) {
-              e1.first->setupDepth(e.first->getShader().get());
+              e1.first->setupDepth();
               for (const auto& smr : e1.second) {
                 smr->renderDepth(_api);
               }
@@ -239,9 +241,6 @@ namespace fly
         if (_shadowMap) {
           _api.bindShadowmap(*_shadowMap);
         }
-#if RENDERER_STATS
-        timing.start();
-#endif
         renderMeshes(visible_meshes);
         if (_skydomeRenderable) {
           _api.setCullMode<API::CullMode::FRONT>();
@@ -254,9 +253,6 @@ namespace fly
           _gsp._VP = &_vpScene; // Restore view projection matrix
           _api.setCullMode<API::CullMode::BACK>();
         }
-#if RENDERER_STATS
-        _stats._sceneRenderingCPUMicroSeconds = timing.duration<std::chrono::microseconds>();
-#endif
         if (_gs->getDebugQuadtreeNodeAABBs()) {
           renderQuadtreeAABBs();
         }
@@ -282,6 +278,10 @@ namespace fly
     const Vec3f& getSceneMin() const { return _sceneMin; }
     const Vec3f& getSceneMax() const { return _sceneMax; }
     std::vector<std::shared_ptr<Material>> getAllMaterials() { return _api.getAllMaterials(); }
+    const Mat4f& getViewProjectionMatrix() const
+    {
+      return _vpScene;
+    }
   private:
     API _api;
     ProjectionParams _pp;
@@ -453,11 +453,12 @@ namespace fly
       }
 #if RENDERER_STATS
       _stats._sceneMeshGroupingMicroSeconds = timing.duration<std::chrono::microseconds>();
+      timing.start();
 #endif
       for (const auto& e : display_list) {
         _api.setupShaderDesc(*e.first, _gsp);
         for (const auto& e1 : e.second) {
-          e1.first->setup(e.first->getShader().get());
+          e1.first->setup();
           for (const auto& smr : e1.second) {
             smr->render(_api);
 #if RENDERER_STATS
@@ -467,6 +468,9 @@ namespace fly
           }
         }
       }
+#if RENDERER_STATS
+      _stats._sceneRenderingCPUMicroSeconds = timing.duration<std::chrono::microseconds>();
+#endif
     }
     void renderShadowMap()
     {
@@ -505,7 +509,7 @@ namespace fly
         for (const auto& e : sm_display_list) {
           _api.setupShaderDesc(*e.first, _gsp);
           for (const auto& e1 : e.second) {
-            e1.first->setupDepth(e.first->getShader().get());
+            e1.first->setupDepth();
             for (const auto& smr : e1.second) {
               smr->renderDepth(_api);
 #if RENDERER_STATS

@@ -389,6 +389,7 @@ namespace fly
   }
   void OpenGLAPI::MaterialDesc::create(const std::shared_ptr<Material>& material, OpenGLAPI* api, const GraphicsSettings& settings)
   {
+    _activeShader = &api->_activeShader;
     _materialSetupFuncs.clear();
     _materialSetupFuncsDepth.clear();
     _diffuseMap = api->createTexture(material->getDiffusePath());
@@ -447,20 +448,20 @@ namespace fly
     }
     _meshShaderDescWindDepth = api->createShaderDesc(api->createShader(vertex_shadow_file_wind, fragment_shadow_file_wind), ss_flags);
   }
-  void OpenGLAPI::MaterialDesc::setup(GLShaderProgram* shader) const
+  void OpenGLAPI::MaterialDesc::setup() const
   {
     for (const auto& f : _materialSetupFuncs) {
-      f->setup(shader, *this);
+      f->setup(*_activeShader, *this);
     }
-    setScalar(shader->uniformLocation(GLSLShaderGenerator::ambientConstant()), _material->getKa());
-    setScalar(shader->uniformLocation(GLSLShaderGenerator::diffuseConstant()), _material->getKd());
-    setScalar(shader->uniformLocation(GLSLShaderGenerator::specularConstant()), _material->getKs());
-    setScalar(shader->uniformLocation(GLSLShaderGenerator::specularExponent()), _material->getSpecularExponent());
+    setScalar((*_activeShader)->uniformLocation(GLSLShaderGenerator::ambientConstant()), _material->getKa());
+    setScalar((*_activeShader)->uniformLocation(GLSLShaderGenerator::diffuseConstant()), _material->getKd());
+    setScalar((*_activeShader)->uniformLocation(GLSLShaderGenerator::specularConstant()), _material->getKs());
+    setScalar((*_activeShader)->uniformLocation(GLSLShaderGenerator::specularExponent()), _material->getSpecularExponent());
   }
-  void OpenGLAPI::MaterialDesc::setupDepth(GLShaderProgram * shader) const
+  void OpenGLAPI::MaterialDesc::setupDepth() const
   {
     for (const auto& f : _materialSetupFuncsDepth) {
-      f->setup(shader, *this);
+      f->setup(*_activeShader, *this);
     }
   }
   const std::shared_ptr<OpenGLAPI::ShaderDesc>& OpenGLAPI::MaterialDesc::getMeshShaderDesc(bool has_wind) const

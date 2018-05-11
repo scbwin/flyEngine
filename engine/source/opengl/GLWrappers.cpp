@@ -63,7 +63,7 @@ namespace fly
   {
     GL_CHECK(glUseProgram(_id));
   }
-  GLuint GLShaderProgram::id()
+  GLuint GLShaderProgram::id() const
   {
     return _id;
   }
@@ -74,16 +74,16 @@ namespace fly
   GLShaderProgram::GLShaderProgram() :
     _uniformLocations(SoftwareCache<std::string, GLint, const std::string&>([this](const std::string& name) {
     auto loc = glGetUniformLocation(_id, name.c_str());
-    if (loc == -1) {
 #ifdef _DEBUG
+    if (loc == -1) {
       std::string err;
       for (const auto& f : _fnames) {
         err += f + ",";
       }
       err += " No valid uniform location for name: " + name;
       throw std::exception(err.c_str());
-#endif
     }
+#endif
     return loc;
   }))
   {

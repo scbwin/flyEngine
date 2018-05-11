@@ -69,12 +69,33 @@ void GLWidget::resizeGL(int width, int height)
 {
   _renderer->onResize(fly::Vec2i(width, height));
   TwWindowSize(width, height);
+#if PHYSICS
+  _viewPortSize = fly::Vec2f(static_cast<float>(width), static_cast<float>(height));
+#endif
 }
 
 void GLWidget::paintGL()
 {
   _gameTimer->tick();
   _renderer->setDefaultRendertarget(defaultFramebufferObject());
+#if PHYSICS
+  if (_selectedRigidBody) {
+    fly::Vec3f focus_pos = _camController->getCamera()->getPosition() + _camController->getCamera()->getDirection() * _focusDist;
+    btTransform t;
+    _selectedRigidBody->getBtRigidBody()->getMotionState()->getWorldTransform(t);
+    fly::Vec3f body_pos(t.getOrigin().x(), t.getOrigin().y(), t.getOrigin().z());
+    if (distance(body_pos, focus_pos) < 1.f) {
+      t.setOrigin(btVector3(focus_pos[0], focus_pos[1], focus_pos[2]));
+      _selectedRigidBody->getBtRigidBody()->getMotionState()->setWorldTransform(t);
+      _selectedRigidBody->getBtRigidBody()->setWorldTransform(t);
+      _selectedRigidBody->getBtRigidBody()->setActivationState(ISLAND_SLEEPING);
+    }
+    else {
+      fly::Vec3f impulse = normalize(focus_pos - body_pos) * _impulseStrength * distance(body_pos, focus_pos);
+      _selectedRigidBody->getBtRigidBody()->applyImpulse(btVector3(impulse[0], impulse[1], impulse[2]), btVector3(0.f, 0.f, 0.f));
+    }
+  }
+#endif
   _engine->update(_gameTimer->getTimeSeconds(), _gameTimer->getDeltaTimeSeconds());
   if (contains<int>(_keysPressed, 'W')) {
     _camController->stepForward(_gameTimer->getDeltaTimeSeconds());
@@ -146,6 +167,30 @@ void GLWidget::mousePressEvent(QMouseEvent * e)
       _camController->mousePress(fly::Vec3f(static_cast<float>(e->localPos().x()), static_cast<float>(e->localPos().y()), 0.f));
     }
   }
+  else if (e->button() == Qt::MouseButton::RightButton) {
+#if PHYSICS
+    _camController->mousePress(fly::Vec3f(static_cast<float>(e->localPos().x()), static_cast<float>(e->localPos().y()), 0.f));
+    _selectedRigidBody = nullptr;
+    fly::Vec2f xy_ndc = fly::Vec2f(static_cast<float>(e->localPos().x()), static_cast<float>(e->localPos().y())) / _viewPortSize * 2.f - 1.f;
+    xy_ndc[1] *= -1.f;
+    fly::Vec4f ray_start_ndc(xy_ndc, fly::Vec2f(-1.f, 1.f));
+    fly::Vec4f ray_start_world = inverse(_renderer->getViewProjectionMatrix()) * ray_start_ndc;
+    ray_start_world /= ray_start_world[3];
+    fly::Vec4f ray_end_ndc(xy_ndc, fly::Vec2f(1.f, 1.f));
+    fly::Vec4f ray_end_world = inverse(_renderer->getViewProjectionMatrix()) * ray_end_ndc;
+    ray_end_world /= ray_end_world[3];
+    btCollisionWorld::ClosestRayResultCallback callback = btCollisionWorld::ClosestRayResultCallback(btVector3(ray_start_world[0], ray_start_world[1], ray_start_world[2]),
+      btVector3(ray_end_world[0], ray_end_world[1], ray_end_world[2]));
+    _physicsSystem->getDynamicsWorld()->rayTest(btVector3(ray_start_world[0], ray_start_world[1], ray_start_world[2]),
+      btVector3(ray_end_world[0], ray_end_world[1], ray_end_world[2]), callback);
+    if (callback.hasHit()) {
+      fly::RigidBody* rigid_body = reinterpret_cast<fly::RigidBody*>(callback.m_collisionObject->getUserPointer());
+      if (rigid_body) {
+        _selectedRigidBody = rigid_body;
+      }
+    }
+#endif
+  }
 }
 
 void GLWidget::mouseMoveEvent(QMouseEvent * e)
@@ -165,8 +210,28 @@ void GLWidget::mouseReleaseEvent(QMouseEvent * e)
       _camController->mouseRelease();
     }
     else {
+      _camController->mouseRelease();
       TwMouseButton(TwMouseAction::TW_MOUSE_RELEASED, TwMouseButtonID::TW_MOUSE_LEFT);
     }
+  }
+  if (e->button() == Qt::MouseButton::RightButton) {
+#if PHYSICS
+    if (_selectedRigidBody) {
+      //    _selectedRigidBody->getBtRigidBody()->clearForces();
+      _selectedRigidBody->getBtRigidBody()->activate();
+      fly::Vec3f impulse = _camController->getCamera()->getDirection();
+      _selectedRigidBody->getBtRigidBody()->applyImpulse(btVector3(impulse[0], impulse[1], impulse[2]), btVector3(0, 0, 0));
+    }
+    _selectedRigidBody = nullptr;
+
+    if (_camController->isPressed()) {
+      _camController->mouseRelease();
+    }
+    else {
+      _camController->mouseRelease();
+      TwMouseButton(TwMouseAction::TW_MOUSE_RELEASED, TwMouseButtonID::TW_MOUSE_RIGHT);
+    }
+#endif
   }
 }
 
@@ -191,6 +256,11 @@ void GLWidget::initGame()
   }
 #else
   auto sponza_model = importer->loadModel("assets/sponza/sponza.obj");
+#if DELETE_CURTAIN
+  auto meshes = sponza_model->getMeshes();
+  meshes.erase(meshes.end() - 28);
+  sponza_model->setMeshes(meshes);
+#endif
   for (const auto& m : sponza_model->getMaterials()) {
     m->setSpecularExponent(32.f);
     if (m->getDiffusePath() == "assets/sponza/textures\\spnza_bricks_a_diff.tga") {
@@ -242,45 +312,47 @@ void GLWidget::initGame()
   auto model_matrix = fly::Transform(fly::Vec3f(0.f), sponza_scale).getModelMatrix();
 #endif
 #if TOWERS && SPONZA_MANY
-      fly::AABB sponza_aabb_world(*sponza_model->getAABB(), model_matrix);
-      bool intersects = false;
-      for (const auto& t : towers) {
-        if (t->getAABBWorld()->intersects(sponza_aabb_world)) {
-          intersects = true;
-        }
-      }
+  fly::AABB sponza_aabb_world(*sponza_model->getAABB(), model_matrix);
+  bool intersects = false;
+  for (const auto& t : towers) {
+    if (t->getAABBWorld()->intersects(sponza_aabb_world)) {
+      intersects = true;
+    }
+  }
 #endif
 #if TOWERS && SPONZA_MANY
-      if (!intersects) {
+  if (!intersects) {
 #endif
-        unsigned index = 0;
-        for (const auto& mesh : sponza_model->getMeshes()) {
-          auto entity = _engine->getEntityManager()->createEntity();
-          bool has_wind = index >= 44 && index <= 62;
-          fly::Vec3f aabb_offset = has_wind ? fly::Vec3f(0.f, 0.f, 0.25f) : fly::Vec3f(0.f);
-          //fly::Vec3f translation(0.f);
-          if (index == sponza_model->getMeshes().size() - 28) {
-            has_wind = true;
-            aabb_offset = fly::Vec3f(0.f, 0.f, 0.25f);
-            mesh->setMaterial(sponza_model->getMeshes()[44]->getMaterial());
-          //  translation[1] = 1.f;
-          }
-          fly::AABB aabb_world = fly::AABB(*mesh->getAABB(), model_matrix);
-          aabb_world.expand(aabb_offset);
-          entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(mesh,
+    unsigned index = 0;
+    for (const auto& mesh : sponza_model->getMeshes()) {
+      auto entity = _engine->getEntityManager()->createEntity();
+      bool has_wind = index >= 44 && index <= 62;
+      fly::Vec3f aabb_offset = has_wind ? fly::Vec3f(0.f, 0.f, 0.25f) : fly::Vec3f(0.f);
+      //fly::Vec3f translation(0.f);
+#if !DELETE_CURTAIN
+      if (index == sponza_model->getMeshes().size() - 28) {
+        has_wind = true;
+        aabb_offset = fly::Vec3f(0.f, 0.f, 0.25f);
+        mesh->setMaterial(sponza_model->getMeshes()[44]->getMaterial());
+        //  translation[1] = 1.f;
+      }
+#endif
+      fly::AABB aabb_world(*mesh->getAABB(), model_matrix);
+      aabb_world.expand(aabb_offset);
+      entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(mesh,
 #if SPONZA_MANY
-            mesh->getMaterial(), model_matrix, has_wind, aabb_world));
+        mesh->getMaterial(), model_matrix, has_wind, aabb_world));
 #else
-            mesh->getMaterial(), model_matrix, has_wind, aabb_offset));
+        mesh->getMaterial(), model_matrix, has_wind, aabb_offset));
 #endif
 #if PHYSICS
-          const auto& model_matrix = entity->getComponent<fly::StaticMeshRenderable>()->getModelMatrix();
-          entity->addComponent(std::make_shared<fly::RigidBody>(model_matrix[3].xyz(), 0.f, _sponzaShapes[index], 0.f));
+      const auto& model_matrix = entity->getComponent<fly::StaticMeshRenderable>()->getModelMatrix();
+      entity->addComponent(std::make_shared<fly::RigidBody>(model_matrix[3].xyz(), 0.f, _sponzaShapes[index], 0.1f));
 #endif
-          index++;
-        }
+      index++;
+    }
 #if TOWERS
-      }
+  }
 #endif
 #if SPONZA_MANY
     }
@@ -289,6 +361,10 @@ void GLWidget::initGame()
 #endif
 #if PHYSICS || SKYDOME
   auto sphere_model = importer->loadModel("assets/sphere.obj");
+  for (const auto& m : sphere_model->getMaterials()) {
+    m->setSpecularExponent(256.f);
+    m->setDiffuseColor(fly::Vec3f(1.f, 0.f, 0.f));
+  }
 #endif
 #if SKYDOME
   _skydome = _engine->getEntityManager()->createEntity();
@@ -297,17 +373,44 @@ void GLWidget::initGame()
 #endif
 #if PHYSICS
   _graphicsSettings.setDebugObjectAABBs(true);
+  std::mt19937 gen;
+  std::uniform_real_distribution<float> col_dist(0.f, 2.f);
+  std::uniform_real_distribution<float> scale_dist(0.3f, 0.55f);
   for (const auto& m : sphere_model->getMeshes()) {
-    auto ent = _engine->getEntityManager()->createEntity();
     auto vec = m->getAABB()->getMax() - m->getAABB()->getMin();
     float radius = std::max(vec[0], std::max(vec[1], vec[2])) * 0.5f;
-    auto col_shape = std::make_shared<btSphereShape>(radius);
-    float scale = 0.5f;
-    col_shape->setLocalScaling(btVector3(scale, scale, scale));
-    float mass = 0.1f;
-    float restitution = 1.f;
-    ent->addComponent(std::make_shared<fly::RigidBody>(fly::Vec3f(0.f, 30.f, 0.f), mass, col_shape, restitution));
-    ent->addComponent(std::make_shared<fly::DynamicMeshRenderable>(m, sphere_model->getMaterials()[m->getMaterialIndex()], ent->getComponent<fly::RigidBody>()));
+    for (unsigned i = 0; i <= 30; i++) {
+      auto col_shape = std::make_shared<btSphereShape>(radius);
+      float scale = scale_dist(gen);
+      col_shape->setLocalScaling(btVector3(scale, scale, scale));
+      float mass = 0.02f;
+      float restitution = 1.f;
+      auto mat = std::make_shared<fly::Material>();
+      mat->setDiffuseColor(fly::Vec3f(col_dist(gen), col_dist(gen), col_dist(gen)));
+      auto ent = _engine->getEntityManager()->createEntity();
+      ent->addComponent(std::make_shared<fly::RigidBody>(fly::Vec3f(0.f, 30.f + i * 2.f, 0.f), mass, col_shape, restitution));
+      ent->addComponent(std::make_shared<fly::DynamicMeshRenderable>(m, mat, ent->getComponent<fly::RigidBody>()));
+      _rigidBodys.push_back(ent->getComponent<fly::RigidBody>());
+      _rigidBodys.back()->getBtRigidBody()->setUserPointer(ent->getComponent<fly::RigidBody>().get());
+    }
+  }
+  auto cube_model = importer->loadModel("assets/cube.obj");
+  for (const auto& m : cube_model->getMeshes()) {
+    auto half_extents = (m->getAABB()->getMax() - m->getAABB()->getMin()) * 0.5f;
+    for (unsigned i = 0; i < 20; i++) {
+      auto cube_shape = std::make_shared<btBoxShape>(btVector3(half_extents[0], half_extents[1], half_extents[2]));
+      float scale = scale_dist(gen);
+      cube_shape->setLocalScaling(btVector3(scale, scale, scale));
+      float mass = 0.02f;
+      float restitution = 1.f;
+      auto ent = _engine->getEntityManager()->createEntity();
+      ent->addComponent(std::make_shared<fly::RigidBody>(fly::Vec3f(3.f, 25 + i * 2.f, 0.f), mass, cube_shape, restitution));
+      auto material = std::make_shared<fly::Material>();
+      material->setDiffuseColor(fly::Vec3f(col_dist(gen), col_dist(gen), col_dist(gen)));
+      ent->addComponent(std::make_shared<fly::DynamicMeshRenderable>(m, material, ent->getComponent<fly::RigidBody>()));
+      _rigidBodys.push_back(ent->getComponent<fly::RigidBody>());
+      _rigidBodys.back()->getBtRigidBody()->setUserPointer(ent->getComponent<fly::RigidBody>().get());
+    }
   }
 #endif
 

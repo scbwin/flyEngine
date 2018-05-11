@@ -5,6 +5,7 @@
 #include <memory>
 #include <set>
 #include <GraphicsSettings.h>
+#include <math/FlyMath.h>
 
 #define SPONZA_MANY 0
 #define TOWERS 0
@@ -13,6 +14,7 @@
 #define SKYDOME 1
 #define NUM_OBJECTS 100
 #define NUM_TOWERS 15
+#define DELETE_CURTAIN 1
 
 class btTriangleMesh;
 
@@ -28,6 +30,7 @@ namespace fly
   class Model;
   class Bullet3PhysicsSystem;
   class Entity;
+  class RigidBody;
 }
 
 struct CTwBar;
@@ -59,12 +62,19 @@ private:
   std::unique_ptr<fly::Engine> _engine;
   fly::GraphicsSettings _graphicsSettings;
   std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>> _renderer;
-  std::shared_ptr<fly::Bullet3PhysicsSystem> _physicsSystem;
   std::unique_ptr<fly::GameTimer> _gameTimer;
   std::unique_ptr<fly::CameraController> _camController;
   std::shared_ptr<fly::DirectionalLight> _dl;
   std::shared_ptr<fly::Entity> _skydome;
+#if PHYSICS
+  std::shared_ptr<fly::Bullet3PhysicsSystem> _physicsSystem;
   std::vector<std::shared_ptr<btTriangleMesh>> _triangleMeshes;
+  std::vector<std::shared_ptr<fly::RigidBody>> _rigidBodys;
+  fly::RigidBody* _selectedRigidBody = nullptr;
+  fly::Vec2f _viewPortSize;
+  float _focusDist = 2.f;
+  float _impulseStrength = 0.001f;
+#endif
   void initGame();
   float _measure = 0.f;
   unsigned _fps = 0;

@@ -22,6 +22,10 @@ namespace fly
   {
     return _simulationSubSteps;
   }
+  const std::unique_ptr<btDiscreteDynamicsWorld>& Bullet3PhysicsSystem::getDynamicsWorld() const
+  {
+    return _world;
+  }
   void Bullet3PhysicsSystem::onComponentAdded(Entity * entity, const std::shared_ptr<Component>& component)
   {
     if (auto c = addIfInterested<RigidBody>(entity, component, _rigidBodys)) {

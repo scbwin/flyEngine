@@ -165,8 +165,8 @@ namespace fly
       MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI* api, const GraphicsSettings& settings);
       void create(OpenGLAPI* api, const GraphicsSettings& settings);
       void create(const std::shared_ptr<Material>& material, OpenGLAPI* api, const GraphicsSettings& settings);
-      void setup(GLShaderProgram* shader) const;
-      void setupDepth(GLShaderProgram* shader) const;
+      void setup() const;
+      void setupDepth() const;
       using ShaderProgram = GLShaderProgram;
       const std::shared_ptr<ShaderDesc>& getMeshShaderDesc(bool has_wind) const;
       const std::shared_ptr<ShaderDesc>& getMeshShaderDescDepth(bool has_wind) const;
@@ -176,6 +176,7 @@ namespace fly
       const std::shared_ptr<GLTexture>& alphaMap() const;
       const std::shared_ptr<GLTexture>& heightMap() const;
     private:
+      GLShaderProgram** _activeShader;
       std::shared_ptr<Material> _material;
       std::vector<IMaterialSetup*> _materialSetupFuncs;
       std::vector<IMaterialSetup*> _materialSetupFuncsDepth;
