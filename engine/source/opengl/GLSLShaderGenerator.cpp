@@ -147,13 +147,12 @@ layout(location = 4) in vec3 bitangent;\n\
 // Shader constant\n\
 uniform mat4 VP; \n\
 // Model constants\n\
-uniform mat4 M;\n\
-uniform mat3 M_i;\n\
+uniform mat4 " + std::string(modelMatrix()) + ";\n\
 out vec3 pos_world;\n\
-out vec3 normal_world;\n\
+out vec3 normal_local;\n\
 out vec2 uv_out;\n\
-out vec3 tangent_world;\n\
-out vec3 bitangent_world;\n";
+out vec3 tangent_local;\n\
+out vec3 bitangent_local;\n";
     if (settings.depthPrepassEnabled()) {
       shader_src += "invariant gl_Position; \n";
     }
@@ -167,10 +166,10 @@ out vec3 bitangent_world;\n";
       shader_src += _windCodeString;
     }
     shader_src += "  gl_Position = VP * vec4(pos_world, 1.f);\n\
-  normal_world = normalize(M_i * normal);\n\
+  normal_local = normal;\n\
   uv_out = uv;\n\
-  tangent_world = normalize(M_i * tangent);\n\
-  bitangent_world = normalize(M_i * bitangent);\n\
+  tangent_local = tangent;\n\
+  bitangent_local = bitangent;\n\
 }";
     return shader_src;
   }
@@ -203,10 +202,7 @@ void main()\n\
     std::string shader_src = "#version 330 \n\
 layout(location = 0) out vec3 fragmentColor;\n\
 in vec3 pos_world;\n\
-in vec3 normal_world;\n\
 in vec2 uv_out;\n\
-in vec3 tangent_world;\n\
-in vec3 bitangent_world;\n\
 // Uniform variables are the same for each shader variation, the compiler will optimize away unused variables anyway\n\
 uniform vec3 " + std::string(diffuseColor()) + ";\n\
 uniform sampler2D " + std::string(diffuseSampler()) + ";\n\
@@ -232,12 +228,18 @@ uniform float " + std::string(diffuseConstant()) + ";\n\
 uniform float " + std::string(specularConstant()) + ";\n\
 uniform float " + std::string(specularExponent()) + ";\n\
 uniform float " + std::string(gamma()) + ";\n\
+uniform mat3 " + std::string(modelMatrixInverse()) + ";\n\
+in vec3 normal_local;\n\
+in vec3 tangent_local;\n\
+in vec3 bitangent_local;\n\
 void main()\n\
-{\n  vec2 uv = uv_out;\n";
+{\n\
+  vec2 uv = uv_out;\n\
+  vec3 normal_world = normalize(" + std::string(modelMatrixInverse()) + " * normal_local);\n";
     if (tangent_space) {
-      shader_src += "  mat3 world_to_tangent = transpose(mat3(tangent_world, bitangent_world, normal_world));\n";
+      shader_src += "  mat3 world_to_tangent = transpose(mat3(normalize(" + std::string(modelMatrixInverse()) + " * tangent_local), normalize(" + std::string(modelMatrixInverse()) + " * bitangent_local), normal_world));\n";
     }
-    shader_src += "  vec3 e = " + std::string(tangent_space ? "world_to_tangent *" : "") + " normalize(" + std::string(cameraPositionWorld()) + " - pos_world); \n";
+    shader_src += "  vec3 e =" + std::string(tangent_space ? " world_to_tangent *" : "") + " normalize(" + std::string(cameraPositionWorld()) + " - pos_world); \n";
     if ((flags & NORMAL_MAP) && (flags & HEIGHT_MAP)) { // Parallax only in combination with normal mapping
       if (!settings.getReliefMapping()) {
         shader_src += "  uv -= e.xy / e.z * (1.f - textureLod(" + std::string(heightSampler()) + ", uv, 0.f).r) * " + std::string(parallaxHeightScale()) + "; \n";
@@ -266,7 +268,7 @@ void main()\n\
       }
     }
     if (flags & MeshRenderFlag::ALPHA_MAP) {
-      shader_src += "  	if (texture(" + std::string(alphaSampler()) + ", uv).r < 0.5) {\n\
+      shader_src += "  if (texture(" + std::string(alphaSampler()) + ", uv).r < 0.5) {\n\
     discard;\n\
     return;\n\
   }\n";
