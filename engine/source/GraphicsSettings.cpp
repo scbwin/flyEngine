@@ -282,6 +282,17 @@ namespace fly
       l->depthOfFieldChanged(this);
     });
   }
+  bool GraphicsSettings::getScreenSpaceReflections() const
+  {
+    return _screenSpaceReflections;
+  }
+  void GraphicsSettings::setScreenSpaceReflections(bool enabled)
+  {
+    _screenSpaceReflections = enabled && _postProcessing;
+    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
+      l->screenSpaceReflectionsChanged(this);
+    });
+  }
   void GraphicsSettings::setCameraLerping(bool enable)
   {
     _cameraLerping = enable;

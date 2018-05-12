@@ -75,6 +75,8 @@ private:
   static void getDofScaleFactor(void* value, void* client_data);
   static void setGamePaused(const void* value, void* client_data);
   static void getGamePaused(void* value, void* client_data);
+  static void setSSR(const void* value, void* client_data);
+  static void getSSR(void* value, void* client_data);
   template<typename T> static T* cast(void* data){return reinterpret_cast<T*>(data);}
   template<typename T> static const T* cast(const void* data) { return reinterpret_cast<const T*>(data); }
 };

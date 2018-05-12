@@ -61,7 +61,7 @@ namespace fly
       _gsp._camPosworld = Vec3f(0.f);
     }
     virtual ~AbstractRenderer() {}
-    virtual void normalMappingChanged(GraphicsSettings const * const gs) override
+    virtual void normalMappingChanged(GraphicsSettings const * gs) override
     {
       graphicsSettingsChanged();
     }
@@ -82,24 +82,29 @@ namespace fly
       }
       compositingChanged(gs);
     }
-    virtual void shadowsChanged(GraphicsSettings const * const gs) override
+    virtual void screenSpaceReflectionsChanged(GraphicsSettings const * gs) override
+    {
+      graphicsSettingsChanged();
+      compositingChanged(gs);
+    }
+    virtual void shadowsChanged(GraphicsSettings const * gs) override
     {
       _shadowMapping = gs->getShadows() || gs->getShadowsPCF();
       graphicsSettingsChanged();
       _shadowMap = _shadowMapping ? _api.createShadowmap(*_gs) : nullptr;
     }
-    virtual void shadowMapSizeChanged(GraphicsSettings const * const gs) override
+    virtual void shadowMapSizeChanged(GraphicsSettings const * gs) override
     {
       if (_shadowMap) {
         _api.resizeShadowmap(_shadowMap.get(), *_gs);
       }
     }
-    virtual void compositingChanged(GraphicsSettings const * const gs) override
+    virtual void compositingChanged(GraphicsSettings const * gs) override
     {
       _offScreenRendering = gs->depthPrepassEnabled() || gs->postProcessingEnabled();
       if (_offScreenRendering) {
         _lightingBuffer = _api.createRenderToTexture(_viewPortSize, API::TexFilter::NEAREST);
-        _depthBuffer = _api.createDepthbuffer(_viewPortSize);
+        _depthBuffer = _api.createDepthbuffer(_viewPortSize, gs->getScreenSpaceReflections());
       }
       else {
         _lightingBuffer = nullptr;
@@ -109,23 +114,23 @@ namespace fly
         _api.createCompositeShader(*_gs);
       }
     }
-    virtual void windAnimationsChanged(GraphicsSettings const * const gs) override
+    virtual void windAnimationsChanged(GraphicsSettings const * gs) override
     {
       graphicsSettingsChanged();
     }
-    virtual void gammaChanged(GraphicsSettings const * const gs) override
+    virtual void gammaChanged(GraphicsSettings const * gs) override
     {
       graphicsSettingsChanged();
       compositingChanged(gs);
     }
-    virtual void cameraLerpingChanged(GraphicsSettings const * const gs) override
+    virtual void cameraLerpingChanged(GraphicsSettings const * gs) override
     {
       if (gs->getCameraLerping()) {
         _acc = 0.f;
         _cameraLerpAlpha = gs->getCameraLerpAlpha();
       }
     }
-    virtual void anisotropyChanged(GraphicsSettings const * const gs) override
+    virtual void anisotropyChanged(GraphicsSettings const * gs) override
     {
       _api.setAnisotropy(gs->getAnisotropy());
     }
@@ -277,12 +282,14 @@ namespace fly
         if (_gs->getDebugObjectAABBs()) {
           renderObjectAABBs(visible_meshes);
         }
+        if (_offScreenRendering) {
+          _api.setDepthTestEnabled<false>();
+        }
         if (_gs->getDepthOfField()) {
           _api.separableBlur(*_lightingBuffer, _dofBuffer);
           _api.setViewport(_viewPortSize);
         }
         if (_offScreenRendering) {
-          _api.setDepthTestEnabled<false>();
           _api.bindBackbuffer(_defaultRenderTarget);
           _gs->getDepthOfField() ? _api.composite(*_lightingBuffer, _gsp, *_dofBuffer[0], *_depthBuffer) : _api.composite(*_lightingBuffer, _gsp);
         }

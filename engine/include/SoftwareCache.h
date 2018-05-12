@@ -22,7 +22,7 @@ namespace fly
       _elements[key] = val; // Add the new element to the cache
       return val;
     }
-    std::vector<Val> getElements()
+    std::vector<Val> getElements() const
     {
       std::vector<Val> elements;
       for (const auto& e : _elements) {

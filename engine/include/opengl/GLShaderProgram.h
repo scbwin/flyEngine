@@ -21,6 +21,7 @@ namespace fly
     void link() const;
     void bind() const;
     inline GLint uniformLocation(const std::string& name) { return _uniformLocations.getOrCreate(name, name); }
+    const std::vector<GLShaderSource>& getSources() const;
   private:
     GLuint _id;
     std::vector<GLShaderSource> _sources;

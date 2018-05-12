@@ -219,7 +219,7 @@ namespace fly
     std::shared_ptr<GLShaderProgram> createShader(GLShaderSource& vs, GLShaderSource& fs, GLShaderSource& gs = GLShaderSource());
     std::shared_ptr<ShaderDesc> createShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, unsigned flags);
     std::unique_ptr<RTT> createRenderToTexture(const Vec2u& size, TexFilter filter);
-    std::unique_ptr<Depthbuffer> createDepthbuffer(const Vec2u& size);
+    std::unique_ptr<Depthbuffer> createDepthbuffer(const Vec2u& size, bool stencil = false);
     std::unique_ptr<Shadowmap> createShadowmap(const GraphicsSettings& settings);
     void resizeShadowmap(Shadowmap* shadow_map, const GraphicsSettings& settings);
     void recreateShadersAndMaterials(const GraphicsSettings& gs);
@@ -227,6 +227,7 @@ namespace fly
     void createCompositeShader(const GraphicsSettings& gs);
     std::vector<std::shared_ptr<Material>> getAllMaterials();
     const std::shared_ptr<ShaderDesc>& getSkyboxShaderDesc() const;
+    void writeShadersToDisk() const;
   private:
     GLShaderProgram * _activeShader;
     SoftwareCache<std::string, std::shared_ptr<GLTexture>, const std::string& > _textureCache;

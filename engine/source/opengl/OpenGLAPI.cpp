@@ -21,6 +21,7 @@
 #include <GraphicsSettings.h>
 #include <opengl/GLMaterialSetup.h>
 #include <opengl/GLShaderProgram.h>
+#include <fstream>
 
 namespace fly
 {
@@ -176,13 +177,13 @@ namespace fly
   void OpenGLAPI::setRendertargets(const std::vector<RTT*>& rtts, const Depthbuffer* depth_buffer)
   {
     setColorBuffers(rtts);
-    _offScreenFramebuffer->texture(GL_DEPTH_ATTACHMENT, depth_buffer, 0);
+    _offScreenFramebuffer->texture(depth_buffer && depth_buffer->format() == GL_DEPTH_STENCIL ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT, depth_buffer, 0);
     checkFramebufferStatus();
   }
   void OpenGLAPI::setRendertargets(const std::vector<RTT*>& rtts, const Depthbuffer* depth_buffer, unsigned depth_buffer_layer)
   {
     setColorBuffers(rtts);
-    _offScreenFramebuffer->textureLayer(GL_DEPTH_ATTACHMENT, depth_buffer, 0, depth_buffer_layer);
+    _offScreenFramebuffer->textureLayer(depth_buffer && depth_buffer->format() == GL_DEPTH_STENCIL ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT, depth_buffer, 0, depth_buffer_layer);
     checkFramebufferStatus();
   }
   void OpenGLAPI::bindBackbuffer(unsigned id) const
@@ -272,7 +273,7 @@ namespace fly
     tex->image2D(0, GL_RGBA16F, size, 0, GL_RGBA, GL_FLOAT, nullptr);
     return tex;
   }
-  std::unique_ptr<OpenGLAPI::Depthbuffer> OpenGLAPI::createDepthbuffer(const Vec2u & size)
+  std::unique_ptr<OpenGLAPI::Depthbuffer> OpenGLAPI::createDepthbuffer(const Vec2u & size, bool stencil)
   {
     auto tex = std::make_unique<GLTexture>(GL_TEXTURE_2D);
     tex->bind();
@@ -280,7 +281,7 @@ namespace fly
     tex->param(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     tex->param(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     tex->param(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    tex->image2D(0, GL_DEPTH_COMPONENT24, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    tex->image2D(0, stencil ? GL_DEPTH24_STENCIL8 : GL_DEPTH_COMPONENT24, size, 0, stencil ? GL_DEPTH_STENCIL : GL_DEPTH_COMPONENT, stencil ? GL_UNSIGNED_INT_24_8 : GL_FLOAT, nullptr);
     return tex;
   }
   std::unique_ptr<OpenGLAPI::Shadowmap> OpenGLAPI::createShadowmap(const GraphicsSettings& settings)
@@ -349,6 +350,15 @@ namespace fly
   const std::shared_ptr<OpenGLAPI::ShaderDesc>& OpenGLAPI::getSkyboxShaderDesc() const
   {
     return _skydomeShaderDesc;
+  }
+  void OpenGLAPI::writeShadersToDisk() const
+  {
+    for (const auto& shader : _shaderCache.getElements()) {
+      for (const auto& source : shader->getSources()) {
+        std::ofstream os("generated/" + source._key);
+        os << source._source;
+      }
+    }
   }
   void OpenGLAPI::checkFramebufferStatus()
   {

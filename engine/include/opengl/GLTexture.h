@@ -22,6 +22,7 @@ namespace fly
     unsigned width() const;
     unsigned height() const;
     unsigned depth() const;
+    GLuint format() const;
     ~GLTexture();
   private:
     GLuint _id;
@@ -29,6 +30,7 @@ namespace fly
     unsigned _width;
     unsigned _height;
     unsigned _depth;
+    GLuint _format;
   };
 }
 

@@ -99,4 +99,8 @@ namespace fly
   {
     GL_CHECK(glUseProgram(_id));
   }
+  const std::vector<GLShaderSource>& GLShaderProgram::getSources() const
+  {
+    return _sources;
+  }
 }

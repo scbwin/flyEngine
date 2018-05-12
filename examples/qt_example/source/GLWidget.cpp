@@ -147,6 +147,9 @@ void GLWidget::keyPressEvent(QKeyEvent * e)
   if (e->key() == Qt::Key::Key_Control) {
     _camController->deceleratePressed();
   }
+  if (e->key() == Qt::Key::Key_I) {
+    _renderer->getApi()->writeShadersToDisk();
+  }
 }
 
 void GLWidget::keyReleaseEvent(QKeyEvent * e)

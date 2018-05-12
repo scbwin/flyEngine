@@ -39,6 +39,7 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "Blur sigma", TwType::TW_TYPE_FLOAT, setBlurSigma, getBlurSigma, gs, "step = 0.01f");
   TwAddVarCB(bar, "DOF scale factor", TwType::TW_TYPE_FLOAT, setDofScaleFactor, getDofScaleFactor, gs, "step = 0.01f");
   TwAddVarCB(bar, "Game paused", TwType::TW_TYPE_BOOLCPP, setGamePaused, getGamePaused, game_timer, nullptr);
+  TwAddVarCB(bar, "Screen space reflections", TwType::TW_TYPE_BOOLCPP, setSSR, getSSR, gs, nullptr);
 }
 
 void AntWrapper::cbSetShadows(const void * value, void * client_data)
@@ -331,4 +332,14 @@ void AntWrapper::setGamePaused(const void * value, void * client_data)
 void AntWrapper::getGamePaused(void * value, void * client_data)
 {
   *cast<bool>(value) = cast<fly::GameTimer>(client_data)->isStopped();
+}
+
+void AntWrapper::setSSR(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setScreenSpaceReflections(*cast<bool>(value));
+}
+
+void AntWrapper::getSSR(void * value, void * client_data)
+{
+  *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getScreenSpaceReflections();
 }

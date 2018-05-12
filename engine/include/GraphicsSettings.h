@@ -15,15 +15,16 @@ namespace fly
     {
     public:
       virtual ~Listener() = default;
-      virtual void normalMappingChanged(GraphicsSettings const * const gs) = 0;
-      virtual void shadowsChanged(GraphicsSettings const * const gs) = 0;
-      virtual void shadowMapSizeChanged(GraphicsSettings const * const gs) = 0;
-      virtual void depthOfFieldChanged(GraphicsSettings const * const gs) = 0;
-      virtual void compositingChanged(GraphicsSettings const * const gs) = 0;
-      virtual void windAnimationsChanged(GraphicsSettings const * const gs) = 0;
-      virtual void anisotropyChanged(GraphicsSettings const * const gs) = 0;
-      virtual void cameraLerpingChanged(GraphicsSettings const * const gs) = 0;
-      virtual void gammaChanged(GraphicsSettings const * const gs) = 0;
+      virtual void normalMappingChanged(GraphicsSettings const * gs) = 0;
+      virtual void shadowsChanged(GraphicsSettings const * gs) = 0;
+      virtual void shadowMapSizeChanged(GraphicsSettings const * gs) = 0;
+      virtual void depthOfFieldChanged(GraphicsSettings const * gs) = 0;
+      virtual void compositingChanged(GraphicsSettings const * gs) = 0;
+      virtual void windAnimationsChanged(GraphicsSettings const * gs) = 0;
+      virtual void anisotropyChanged(GraphicsSettings const * gs) = 0;
+      virtual void cameraLerpingChanged(GraphicsSettings const * gs) = 0;
+      virtual void gammaChanged(GraphicsSettings const * gs) = 0;
+      virtual void screenSpaceReflectionsChanged(GraphicsSettings const * gs) = 0;
     };
     GraphicsSettings();
     void addListener(const std::shared_ptr<Listener>& listener);
@@ -86,6 +87,8 @@ namespace fly
     void setDofNear(float near);
     void setDofCenter(float center);
     void setDofFar(float far);
+    bool getScreenSpaceReflections() const;
+    void setScreenSpaceReflections(bool enabled);
 
   private:
     std::set<std::weak_ptr<Listener>, std::owner_less<std::weak_ptr<Listener>>> _listeners;
@@ -119,6 +122,7 @@ namespace fly
     float _dofNear = 1.f;
     float _dofCenter = 5.f;
     float _dofFar = 50.f;
+    bool _screenSpaceReflections = false;
 
     void notifiyNormalMappingChanged();
     void notifyShadowsChanged();
