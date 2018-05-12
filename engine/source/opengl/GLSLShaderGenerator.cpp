@@ -45,7 +45,7 @@ uniform vec3 " + std::string(bbMax()) + "; // AABB max xz\n" + std::string(noise
     }
     if (flags & MeshRenderFlag::NORMAL_MAP) {
       key += "_normal";
-      if (flags & MeshRenderFlag::PARALLAX_MAP) {
+      if (flags & MeshRenderFlag::HEIGHT_MAP) {
         key += "_parallax";
       }
     }
@@ -199,6 +199,7 @@ void main()\n\
   }
   std::string GLSLShaderGenerator::createMeshFragmentSource(unsigned flags, const GraphicsSettings& settings) const
   {
+    bool tangent_space = (flags & NORMAL_MAP) || (flags & HEIGHT_MAP);
     std::string shader_src = "#version 330 \n\
 layout(location = 0) out vec3 fragmentColor;\n\
 in vec3 pos_world;\n\
@@ -233,18 +234,17 @@ uniform float " + std::string(specularExponent()) + ";\n\
 uniform float " + std::string(gamma()) + ";\n\
 void main()\n\
 {\n  vec2 uv = uv_out;\n";
-    if ((flags & MeshRenderFlag::NORMAL_MAP) || (flags & MeshRenderFlag::PARALLAX_MAP)) {
+    if (tangent_space) {
       shader_src += "  mat3 world_to_tangent = transpose(mat3(tangent_world, bitangent_world, normal_world));\n";
     }
-    if ((flags & NORMAL_MAP) && (flags & PARALLAX_MAP)) { // Parallax only in combination with normal mapping
-      shader_src += "  vec3 view_dir_ts = world_to_tangent * normalize(" + std::string(cameraPositionWorld()) + " - pos_world);\n";
+    shader_src += "  vec3 e = " + std::string(tangent_space ? "world_to_tangent *" : "") + " normalize(" + std::string(cameraPositionWorld()) + " - pos_world); \n";
+    if ((flags & NORMAL_MAP) && (flags & HEIGHT_MAP)) { // Parallax only in combination with normal mapping
       if (!settings.getReliefMapping()) {
-        shader_src += "  uv -= view_dir_ts.xy / view_dir_ts.z * (1.f - textureLod(" + std::string(heightSampler()) + ", uv, 0.f).r) * " + std::string(parallaxHeightScale()) + "; \n";
+        shader_src += "  uv -= e.xy / e.z * (1.f - textureLod(" + std::string(heightSampler()) + ", uv, 0.f).r) * " + std::string(parallaxHeightScale()) + "; \n";
       }
       else {
-        //shader_src += "float steps = 32.f;\n
-        shader_src += "  float steps = mix(" + std::string(parallaxMaxSteps()) + ", " + std::string(parallaxMinSteps()) + ", clamp(dot(vec3(0.f, 0.f, 1.f), view_dir_ts), 0.f, 1.f));\n\
-  vec2 ray = view_dir_ts.xy * " + std::string(parallaxHeightScale()) + ";\n\
+        shader_src += "  float steps = mix(" + std::string(parallaxMaxSteps()) + ", " + std::string(parallaxMinSteps()) + ", clamp(dot(vec3(0.f, 0.f, 1.f), e), 0.f, 1.f));\n\
+  vec2 ray = e.xy * " + std::string(parallaxHeightScale()) + ";\n\
   vec2 delta = ray / steps;\n\
   float layer_delta = 1.f / steps;\n\
   float layer_depth = 1.f - layer_delta;\n\
@@ -271,8 +271,7 @@ void main()\n\
     return;\n\
   }\n";
     }
-    shader_src += "  vec3 l = " + std::string((((flags & PARALLAX_MAP) || (flags & NORMAL_MAP)) ? "world_to_tangent *" : "")) + " normalize(" + std::string(lightPositionWorld()) + " - pos_world);\n\
-  vec3 e = " + std::string((((flags & PARALLAX_MAP) || (flags & NORMAL_MAP)) ? "world_to_tangent *" : "")) + " normalize(" + std::string(cameraPositionWorld()) + " - pos_world);\n";
+    shader_src += "  vec3 l = " + std::string((((flags & HEIGHT_MAP) || (flags & NORMAL_MAP)) ? "world_to_tangent *" : "")) + " normalize(" + std::string(lightPositionWorld()) + " - pos_world);\n";
     if (flags & MeshRenderFlag::NORMAL_MAP) {
       shader_src += "  vec3 normal_ts = normalize((texture(" + std::string(normalSampler()) + ", uv).xyz * 2.f - 1.f));\n\
   float diffuse = clamp(dot(l, normal_ts), 0.f, 1.f);\n\
@@ -290,7 +289,7 @@ void main()\n\
       shader_src += "  vec3 albedo = " + std::string(diffuseColor()) + ";\n";
     }
     if (settings.gammaEnabled()) {
-      shader_src += " albedo = pow(albedo, vec3(" + std::string(gamma()) + "));\n";
+      shader_src += "  albedo = pow(albedo, vec3(" + std::string(gamma()) + "));\n";
     }
     shader_src += "  fragmentColor = I_in * albedo * (" + std::string(ambientConstant()) + " + " + std::string(diffuseConstant()) + " * diffuse + " + std::string(specularConstant()) + " * specular);\n";
     if (settings.getShadows() || settings.getShadowsPCF()) {

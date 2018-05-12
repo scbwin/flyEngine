@@ -472,8 +472,8 @@ namespace fly
       flag |= FLAG::NORMAL_MAP;
       _materialSetupFuncs.push_back(api->_materialSetup->getNormalSetup());
     }
-    if (_normalMap &&_heightMap && settings.getNormalMapping() && (settings.getParallaxMapping() || settings.getReliefMapping())) {
-      flag |= FLAG::PARALLAX_MAP;
+    if (_normalMap && _heightMap && settings.getNormalMapping() && settings.getParallaxMapping()) {
+      flag |= FLAG::HEIGHT_MAP;
       _materialSetupFuncs.push_back(api->_materialSetup->getHeightSetup());
       if (settings.getReliefMapping()) {
         _materialSetupFuncs.push_back(api->_materialSetup->getReliefMappingSetup());

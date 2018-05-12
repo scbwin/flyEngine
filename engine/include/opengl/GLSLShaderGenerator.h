@@ -20,7 +20,7 @@ namespace fly
       DIFFUSE_MAP = 1, 
       NORMAL_MAP = 2, 
       ALPHA_MAP = 4,
-      PARALLAX_MAP = 8,
+      HEIGHT_MAP = 8,
       WIND = 16
     };
     GLShaderSource createMeshVertexShaderSource(unsigned flags, const GraphicsSettings& settings);
