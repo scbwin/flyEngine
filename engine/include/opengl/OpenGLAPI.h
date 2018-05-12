@@ -39,6 +39,10 @@ namespace fly
     ~OpenGLAPI();
     ZNearMapping getZNearMapping() const;
     void setViewport(const Vec2u& size) const;
+    enum class TexFilter
+    {
+      NEAREST, LINEAR
+    };
     template<bool color, bool depth, bool stencil>
     void clearRendertarget(const Vec4f& clear_color) const
     {
@@ -135,6 +139,8 @@ namespace fly
     static constexpr const int heightTexUnit() { return 3; }
     static constexpr const int shadowTexUnit() { return 4; }
     static constexpr const int lightingTexUnit() { return 5; }
+    static constexpr const int dofTexUnit() { return 6; }
+    static constexpr const int depthTexUnit() { return 7; }
     enum ShaderSetupFlags : unsigned
     {
       NONE = 0,
@@ -143,9 +149,8 @@ namespace fly
       WIND = 4,
       VP = 8,
       LIGHTING = 16,
-      EXPOSURE = 32,
-      GAMMA_INVERSE = 64,
-      GAMMA = 128
+      GAMMA = 32,
+      P_INVERSE = 64
     };
     /**
     * Class that is used to only send uniform data to the GPU that is actually needed.
@@ -204,18 +209,21 @@ namespace fly
     void setRendertargets(const std::vector<RTT*>& rtts, const Depthbuffer* depth_buffer);
     void setRendertargets(const std::vector<RTT*>& rtts, const Depthbuffer* depth_buffer, unsigned depth_buffer_layer);
     void bindBackbuffer(unsigned id) const;
-    void composite(const RTT* lighting_buffer, const GlobalShaderParams& params);
+    void separableBlur(const RTT& in, const std::array<std::shared_ptr<RTT>, 2>& out);
+    void composite(const RTT& lighting_buffer, const GlobalShaderParams& params);
+    void composite(const RTT& lighting_buffer, const GlobalShaderParams& params, const RTT& dof_buffer, const Depthbuffer& depth_buffer);
     void endFrame() const;
     void setAnisotropy(unsigned anisotropy);
     std::shared_ptr<GLTexture> createTexture(const std::string& path);
     std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material, const GraphicsSettings& settings);
     std::shared_ptr<GLShaderProgram> createShader(GLShaderSource& vs, GLShaderSource& fs, GLShaderSource& gs = GLShaderSource());
     std::shared_ptr<ShaderDesc> createShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, unsigned flags);
-    std::unique_ptr<RTT> createRenderToTexture(const Vec2u& size);
+    std::unique_ptr<RTT> createRenderToTexture(const Vec2u& size, TexFilter filter);
     std::unique_ptr<Depthbuffer> createDepthbuffer(const Vec2u& size);
     std::unique_ptr<Shadowmap> createShadowmap(const GraphicsSettings& settings);
     void resizeShadowmap(Shadowmap* shadow_map, const GraphicsSettings& settings);
     void recreateShadersAndMaterials(const GraphicsSettings& gs);
+    void createBlurShader(const GraphicsSettings& gs);
     void createCompositeShader(const GraphicsSettings& gs);
     std::vector<std::shared_ptr<Material>> getAllMaterials();
     const std::shared_ptr<ShaderDesc>& getSkyboxShaderDesc() const;
@@ -226,7 +234,8 @@ namespace fly
     SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
     SoftwareCache<std::shared_ptr<GLShaderProgram>, std::shared_ptr<ShaderDesc>, const std::shared_ptr<GLShaderProgram>&, unsigned> _shaderDescCache;
     std::shared_ptr<GLShaderProgram> _aabbShader;
-    std::shared_ptr<ShaderDesc> _compositeShaderDesc;
+    std::unique_ptr<ShaderDesc> _compositeShaderDesc;
+    std::unique_ptr<ShaderDesc> _sepBlurShaderDesc;
     std::shared_ptr<ShaderDesc> _skydomeShaderDesc;
     std::shared_ptr<GLShaderProgram> _skydomeShader;
     std::shared_ptr<GLVertexArray> _vaoAABB;

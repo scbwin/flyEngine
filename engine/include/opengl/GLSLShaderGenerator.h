@@ -23,19 +23,12 @@ namespace fly
       PARALLAX_MAP = 8,
       WIND = 16
     };
-    enum CompositeFlag : unsigned
-    {
-      CP_NONE = 0,
-      EXPOSURE = 1,
-      GAMMA_INVERSE = 2
-    };
     GLShaderSource createMeshVertexShaderSource(unsigned flags, const GraphicsSettings& settings);
     GLShaderSource createMeshFragmentShaderSource(unsigned flags, const GraphicsSettings& settings);
     GLShaderSource createMeshVertexShaderDepthSource(unsigned flags, const GraphicsSettings& settings);
     GLShaderSource createMeshFragmentShaderDepthSource(unsigned flags, const GraphicsSettings& settings);
-    void createCompositeShaderSource(unsigned flags, const GraphicsSettings& gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src);
-  //  void regenerateShaders(const GraphicsSettings& gs);
-    void clear();
+    void createCompositeShaderSource(const GraphicsSettings& gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src);
+    void createBlurShaderSource(unsigned flags, const GraphicsSettings& gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src);
     static inline constexpr const char* diffuseSampler() { return "ts_d"; };
     static inline constexpr const char* alphaSampler() { return "ts_a"; };
     static inline constexpr const char* normalSampler() { return "ts_n"; };
@@ -59,6 +52,7 @@ namespace fly
     static inline constexpr const char* modelMatrix() { return "M"; };
     static inline constexpr const char* modelMatrixInverse() { return "M_i"; };
     static inline constexpr const char* viewProjectionMatrix() { return "VP"; };
+    static inline constexpr const char* projectionMatrixInverse() { return "P_i"; };
     static inline constexpr const char* modelViewProjectionMatrix() { return "MVP"; };
     static inline constexpr const char* lightPositionWorld() { return "lp_ws"; };
     static inline constexpr const char* cameraPositionWorld() { return "cp_ws"; };
@@ -68,13 +62,15 @@ namespace fly
     static inline constexpr const char* numfrustumSplits() { return "nfs"; };
     static inline constexpr const char* shadowDarkenFactor() { return "sdf"; };
     static inline constexpr const char* diffuseColor() { return "dcol"; };
-    static inline constexpr const char* exposure() { return "e"; };
-    static inline constexpr const char* gammaInverse() { return "gi"; };
     static inline constexpr const char* gamma() { return "g"; };
     static inline constexpr const char* ambientConstant() { return "ka"; };
     static inline constexpr const char* diffuseConstant() { return "kd"; };
     static inline constexpr const char* specularConstant() { return "ks"; };
     static inline constexpr const char* specularExponent() { return "se"; };
+    static inline constexpr const char* texelSize() { return "ts"; };
+    static inline constexpr const char* toBlurSampler() { return "ts_b"; };
+    static inline constexpr const char* depthSampler() { return "ts_d"; };
+    static inline constexpr const char* dofSampler() { return "ts_dof"; };
     static inline constexpr const char* noiseCodeGLSL() {
       return "float hash(vec2 p)\n\
 {\n\
@@ -91,21 +87,11 @@ float noise(vec2 p)\n\
     static inline constexpr const char* vertexFileComposite() { return "assets/opengl/vs_screen.glsl"; };
     static inline constexpr const char* directory() { return "generated/"; };
   private:
-    struct ShaderDesc
-    {
-      GLShaderSource _src;
-      unsigned _flags;
-    };
     std::string createMeshVertexSource(unsigned flags, const GraphicsSettings& settings) const;
     std::string createMeshVertexDepthSource(unsigned flags, const GraphicsSettings& settings) const;
     std::string createMeshFragmentSource(unsigned flags, const GraphicsSettings& settings) const;
     std::string createMeshFragmentDepthSource(unsigned flags, const GraphicsSettings& settings) const;
-    std::string createCompositeShaderSource(unsigned flags, const GraphicsSettings& gs) const;
-    std::vector<ShaderDesc> _fragmentSources;
-    std::vector<ShaderDesc> _vertexSources;
-    std::vector<ShaderDesc> _vertexDepthSources;
-    std::vector<ShaderDesc> _fragmentDepthSources;
-    std::vector<ShaderDesc> _compositeSources;
+    std::string createCompositeShaderSource(const GraphicsSettings& gs) const;
     std::string _windParamString;
     std::string _windCodeString;
     GLShaderSource _compositeVertexSource;

@@ -61,7 +61,7 @@ void GLWidget::initializeGL()
   TwAddButton(_bar, _shadowMapGroupingUName, nullptr, nullptr, nullptr);
 #endif
   auto settings_bar = TwNewBar("Settings");
-  AntWrapper(settings_bar, &_graphicsSettings, _renderer->getApi(), _camController->getCamera().get(), _camController.get(), _skydome.get());
+  AntWrapper(settings_bar, &_graphicsSettings, _renderer->getApi(), _camController->getCamera().get(), _camController.get(), _skydome.get(), _gameTimer.get());
   TwSetTopBar(_bar);
 }
 
@@ -96,7 +96,6 @@ void GLWidget::paintGL()
     }
   }
 #endif
-  _engine->update(_gameTimer->getTimeSeconds(), _gameTimer->getDeltaTimeSeconds());
   if (contains<int>(_keysPressed, 'W')) {
     _camController->stepForward(_gameTimer->getDeltaTimeSeconds());
   }
@@ -115,6 +114,7 @@ void GLWidget::paintGL()
   if (contains<int>(_keysPressed, Qt::Key::Key_Space)) {
     _camController->stepUp(_gameTimer->getDeltaTimeSeconds());
   }
+  _engine->update(_gameTimer->getTimeSeconds(), _gameTimer->getDeltaTimeSeconds());
   _fps++;
   if (_gameTimer->getTotalTimeSeconds() >= _measure) {
     _measure = _gameTimer->getTotalTimeSeconds() + 1.f;
@@ -186,6 +186,7 @@ void GLWidget::mousePressEvent(QMouseEvent * e)
     if (callback.hasHit()) {
       fly::RigidBody* rigid_body = reinterpret_cast<fly::RigidBody*>(callback.m_collisionObject->getUserPointer());
       if (rigid_body) {
+        rigid_body->getBtRigidBody()->activate()
         _selectedRigidBody = rigid_body;
       }
     }
@@ -217,7 +218,6 @@ void GLWidget::mouseReleaseEvent(QMouseEvent * e)
   if (e->button() == Qt::MouseButton::RightButton) {
 #if PHYSICS
     if (_selectedRigidBody) {
-      //    _selectedRigidBody->getBtRigidBody()->clearForces();
       _selectedRigidBody->getBtRigidBody()->activate();
       fly::Vec3f impulse = _camController->getCamera()->getDirection();
       _selectedRigidBody->getBtRigidBody()->applyImpulse(btVector3(impulse[0], impulse[1], impulse[2]), btVector3(0, 0, 0));

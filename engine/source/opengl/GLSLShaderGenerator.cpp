@@ -26,26 +26,20 @@ uniform vec3 " + std::string(bbMax()) + "; // AABB max xz\n" + std::string(noise
   }
   GLShaderSource GLSLShaderGenerator::createMeshVertexShaderSource(unsigned flags, const GraphicsSettings & settings)
   {
-    std::string key = std::string(directory()) + "vs";
+    std::string key = "vs";
     if (flags & MeshRenderFlag::WIND) {
       key += "_wind";
     }
     key += ".glsl";
-    for (const auto& s : _vertexSources) {
-      if (s._src._key == key && s._flags == flags) { // File already created
-        return s._src;
-      }
-    }
     GLShaderSource src;
     src._key = key;
     src._source = createMeshVertexSource(flags, settings);;
     src._type = GL_VERTEX_SHADER;
-    _vertexSources.push_back({ src, flags });
     return src;
   }
   GLShaderSource GLSLShaderGenerator::createMeshFragmentShaderSource(unsigned flags, const GraphicsSettings& settings)
   {
-    std::string key = std::string(directory()) + "fs";
+    std::string key = "fs";
     if (flags & MeshRenderFlag::DIFFUSE_MAP) {
       key += "_albedo";
     }
@@ -68,85 +62,78 @@ uniform vec3 " + std::string(bbMax()) + "; // AABB max xz\n" + std::string(noise
       key += "_gamma";
     }
     key += ".glsl";
-    for (const auto& s : _fragmentSources) {
-      if (s._src._key == key && s._flags == flags) { // File already created
-        return s._src;
-      }
-    }
     GLShaderSource src;
     src._key = key;
     src._source = createMeshFragmentSource(flags, settings);
     src._type = GL_FRAGMENT_SHADER;
-    _fragmentSources.push_back({ src, flags });
     return src;
   }
   GLShaderSource GLSLShaderGenerator::createMeshVertexShaderDepthSource(unsigned flags, const GraphicsSettings & settings)
   {
-    std::string key = std::string(directory()) + "vs_depth";
+    std::string key = "vs_depth";
     if (flags & MeshRenderFlag::WIND) {
       key += "_wind";
     }
     key += ".glsl";
-    for (const auto& s : _vertexDepthSources) {
-      if (s._src._key == key && s._flags == flags) { // File already created
-        return s._src;
-      }
-    }
     GLShaderSource src;
     src._key = key;
     src._source = createMeshVertexDepthSource(flags, settings);
     src._type = GL_VERTEX_SHADER;
-    _vertexDepthSources.push_back({ src, flags });
     return src;
   }
   GLShaderSource GLSLShaderGenerator::createMeshFragmentShaderDepthSource(unsigned flags, const GraphicsSettings & settings)
   {
-    std::string key = std::string(directory()) + "fs_depth";
+    std::string key = "fs_depth";
     if (flags & MeshRenderFlag::ALPHA_MAP) {
       key += "_alpha";
     }
     key += ".glsl";
-    for (const auto& s : _fragmentDepthSources) {
-      if (s._src._key == key && s._flags == flags) { // File already created
-        return s._src;
-      }
-    }
     GLShaderSource src;
     src._key = key;
     src._source = createMeshFragmentDepthSource(flags, settings);
     src._type = GL_FRAGMENT_SHADER;
-    _fragmentDepthSources.push_back({ src, flags });
     return src;
   }
-  void GLSLShaderGenerator::createCompositeShaderSource(unsigned flags, const GraphicsSettings & gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src)
+  void GLSLShaderGenerator::createCompositeShaderSource(const GraphicsSettings & gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src)
   {
     vertex_src = _compositeVertexSource;
-    auto key = std::string(directory()) + "fs_composite";
-    if (flags & CompositeFlag::EXPOSURE) {
+    std::string key = "fs_composite";
+    if (gs.getDepthOfField()) {
+      key += "_dof";
+    }
+    if (gs.exposureEnabled()) {
       key += "_exposure";
     }
-    if (flags & CompositeFlag::GAMMA_INVERSE) {
+    if (gs.gammaEnabled()) {
       key += "_gamma";
     }
     key += ".glsl";
-    for (const auto& s : _compositeSources) {
-      if (s._src._key == key && s._flags == flags) { // File already created
-        fragment_src = s._src;
-        return;
-      }
-    }
     fragment_src._key = key;
-    fragment_src._source = createCompositeShaderSource(flags, gs);
+    fragment_src._source = createCompositeShaderSource(gs);
     fragment_src._type = GL_FRAGMENT_SHADER;
-    _compositeSources.push_back({ fragment_src, flags });
   }
-  void GLSLShaderGenerator::clear()
+  void GLSLShaderGenerator::createBlurShaderSource(unsigned flags, const GraphicsSettings & gs, GLShaderSource & vertex_src, GLShaderSource & fragment_src)
   {
-    _fragmentSources.clear();
-    _vertexSources.clear();
-    _vertexDepthSources.clear();
-    _fragmentDepthSources.clear();
-    _compositeSources.clear();
+    vertex_src = _compositeVertexSource;
+    fragment_src._source = "#version 330 \n\
+layout(location = 0) out vec3 fragmentColor;\n\
+in vec2 uv;\n\
+uniform sampler2D " + std::string(toBlurSampler()) + ";\n\
+uniform vec2 " + std::string(texelSize()) + ";\n\
+const float blur_weights [" + std::to_string(gs.getBlurWeights().size()) + "] = float[](";
+    for (unsigned i = 0; i < gs.getBlurWeights().size(); i++) {
+      fragment_src._source += std::to_string(gs.getBlurWeights()[i]);
+      fragment_src._source += i == gs.getBlurWeights().size() - 1 ? ");\n" : ",";
+    }
+    fragment_src._source += "void main()\n\
+{\n\
+  fragmentColor = vec3(0.f);\n\
+  for (int i = -" + std::to_string(gs.getBlurRadius()) + "; i <= " + std::to_string(gs.getBlurRadius()) + "; i++){\n\
+    fragmentColor += texture(" + std::string(toBlurSampler()) + ", uv + i * " + std::string(texelSize()) + ").rgb * blur_weights[i + " + std::to_string(gs.getBlurRadius()) + "];\n\
+  }\n\
+}\n";
+    fragment_src._key = "fs_blur";
+    fragment_src._type = GL_FRAGMENT_SHADER;
   }
   std::string GLSLShaderGenerator::createMeshVertexSource(unsigned flags, const GraphicsSettings & settings) const
   {
@@ -343,23 +330,36 @@ in vec2 uv_out;\n";
     shader_src += "}";
     return shader_src;
   }
-  std::string GLSLShaderGenerator::createCompositeShaderSource(unsigned flags, const GraphicsSettings & gs) const
+  std::string GLSLShaderGenerator::createCompositeShaderSource(const GraphicsSettings & gs) const
   {
     std::string shader_src = "#version 330\n\
 layout(location = 0) out vec3 fragmentColor;\n\
 uniform sampler2D " + std::string(lightingSampler()) + ";\n\
-uniform float " + std::string(exposure()) + ";\n\
-uniform float " + std::string(gammaInverse()) + ";\n\
+uniform sampler2D " + std::string(depthSampler()) + ";\n\
+uniform sampler2D " + std::string(dofSampler()) + ";\n\
+uniform mat4 " + std::string(projectionMatrixInverse()) + ";\n\
 in vec2 uv;\n\
 void main()\n\
 {\n\
   fragmentColor = textureLod(" + std::string(lightingSampler()) + ", uv, 0.f).rgb;\n";
-    if (flags & CompositeFlag::EXPOSURE) {
-      shader_src += "  fragmentColor *= " + std::string(exposure()) + ";\n";
+    if (gs.getDepthOfField()) {
+      shader_src += "  vec4 pos_ndc = vec4(vec3(uv, texture(" + std::string(depthSampler()) + ", uv).r) * 2.f - 1.f, 1.f);\n\
+  vec4 pos_view_h = " + std::string(projectionMatrixInverse()) + " * pos_ndc;\n\
+  float depth_view = -(pos_view_h.z / pos_view_h.w);\n\
+  vec3 blur_color = texture(" + std::string(dofSampler()) + ", uv).rgb;\n\
+  if (depth_view >= " + std::to_string(gs.getDofCenter()) + "){\n\
+    fragmentColor = mix(fragmentColor, blur_color, smoothstep(" + std::to_string(gs.getDofCenter()) + ", " + std::to_string(gs.getDofFar()) + ", depth_view));\n\
+  }\n\
+  else {\n\
+    fragmentColor = mix(blur_color, fragmentColor, smoothstep(" + std::to_string(gs.getDofNear()) + ", " + std::to_string(gs.getDofCenter()) + ", depth_view));\n\
+  }\n";
     }
-    shader_src += "  fragmentColor = fragmentColor / (1.f + fragmentColor);\n";
-    if (flags & CompositeFlag::GAMMA_INVERSE) {
-      shader_src += "  fragmentColor = pow(fragmentColor, vec3(" + std::string(gammaInverse()) + "));\n";
+    if (gs.exposureEnabled()) {
+      shader_src += "  fragmentColor *= " + std::to_string(gs.getExposure()) + ";\n";
+    }
+    shader_src += "  fragmentColor /= 1.f + fragmentColor;\n";
+    if (gs.gammaEnabled()) {
+      shader_src += "  fragmentColor = pow(fragmentColor, vec3(" + std::to_string(1.f / gs.getGamma()) + "));\n";
     }
     return shader_src + "}\n";
   }

@@ -10,12 +10,13 @@ namespace fly
   class Camera;
   class CameraController;
   class Entity;
+  class GameTimer;
 }
 
 class AntWrapper
 {
 public:
-  AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, fly::Camera* camera, fly::CameraController* camera_controller, fly::Entity* skydome);
+  AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, fly::Camera* camera, fly::CameraController* camera_controller, fly::Entity* skydome, fly::GameTimer* game_timer);
 private:
   static void cbSetShadows(const void* value, void* client_data);
   static void cbGetShadows(void* value, void* client_data);
@@ -58,6 +59,22 @@ private:
   static void getSkydome(void* value, void* client_data);
   static void setShadowFactor(const void* value, void* client_data);
   static void getShadowFactor(void* value, void* client_data);
+  static void setDepthOfField(const void* value, void* client_data);
+  static void getDepthOfField(void* value, void* client_data);
+  static void setDofNear(const void* value, void* client_data);
+  static void getDofNear(void* value, void* client_data);
+  static void setDofCenter(const void* value, void* client_data);
+  static void getDofCenter(void* value, void* client_data);
+  static void setDofFar(const void* value, void* client_data);
+  static void getDofFar(void* value, void* client_data);
+  static void setBlurRadius(const void* value, void* client_data);
+  static void getBlurRadius(void* value, void* client_data);
+  static void setBlurSigma(const void* value, void* client_data);
+  static void getBlurSigma(void* value, void* client_data);
+  static void setDofScaleFactor(const void* value, void* client_data);
+  static void getDofScaleFactor(void* value, void* client_data);
+  static void setGamePaused(const void* value, void* client_data);
+  static void getGamePaused(void* value, void* client_data);
   template<typename T> static T* cast(void* data){return reinterpret_cast<T*>(data);}
   template<typename T> static const T* cast(const void* data) { return reinterpret_cast<const T*>(data); }
 };

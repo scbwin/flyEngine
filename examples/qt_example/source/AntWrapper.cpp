@@ -6,8 +6,9 @@
 #include <Entity.h>
 #include <SkydomeRenderable.h>
 #include <Model.h>
+#include <GameTimer.h>
 
-AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, fly::Camera* camera, fly::CameraController* camera_controller, fly::Entity* skydome)
+AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, fly::Camera* camera, fly::CameraController* camera_controller, fly::Entity* skydome, fly::GameTimer* game_timer)
 {
   TwAddVarCB(bar, "Shadows", TwType::TW_TYPE_BOOLCPP, cbSetShadows, cbGetShadows, gs, nullptr);
   TwAddVarCB(bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, cbSetPCF, cbGetPCF, gs, nullptr);
@@ -30,6 +31,14 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "Camera speed", TwType::TW_TYPE_FLOAT, setCamSpeed, getCamSpeed, camera_controller, "step=0.1f");
   TwAddVarCB(bar, "Skydome", TwType::TW_TYPE_BOOLCPP, setSkydome, getSkydome, skydome, nullptr);
   TwAddButton(bar, "Reload shaders", cbReloadShaders, api, nullptr);
+  TwAddVarCB(bar, "Depth of Field", TwType::TW_TYPE_BOOLCPP, setDepthOfField, getDepthOfField, gs, nullptr);
+  TwAddVarCB(bar, "DOF near", TwType::TW_TYPE_FLOAT, setDofNear, getDofNear, gs, "step = 0.01f");
+  TwAddVarCB(bar, "DOF center", TwType::TW_TYPE_FLOAT, setDofCenter, getDofCenter, gs, "step = 0.01f");
+  TwAddVarCB(bar, "DOF far", TwType::TW_TYPE_FLOAT, setDofFar, getDofFar, gs, "step = 0.01f");
+  TwAddVarCB(bar, "Blur radius", TwType::TW_TYPE_UINT32, setBlurRadius, getBlurRadius, gs, nullptr);
+  TwAddVarCB(bar, "Blur sigma", TwType::TW_TYPE_FLOAT, setBlurSigma, getBlurSigma, gs, "step = 0.01f");
+  TwAddVarCB(bar, "DOF scale factor", TwType::TW_TYPE_FLOAT, setDofScaleFactor, getDofScaleFactor, gs, "step = 0.01f");
+  TwAddVarCB(bar, "Game paused", TwType::TW_TYPE_BOOLCPP, setGamePaused, getGamePaused, game_timer, nullptr);
 }
 
 void AntWrapper::cbSetShadows(const void * value, void * client_data)
@@ -241,4 +250,85 @@ void AntWrapper::setShadowFactor(const void * value, void * client_data)
 void AntWrapper::getShadowFactor(void * value, void * client_data)
 {
   *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getShadowDarkenFactor();
+}
+
+void AntWrapper::setDepthOfField(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setDepthOfField(*cast<bool>(value));
+}
+
+void AntWrapper::getDepthOfField(void * value, void * client_data)
+{
+  *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getDepthOfField();
+}
+
+void AntWrapper::setDofNear(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setDofNear(*cast<float>(value));
+}
+
+void AntWrapper::getDofNear(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getDofNear();
+}
+
+void AntWrapper::setDofCenter(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setDofCenter(*cast<float>(value));
+}
+
+void AntWrapper::getDofCenter(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getDofCenter();
+}
+
+void AntWrapper::setDofFar(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setDofFar(*cast<float>(value));
+}
+
+void AntWrapper::getDofFar(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getDofFar();
+}
+
+void AntWrapper::setBlurRadius(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setBlurRadius(*cast<unsigned>(value));
+}
+
+void AntWrapper::getBlurRadius(void * value, void * client_data)
+{
+  *cast<unsigned>(value) = cast<fly::GraphicsSettings>(client_data)->getBlurRadius();
+}
+
+void AntWrapper::setBlurSigma(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setBlurSigma(*cast<float>(value));
+}
+
+void AntWrapper::getBlurSigma(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getBlurSigma();
+}
+
+void AntWrapper::setDofScaleFactor(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setDepthOfFieldScaleFactor(*cast<float>(value));
+}
+
+void AntWrapper::getDofScaleFactor(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getDepthOfFieldScaleFactor();
+}
+
+void AntWrapper::setGamePaused(const void * value, void * client_data)
+{
+  auto gt = cast<fly::GameTimer>(client_data);
+  *cast<bool>(value) ? gt->stop() : gt->start();
+}
+
+void AntWrapper::getGamePaused(void * value, void * client_data)
+{
+  *cast<bool>(value) = cast<fly::GameTimer>(client_data)->isStopped();
 }

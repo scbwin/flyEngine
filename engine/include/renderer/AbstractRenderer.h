@@ -54,7 +54,8 @@ namespace fly
       _pp._fieldOfViewDegrees = 45.f;
       normalMappingChanged(gs);
       shadowsChanged(gs);
-      compositingChanged(gs);
+      depthOfFieldChanged(gs);
+    //  compositingChanged(gs);
       anisotropyChanged(gs);
       cameraLerpingChanged(gs);
       _gsp._camPosworld = Vec3f(0.f);
@@ -63,6 +64,23 @@ namespace fly
     virtual void normalMappingChanged(GraphicsSettings const * const gs) override
     {
       graphicsSettingsChanged();
+    }
+    virtual void depthOfFieldChanged(GraphicsSettings const * gs) override
+    {
+      if (gs->getDepthOfField()) {
+        for (unsigned i = 0; i < _dofBuffer.size(); i++) {
+          //std::cout << _viewPortSize << " " << gs->getDepthOfFieldScaleFactor() << std::endl;
+          _dofBuffer[i] = _api.createRenderToTexture(_viewPortSize * gs->getDepthOfFieldScaleFactor(), API::TexFilter::LINEAR);
+         // std::cout << _dofBuffer[i]->width() << std::endl;;
+        }
+        _api.createBlurShader(*gs);
+      }
+      else {
+        for (unsigned i = 0; i < _dofBuffer.size(); i++) {
+          _dofBuffer[i] = nullptr;
+        }
+      }
+      compositingChanged(gs);
     }
     virtual void shadowsChanged(GraphicsSettings const * const gs) override
     {
@@ -80,7 +98,7 @@ namespace fly
     {
       _offScreenRendering = gs->depthPrepassEnabled() || gs->postProcessingEnabled();
       if (_offScreenRendering) {
-        _lightingBuffer = _api.createRenderToTexture(_viewPortSize);
+        _lightingBuffer = _api.createRenderToTexture(_viewPortSize, API::TexFilter::NEAREST);
         _depthBuffer = _api.createDepthbuffer(_viewPortSize);
       }
       else {
@@ -259,10 +277,14 @@ namespace fly
         if (_gs->getDebugObjectAABBs()) {
           renderObjectAABBs(visible_meshes);
         }
+        if (_gs->getDepthOfField()) {
+          _api.separableBlur(*_lightingBuffer, _dofBuffer);
+          _api.setViewport(_viewPortSize);
+        }
         if (_offScreenRendering) {
           _api.setDepthTestEnabled<false>();
           _api.bindBackbuffer(_defaultRenderTarget);
-          _api.composite(_lightingBuffer.get(), _gsp);
+          _gs->getDepthOfField() ? _api.composite(*_lightingBuffer, _gsp, *_dofBuffer[0], *_depthBuffer) : _api.composite(*_lightingBuffer, _gsp);
         }
         _api.endFrame();
       }
@@ -271,7 +293,7 @@ namespace fly
     {
       _viewPortSize = window_size;
       _gsp._projectionMatrix = MathHelpers::getProjectionMatrixPerspective(_pp._fieldOfViewDegrees, _viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._far, _api.getZNearMapping());
-      compositingChanged(_gs);
+      depthOfFieldChanged(_gs);
     }
     inline void setDefaultRendertarget(unsigned rt) { _defaultRenderTarget = rt; }
     API* getApi() { return &_api; }
@@ -296,6 +318,7 @@ namespace fly
     std::unique_ptr<typename API::RTT> _lightingBuffer;
     std::unique_ptr<typename API::Depthbuffer> _depthBuffer;
     std::unique_ptr<typename API::Shadowmap> _shadowMap;
+    std::array<std::shared_ptr<typename API::RTT>, 2> _dofBuffer;
     unsigned _defaultRenderTarget = 0;
     Mat4f _vpScene;
     bool _offScreenRendering;

@@ -1,9 +1,14 @@
 #include <GraphicsSettings.h>
 #include <algorithm>
 #include <glm/glm.hpp>
+#include <iostream>
 
 namespace fly
 {
+  GraphicsSettings::GraphicsSettings()
+  {
+    computeBlurWeights();
+  }
   void GraphicsSettings::addListener(const std::shared_ptr<Listener>& listener)
   {
     _listeners.insert(listener);
@@ -114,6 +119,7 @@ namespace fly
   void GraphicsSettings::setExposure(float exposure)
   {
     _exposure = exposure;
+    notifyCompositingChanged();
   }
   float GraphicsSettings::getGamma() const
   {
@@ -121,7 +127,8 @@ namespace fly
   }
   void GraphicsSettings::setGamma(float gamma)
   {
-    _gamma = gamma;
+    _gamma = std::max(gamma, 0.f);
+    notifyCompositingChanged();
   }
   bool GraphicsSettings::getWindAnimations() const
   {
@@ -192,6 +199,89 @@ namespace fly
   {
     return _shadowDarkenFactor;
   }
+  bool GraphicsSettings::getDepthOfField() const
+  {
+    return _depthOfField;
+  }
+  void GraphicsSettings::setDepthOfField(bool enabled)
+  {
+    _depthOfField = enabled && _postProcessing;
+    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
+      l->depthOfFieldChanged(this);
+    });
+  }
+  float GraphicsSettings::getBlurSigma() const
+  {
+    return _blurSigma;
+  }
+  void GraphicsSettings::setBlurSigma(float sigma)
+  {
+    _blurSigma = sigma;
+    computeBlurWeights();
+    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
+      l->depthOfFieldChanged(this);
+    });
+  }
+  unsigned GraphicsSettings::getBlurRadius() const
+  {
+    return _blurRadius;
+  }
+  void GraphicsSettings::setBlurRadius(unsigned radius)
+  {
+    _blurRadius = std::max(radius, 1u);
+    computeBlurWeights();
+    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
+      l->depthOfFieldChanged(this);
+    });
+  }
+  float GraphicsSettings::getDepthOfFieldScaleFactor() const
+  {
+    return _depthOfFieldScaleFactor;
+  }
+  void GraphicsSettings::setDepthOfFieldScaleFactor(float scale_factor)
+  {
+    _depthOfFieldScaleFactor = glm::clamp(scale_factor, 0.01f, 1.f);
+    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
+      l->depthOfFieldChanged(this);
+    });
+  }
+  const std::vector<float>& GraphicsSettings::getBlurWeights() const
+  {
+    return _blurWeights;
+  }
+  float GraphicsSettings::getDofNear() const
+  {
+    return _dofNear;
+  }
+  float GraphicsSettings::getDofCenter() const
+  {
+    return _dofCenter;
+  }
+  float GraphicsSettings::getDofFar() const
+  {
+    return _dofFar;
+  }
+  void GraphicsSettings::setDofNear(float near)
+  {
+    _dofNear = std::min(near, _dofCenter);
+    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
+      l->depthOfFieldChanged(this);
+    });
+  }
+  void GraphicsSettings::setDofCenter(float center)
+  {
+    _dofCenter = glm::clamp(center, _dofNear, _dofFar);
+    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
+      l->depthOfFieldChanged(this);
+    });
+  }
+  void GraphicsSettings::setDofFar(float far)
+  {
+    _dofFar = std::max(far, _dofCenter);
+    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
+      l->depthOfFieldChanged(this);
+    });
+  }
   void GraphicsSettings::setCameraLerping(bool enable)
   {
     _cameraLerping = enable;
@@ -240,6 +330,18 @@ namespace fly
       for (const auto& ptr : delete_list) {
         _listeners.erase(ptr);
       }
+    }
+  }
+  void GraphicsSettings::computeBlurWeights()
+  {
+    _blurWeights.clear();
+    float sum = 0.f;
+    for (int i = -static_cast<int>(_blurRadius); i <= static_cast<int>(_blurRadius); i++) {
+      _blurWeights.push_back(exp(-(i * i) / (2 * _blurSigma * _blurSigma)));
+      sum += _blurWeights.back();
+    }
+    for (auto& w : _blurWeights) {
+      w /= sum;
     }
   }
 }

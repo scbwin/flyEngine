@@ -18,12 +18,14 @@ namespace fly
       virtual void normalMappingChanged(GraphicsSettings const * const gs) = 0;
       virtual void shadowsChanged(GraphicsSettings const * const gs) = 0;
       virtual void shadowMapSizeChanged(GraphicsSettings const * const gs) = 0;
+      virtual void depthOfFieldChanged(GraphicsSettings const * const gs) = 0;
       virtual void compositingChanged(GraphicsSettings const * const gs) = 0;
       virtual void windAnimationsChanged(GraphicsSettings const * const gs) = 0;
       virtual void anisotropyChanged(GraphicsSettings const * const gs) = 0;
       virtual void cameraLerpingChanged(GraphicsSettings const * const gs) = 0;
       virtual void gammaChanged(GraphicsSettings const * const gs) = 0;
     };
+    GraphicsSettings();
     void addListener(const std::shared_ptr<Listener>& listener);
     void setNormalMapping(bool normal_mapping);
     void setParallaxMapping(bool parallax_mapping);
@@ -69,6 +71,21 @@ namespace fly
     void setDetailCulling(bool enabled);
     void setShadowDarkenFactor(float factor);
     float getShadowDarkenFactor() const;
+    bool getDepthOfField() const;
+    void setDepthOfField(bool enabled);
+    float getBlurSigma() const;
+    void setBlurSigma(float sigma);
+    unsigned getBlurRadius() const;
+    void setBlurRadius(unsigned radius);
+    float getDepthOfFieldScaleFactor() const;
+    void setDepthOfFieldScaleFactor(float scale_factor);
+    const std::vector<float>& getBlurWeights() const;
+    float getDofNear() const;
+    float getDofCenter() const;
+    float getDofFar() const;
+    void setDofNear(float near);
+    void setDofCenter(float center);
+    void setDofFar(float far);
 
   private:
     std::set<std::weak_ptr<Listener>, std::owner_less<std::weak_ptr<Listener>>> _listeners;
@@ -94,11 +111,20 @@ namespace fly
     bool _cameraLerping = true;
     float _cameraLerpAlpha = 0.8f;
     bool _detailCulling = true;
+    float _blurSigma = 2.5f;
+    unsigned _blurRadius = 3u;
+    std::vector<float> _blurWeights;
+    bool _depthOfField = false;
+    float _depthOfFieldScaleFactor = 0.5f;
+    float _dofNear = 1.f;
+    float _dofCenter = 5.f;
+    float _dofFar = 50.f;
 
     void notifiyNormalMappingChanged();
     void notifyShadowsChanged();
     void notifyCompositingChanged();
     void notifiyListeners(const std::function<void(const std::shared_ptr<Listener>&)>& notify_func);
+    void computeBlurWeights();
   };
 }
 

@@ -106,7 +106,7 @@ namespace fly
   void OpenGLAPI::beginFrame() const
   {
     if (_anisotropy > 1) {
-      for (unsigned i = 0; i <= heightTexUnit(); i++) {
+      for (unsigned i = 0; i <= static_cast<unsigned>(heightTexUnit()); i++) {
         _samplerAnisotropic->bind(i);
       }
     }
@@ -189,17 +189,48 @@ namespace fly
   {
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, id));
   }
-  void OpenGLAPI::composite(const RTT* lighting_buffer, const GlobalShaderParams& params)
+  void OpenGLAPI::separableBlur(const RTT & in, const std::array<std::shared_ptr<RTT>, 2>& out)
+  {
+    in.param(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    _activeShader = _sepBlurShaderDesc->getShader().get();
+    _activeShader->bind();
+    setViewport(fly::Vec2u(out[1]->width(), out[1]->height()));
+    for (unsigned i = 0; i < 2; i++) {
+      setRendertargets({ out[!i].get() }, nullptr);
+      Vec2f texel_size(1.f / out[0]->width() * i, 1.f / out[0]->height() * !i);
+      setVector(_activeShader->uniformLocation(GLSLShaderGenerator::texelSize()), texel_size);
+      GL_CHECK(glActiveTexture(GL_TEXTURE0 + lightingTexUnit()));
+      i ? out[1]->bind() : in.bind();
+      setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::toBlurSampler()), lightingTexUnit());
+      GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
+    }
+    in.param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  }
+  void OpenGLAPI::composite(const RTT& lighting_buffer, const GlobalShaderParams& params)
   {
     setupShaderDesc(*_compositeShaderDesc, params);
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + lightingTexUnit()));
-    lighting_buffer->bind();
+    lighting_buffer.bind();
     setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::lightingSampler()), lightingTexUnit());
+    GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
+  }
+  void OpenGLAPI::composite(const RTT & lighting_buffer, const GlobalShaderParams & params, const RTT & dof_buffer, const Depthbuffer& depth_buffer)
+  {
+    setupShaderDesc(*_compositeShaderDesc, params);
+    GL_CHECK(glActiveTexture(GL_TEXTURE0 + lightingTexUnit()));
+    lighting_buffer.bind();
+    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::lightingSampler()), lightingTexUnit());
+    GL_CHECK(glActiveTexture(GL_TEXTURE0 + dofTexUnit()));
+    dof_buffer.bind();
+    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::dofSampler()), dofTexUnit());
+    GL_CHECK(glActiveTexture(GL_TEXTURE0 + depthTexUnit()));
+    depth_buffer.bind();
+    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::depthSampler()), depthTexUnit());
     GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
   }
   void OpenGLAPI::endFrame() const
   {
-    for (unsigned i = 0; i <= heightTexUnit(); i++) {
+    for (unsigned i = 0; i <= static_cast<unsigned>(heightTexUnit()); i++) {
       _samplerAnisotropic->unbind(i);
     }
   }
@@ -229,12 +260,13 @@ namespace fly
   {
     return _shaderDescCache.getOrCreate(shader, shader, flags);
   }
-  std::unique_ptr<OpenGLAPI::RTT> OpenGLAPI::createRenderToTexture(const Vec2u & size)
+  std::unique_ptr<OpenGLAPI::RTT> OpenGLAPI::createRenderToTexture(const Vec2u & size, OpenGLAPI::TexFilter filter)
   {
     auto tex = std::make_unique<GLTexture>(GL_TEXTURE_2D);
     tex->bind();
-    tex->param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    tex->param(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    auto tex_filter = filter == TexFilter::NEAREST ? GL_NEAREST : GL_LINEAR;
+    tex->param(GL_TEXTURE_MIN_FILTER, tex_filter);
+    tex->param(GL_TEXTURE_MAG_FILTER, tex_filter);
     tex->param(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     tex->param(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     tex->image2D(0, GL_RGBA16F, size, 0, GL_RGBA, GL_FLOAT, nullptr);
@@ -275,7 +307,6 @@ namespace fly
   }
   void OpenGLAPI::recreateShadersAndMaterials(const GraphicsSettings& settings)
   {
-    _shaderGenerator->clear();
     _shaderCache.clear();
     _shaderDescCache.clear();
     for (const auto e : _matDescCache.getElements()) {
@@ -283,21 +314,29 @@ namespace fly
     }
     createCompositeShader(settings);
   }
+  void OpenGLAPI::createBlurShader(const GraphicsSettings & gs)
+  {
+    GLShaderSource vs, fs;
+    _shaderGenerator->createBlurShaderSource(0, gs, vs, fs);
+    auto shader = std::make_shared<GLShaderProgram>();
+    shader->add(vs);
+    shader->add(fs);
+    shader->link();
+    _sepBlurShaderDesc = std::make_unique<ShaderDesc>(shader, 0);
+  }
   void OpenGLAPI::createCompositeShader(const GraphicsSettings & gs)
   {
-    unsigned flags = GLSLShaderGenerator::CompositeFlag::CP_NONE;
     unsigned ss_flags = ShaderSetupFlags::NONE;
-    if (gs.exposureEnabled()) {
-      flags |= GLSLShaderGenerator::CompositeFlag::EXPOSURE;
-      ss_flags |= ShaderSetupFlags::EXPOSURE;
-    }
-    if (gs.gammaEnabled()) {
-      flags |= GLSLShaderGenerator::CompositeFlag::GAMMA_INVERSE;
-      ss_flags |= ShaderSetupFlags::GAMMA_INVERSE;
+    if (gs.getDepthOfField()) {
+      ss_flags |= ShaderSetupFlags::P_INVERSE;
     }
     GLShaderSource vs, fs;
-    _shaderGenerator->createCompositeShaderSource(flags, gs, vs, fs);
-    _compositeShaderDesc = createShaderDesc(createShader(vs, fs), ss_flags);
+    _shaderGenerator->createCompositeShaderSource(gs, vs, fs);
+    auto shader = std::make_shared<GLShaderProgram>();
+    shader->add(vs);
+    shader->add(fs);
+    shader->link();
+    _compositeShaderDesc = std::make_unique<ShaderDesc>(shader, ss_flags);
   }
   std::vector<std::shared_ptr<Material>> OpenGLAPI::getAllMaterials()
   {
@@ -538,19 +577,14 @@ namespace fly
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::windStrength()), params._windParams._strength);
       });
     }
-    if (flags & ShaderSetupFlags::EXPOSURE) {
-      _setupFuncs.push_back([this](const GlobalShaderParams& params) {
-        setScalar(_shader->uniformLocation(GLSLShaderGenerator::exposure()), params._exposure);
-      });
-    }
-    if (flags & ShaderSetupFlags::GAMMA_INVERSE) {
-      _setupFuncs.push_back([this](const GlobalShaderParams& params) {
-        setScalar(_shader->uniformLocation(GLSLShaderGenerator::gammaInverse()), 1.f / params._gamma);
-      });
-    }
     if (flags & ShaderSetupFlags::GAMMA) {
       _setupFuncs.push_back([this](const GlobalShaderParams& params) {
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::gamma()), params._gamma);
+      });
+    }
+    if (flags & ShaderSetupFlags::P_INVERSE) {
+      _setupFuncs.push_back([this](const GlobalShaderParams& params) {
+        setMatrix(_shader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverse()), inverse(params._projectionMatrix));
       });
     }
   }
