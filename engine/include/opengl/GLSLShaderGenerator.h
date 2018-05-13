@@ -21,7 +21,8 @@ namespace fly
       NORMAL_MAP = 2, 
       ALPHA_MAP = 4,
       HEIGHT_MAP = 8,
-      WIND = 16
+      WIND = 16,
+      REFLECTIVE = 32
     };
     GLShaderSource createMeshVertexShaderSource(unsigned flags, const GraphicsSettings& settings);
     GLShaderSource createMeshFragmentShaderSource(unsigned flags, const GraphicsSettings& settings);
@@ -29,6 +30,7 @@ namespace fly
     GLShaderSource createMeshFragmentShaderDepthSource(unsigned flags, const GraphicsSettings& settings);
     void createCompositeShaderSource(const GraphicsSettings& gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src);
     void createBlurShaderSource(unsigned flags, const GraphicsSettings& gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src);
+    void createSSRShaderSource(const GraphicsSettings& gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src);
     static inline constexpr const char* diffuseSampler() { return "ts_d"; };
     static inline constexpr const char* alphaSampler() { return "ts_a"; };
     static inline constexpr const char* normalSampler() { return "ts_n"; };
@@ -51,8 +53,12 @@ namespace fly
     static inline constexpr const char* time() { return "t"; };
     static inline constexpr const char* modelMatrix() { return "M"; };
     static inline constexpr const char* modelMatrixInverse() { return "M_i"; };
+    static inline constexpr const char* modelViewInverse() { return "MV_i"; };
     static inline constexpr const char* viewProjectionMatrix() { return "VP"; };
+    static inline constexpr const char* projectionMatrix() { return "P"; };
     static inline constexpr const char* projectionMatrixInverse() { return "P_i"; };
+    static inline constexpr const char* projectionMatrixInverseThirdRow() { return "P_i_3"; };
+    static inline constexpr const char* projectionMatrixInverseFourthRow() { return "P_i_4"; };
     static inline constexpr const char* modelViewProjectionMatrix() { return "MVP"; };
     static inline constexpr const char* lightPositionWorld() { return "lp_ws"; };
     static inline constexpr const char* cameraPositionWorld() { return "cp_ws"; };
@@ -71,6 +77,7 @@ namespace fly
     static inline constexpr const char* toBlurSampler() { return "ts_b"; };
     static inline constexpr const char* depthSampler() { return "ts_d"; };
     static inline constexpr const char* dofSampler() { return "ts_dof"; };
+    static inline constexpr const char* viewSpaceNormalsSampler() { return "ts_n"; };
     static inline constexpr const char* noiseCodeGLSL() {
       return "float hash(vec2 p)\n\
 {\n\

@@ -174,8 +174,11 @@ namespace fly
       void setup() const;
       void setupDepth() const;
       using ShaderProgram = GLShaderProgram;
-      const std::shared_ptr<ShaderDesc>& getMeshShaderDesc(bool has_wind) const;
-      const std::shared_ptr<ShaderDesc>& getMeshShaderDescDepth(bool has_wind) const;
+      const std::shared_ptr<ShaderDesc>& getMeshShaderDesc() const;
+      const std::shared_ptr<ShaderDesc>& getMeshShaderDescWind() const;
+      const std::shared_ptr<ShaderDesc>& getMeshShaderDescReflective() const;
+      const std::shared_ptr<ShaderDesc>& getMeshShaderDescDepth() const;
+      const std::shared_ptr<ShaderDesc>& getMeshShaderDescDepthWind() const;
       const std::shared_ptr<Material>& getMaterial() const;
       const std::shared_ptr<GLTexture>& diffuseMap() const;
       const std::shared_ptr<GLTexture>& normalMap() const;
@@ -190,6 +193,7 @@ namespace fly
       std::shared_ptr<ShaderDesc> _meshShaderDescWind;
       std::shared_ptr<ShaderDesc> _meshShaderDescDepth;
       std::shared_ptr<ShaderDesc> _meshShaderDescWindDepth;
+      std::shared_ptr<ShaderDesc> _meshShaderDescReflective;
       std::shared_ptr<GLTexture> _diffuseMap;
       std::shared_ptr<GLTexture> _normalMap;
       std::shared_ptr<GLTexture> _alphaMap;
@@ -202,13 +206,15 @@ namespace fly
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data) const;
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix) const;
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse) const;
+    void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse, const Mat3f& model_view_inverse) const;
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const WindParamsLocal& wind_params, const AABB& aabb) const;
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse, const WindParamsLocal& wind_params, const AABB& aabb) const;
     void renderMeshMVP(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mvp) const;
     void renderAABBs(const std::vector<AABB const *>& aabbs, const Mat4f& transform, const Vec3f& col);
-    void setRendertargets(const std::vector<RTT*>& rtts, const Depthbuffer* depth_buffer);
-    void setRendertargets(const std::vector<RTT*>& rtts, const Depthbuffer* depth_buffer, unsigned depth_buffer_layer);
+    void setRendertargets(const std::vector<RTT const*>& rtts, const Depthbuffer* depth_buffer);
+    void setRendertargets(const std::vector<RTT const*>& rtts, const Depthbuffer* depth_buffer, unsigned depth_buffer_layer);
     void bindBackbuffer(unsigned id) const;
+    void ssr(const RTT& lighting_buffer, const RTT& view_space_normals, const Depthbuffer& depth_buffer, const Mat4f& projection_matrix, const Vec4f& blend_weight);
     void separableBlur(const RTT& in, const std::array<std::shared_ptr<RTT>, 2>& out);
     void composite(const RTT& lighting_buffer, const GlobalShaderParams& params);
     void composite(const RTT& lighting_buffer, const GlobalShaderParams& params, const RTT& dof_buffer, const Depthbuffer& depth_buffer);
@@ -225,6 +231,7 @@ namespace fly
     void recreateShadersAndMaterials(const GraphicsSettings& gs);
     void createBlurShader(const GraphicsSettings& gs);
     void createCompositeShader(const GraphicsSettings& gs);
+    void createScreenSpaceReflectionsShader(const GraphicsSettings& gs);
     std::vector<std::shared_ptr<Material>> getAllMaterials();
     const std::shared_ptr<ShaderDesc>& getSkyboxShaderDesc() const;
     void writeShadersToDisk() const;
@@ -238,6 +245,7 @@ namespace fly
     std::unique_ptr<ShaderDesc> _compositeShaderDesc;
     std::unique_ptr<ShaderDesc> _sepBlurShaderDesc;
     std::shared_ptr<ShaderDesc> _skydomeShaderDesc;
+    std::unique_ptr<GLShaderProgram> _ssrShader;
     std::shared_ptr<GLShaderProgram> _skydomeShader;
     std::shared_ptr<GLVertexArray> _vaoAABB;
     std::shared_ptr<GLBuffer> _vboAABB;
@@ -249,7 +257,7 @@ namespace fly
     std::unique_ptr<GLMaterialSetup> _materialSetup;
 
     void checkFramebufferStatus();
-    void setColorBuffers(const std::vector<RTT*>& rtts);
+    void setColorBuffers(const std::vector<RTT const*>& rtts);
   };
 }
 

@@ -10,6 +10,19 @@ namespace fly
   GLTexture::GLTexture(GLuint id, GLenum target) : _id(id), _target(target)
   {
   }
+  GLTexture::GLTexture(const GLTexture & other) : 
+    _target(other._target)
+  {
+    GL_CHECK(glGenTextures(1, &_id));
+    if (other._depth > 1) {
+      image3D(0, other._internalFormat, Vec3u(other._width, other._height, other._depth), 0, other._format, other._type, nullptr);
+    }
+    else {
+      image2D(0, other._internalFormat, Vec2u(other._width, other._height), 0, other._format, other._type, nullptr);
+    }
+    param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    GL_CHECK(glCopyImageSubData(other._id, other._target, 0, 0, 0, 0, _id, _target, 0, 0, 0, 0, other._width, other._height, other._depth));
+  }
   GLuint GLTexture::id() const
   {
     return _id;
@@ -25,6 +38,8 @@ namespace fly
     _width = size[0];
     _height = size[1];
     _format = format;
+    _internalFormat = internal_format;
+    _type = type;
   }
   void GLTexture::image3D(GLint level, GLint internal_format, const Vec3u & size, GLint border, GLenum format, GLenum type, const void * data)
   {
@@ -34,6 +49,8 @@ namespace fly
     _height = size[1];
     _depth = size[2];
     _format = format;
+    _internalFormat = internal_format;
+    _type = type;
   }
   void GLTexture::param(GLenum name, GLint val) const
   {

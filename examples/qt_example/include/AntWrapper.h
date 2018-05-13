@@ -77,6 +77,16 @@ private:
   static void getGamePaused(void* value, void* client_data);
   static void setSSR(const void* value, void* client_data);
   static void getSSR(void* value, void* client_data);
+  static void setSSRSteps(const void* value, void* client_data);
+  static void getSSRSteps(void* value, void* client_data);
+  static void setSSRBinarySteps(const void* value, void* client_data);
+  static void getSSRBinarySteps(void* value, void* client_data);
+  static void setSSRRayLenScale(const void* value, void* client_data);
+  static void getSSRRayLenScale(void* value, void* client_data);
+  static void setSSRMinRayLen(const void* value, void* client_data);
+  static void getSSRMinRayLen(void* value, void* client_data);
+  static void setSSRBlendWeight(const void* value, void* client_data);
+  static void getSSRBlendWeight(void* value, void* client_data);
   template<typename T> static T* cast(void* data){return reinterpret_cast<T*>(data);}
   template<typename T> static const T* cast(const void* data) { return reinterpret_cast<const T*>(data); }
 };

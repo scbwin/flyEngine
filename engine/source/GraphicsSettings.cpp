@@ -293,6 +293,61 @@ namespace fly
       l->screenSpaceReflectionsChanged(this);
     });
   }
+  float GraphicsSettings::getSSRSteps() const
+  {
+    return _ssrSteps;
+  }
+  unsigned GraphicsSettings::getSSRBinarySteps() const
+  {
+    return _ssrBinarySteps;
+  }
+  float GraphicsSettings::getSSRRayLenScale() const
+  {
+    return _ssrRayLenScale;
+  }
+  float GraphicsSettings::getSSRMinRayLen() const
+  {
+    return _ssrMinRayLen;
+  }
+  float GraphicsSettings::getSSRBlendWeight() const
+  {
+    return _ssrBlendWeight;
+  }
+  void GraphicsSettings::setSSRSteps(float steps)
+  {
+    _ssrSteps = std::max(steps, 0.f);
+    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
+      l->screenSpaceReflectionsChanged(this);
+    });
+  }
+  void GraphicsSettings::setSSRBinarySteps(unsigned steps)
+  {
+    _ssrBinarySteps = steps;
+    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
+      l->screenSpaceReflectionsChanged(this);
+    });
+  }
+  void GraphicsSettings::setSSRRayLenScale(float scale)
+  {
+    _ssrRayLenScale = std::max(scale, 0.f);
+    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
+      l->screenSpaceReflectionsChanged(this);
+    });
+  }
+  void GraphicsSettings::setSSRMinRayLen(float len)
+  {
+    _ssrMinRayLen = std::max(len, 0.f);
+    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
+      l->screenSpaceReflectionsChanged(this);
+    });
+  }
+  void GraphicsSettings::setSSRBlendWeight(float weight)
+  {
+    _ssrBlendWeight = glm::clamp(weight, 0.f, 1.f);
+    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
+      l->screenSpaceReflectionsChanged(this);
+    });
+  }
   void GraphicsSettings::setCameraLerping(bool enable)
   {
     _cameraLerping = enable;

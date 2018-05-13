@@ -52,6 +52,9 @@ uniform vec3 " + std::string(bbMax()) + "; // AABB max xz\n" + std::string(noise
     if (flags & MeshRenderFlag::ALPHA_MAP) {
       key += "_alpha";
     }
+    if (flags & MeshRenderFlag::REFLECTIVE) {
+      key += "_reflective";
+    }
     if (settings.getShadows() || settings.getShadowsPCF()) {
       key += "_shadows";
     }
@@ -135,6 +138,62 @@ const float blur_weights [" + std::to_string(gs.getBlurWeights().size()) + "] = 
     fragment_src._key = "fs_blur";
     fragment_src._type = GL_FRAGMENT_SHADER;
   }
+  void GLSLShaderGenerator::createSSRShaderSource(const GraphicsSettings & gs, GLShaderSource & vertex_src, GLShaderSource & fragment_src)
+  {
+    vertex_src = _compositeVertexSource;
+    fragment_src._source = "#version 330 \n\
+layout(location = 0) out vec3 fragmentColor;\n\
+in vec2 uv;\n\
+uniform sampler2D " + std::string(lightingSampler()) + ";\n\
+uniform sampler2D " + std::string(viewSpaceNormalsSampler()) + ";\n\
+uniform sampler2D " + std::string(depthSampler()) + ";\n\
+uniform mat4 " + std::string(projectionMatrixInverse()) + ";\n\
+uniform mat4 " + std::string(projectionMatrix()) + ";\n\
+uniform vec4 " + std::string(projectionMatrixInverseThirdRow()) + ";\n\
+uniform vec4 " + std::string(projectionMatrixInverseFourthRow()) + ";\n\
+void main()\n\
+{\n\
+  vec3 normal_view = textureLod(" + std::string(viewSpaceNormalsSampler()) + ", uv, 0.f).xyz;\n\
+  if (normal_view != vec3(0.f)) {\n\
+    vec4 pos_view_h = " + std::string(projectionMatrixInverse()) + " * vec4(vec3(uv, textureLod(" + std::string(depthSampler()) + ", uv, 0.f).r) * 2.f - 1.f, 1.f);\n\
+    vec3 pos_view = pos_view_h.xyz / pos_view_h.w;\n\
+    vec3 ray_dir = reflect(normalize(pos_view), normal_view);\n\
+    vec3 ray = ray_dir * max(-pos_view.z * " + std::to_string(gs.getSSRRayLenScale()) + "f, " + std::to_string(gs.getSSRMinRayLen()) + ");\n\
+    vec3 delta = ray / " + std::to_string(gs.getSSRSteps()) + "f;\n\
+    vec3 ray_pos_view = pos_view + delta;\n\
+    bool valid = true;\n\
+    for (float i = 1.f; i < " + std::to_string(gs.getSSRSteps()) + "f && valid; i++, ray_pos_view += delta) {\n\
+      vec4 ray_pos_h = " + std::string(projectionMatrix()) + " * vec4(ray_pos_view, 1.f);\n\
+      vec3 ray_pos_ndc = ray_pos_h.xyz / ray_pos_h.w;\n\
+      valid = all(greaterThanEqual(ray_pos_ndc, vec3(-1.f))) && all(lessThanEqual(ray_pos_ndc, vec3(1.f)));\n\
+      vec2 uv = ray_pos_ndc.xy * 0.5f + 0.5f;\n\
+      vec4 comp_ndc = vec4(vec3(uv, textureLod(" + std::string(depthSampler()) + ", uv, 0.f).r) * 2.f - 1.f, 1.f);\n\
+      float comp_depth = dot(comp_ndc, " + std::string(projectionMatrixInverseThirdRow()) + ") / dot(comp_ndc, " + std::string(projectionMatrixInverseFourthRow()) + ");\n\
+      if (valid && ray_pos_view.z < comp_depth) { // Intersection found, the ray travelled behind the depth buffer \n\
+        for (uint i = 0u; i < " + std::to_string(gs.getSSRBinarySteps()) + "u; i++) { // Binary search refinement\n\
+          ray_pos_h = " + std::string(projectionMatrix()) + " * vec4(ray_pos_view, 1.f);\n\
+          ray_pos_ndc = ray_pos_h.xyz / ray_pos_h.w;\n\
+          uv = ray_pos_ndc.xy * 0.5f + 0.5f;\n\
+          vec4 comp_ndc = vec4(vec3(uv, textureLod(" + std::string(depthSampler()) + ", uv, 0.f).r) * 2.f - 1.f, 1.f);\n\
+          float comp_depth = dot(comp_ndc, " + std::string(projectionMatrixInverseThirdRow()) + ") / dot(comp_ndc, " + std::string(projectionMatrixInverseFourthRow()) + ");\n\
+          delta *= 0.5f;\n\
+          if (ray_pos_view.z < comp_depth) { \n\
+            ray_pos_view -= delta;\n\
+          }\n\
+          else {\n\
+            ray_pos_view += delta;\n\
+          }\n\
+        }\n\
+        fragmentColor = texture(" + std::string(lightingSampler()) + ", uv).rgb;\n\
+        return;\n\
+      }\n\
+    }\n\
+  }\n\
+  fragmentColor = texture(" + std::string(lightingSampler()) + ", uv).rgb;\n\
+}\n";
+    fragment_src._key = "fs_ssr";
+    fragment_src._type = GL_FRAGMENT_SHADER;
+  }
   std::string GLSLShaderGenerator::createMeshVertexSource(unsigned flags, const GraphicsSettings & settings) const
   {
     std::string shader_src;
@@ -201,6 +260,7 @@ void main()\n\
     bool tangent_space = (flags & NORMAL_MAP) || (flags & HEIGHT_MAP);
     std::string shader_src = "#version 330 \n\
 layout(location = 0) out vec3 fragmentColor;\n\
+layout(location = 1) out vec3 viewSpaceNormal;\n\
 in vec3 pos_world;\n\
 in vec2 uv_out;\n\
 // Uniform variables are the same for each shader variation, the compiler will optimize away unused variables anyway\n\
@@ -229,6 +289,7 @@ uniform float " + std::string(specularConstant()) + ";\n\
 uniform float " + std::string(specularExponent()) + ";\n\
 uniform float " + std::string(gamma()) + ";\n\
 uniform mat3 " + std::string(modelMatrixInverse()) + ";\n\
+uniform mat3 " + std::string(modelViewInverse()) + ";\n\
 in vec3 normal_local;\n\
 in vec3 tangent_local;\n\
 in vec3 bitangent_local;\n\
@@ -310,6 +371,18 @@ void main()\n\
       if (!settings.getShadowsPCF()) {
         shader_src += "  }\n";
       }
+    }
+    if (flags & REFLECTIVE) {
+      if (tangent_space) {
+        shader_src += "  mat3 tangent_to_view = mat3(normalize(" + std::string(modelViewInverse()) + " * tangent_local), normalize(" + std::string(modelViewInverse()) + " * bitangent_local), normalize(" + std::string(modelViewInverse()) + " * normal_local));\n\
+  viewSpaceNormal = normalize(tangent_to_view * normal_ts);\n";
+      }
+      else {
+        shader_src += "  viewSpaceNormal = normalize(" + std::string(modelViewInverse()) + " * normal_local);\n";
+      }
+    }
+    else {
+      shader_src += "  viewSpaceNormal = vec3(0.f);\n";
     }
     shader_src += "}\n";
     return shader_src;

@@ -89,6 +89,16 @@ namespace fly
     void setDofFar(float far);
     bool getScreenSpaceReflections() const;
     void setScreenSpaceReflections(bool enabled);
+    float getSSRSteps() const;
+    unsigned getSSRBinarySteps() const;
+    float getSSRRayLenScale() const;
+    float getSSRMinRayLen() const;
+    float getSSRBlendWeight() const;
+    void setSSRSteps(float steps);
+    void setSSRBinarySteps(unsigned steps);
+    void setSSRRayLenScale(float scale);
+    void setSSRMinRayLen(float len);
+    void setSSRBlendWeight(float weight);
 
   private:
     std::set<std::weak_ptr<Listener>, std::owner_less<std::weak_ptr<Listener>>> _listeners;
@@ -117,12 +127,17 @@ namespace fly
     float _blurSigma = 2.5f;
     unsigned _blurRadius = 3u;
     std::vector<float> _blurWeights;
-    bool _depthOfField = false;
+    bool _depthOfField = true;
     float _depthOfFieldScaleFactor = 0.5f;
     float _dofNear = 1.f;
     float _dofCenter = 5.f;
     float _dofFar = 50.f;
-    bool _screenSpaceReflections = false;
+    bool _screenSpaceReflections = true;
+    float _ssrSteps = 120.f;
+    unsigned _ssrBinarySteps = 10u;
+    float _ssrRayLenScale = 4.f;
+    float _ssrMinRayLen = 4.f;
+    float _ssrBlendWeight = 0.8f;
 
     void notifiyNormalMappingChanged();
     void notifyShadowsChanged();

@@ -11,7 +11,7 @@ namespace fly
   public:
     GLTexture(GLenum target);
     GLTexture(GLuint id, GLenum target);
-    GLTexture(const GLTexture& other) = delete;
+    GLTexture(const GLTexture& other);
     GLTexture& operator=(const GLTexture& other) = delete;
     GLuint id() const;
     void bind() const;
@@ -29,8 +29,10 @@ namespace fly
     GLenum _target;
     unsigned _width;
     unsigned _height;
-    unsigned _depth;
+    unsigned _depth = 1;
+    GLuint _internalFormat;
     GLuint _format;
+    GLuint _type;
   };
 }
 

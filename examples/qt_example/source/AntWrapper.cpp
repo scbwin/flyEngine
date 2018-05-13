@@ -40,6 +40,11 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "DOF scale factor", TwType::TW_TYPE_FLOAT, setDofScaleFactor, getDofScaleFactor, gs, "step = 0.01f");
   TwAddVarCB(bar, "Game paused", TwType::TW_TYPE_BOOLCPP, setGamePaused, getGamePaused, game_timer, nullptr);
   TwAddVarCB(bar, "Screen space reflections", TwType::TW_TYPE_BOOLCPP, setSSR, getSSR, gs, nullptr);
+  TwAddVarCB(bar, "SSR steps", TwType::TW_TYPE_FLOAT, setSSRSteps, getSSRSteps, gs, "step = 0.1f");
+  TwAddVarCB(bar, "SSR binary steps", TwType::TW_TYPE_UINT32, setSSRBinarySteps, getSSRBinarySteps, gs, nullptr);
+  TwAddVarCB(bar, "SSR ray len scale", TwType::TW_TYPE_FLOAT, setSSRRayLenScale, getSSRRayLenScale, gs, "step=0.1f");
+  TwAddVarCB(bar, "SSR min ray len", TwType::TW_TYPE_FLOAT, setSSRMinRayLen, getSSRMinRayLen, gs, "step=0.1f");
+  TwAddVarCB(bar, "SSR blend weight", TwType::TW_TYPE_FLOAT, setSSRBlendWeight, getSSRBlendWeight, gs, "step=0.005f");
 }
 
 void AntWrapper::cbSetShadows(const void * value, void * client_data)
@@ -342,4 +347,54 @@ void AntWrapper::setSSR(const void * value, void * client_data)
 void AntWrapper::getSSR(void * value, void * client_data)
 {
   *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getScreenSpaceReflections();
+}
+
+void AntWrapper::setSSRSteps(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setSSRSteps(*cast<float>(value));
+}
+
+void AntWrapper::getSSRSteps(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getSSRSteps();
+}
+
+void AntWrapper::setSSRBinarySteps(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setSSRBinarySteps(*cast<unsigned>(value));
+}
+
+void AntWrapper::getSSRBinarySteps(void * value, void * client_data)
+{
+  *cast<unsigned>(value) = cast<fly::GraphicsSettings>(client_data)->getSSRBinarySteps();
+}
+
+void AntWrapper::setSSRRayLenScale(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setSSRRayLenScale(*cast<float>(value));
+}
+
+void AntWrapper::getSSRRayLenScale(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getSSRRayLenScale();
+}
+
+void AntWrapper::setSSRMinRayLen(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setSSRMinRayLen(*cast<float>(value));
+}
+
+void AntWrapper::getSSRMinRayLen(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getSSRMinRayLen();
+}
+
+void AntWrapper::setSSRBlendWeight(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setSSRBlendWeight(*cast<float>(value));
+}
+
+void AntWrapper::getSSRBlendWeight(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getSSRBlendWeight();
 }

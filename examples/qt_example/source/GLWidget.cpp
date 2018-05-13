@@ -189,7 +189,7 @@ void GLWidget::mousePressEvent(QMouseEvent * e)
     if (callback.hasHit()) {
       fly::RigidBody* rigid_body = reinterpret_cast<fly::RigidBody*>(callback.m_collisionObject->getUserPointer());
       if (rigid_body) {
-        rigid_body->getBtRigidBody()->activate()
+        rigid_body->getBtRigidBody()->activate();
         _selectedRigidBody = rigid_body;
       }
     }
@@ -259,6 +259,10 @@ void GLWidget::initGame()
   }
 #else
   auto sponza_model = importer->loadModel("assets/sponza/sponza.obj");
+  sponza_model->getMaterials()[10]->setIsReflective(true);
+ // for (const auto& m : sponza_model->getMaterials()) {
+    //m->setIsReflective(true);
+  //}
 #if DELETE_CURTAIN
   auto meshes = sponza_model->getMeshes();
   meshes.erase(meshes.end() - 28);
@@ -375,7 +379,7 @@ void GLWidget::initGame()
   _skydome->addComponent(std::make_shared<fly::SkydomeRenderable>(sphere_model->getMeshes().front()));
 #endif
 #if PHYSICS
-  _graphicsSettings.setDebugObjectAABBs(true);
+ // _graphicsSettings.setDebugObjectAABBs(true);
   std::mt19937 gen;
   std::uniform_real_distribution<float> col_dist(0.f, 2.f);
   std::uniform_real_distribution<float> scale_dist(0.3f, 0.55f);
@@ -400,7 +404,7 @@ void GLWidget::initGame()
   auto cube_model = importer->loadModel("assets/cube.obj");
   for (const auto& m : cube_model->getMeshes()) {
     auto half_extents = (m->getAABB()->getMax() - m->getAABB()->getMin()) * 0.5f;
-    for (unsigned i = 0; i < 20; i++) {
+    for (unsigned i = 0; i < 50; i++) {
       auto cube_shape = std::make_shared<btBoxShape>(btVector3(half_extents[0], half_extents[1], half_extents[2]));
       float scale = scale_dist(gen);
       cube_shape->setLocalScaling(btVector3(scale, scale, scale));
