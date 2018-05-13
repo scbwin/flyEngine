@@ -23,6 +23,7 @@ namespace fly
     unsigned height() const;
     unsigned depth() const;
     GLuint format() const;
+    GLenum target() const;
     ~GLTexture();
   private:
     GLuint _id;

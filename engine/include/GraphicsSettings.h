@@ -133,10 +133,10 @@ namespace fly
     float _dofCenter = 5.f;
     float _dofFar = 50.f;
     bool _screenSpaceReflections = true;
-    float _ssrSteps = 120.f;
+    float _ssrSteps = 16.f;
     unsigned _ssrBinarySteps = 10u;
-    float _ssrRayLenScale = 4.f;
-    float _ssrMinRayLen = 4.f;
+    float _ssrRayLenScale = 3.f;
+    float _ssrMinRayLen = 24.f;
     float _ssrBlendWeight = 0.8f;
 
     void notifiyNormalMappingChanged();

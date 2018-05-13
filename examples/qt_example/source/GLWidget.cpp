@@ -3,7 +3,7 @@
 #include <AssimpImporter.h>
 #include <btBulletDynamicsCommon.h>
 #include <Leakcheck.h>
-#include <renderer/AbstractRenderer.h>
+#include <renderer/Renderer.h>
 #include <iostream>
 #include <Engine.h>
 #include <Transform.h>
@@ -34,7 +34,7 @@ GLWidget::~GLWidget()
 
 void GLWidget::initializeGL()
 {
-  _renderer = std::make_shared<fly::AbstractRenderer<fly::OpenGLAPI>>(&_graphicsSettings);
+  _renderer = std::make_shared<fly::Renderer<fly::OpenGLAPI>>(&_graphicsSettings);
   _graphicsSettings.addListener(_renderer);
   _engine->addSystem(_renderer);
 #if PHYSICS

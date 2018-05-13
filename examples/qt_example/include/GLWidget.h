@@ -10,7 +10,7 @@
 #define SPONZA_MANY 0
 #define TOWERS 0
 #define TREE_SCENE 0
-#define PHYSICS 1
+#define PHYSICS 0
 #define SKYDOME 1
 #define NUM_OBJECTS 100
 #define NUM_TOWERS 15
@@ -22,7 +22,7 @@ namespace fly
 {
   class OpenGLAPI;
   template<class T>
-  class AbstractRenderer;
+  class Renderer;
   class Engine;
   class GameTimer;
   class CameraController;
@@ -61,7 +61,7 @@ protected:
 private:
   std::unique_ptr<fly::Engine> _engine;
   fly::GraphicsSettings _graphicsSettings;
-  std::shared_ptr<fly::AbstractRenderer<fly::OpenGLAPI>> _renderer;
+  std::shared_ptr<fly::Renderer<fly::OpenGLAPI>> _renderer;
   std::unique_ptr<fly::GameTimer> _gameTimer;
   std::unique_ptr<fly::CameraController> _camController;
   std::shared_ptr<fly::DirectionalLight> _dl;

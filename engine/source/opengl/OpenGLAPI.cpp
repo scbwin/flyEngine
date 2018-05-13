@@ -182,13 +182,13 @@ namespace fly
   void OpenGLAPI::setRendertargets(const std::vector<RTT const*>& rtts, const Depthbuffer* depth_buffer)
   {
     setColorBuffers(rtts);
-    _offScreenFramebuffer->texture(depth_buffer && depth_buffer->format() == GL_DEPTH_STENCIL ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT, depth_buffer, 0);
+    _offScreenFramebuffer->texture(GL_DEPTH_ATTACHMENT, depth_buffer, 0);
     checkFramebufferStatus();
   }
   void OpenGLAPI::setRendertargets(const std::vector<RTT const*>& rtts, const Depthbuffer* depth_buffer, unsigned depth_buffer_layer)
   {
     setColorBuffers(rtts);
-    _offScreenFramebuffer->textureLayer(depth_buffer && depth_buffer->format() == GL_DEPTH_STENCIL ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT, depth_buffer, 0, depth_buffer_layer);
+    _offScreenFramebuffer->textureLayer(GL_DEPTH_ATTACHMENT, depth_buffer, 0, depth_buffer_layer);
     checkFramebufferStatus();
   }
   void OpenGLAPI::bindBackbuffer(unsigned id) const
@@ -200,6 +200,9 @@ namespace fly
     RTT lighting_buffer_copy = lighting_buffer;
     lighting_buffer_copy.param(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     lighting_buffer_copy.param(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    depth_buffer.param(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    depth_buffer.param(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    GL_CHECK(glGenerateMipmap(depth_buffer.target()));
     GL_CHECK(glEnable(GL_BLEND));
     GL_CHECK(glBlendColor(blend_weight[0], blend_weight[1], blend_weight[2], blend_weight[3]));
     GL_CHECK(glBlendFunc(GL_CONSTANT_COLOR, GL_ONE_MINUS_CONSTANT_COLOR));
@@ -221,6 +224,8 @@ namespace fly
     setVector(_ssrShader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverseFourthRow()), p_inverse.row(3));
     GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
     GL_CHECK(glDisable(GL_BLEND));
+    depth_buffer.param(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    depth_buffer.param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   }
   void OpenGLAPI::separableBlur(const RTT & in, const std::array<std::shared_ptr<RTT>, 2>& out)
   {
@@ -305,7 +310,7 @@ namespace fly
     tex->image2D(0, GL_RGBA16F, size, 0, GL_RGBA, GL_FLOAT, nullptr);
     return tex;
   }
-  std::unique_ptr<OpenGLAPI::Depthbuffer> OpenGLAPI::createDepthbuffer(const Vec2u & size, bool stencil)
+  std::unique_ptr<OpenGLAPI::Depthbuffer> OpenGLAPI::createDepthbuffer(const Vec2u & size)
   {
     auto tex = std::make_unique<GLTexture>(GL_TEXTURE_2D);
     tex->bind();
@@ -313,7 +318,7 @@ namespace fly
     tex->param(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     tex->param(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     tex->param(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    tex->image2D(0, stencil ? GL_DEPTH24_STENCIL8 : GL_DEPTH_COMPONENT24, size, 0, stencil ? GL_DEPTH_STENCIL : GL_DEPTH_COMPONENT, stencil ? GL_UNSIGNED_INT_24_8 : GL_FLOAT, nullptr);
+    tex->image2D(0, GL_DEPTH_COMPONENT24, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
     return tex;
   }
   std::unique_ptr<OpenGLAPI::Shadowmap> OpenGLAPI::createShadowmap(const GraphicsSettings& settings)

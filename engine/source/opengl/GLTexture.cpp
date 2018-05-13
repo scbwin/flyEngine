@@ -78,6 +78,10 @@ namespace fly
   {
     return _format;
   }
+  GLenum GLTexture::target() const
+  {
+    return _target;
+  }
   GLTexture::~GLTexture()
   {
     GL_CHECK(glDeleteTextures(1, &_id));
