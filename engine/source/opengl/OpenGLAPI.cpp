@@ -491,7 +491,9 @@ namespace fly
   {
     return _meshDataCache.getOrCreate(mesh, mesh);
   }
-  OpenGLAPI::MaterialDesc::MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI * api, const GraphicsSettings& settings) : _material(material)
+  OpenGLAPI::MaterialDesc::MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI * api, const GraphicsSettings& settings) :
+    _material(material),
+    _activeShader(api->_activeShader)
   {
     create(material, api, settings);
   }
@@ -501,7 +503,6 @@ namespace fly
   }
   void OpenGLAPI::MaterialDesc::create(const std::shared_ptr<Material>& material, OpenGLAPI* api, const GraphicsSettings& settings)
   {
-    _activeShader = &api->_activeShader;
     _materialSetupFuncs.clear();
     _materialSetupFuncsDepth.clear();
     _diffuseMap = api->createTexture(material->getDiffusePath());
@@ -564,17 +565,17 @@ namespace fly
   void OpenGLAPI::MaterialDesc::setup() const
   {
     for (const auto& f : _materialSetupFuncs) {
-      f->setup(*_activeShader, *this);
+      f->setup(_activeShader, *this);
     }
-    setScalar((*_activeShader)->uniformLocation(GLSLShaderGenerator::ambientConstant()), _material->getKa());
-    setScalar((*_activeShader)->uniformLocation(GLSLShaderGenerator::diffuseConstant()), _material->getKd());
-    setScalar((*_activeShader)->uniformLocation(GLSLShaderGenerator::specularConstant()), _material->getKs());
-    setScalar((*_activeShader)->uniformLocation(GLSLShaderGenerator::specularExponent()), _material->getSpecularExponent());
+    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::ambientConstant()), _material->getKa());
+    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::diffuseConstant()), _material->getKd());
+    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::specularConstant()), _material->getKs());
+    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::specularExponent()), _material->getSpecularExponent());
   }
   void OpenGLAPI::MaterialDesc::setupDepth() const
   {
     for (const auto& f : _materialSetupFuncsDepth) {
-      f->setup(*_activeShader, *this);
+      f->setup(_activeShader, *this);
     }
   }
   const std::shared_ptr<OpenGLAPI::ShaderDesc>& OpenGLAPI::MaterialDesc::getMeshShaderDesc() const

@@ -7,20 +7,19 @@
 
 namespace fly
 {
-  template <typename Key, typename Val, typename... Args>
+  template <typename Key, typename Val, typename... CreateArgs>
   class SoftwareCache
   {
   public:
-    SoftwareCache(const std::function<Val(Args...)>& create_func) : _createFunc(create_func)
+    SoftwareCache(const std::function<Val(CreateArgs...)>& create_func) : _createFunc(create_func)
     {}
-    inline Val getOrCreate(const Key& key, Args... args) {
+    inline const Val& getOrCreate(const Key& key, CreateArgs... args) {
       auto it = _elements.find(key);
       if (it != _elements.end()) { // Element with this key already exists
-        return it->second;
+        return it->second; // Return the cached element
       }
-      auto val = _createFunc(args...); // Create new element
-      _elements[key] = val; // Add the new element to the cache
-      return val;
+      _elements[key] = _createFunc(args...); // Create new element
+      return _elements[key]; // Return the newly created element
     }
     std::vector<Val> getElements() const
     {
@@ -33,7 +32,7 @@ namespace fly
     void clear() { _elements.clear(); }
   private:
     std::map<Key, Val> _elements;
-    std::function<Val(Args...)> _createFunc;
+    std::function<Val(CreateArgs...)> _createFunc;
   };
 }
 

@@ -185,7 +185,7 @@ namespace fly
       const std::shared_ptr<GLTexture>& alphaMap() const;
       const std::shared_ptr<GLTexture>& heightMap() const;
     private:
-      GLShaderProgram** _activeShader;
+      GLShaderProgram * & _activeShader;
       std::shared_ptr<Material> _material;
       std::vector<IMaterialSetup*> _materialSetupFuncs;
       std::vector<IMaterialSetup*> _materialSetupFuncsDepth;

@@ -145,7 +145,7 @@ namespace fly
           _staticMeshRenderables[entity] = std::make_shared<StaticMeshRenderableWind>(smr, _api.createMaterial(smr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(smr->getMesh()), _api);
         }
         else if (smr->getMaterial()->isReflective()) {
-          auto smrr = std::make_shared<StaticMeshRenderableReflective>(smr, _api.createMaterial(smr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(smr->getMesh()), _api, *this);
+          auto smrr = std::make_shared<StaticMeshRenderableReflective>(smr, _api.createMaterial(smr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(smr->getMesh()), _api, _viewMatrixInverse);
           _gs->addListener(smrr);
           _staticMeshRenderables[entity] = smrr;
           smrr->screenSpaceReflectionsChanged(_gs);
@@ -448,9 +448,9 @@ namespace fly
     struct StaticMeshRenderableReflective : public StaticMeshRenderable, public GraphicsSettings::Listener
     {
       StaticMeshRenderableReflective(const std::shared_ptr<fly::StaticMeshRenderable>& smr,
-        const std::shared_ptr<typename API::MaterialDesc>& material_desc, const typename API::MeshGeometryStorage::MeshData& mesh_data, API const & api, Renderer const & renderer) :
+        const std::shared_ptr<typename API::MaterialDesc>& material_desc, const typename API::MeshGeometryStorage::MeshData& mesh_data, API const & api, Mat3f const & view_matrix_inverse) :
         StaticMeshRenderable(smr, material_desc, mesh_data, api),
-        _renderer(renderer)
+        _viewMatrixInverse(view_matrix_inverse)
       {
         fetchShaderDescs();
       }
@@ -461,10 +461,9 @@ namespace fly
       }
       virtual ~StaticMeshRenderableReflective() = default;
       std::function<void()> _renderFunc;
-      Renderer const & _renderer;
+      Mat3f const & _viewMatrixInverse;
       virtual void render() override
       {
-       // _renderer._api.renderMesh(_meshData, _smr->getModelMatrix(), _smr->getModelMatrixInverse(), _smr->getModelMatrixInverse() * _renderer._viewMatrixInverse);
         _renderFunc();
       }
       virtual void normalMappingChanged(GraphicsSettings const * gs) override {};
@@ -480,7 +479,7 @@ namespace fly
       {
         if (gs->getScreenSpaceReflections()) {
           _renderFunc = [this]() {
-            _api.renderMesh(_meshData, _smr->getModelMatrix(), _smr->getModelMatrixInverse(), _smr->getModelMatrixInverse() * _renderer._viewMatrixInverse);
+            _api.renderMesh(_meshData, _smr->getModelMatrix(), _smr->getModelMatrixInverse(), _smr->getModelMatrixInverse() * _viewMatrixInverse);
           };
         }
         else {

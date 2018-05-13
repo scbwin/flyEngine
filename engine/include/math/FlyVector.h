@@ -22,8 +22,8 @@ namespace fly
         _data[i] = value;
       }
     }
-    template<typename ...Args>
-    Vector(Args... args) : _data{args...}
+    template<typename ...CreateArgs>
+    Vector(CreateArgs... args) : _data{args...}
     {
     }
     /**
