@@ -25,6 +25,9 @@ void CheckOpenGLError(const char* stmt, const char* fname, int line)
     else if (err == GL_STACK_OVERFLOW) {
       err_string = "GL_STACK_OVERFLOW";
     }
+    else {
+      err_string = "UNKOWN_ERROR";
+    }
 
     printf("OpenGL error %s, at %s:%i - for %s\n", err_string.c_str(), fname, line, stmt);
     abort();

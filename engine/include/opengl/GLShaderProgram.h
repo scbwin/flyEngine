@@ -18,14 +18,27 @@ namespace fly
     GLShaderProgram(GLShaderProgram&& other);
     GLShaderProgram& operator=(GLShaderProgram&& other);
     void add(GLShaderSource& source);
-    void link() const;
+    void link();
     void bind() const;
-    inline GLint uniformLocation(const char* name) { return _uniformLocations.getOrCreate(name, name); }
+    inline const GLint & uniformLocation(const char* name) const
+    {
+      return _uniformLocations.at(name);
+    }
     const std::vector<GLShaderSource>& getSources() const;
   private:
-    SoftwareCache<const char*, GLint, const char*> _uniformLocations;
+    struct Comparator
+    {
+      inline bool operator()(const char* a, const char* b) const
+      {
+        return std::strcmp(a, b) < 0;
+      }
+    };
+    std::map<const char*, GLint, Comparator> _uniformLocations;
     GLuint _id;
+    std::vector<char*> _uniformNames;
     std::vector<GLShaderSource> _sources;
+    void cleanup();
+
   };
 }
 

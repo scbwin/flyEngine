@@ -273,40 +273,42 @@ namespace fly
     std::vector<TPtr> getVisibleElements(const Camera& camera) const
     {
       std::vector<TPtr> visible_elements;
+      visible_elements.reserve(_initSize);
       _root->getVisibleElements(visible_elements, camera);
-      return visible_elements;
+      return std::move(visible_elements);
     }
     std::vector<TPtr> getVisibleElementsWithDetailCulling(const Camera& camera) const
     {
       std::vector<TPtr> visible_elements;
+      visible_elements.reserve(_initSize);
       _root->getVisibleElementsWithDetailCulling(visible_elements, camera);
-      return visible_elements;
+      return std::move(visible_elements);
     }
     std::vector<TPtr> getAllElements() const
     {
       std::vector<TPtr> all_elements;
       _root->getAllElements(all_elements);
-      return all_elements;
+      return std::move(all_elements);
     }
     std::vector<Node*> getAllNodes()
     {
       std::vector<Node*> all_nodes;
       _root->getAllNodes(all_nodes);
-      return all_nodes;
+      return std::move(all_nodes);
     }
 
     std::vector<Node*> getVisibleNodesWithDetailCulling(const Camera& camera) const
     {
       std::vector<Node*> visible_nodes;
       _root->getVisibleNodesWithDetailCulling(visible_nodes, camera);
-      return visible_nodes;
+      return std::move(visible_nodes);
     }
 
     std::vector<Node*> getVisibleNodes(const Camera& camera)
     {
       std::vector<Node*> visible_nodes;
       _root->getVisibleNodes(visible_nodes, camera);
-      return visible_nodes;
+      return std::move(visible_nodes);
     }
     bool removeElement(const TPtr& element)
     {
@@ -314,6 +316,7 @@ namespace fly
     }
   private:
     std::unique_ptr<Node> _root;
+    static const unsigned _initSize = 25000;
   };
 }
 

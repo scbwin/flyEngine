@@ -1,11 +1,12 @@
 #include <opengl/GLShaderProgram.h>
 #include <opengl/OpenGLUtils.h>
 #include <iostream>
+#include <regex>
 
 namespace fly
 {
-  GLShaderProgram::GLShaderProgram() : 
-    _uniformLocations(SoftwareCache<const char*, GLint, const char*>([this](const char* name) {
+  GLShaderProgram::GLShaderProgram() 
+/*    _uniformLocations(SoftwareCache<const char*, GLint, const char*>([this](const char* name) {
     GLint loc;
     GL_CHECK(loc = glGetUniformLocation(_id, name));
 #ifdef _DEBUG
@@ -19,31 +20,29 @@ namespace fly
     }
 #endif
     return loc;
-  }))
+  }))*/
   {
     GL_CHECK(_id = glCreateProgram());
   }
   GLShaderProgram::~GLShaderProgram()
   {
-    if (_id) {
-      GL_CHECK(glDeleteProgram(_id));
-    }
+    cleanup();
   }
   GLShaderProgram::GLShaderProgram(GLShaderProgram && other) :
     _id(other._id),
-    _sources(other._sources),
-    _uniformLocations(other._uniformLocations)
+    _sources(std::move(other._sources)),
+    _uniformLocations(std::move(other._uniformLocations)),
+    _uniformNames(std::move(other._uniformNames))
   {
     other._id = 0;
   }
   GLShaderProgram & GLShaderProgram::operator=(GLShaderProgram && other)
   {
-    if (_id) {
-      GL_CHECK(glDeleteProgram(_id));
-    }
+    cleanup();
     _id = other._id;
     _sources = std::move(other._sources);
-    _uniformLocations = other._uniformLocations;
+    _uniformLocations = std::move(other._uniformLocations);
+    _uniformNames = std::move(other._uniformNames);
     other._id = 0;
     return *this;
   }
@@ -67,7 +66,7 @@ namespace fly
     GL_CHECK(glAttachShader(_id, source._id));
     _sources.push_back(source);
   }
-  void GLShaderProgram::link() const
+  void GLShaderProgram::link()
   {
     GL_CHECK(glLinkProgram(_id));
     GLint linkStatus;
@@ -94,6 +93,20 @@ namespace fly
       GL_CHECK(glDetachShader(_id, s._id));
       GL_CHECK(glDeleteShader(s._id));
     }
+
+    GLint num_uniforms;
+    GL_CHECK(glGetProgramInterfaceiv(_id, GL_UNIFORM, GL_ACTIVE_RESOURCES, &num_uniforms));
+    int buf_size;
+    GL_CHECK(glGetProgramInterfaceiv(_id, GL_UNIFORM, GL_MAX_NAME_LENGTH, &buf_size));
+    _uniformNames.resize(num_uniforms);
+    for (int i = 0; i < num_uniforms; i++) {
+      GLsizei length;
+      _uniformNames[i] = new char[buf_size];
+      GL_CHECK(glGetProgramResourceName(_id, GL_UNIFORM, i, buf_size, &length, _uniformNames[i]));
+      std::string str = std::regex_replace(_uniformNames[i], std::regex("\\[([0-9]+)\\]"), "");
+      std::strcpy(_uniformNames[i], str.c_str());
+      GL_CHECK(_uniformLocations[_uniformNames[i]] = glGetUniformLocation(_id, _uniformNames[i]));
+    }
   }
   void GLShaderProgram::bind() const
   {
@@ -102,5 +115,14 @@ namespace fly
   const std::vector<GLShaderSource>& GLShaderProgram::getSources() const
   {
     return _sources;
+  }
+  void GLShaderProgram::cleanup()
+  {
+    if (_id) {
+      GL_CHECK(glDeleteProgram(_id));
+    }
+    for (const auto& n : _uniformNames) {
+      delete[] n;
+    }
   }
 }
