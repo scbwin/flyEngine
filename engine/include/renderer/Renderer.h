@@ -47,7 +47,7 @@ namespace fly
     };
     const RendererStats& getStats() const { return _stats; }
 #endif
-    Renderer(GraphicsSettings * const gs) : _api(), _gs(gs)
+    Renderer(GraphicsSettings * const gs) : _api(Vec4f(0.149f, 0.509f, 0.929f, 1.f)), _gs(gs)
     {
       _pp._near = 0.1f;
       _pp._far = 10000.f;
@@ -106,10 +106,12 @@ namespace fly
       _offScreenRendering = gs->depthPrepassEnabled() || gs->postProcessingEnabled();
       if (_offScreenRendering) {
         _lightingBuffer = _api.createRenderToTexture(_viewPortSize, API::TexFilter::NEAREST);
+        _lightingBufferCopy = std::make_unique<typename API::RTT>(*_lightingBuffer);
         _depthBuffer = _api.createDepthbuffer(_viewPortSize);
       }
       else {
         _lightingBuffer = nullptr;
+        _lightingBufferCopy = nullptr;
         _depthBuffer = nullptr;
       }
       _viewSpaceNormals = gs->getScreenSpaceReflections() ? _api.createRenderToTexture(_viewPortSize, API::TexFilter::NEAREST) : nullptr;
@@ -248,7 +250,7 @@ namespace fly
         }
         if (_gs->depthPrepassEnabled()) {
           _api.setRendertargets({}, _depthBuffer.get());
-          _api.clearRendertarget<false, true, false>(Vec4f());
+          _api.clearRendertarget(false, true, false);
           std::map<typename API::ShaderDesc const *, std::map<typename API::MaterialDesc const *, std::vector<MeshRenderable*>>> display_list;
           for (const auto& e : visible_meshes) {
             display_list[e->_shaderDescDepth][e->_materialDesc.get()].push_back(e);
@@ -276,14 +278,7 @@ namespace fly
         else {
           _api.bindBackbuffer(_defaultRenderTarget);
         }
-        if (_skydomeRenderable) { // No need to clear color if every pixel is overdrawn anyway
-          if (!_gs->depthPrepassEnabled()) { // Clear depth only if no depth pre pass
-            _api.clearRendertarget<false, true, false>(Vec4f());
-          }
-        }
-        else {
-          _gs->depthPrepassEnabled() ? _api.clearRendertarget<true, false, false>(Vec4f(0.149f, 0.509f, 0.929f, 1.f)) : _api.clearRendertarget<true, true, false>(Vec4f(0.149f, 0.509f, 0.929f, 1.f));
-        }
+        _api.clearRendertarget(_skydomeRenderable == nullptr, !_gs->depthPrepassEnabled(), false);
         if (_shadowMap) {
           _api.bindShadowmap(*_shadowMap);
         }
@@ -309,7 +304,7 @@ namespace fly
           _api.setDepthTestEnabled<false>();
         }
         if (_gs->getScreenSpaceReflections()) {
-          _api.ssr(*_lightingBuffer, *_viewSpaceNormals, *_depthBuffer, _gsp._projectionMatrix, Vec4f(_gs->getSSRBlendWeight()));
+          _api.ssr(*_lightingBuffer, *_viewSpaceNormals, *_depthBuffer, _gsp._projectionMatrix, Vec4f(_gs->getSSRBlendWeight()), *_lightingBufferCopy);
         }
         if (_gs->getDepthOfField()) {
           _api.separableBlur(*_lightingBuffer, _dofBuffer);
@@ -349,6 +344,7 @@ namespace fly
     Vec3f _sceneMax = Vec3f(std::numeric_limits<float>::lowest());
     GraphicsSettings * const _gs;
     std::unique_ptr<typename API::RTT> _lightingBuffer;
+    std::unique_ptr<typename API::RTT> _lightingBufferCopy;
     std::unique_ptr<typename API::Depthbuffer> _depthBuffer;
     std::unique_ptr<typename API::RTT> _viewSpaceNormals;
     std::unique_ptr<typename API::Shadowmap> _shadowMap;
@@ -607,7 +603,7 @@ namespace fly
       _api.setViewport(Vec2u(_gs->getShadowMapSize()));
       for (unsigned i = 0; i < _gs->getFrustumSplits().size(); i++) {
         _api.setRendertargets({}, _shadowMap.get(), i);
-        _api.clearRendertarget<false, true, false>(Vec4f());
+        _api.clearRendertarget(false, true, false);
         _gsp._VP = &_gsp._worldToLight[i];
         for (const auto& e : sm_display_list) {
           _api.setupShaderDesc(*e.first, _gsp);

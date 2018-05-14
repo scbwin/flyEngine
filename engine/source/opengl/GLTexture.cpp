@@ -14,14 +14,16 @@ namespace fly
     _target(other._target)
   {
     GL_CHECK(glGenTextures(1, &_id));
-    if (other._depth > 1) {
-      image3D(0, other._internalFormat, Vec3u(other._width, other._height, other._depth), 0, other._format, other._type, nullptr);
+    init(other);
+    copy(other);
+  }
+  GLTexture & GLTexture::operator=(const GLTexture & other)
+  {
+    if (_width != other._width || _height != other._height || _depth != other._depth) {
+      init(other);
     }
-    else {
-      image2D(0, other._internalFormat, Vec2u(other._width, other._height), 0, other._format, other._type, nullptr);
-    }
-    param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    GL_CHECK(glCopyImageSubData(other._id, other._target, 0, 0, 0, 0, _id, _target, 0, 0, 0, 0, other._width, other._height, other._depth));
+    copy(other);
+    return *this;
   }
   GLuint GLTexture::id() const
   {
@@ -37,6 +39,7 @@ namespace fly
     GL_CHECK(glTexImage2D(_target, level, internal_format, size[0], size[1], border, format, type, data));
     _width = size[0];
     _height = size[1];
+    _depth = 1;
     _format = format;
     _internalFormat = internal_format;
     _type = type;
@@ -85,5 +88,19 @@ namespace fly
   GLTexture::~GLTexture()
   {
     GL_CHECK(glDeleteTextures(1, &_id));
+  }
+  void GLTexture::init(const GLTexture & other)
+  {
+    if (other._depth > 1) {
+      image3D(0, other._internalFormat, Vec3u(other._width, other._height, other._depth), 0, other._format, other._type, nullptr);
+    }
+    else {
+      image2D(0, other._internalFormat, Vec2u(other._width, other._height), 0, other._format, other._type, nullptr);
+    }
+  }
+  void GLTexture::copy(const GLTexture & other)
+  {
+    param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    GL_CHECK(glCopyImageSubData(other._id, other._target, 0, 0, 0, 0, _id, _target, 0, 0, 0, 0, other._width, other._height, other._depth));
   }
 }

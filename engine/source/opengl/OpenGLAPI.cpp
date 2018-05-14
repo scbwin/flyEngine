@@ -25,7 +25,7 @@
 
 namespace fly
 {
-  OpenGLAPI::OpenGLAPI() :
+  OpenGLAPI::OpenGLAPI(const Vec4f& clear_color) :
     _shaderGenerator(std::make_unique<GLSLShaderGenerator>()),
     _shaderCache(SoftwareCache<std::string, std::shared_ptr<GLShaderProgram>, GLShaderSource&,
       GLShaderSource&, GLShaderSource& >([](GLShaderSource& vs, GLShaderSource& fs, GLShaderSource& gs) {
@@ -85,6 +85,8 @@ namespace fly
     _skydomeShaderDesc = createShaderDesc(_skydomeShader, ShaderSetupFlags::VP);
 
     _samplerAnisotropic = std::make_unique<GLSampler>();
+
+    GL_CHECK(glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]));
   }
   OpenGLAPI::~OpenGLAPI()
   {
@@ -195,9 +197,9 @@ namespace fly
   {
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, id));
   }
-  void OpenGLAPI::ssr(const RTT & lighting_buffer, const RTT& view_space_normals, const Depthbuffer& depth_buffer, const Mat4f& projection_matrix, const Vec4f& blend_weight)
+  void OpenGLAPI::ssr(const RTT & lighting_buffer, const RTT& view_space_normals, const Depthbuffer& depth_buffer, const Mat4f& projection_matrix, const Vec4f& blend_weight, RTT& lighting_buffer_copy)
   {
-    RTT lighting_buffer_copy = lighting_buffer;
+    lighting_buffer_copy = lighting_buffer;
     lighting_buffer_copy.param(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     lighting_buffer_copy.param(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     depth_buffer.param(GL_TEXTURE_MAG_FILTER, GL_LINEAR);

@@ -35,7 +35,7 @@ namespace fly
   class OpenGLAPI
   {
   public:
-    OpenGLAPI();
+    OpenGLAPI(const Vec4f& clear_color);
     ~OpenGLAPI();
     ZNearMapping getZNearMapping() const;
     void setViewport(const Vec2u& size) const;
@@ -43,12 +43,10 @@ namespace fly
     {
       NEAREST, LINEAR
     };
-    template<bool color, bool depth, bool stencil>
-    void clearRendertarget(const Vec4f& clear_color) const
+    void clearRendertarget(bool color, bool depth, bool stencil) const
     {
       GLbitfield flag = 0;
       if (color) {
-        GL_CHECK(glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]));
         flag |= GL_COLOR_BUFFER_BIT;
       }
       if (depth) {
@@ -187,8 +185,8 @@ namespace fly
     private:
       GLShaderProgram * & _activeShader;
       std::shared_ptr<Material> _material;
-      std::vector<IMaterialSetup*> _materialSetupFuncs;
-      std::vector<IMaterialSetup*> _materialSetupFuncsDepth;
+      std::vector<IMaterialSetup const *> _materialSetupFuncs;
+      std::vector<IMaterialSetup const *> _materialSetupFuncsDepth;
       std::shared_ptr<ShaderDesc> _meshShaderDesc;
       std::shared_ptr<ShaderDesc> _meshShaderDescWind;
       std::shared_ptr<ShaderDesc> _meshShaderDescDepth;
@@ -214,7 +212,7 @@ namespace fly
     void setRendertargets(const std::vector<RTT const*>& rtts, const Depthbuffer* depth_buffer);
     void setRendertargets(const std::vector<RTT const*>& rtts, const Depthbuffer* depth_buffer, unsigned depth_buffer_layer);
     void bindBackbuffer(unsigned id) const;
-    void ssr(const RTT& lighting_buffer, const RTT& view_space_normals, const Depthbuffer& depth_buffer, const Mat4f& projection_matrix, const Vec4f& blend_weight);
+    void ssr(const RTT& lighting_buffer, const RTT& view_space_normals, const Depthbuffer& depth_buffer, const Mat4f& projection_matrix, const Vec4f& blend_weight, RTT& lighting_buffer_copy);
     void separableBlur(const RTT& in, const std::array<std::shared_ptr<RTT>, 2>& out);
     void composite(const RTT& lighting_buffer, const GlobalShaderParams& params);
     void composite(const RTT& lighting_buffer, const GlobalShaderParams& params, const RTT& dof_buffer, const Depthbuffer& depth_buffer);
@@ -255,7 +253,6 @@ namespace fly
     GLint _glVersionMajor, _glVersionMinor;
     unsigned _anisotropy = 1u;
     std::unique_ptr<GLMaterialSetup> _materialSetup;
-
     void checkFramebufferStatus();
     void setColorBuffers(const std::vector<RTT const*>& rtts);
   };

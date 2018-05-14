@@ -9,60 +9,60 @@
 
 namespace fly
 {
-  IMaterialSetup* GLMaterialSetup::getDiffuseSetup()
+  IMaterialSetup const* GLMaterialSetup::getDiffuseSetup()
   {
     return &_diffuseSetup;
   }
-  IMaterialSetup* GLMaterialSetup::getNormalSetup()
+  IMaterialSetup const* GLMaterialSetup::getNormalSetup()
   {
     return &_normalSetup;
   }
-  IMaterialSetup* GLMaterialSetup::getAlphaSetup()
+  IMaterialSetup const* GLMaterialSetup::getAlphaSetup()
   {
     return &_alphaSetup;
   }
-  IMaterialSetup* GLMaterialSetup::getHeightSetup()
+  IMaterialSetup const* GLMaterialSetup::getHeightSetup()
   {
     return &_heightSetup;
   }
-  IMaterialSetup* GLMaterialSetup::getDiffuseColorSetup()
+  IMaterialSetup const* GLMaterialSetup::getDiffuseColorSetup()
   {
     return &_diffuseColorSetup;
   }
-  IMaterialSetup* GLMaterialSetup::getReliefMappingSetup()
+  IMaterialSetup const* GLMaterialSetup::getReliefMappingSetup()
   {
     return &_reliefMappingSetup;
   }
-  void SetupDiffuse::setup(GLShaderProgram * shader, const OpenGLAPI::MaterialDesc & desc)
+  void SetupDiffuse::setup(GLShaderProgram * shader, const OpenGLAPI::MaterialDesc & desc) const
   {
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + OpenGLAPI::diffuseTexUnit()));
     desc.diffuseMap()->bind();
     setScalar(shader->uniformLocation(GLSLShaderGenerator::diffuseSampler()), OpenGLAPI::diffuseTexUnit());
   }
-  void SetupAlpha::setup(GLShaderProgram * shader, const OpenGLAPI::MaterialDesc & desc)
+  void SetupAlpha::setup(GLShaderProgram * shader, const OpenGLAPI::MaterialDesc & desc) const
   {
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + OpenGLAPI::alphaTexUnit()));
     desc.alphaMap()->bind();
     setScalar(shader->uniformLocation(GLSLShaderGenerator::alphaSampler()), OpenGLAPI::alphaTexUnit());
   }
-  void SetupNormal::setup(GLShaderProgram * shader, const OpenGLAPI::MaterialDesc & desc)
+  void SetupNormal::setup(GLShaderProgram * shader, const OpenGLAPI::MaterialDesc & desc) const
   {
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + OpenGLAPI::normalTexUnit()));
     desc.normalMap()->bind();
     setScalar(shader->uniformLocation(GLSLShaderGenerator::normalSampler()), OpenGLAPI::normalTexUnit());
   }
-  void SetupHeight::setup(GLShaderProgram * shader, const OpenGLAPI::MaterialDesc & desc)
+  void SetupHeight::setup(GLShaderProgram * shader, const OpenGLAPI::MaterialDesc & desc) const
   {
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + OpenGLAPI::heightTexUnit()));
     desc.heightMap()->bind();
     setScalar(shader->uniformLocation(GLSLShaderGenerator::heightSampler()), OpenGLAPI::heightTexUnit());
     setScalar(shader->uniformLocation(GLSLShaderGenerator::parallaxHeightScale()), desc.getMaterial()->getParallaxHeightScale());
   }
-  void SetupDiffuseColor::setup(GLShaderProgram * shader, const OpenGLAPI::MaterialDesc & desc)
+  void SetupDiffuseColor::setup(GLShaderProgram * shader, const OpenGLAPI::MaterialDesc & desc) const
   {
     setVector(shader->uniformLocation(GLSLShaderGenerator::diffuseColor()), desc.getMaterial()->getDiffuseColor());
   }
-  void SetupReliefMapping::setup(GLShaderProgram * shader, const OpenGLAPI::MaterialDesc & desc)
+  void SetupReliefMapping::setup(GLShaderProgram * shader, const OpenGLAPI::MaterialDesc & desc) const
   {
     setScalar(shader->uniformLocation(GLSLShaderGenerator::parallaxMinSteps()), desc.getMaterial()->getParallaxMinSteps());
     setScalar(shader->uniformLocation(GLSLShaderGenerator::parallaxMaxSteps()), desc.getMaterial()->getParallaxMaxSteps());

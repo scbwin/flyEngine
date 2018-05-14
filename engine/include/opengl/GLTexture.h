@@ -12,7 +12,7 @@ namespace fly
     GLTexture(GLenum target);
     GLTexture(GLuint id, GLenum target);
     GLTexture(const GLTexture& other);
-    GLTexture& operator=(const GLTexture& other) = delete;
+    GLTexture& operator=(const GLTexture& other);
     GLuint id() const;
     void bind() const;
     void image2D(GLint level, GLint internal_format, const Vec2u& size, GLint border, GLenum format, GLenum type, const void* data);
@@ -28,12 +28,14 @@ namespace fly
   private:
     GLuint _id;
     GLenum _target;
-    unsigned _width;
-    unsigned _height;
-    unsigned _depth = 1;
+    unsigned _width = 0;
+    unsigned _height = 0;
+    unsigned _depth = 0;
     GLuint _internalFormat;
     GLuint _format;
     GLuint _type;
+    void init(const GLTexture& other);
+    void copy(const GLTexture& other);
   };
 }
 
