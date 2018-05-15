@@ -11,7 +11,17 @@ namespace fly
   }
   void GraphicsSettings::addListener(const std::shared_ptr<Listener>& listener)
   {
-    _listeners.insert(listener);
+    _listeners.push_back(listener);
+    listener->normalMappingChanged(this);
+    listener->shadowsChanged(this);
+    listener->shadowMapSizeChanged(this);
+    listener->depthOfFieldChanged(this);
+    listener->compositingChanged(this);
+    listener->windAnimationsChanged(this);
+    listener->anisotropyChanged(this);
+    listener->cameraLerpingChanged(this);
+    listener->gammaChanged(this);
+    listener->screenSpaceReflectionsChanged(this);
   }
   void GraphicsSettings::setNormalMapping(bool normal_mapping)
   {
@@ -388,13 +398,13 @@ namespace fly
   void GraphicsSettings::notifiyListeners(const std::function<void(const std::shared_ptr<Listener>&)>& notify_func)
   {
     if (_listeners.size()) {
-      std::vector<std::weak_ptr<Listener>> delete_list;
-      for (const auto& ptr : _listeners) {
-        auto l = ptr.lock();
-        l ? notify_func(l) : delete_list.push_back(ptr);
+      std::vector<std::list<std::weak_ptr<Listener>>::iterator> delete_list;
+      for (auto it = _listeners.begin(); it != _listeners.end(); it++) {
+        auto l = it->lock();
+        l ? notify_func(l) : delete_list.push_back(it);
       }
-      for (const auto& ptr : delete_list) {
-        _listeners.erase(ptr);
+      for (const auto& it : delete_list) {
+        _listeners.erase(it);
       }
     }
   }

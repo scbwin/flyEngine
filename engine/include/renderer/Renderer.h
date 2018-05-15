@@ -48,24 +48,16 @@ namespace fly
     };
     const RendererStats& getStats() const { return _stats; }
 #endif
-    Renderer(GraphicsSettings * const gs) : _api(Vec4f(0.149f, 0.509f, 0.929f, 1.f)), _gs(gs)
+    Renderer(GraphicsSettings * gs) : _api(Vec4f(0.149f, 0.509f, 0.929f, 1.f)), _gs(gs)
     {
       _pp._near = 0.1f;
       _pp._far = 10000.f;
       _pp._fieldOfViewDegrees = 45.f;
-      normalMappingChanged(gs);
-      shadowsChanged(gs);
-      screenSpaceReflectionsChanged(gs);
-      depthOfFieldChanged(gs);
-    //  compositingChanged(gs);
-      anisotropyChanged(gs);
-      cameraLerpingChanged(gs);
-      _gsp._camPosworld = Vec3f(0.f);
     }
     virtual ~Renderer() {}
     virtual void normalMappingChanged(GraphicsSettings const * gs) override
     {
-      graphicsSettingsChanged();
+      _api.recreateShadersAndMaterials(*_gs);
     }
     virtual void depthOfFieldChanged(GraphicsSettings const * gs) override
     {
@@ -87,13 +79,13 @@ namespace fly
       if (gs->getScreenSpaceReflections()) {
         _api.createScreenSpaceReflectionsShader(*gs);
       }
-      graphicsSettingsChanged();
+      _api.recreateShadersAndMaterials(*_gs);
       compositingChanged(gs);
     }
     virtual void shadowsChanged(GraphicsSettings const * gs) override
     {
       _shadowMapping = gs->getShadows() || gs->getShadowsPCF();
-      graphicsSettingsChanged();
+      _api.recreateShadersAndMaterials(*_gs);
       _shadowMap = _shadowMapping ? _api.createShadowmap(*_gs) : nullptr;
     }
     virtual void shadowMapSizeChanged(GraphicsSettings const * gs) override
@@ -122,11 +114,11 @@ namespace fly
     }
     virtual void windAnimationsChanged(GraphicsSettings const * gs) override
     {
-      graphicsSettingsChanged();
+      _api.recreateShadersAndMaterials(*_gs);
     }
     virtual void gammaChanged(GraphicsSettings const * gs) override
     {
-      graphicsSettingsChanged();
+      _api.recreateShadersAndMaterials(*_gs);
       compositingChanged(gs);
     }
     virtual void cameraLerpingChanged(GraphicsSettings const * gs) override
@@ -142,22 +134,22 @@ namespace fly
     }
     virtual void onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component) override
     {
+      std::shared_ptr<MeshRenderable> mr = nullptr;
       if (entity->getComponent<fly::StaticMeshRenderable>() == component) {
         auto smr = entity->getComponent<fly::StaticMeshRenderable>();
         if (smr->hasWind()) {
           auto smrw = std::make_shared<StaticMeshRenderableWind>(smr, _api.createMaterial(smr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(smr->getMesh()), _api);
-          _gs->addListener(smrw);
-          smrw->windAnimationsChanged(_gs);
           _staticMeshRenderables[entity] = smrw;
+          mr = smrw;
         }
         else if (smr->getMaterial()->isReflective()) {
           auto smrr = std::make_shared<StaticMeshRenderableReflective>(smr, _api.createMaterial(smr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(smr->getMesh()), _api, _viewMatrixInverse);
-          _gs->addListener(smrr);
           _staticMeshRenderables[entity] = smrr;
-          smrr->screenSpaceReflectionsChanged(_gs);
+          mr = smrr;
         }
         else {
           _staticMeshRenderables[entity] = std::make_shared<StaticMeshRenderable>(smr, _api.createMaterial(smr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(smr->getMesh()), _api);
+          mr = _staticMeshRenderables[entity];
         }
         _sceneMin = minimum(_sceneMin, smr->getAABBWorld()->getMin());
         _sceneMax = maximum(_sceneMax, smr->getAABBWorld()->getMax());
@@ -166,16 +158,18 @@ namespace fly
         auto dmr = entity->getComponent<fly::DynamicMeshRenderable>();
         if (dmr->getMaterial()->isReflective()) {
           auto dmrr = std::make_shared<DynamicMeshRenderableReflective>(dmr, _api.createMaterial(dmr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(dmr->getMesh()), _api, _viewMatrixInverse);
-          _gs->addListener(dmrr);
           _dynamicMeshRenderables[entity] = dmrr;
-          dmrr->screenSpaceReflectionsChanged(_gs);
+          mr = dmrr;
         }
         else {
           _dynamicMeshRenderables[entity] = std::make_shared<DynamicMeshRenderable>(dmr, _api.createMaterial(dmr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(dmr->getMesh()), _api);
+          mr = _dynamicMeshRenderables[entity];
         }
       }
       else if (entity->getComponent<Camera>() == component) {
         _camera = entity->getComponent<Camera>();
+        _gsp._camPosworld = _camera->getPosition();
+        _camEulerAngles = _camera->getEulerAngles();
       }
       else if (entity->getComponent<DirectionalLight>() == component) {
         _directionalLight = entity->getComponent<DirectionalLight>();
@@ -183,6 +177,9 @@ namespace fly
       else if (entity->getComponent<fly::SkydomeRenderable>() == component) {
         auto sdr = entity->getComponent<fly::SkydomeRenderable>();
         _skydomeRenderable = std::make_shared<SkydomeRenderable>(_meshGeometryStorage.addMesh(sdr->getMesh()), _api.getSkyboxShaderDesc().get(), _api);
+      }
+      if (mr) {
+        _gs->addListener(mr);
       }
     }
     virtual void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component) override
@@ -378,24 +375,49 @@ namespace fly
     RendererStats _stats;
 #endif
 
-    struct MeshRenderable
+    struct MeshRenderable : public GraphicsSettings::Listener
     {
       std::shared_ptr<typename API::MaterialDesc> const _materialDesc;
       typename API::MeshGeometryStorage::MeshData const _meshData;
       typename API::ShaderDesc const * _shaderDesc;
       typename API::ShaderDesc const * _shaderDescDepth;
       API const & _api;
-      virtual void render() = 0;
-      virtual void renderDepth() = 0;
       MeshRenderable(const std::shared_ptr<typename API::MaterialDesc>& material_desc, const typename API::MeshGeometryStorage::MeshData& mesh_data, API const & api) :
         _materialDesc(material_desc), _meshData(mesh_data), _api(api)
       {}
+      virtual AABB const * getAABBWorld() const = 0;
+      virtual void renderDepth() = 0;
+      virtual void render() = 0;
       virtual void fetchShaderDescs()
       {
         _shaderDesc = _materialDesc->getMeshShaderDesc().get();
         _shaderDescDepth = _materialDesc->getMeshShaderDescDepth().get();
       }
-      virtual AABB const * getAABBWorld() const = 0;
+      virtual void normalMappingChanged(GraphicsSettings const * gs) override 
+      {
+        fetchShaderDescs();
+      };
+      virtual void shadowsChanged(GraphicsSettings const * gs) override 
+      {
+        fetchShaderDescs();
+      };
+      virtual void shadowMapSizeChanged(GraphicsSettings const * gs) override {};
+      virtual void depthOfFieldChanged(GraphicsSettings const * gs) override {};
+      virtual void compositingChanged(GraphicsSettings const * gs) override {};
+      virtual void windAnimationsChanged(GraphicsSettings const * gs) override 
+      {
+        fetchShaderDescs();
+      };
+      virtual void anisotropyChanged(GraphicsSettings const * gs) override {};
+      virtual void cameraLerpingChanged(GraphicsSettings const * gs) override {};
+      virtual void gammaChanged(GraphicsSettings const * gs) override 
+      {
+        fetchShaderDescs();
+      };
+      virtual void screenSpaceReflectionsChanged(GraphicsSettings const * gs) override 
+      {
+        fetchShaderDescs();
+      };
     };
     struct SkydomeRenderable : public MeshRenderable
     {
@@ -422,13 +444,13 @@ namespace fly
         MeshRenderable(material_desc, mesh_data, api),
         _dmr(dmr)
       {
-        fetchShaderDescs();
       }
       std::shared_ptr<fly::DynamicMeshRenderable> _dmr;
       virtual void render() override
       {
         const auto& model_matrix = _dmr->getModelMatrix();
-        _api.renderMesh(_meshData, model_matrix, _dmr->getModelMatrixInverse());
+        const auto& model_matrix_inverse = _dmr->getModelMatrixInverse();
+        _api.renderMesh(_meshData, model_matrix, model_matrix_inverse);
       }
       virtual void renderDepth() override
       {
@@ -436,14 +458,13 @@ namespace fly
       }
       virtual AABB const * getAABBWorld() const override { return _dmr->getAABBWorld(); }
     };
-    struct DynamicMeshRenderableReflective : public DynamicMeshRenderable, public GraphicsSettings::Listener
+    struct DynamicMeshRenderableReflective : public DynamicMeshRenderable
     {
       DynamicMeshRenderableReflective(const std::shared_ptr<fly::DynamicMeshRenderable>& dmr,
         const std::shared_ptr<typename API::MaterialDesc>& material_desc, const typename API::MeshGeometryStorage::MeshData& mesh_data, API const & api, const Mat3f& view_matrix_inverse) :
         DynamicMeshRenderable(dmr, material_desc, mesh_data, api),
         _viewMatrixInverse(view_matrix_inverse)
       {
-        fetchShaderDescs();
       }
       virtual void fetchShaderDescs() override
       {
@@ -456,15 +477,6 @@ namespace fly
       {
         _renderFunc();
       }
-      virtual void normalMappingChanged(GraphicsSettings const * gs) override {};
-      virtual void shadowsChanged(GraphicsSettings const * gs) override {};
-      virtual void shadowMapSizeChanged(GraphicsSettings const * gs) override {};
-      virtual void depthOfFieldChanged(GraphicsSettings const * gs) override {};
-      virtual void compositingChanged(GraphicsSettings const * gs) override {};
-      virtual void windAnimationsChanged(GraphicsSettings const * gs) override {};
-      virtual void anisotropyChanged(GraphicsSettings const * gs) override {};
-      virtual void cameraLerpingChanged(GraphicsSettings const * gs) override {};
-      virtual void gammaChanged(GraphicsSettings const * gs) override {};
       virtual void screenSpaceReflectionsChanged(GraphicsSettings const * gs) override
       {
         if (gs->getScreenSpaceReflections()) {
@@ -489,7 +501,6 @@ namespace fly
         MeshRenderable(material_desc, mesh_data, api),
         _smr(smr)
       {
-        fetchShaderDescs();
       }
       virtual ~StaticMeshRenderable() = default;
       virtual void render() override
@@ -502,14 +513,13 @@ namespace fly
       }
       virtual AABB const * getAABBWorld() const override { return _smr->getAABBWorld(); }
     };
-    struct StaticMeshRenderableReflective : public StaticMeshRenderable, public GraphicsSettings::Listener
+    struct StaticMeshRenderableReflective : public StaticMeshRenderable
     {
       StaticMeshRenderableReflective(const std::shared_ptr<fly::StaticMeshRenderable>& smr,
         const std::shared_ptr<typename API::MaterialDesc>& material_desc, const typename API::MeshGeometryStorage::MeshData& mesh_data, API const & api, Mat3f const & view_matrix_inverse) :
         StaticMeshRenderable(smr, material_desc, mesh_data, api),
         _viewMatrixInverse(view_matrix_inverse)
       {
-        fetchShaderDescs();
       }
       virtual void fetchShaderDescs() override
       {
@@ -523,15 +533,6 @@ namespace fly
       {
         _renderFunc();
       }
-      virtual void normalMappingChanged(GraphicsSettings const * gs) override {};
-      virtual void shadowsChanged(GraphicsSettings const * gs) override {};
-      virtual void shadowMapSizeChanged(GraphicsSettings const * gs) override {};
-      virtual void depthOfFieldChanged(GraphicsSettings const * gs) override {};
-      virtual void compositingChanged(GraphicsSettings const * gs) override {};
-      virtual void windAnimationsChanged(GraphicsSettings const * gs) override {};
-      virtual void anisotropyChanged(GraphicsSettings const * gs) override {};
-      virtual void cameraLerpingChanged(GraphicsSettings const * gs) override {};
-      virtual void gammaChanged(GraphicsSettings const * gs) override {};
       virtual void screenSpaceReflectionsChanged(GraphicsSettings const * gs) override 
       {
         if (gs->getScreenSpaceReflections()) {
@@ -544,15 +545,15 @@ namespace fly
             StaticMeshRenderable::render();
           };
         }
+        fetchShaderDescs();
       };
     };
-    struct StaticMeshRenderableWind : public StaticMeshRenderable, public GraphicsSettings::Listener
+    struct StaticMeshRenderableWind : public StaticMeshRenderable
     {
       StaticMeshRenderableWind(const std::shared_ptr<fly::StaticMeshRenderable>& smr,
         const std::shared_ptr<typename API::MaterialDesc>& material_desc, const typename API::MeshGeometryStorage::MeshData& mesh_data, API const & api) :
         StaticMeshRenderable(smr, material_desc, mesh_data, api)
       {
-        fetchShaderDescs();
       }
       std::function<void()> _renderFunc;
       std::function<void()> _renderFuncDepth;
@@ -570,11 +571,6 @@ namespace fly
       {
         _renderFuncDepth();
       }
-      virtual void normalMappingChanged(GraphicsSettings const * gs) override {};
-      virtual void shadowsChanged(GraphicsSettings const * gs) override {};
-      virtual void shadowMapSizeChanged(GraphicsSettings const * gs) override {};
-      virtual void depthOfFieldChanged(GraphicsSettings const * gs) override {};
-      virtual void compositingChanged(GraphicsSettings const * gs) override {};
       virtual void windAnimationsChanged(GraphicsSettings const * gs) override 
       {
         if (gs->getWindAnimations()) {
@@ -593,19 +589,8 @@ namespace fly
             StaticMeshRenderable::renderDepth();
           };
         }
+        fetchShaderDescs();
       };
-      virtual void anisotropyChanged(GraphicsSettings const * gs) override {};
-      virtual void cameraLerpingChanged(GraphicsSettings const * gs) override {};
-      virtual void gammaChanged(GraphicsSettings const * gs) override {};
-      virtual void screenSpaceReflectionsChanged(GraphicsSettings const * gs) override {};
-    /*  virtual void render() override
-      {
-        _api.renderMesh(_meshData, _smr->getModelMatrix(), _smr->getModelMatrixInverse(), _smr->getWindParams(), *getAABBWorld());
-      }
-      virtual void renderDepth() override
-      {
-        _api.renderMesh(_meshData, _smr->getModelMatrix(), _smr->getWindParams(), *getAABBWorld());
-      }*/
     };
     typename API::MeshGeometryStorage _meshGeometryStorage;
     std::map<Entity*, std::shared_ptr<StaticMeshRenderable>> _staticMeshRenderables;
@@ -726,19 +711,9 @@ namespace fly
       _gsp._shadowDarkenFactor = _gs->getShadowDarkenFactor();
       _api.setDepthClampEnabled<false>();
     }
-    void graphicsSettingsChanged()
-    {
-      _api.recreateShadersAndMaterials(*_gs);
-      for (const auto& e : _staticMeshRenderables) {
-        e.second->fetchShaderDescs();
-      }
-      for (const auto& e : _dynamicMeshRenderables) {
-        e.second->fetchShaderDescs();
-      }
-    }
     void buildBVH()
     {
-      _visibleMeshes.resize(_staticMeshRenderables.size() + _dynamicMeshRenderables.size());
+      _visibleMeshes.reserve(_staticMeshRenderables.size() + _dynamicMeshRenderables.size());
       _bvh = std::make_unique<BVH>(_sceneMin, _sceneMax);
       std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
       Timing timing;

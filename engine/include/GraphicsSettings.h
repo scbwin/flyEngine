@@ -1,7 +1,7 @@
 #ifndef GRAPHICSSETTINGS_H
 #define GRAPHICSSETTINGS_H
 
-#include <set>
+#include <list>
 #include <memory>
 #include <vector>
 #include <functional>
@@ -101,7 +101,7 @@ namespace fly
     void setSSRBlendWeight(float weight);
 
   private:
-    std::set<std::weak_ptr<Listener>, std::owner_less<std::weak_ptr<Listener>>> _listeners;
+    std::list<std::weak_ptr<Listener>> _listeners;
     bool _normalMapping = true;
     bool _parallaxMapping = true;
     bool _reliefMapping = true;

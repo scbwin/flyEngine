@@ -15,7 +15,7 @@ namespace fly
   public:
     FixedStackPOD()
     {
-      resize(init_size);
+      reserve(init_size);
       clear();
     }
     FixedStackPOD(const FixedStackPOD& other) = delete;
@@ -26,7 +26,7 @@ namespace fly
     {
       std::free(_begin);
     }
-    void resize(size_t new_size)
+    void reserve(size_t new_size)
     {
       _begin = reinterpret_cast<T*>(std::realloc(_begin, new_size * sizeof(T)));
       _capacity = new_size;
@@ -41,6 +41,19 @@ namespace fly
     inline void push_back(const T& element)
     {
       *_end++ = element;
+    }
+    /**
+    * Adds a new element to the end of the stack. If the current capacity is not sufficient,
+    * a reallocation is performed that may invalidate all references and iterators.
+    */
+    inline void push_back_secure(const T& element)
+    {
+      if (size() == _capacity) {
+        auto temp = size();
+        reserve(size() * 2);
+        _end = _begin + temp;
+      }
+      push_back(element);
     }
     inline T* begin() const
     {

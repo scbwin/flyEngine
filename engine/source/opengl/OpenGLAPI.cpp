@@ -87,6 +87,9 @@ namespace fly
     _samplerAnisotropic = std::make_unique<GLSampler>();
 
     GL_CHECK(glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]));
+
+    _ssrShader = std::make_unique<GLShaderProgram>();
+    _blurShader = std::make_unique<GLShaderProgram>();
   }
   OpenGLAPI::~OpenGLAPI()
   {
@@ -102,9 +105,9 @@ namespace fly
   void OpenGLAPI::reloadShaders()
   {
     for (const auto& e : _shaderCache.getElements()) {
-     // e->reload();
+      // e->reload();
     }
-   // _skydomeShader->reload();
+    // _skydomeShader->reload();
   }
   void OpenGLAPI::beginFrame() const
   {
@@ -208,7 +211,7 @@ namespace fly
     GL_CHECK(glEnable(GL_BLEND));
     GL_CHECK(glBlendColor(blend_weight[0], blend_weight[1], blend_weight[2], blend_weight[3]));
     GL_CHECK(glBlendFunc(GL_CONSTANT_COLOR, GL_ONE_MINUS_CONSTANT_COLOR));
-  //  setRendertargets({ &lighting_buffer }, nullptr);
+    //  setRendertargets({ &lighting_buffer }, nullptr);
     _ssrShader->bind();
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit0()));
     view_space_normals.bind();
@@ -232,13 +235,13 @@ namespace fly
   void OpenGLAPI::separableBlur(const RTT & in, const std::array<std::shared_ptr<RTT>, 2>& out)
   {
     in.param(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    _activeShader = _sepBlurShaderDesc->getShader().get();
+    _activeShader = _blurShader.get();
     _activeShader->bind();
     setViewport(fly::Vec2u(out[1]->width(), out[1]->height()));
     for (unsigned i = 0; i < 2; i++) {
       _rttHelper.clear();
       _rttHelper.push_back(out[!i].get());
-     // setRendertargets({ out[!i].get() }, nullptr);
+      // setRendertargets({ out[!i].get() }, nullptr);
       setRendertargets(_rttHelper, nullptr);
       Vec2f texel_size(1.f / out[0]->width() * i, 1.f / out[0]->height() * !i);
       setVector(_activeShader->uniformLocation(GLSLShaderGenerator::texelSize()), texel_size);
@@ -352,7 +355,7 @@ namespace fly
   {
     _shaderCache.clear();
     _shaderDescCache.clear();
-    for (const auto e : _matDescCache.getElements()) {
+    for (const auto& e : _matDescCache.getElements()) {
       e->create(this, settings);
     }
     createCompositeShader(settings);
@@ -361,11 +364,11 @@ namespace fly
   {
     GLShaderSource vs, fs;
     _shaderGenerator->createBlurShaderSource(0, gs, vs, fs);
-    auto shader = std::make_shared<GLShaderProgram>();
-    shader->add(vs);
-    shader->add(fs);
-    shader->link();
-    _sepBlurShaderDesc = std::make_unique<ShaderDesc>(shader, 0);
+    GLShaderProgram shader;
+    shader.add(vs);
+    shader.add(fs);
+    shader.link();
+    *_blurShader = std::move(shader);
   }
   void OpenGLAPI::createCompositeShader(const GraphicsSettings & gs)
   {
@@ -385,10 +388,11 @@ namespace fly
   {
     GLShaderSource vs, fs;
     _shaderGenerator->createSSRShaderSource(gs, vs, fs);
-    _ssrShader = std::make_unique<GLShaderProgram>();
-    _ssrShader->add(vs);
-    _ssrShader->add(fs);
-    _ssrShader->link();
+    GLShaderProgram shader;
+    shader.add(vs);
+    shader.add(fs);
+    shader.link();
+    *_ssrShader = std::move(shader);
   }
   std::vector<std::shared_ptr<Material>> OpenGLAPI::getAllMaterials()
   {
@@ -411,9 +415,9 @@ namespace fly
     if (_ssrShader) {
       shaders.push_back(_ssrShader.get());
     }
-    if (_sepBlurShaderDesc) {
-      shaders.push_back(_sepBlurShaderDesc->getShader().get());
-    }
+    //if (_sepBlurShaderDesc) {
+      shaders.push_back(_blurShader.get());
+  //  }
     for (const auto& s : shaders) {
       for (const auto& source : s->getSources()) {
         std::ofstream os("generated/" + source._key);
@@ -498,45 +502,42 @@ namespace fly
   }
   OpenGLAPI::MaterialDesc::MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI * api, const GraphicsSettings& settings) :
     _material(material),
-    _activeShader(api->_activeShader)
+    _activeShader(api->_activeShader),
+    _diffuseMap(api->createTexture(material->getDiffusePath())),
+    _normalMap(api->createTexture(material->getNormalPath())),
+    _alphaMap(api->createTexture(material->getOpacityPath())),
+    _heightMap(api->createTexture(material->getHeightPath()))
   {
-    create(material, api, settings);
+    create(api, settings);
   }
-  void OpenGLAPI::MaterialDesc::create(OpenGLAPI * api, const GraphicsSettings & settings)
-  {
-    create(_material, api, settings);
-  }
-  void OpenGLAPI::MaterialDesc::create(const std::shared_ptr<Material>& material, OpenGLAPI* api, const GraphicsSettings& settings)
+  void OpenGLAPI::MaterialDesc::create(OpenGLAPI* api, const GraphicsSettings& settings)
   {
     _materialSetupFuncs.clear();
     _materialSetupFuncsDepth.clear();
-    _diffuseMap = api->createTexture(material->getDiffusePath());
-    _normalMap = api->createTexture(material->getNormalPath());
-    _alphaMap = api->createTexture(material->getOpacityPath());
-    _heightMap = api->createTexture(material->getHeightPath());
+
     using FLAG = GLSLShaderGenerator::MeshRenderFlag;
     unsigned flag = FLAG::NONE;
     if (_diffuseMap) {
       flag |= FLAG::DIFFUSE_MAP;
-      _materialSetupFuncs.push_back(api->_materialSetup->getDiffuseSetup());
+      _materialSetupFuncs.push_back_secure(api->_materialSetup->getDiffuseSetup());
     }
     else {
-      _materialSetupFuncs.push_back(api->_materialSetup->getDiffuseColorSetup());
+      _materialSetupFuncs.push_back_secure(api->_materialSetup->getDiffuseColorSetup());
     }
     if (_alphaMap) {
       flag |= FLAG::ALPHA_MAP;
-      _materialSetupFuncs.push_back(api->_materialSetup->getAlphaSetup());
-      _materialSetupFuncsDepth.push_back(api->_materialSetup->getAlphaSetup());
+      _materialSetupFuncs.push_back_secure(api->_materialSetup->getAlphaSetup());
+      _materialSetupFuncsDepth.push_back_secure(api->_materialSetup->getAlphaSetup());
     }
     if (_normalMap && settings.getNormalMapping()) {
       flag |= FLAG::NORMAL_MAP;
-      _materialSetupFuncs.push_back(api->_materialSetup->getNormalSetup());
+      _materialSetupFuncs.push_back_secure(api->_materialSetup->getNormalSetup());
     }
     if (_normalMap && _heightMap && settings.getNormalMapping() && settings.getParallaxMapping()) {
       flag |= FLAG::HEIGHT_MAP;
-      _materialSetupFuncs.push_back(api->_materialSetup->getHeightSetup());
+      _materialSetupFuncs.push_back_secure(api->_materialSetup->getHeightSetup());
       if (settings.getReliefMapping()) {
-        _materialSetupFuncs.push_back(api->_materialSetup->getReliefMappingSetup());
+        _materialSetupFuncs.push_back_secure(api->_materialSetup->getReliefMappingSetup());
       }
     }
     auto fragment_source = api->_shaderGenerator->createMeshFragmentShaderSource(flag, settings);
@@ -549,23 +550,10 @@ namespace fly
       ss_flags |= ShaderSetupFlags::SHADOWS;
     }
     _meshShaderDesc = api->createShaderDesc(api->createShader(vertex_source, fragment_source), ss_flags);
-    if (material->isReflective()) {
-      auto fragment_source_reflective = api->_shaderGenerator->createMeshFragmentShaderSource(flag | FLAG::REFLECTIVE, settings);
-      _meshShaderDescReflective = settings.getScreenSpaceReflections() ? api->createShaderDesc(api->createShader(vertex_source, fragment_source_reflective), ss_flags) : _meshShaderDesc;
-    }
-    vertex_source = api->_shaderGenerator->createMeshVertexShaderSource(flag | FLAG::WIND, settings);
-    _meshShaderDescWind = settings.getWindAnimations() ? api->createShaderDesc(api->createShader(vertex_source, fragment_source), ss_flags | ShaderSetupFlags::WIND | ShaderSetupFlags::TIME) : _meshShaderDesc;
-
-    auto vertex_shadow_file = api->_shaderGenerator->createMeshVertexShaderDepthSource(flag, settings);
-    auto vertex_shadow_file_wind = api->_shaderGenerator->createMeshVertexShaderDepthSource(flag | FLAG::WIND, settings);
-    auto fragment_shadow_file = api->_shaderGenerator->createMeshFragmentShaderDepthSource(flag, settings);
-    auto fragment_shadow_file_wind = api->_shaderGenerator->createMeshFragmentShaderDepthSource(flag | FLAG::WIND, settings);
-    _meshShaderDescDepth = api->createShaderDesc(api->createShader(vertex_shadow_file, fragment_shadow_file), ShaderSetupFlags::VP);
-    ss_flags = ShaderSetupFlags::VP;
-    if (settings.getWindAnimations()) {
-      ss_flags |= ShaderSetupFlags::WIND | ShaderSetupFlags::TIME;
-    }
-    _meshShaderDescWindDepth = settings.getWindAnimations() ? api->createShaderDesc(api->createShader(vertex_shadow_file_wind, fragment_shadow_file_wind), ss_flags) : _meshShaderDescDepth;
+    _meshShaderDescReflective = settings.getScreenSpaceReflections() ? api->createShaderDesc(api->createShader(vertex_source, api->_shaderGenerator->createMeshFragmentShaderSource(flag | FLAG::REFLECTIVE, settings)), ss_flags) : _meshShaderDesc;
+    _meshShaderDescWind = settings.getWindAnimations() ? api->createShaderDesc(api->createShader(api->_shaderGenerator->createMeshVertexShaderSource(flag | FLAG::WIND, settings), fragment_source), ss_flags | ShaderSetupFlags::WIND | ShaderSetupFlags::TIME) : _meshShaderDesc;
+    _meshShaderDescDepth = api->createShaderDesc(api->createShader(api->_shaderGenerator->createMeshVertexShaderDepthSource(flag, settings), api->_shaderGenerator->createMeshFragmentShaderDepthSource(flag, settings)), ShaderSetupFlags::VP);
+    _meshShaderDescWindDepth = settings.getWindAnimations() ? api->createShaderDesc(api->createShader(api->_shaderGenerator->createMeshVertexShaderDepthSource(flag | FLAG::WIND, settings), api->_shaderGenerator->createMeshFragmentShaderDepthSource(flag | FLAG::WIND, settings)), ShaderSetupFlags::VP | ShaderSetupFlags::WIND | ShaderSetupFlags::TIME) : _meshShaderDescDepth;
   }
   void OpenGLAPI::MaterialDesc::setup() const
   {

@@ -171,7 +171,6 @@ namespace fly
     public:
       MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI* api, const GraphicsSettings& settings);
       void create(OpenGLAPI* api, const GraphicsSettings& settings);
-      void create(const std::shared_ptr<Material>& material, OpenGLAPI* api, const GraphicsSettings& settings);
       void setup() const;
       void setupDepth() const;
       using ShaderProgram = GLShaderProgram;
@@ -188,17 +187,17 @@ namespace fly
     private:
       GLShaderProgram * & _activeShader;
       std::shared_ptr<Material> _material;
-      std::vector<IMaterialSetup const *> _materialSetupFuncs;
-      std::vector<IMaterialSetup const *> _materialSetupFuncsDepth;
+      FixedStackPOD<IMaterialSetup const *, 10> _materialSetupFuncs;
+      FixedStackPOD<IMaterialSetup const *, 10> _materialSetupFuncsDepth;
       std::shared_ptr<ShaderDesc> _meshShaderDesc;
       std::shared_ptr<ShaderDesc> _meshShaderDescWind;
       std::shared_ptr<ShaderDesc> _meshShaderDescDepth;
       std::shared_ptr<ShaderDesc> _meshShaderDescWindDepth;
       std::shared_ptr<ShaderDesc> _meshShaderDescReflective;
-      std::shared_ptr<GLTexture> _diffuseMap;
-      std::shared_ptr<GLTexture> _normalMap;
-      std::shared_ptr<GLTexture> _alphaMap;
-      std::shared_ptr<GLTexture> _heightMap;
+      std::shared_ptr<GLTexture> const _diffuseMap;
+      std::shared_ptr<GLTexture> const _normalMap;
+      std::shared_ptr<GLTexture> const _alphaMap;
+      std::shared_ptr<GLTexture> const _heightMap;
     };
     void beginFrame() const;
     void bindShader(GLShaderProgram* shader);
@@ -244,9 +243,10 @@ namespace fly
     SoftwareCache<std::shared_ptr<GLShaderProgram>, std::shared_ptr<ShaderDesc>, const std::shared_ptr<GLShaderProgram>&, unsigned> _shaderDescCache;
     std::shared_ptr<GLShaderProgram> _aabbShader;
     std::unique_ptr<ShaderDesc> _compositeShaderDesc;
-    std::unique_ptr<ShaderDesc> _sepBlurShaderDesc;
+ //   std::unique_ptr<ShaderDesc> _sepBlurShaderDesc;
     std::shared_ptr<ShaderDesc> _skydomeShaderDesc;
     std::unique_ptr<GLShaderProgram> _ssrShader;
+    std::unique_ptr<GLShaderProgram> _blurShader;
     std::shared_ptr<GLShaderProgram> _skydomeShader;
     std::shared_ptr<GLVertexArray> _vaoAABB;
     std::shared_ptr<GLBuffer> _vboAABB;

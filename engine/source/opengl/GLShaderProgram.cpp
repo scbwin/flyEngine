@@ -6,21 +6,6 @@
 namespace fly
 {
   GLShaderProgram::GLShaderProgram() 
-/*    _uniformLocations(SoftwareCache<const char*, GLint, const char*>([this](const char* name) {
-    GLint loc;
-    GL_CHECK(loc = glGetUniformLocation(_id, name));
-#ifdef _DEBUG
-    if (loc == -1) {
-      std::string err;
-      for (const auto& s : _sources) {
-        err += s._key + ",";
-      }
-      err += " No valid uniform location for name: " + std::string(name);
-      throw std::exception(err.c_str());
-    }
-#endif
-    return loc;
-  }))*/
   {
     GL_CHECK(_id = glCreateProgram());
   }
