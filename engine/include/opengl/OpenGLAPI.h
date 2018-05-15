@@ -14,6 +14,7 @@
 #include <opengl/GLVertexArray.h>
 #include <opengl/GLAppendBuffer.h>
 #include <opengl/GLShaderSource.h>
+#include <FixedStackPOD.h>
 
 namespace fly
 {
@@ -58,6 +59,7 @@ namespace fly
       GL_CHECK(glClear(flag));
     }
     static inline constexpr bool isDirectX() { return false; }
+    static const size_t _maxRendertargets = 8;
     template<bool enable> inline void setDepthTestEnabled() const { GL_CHECK(enable ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST)); }
     template<bool enable> inline void setFaceCullingEnabled() const { GL_CHECK(enable ? glEnable(GL_CULL_FACE) : glDisable(GL_CULL_FACE)); }
     template<bool enable> inline void setDepthClampEnabled() const { GL_CHECK(enable ? glEnable(GL_DEPTH_CLAMP) : glDisable(GL_DEPTH_CLAMP)); }
@@ -101,6 +103,7 @@ namespace fly
     using RTT = GLTexture;
     using Depthbuffer = GLTexture;
     using Shadowmap = GLTexture;
+    using RendertargetStack = FixedStackPOD<RTT const *, _maxRendertargets>;
     /**
     * Geometry data for every single mesh that is added is stored in this structure.
     * There is one vertex array, one big vertex buffer and one big index buffer for the whole scene.
@@ -135,10 +138,10 @@ namespace fly
     static constexpr const int alphaTexUnit() { return 1; }
     static constexpr const int normalTexUnit() { return 2; }
     static constexpr const int heightTexUnit() { return 3; }
-    static constexpr const int shadowTexUnit() { return 4; }
-    static constexpr const int lightingTexUnit() { return 5; }
-    static constexpr const int dofTexUnit() { return 6; }
-    static constexpr const int depthTexUnit() { return 7; }
+    static constexpr const int miscTexUnit0() { return 4; }
+    static constexpr const int miscTexUnit1() { return 5; }
+    static constexpr const int miscTexUnit2() { return 6; }
+    static constexpr const int miscTexUnit3() { return 7; }
     enum ShaderSetupFlags : unsigned
     {
       NONE = 0,
@@ -209,8 +212,8 @@ namespace fly
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse, const WindParamsLocal& wind_params, const AABB& aabb) const;
     void renderMeshMVP(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mvp) const;
     void renderAABBs(const std::vector<AABB const *>& aabbs, const Mat4f& transform, const Vec3f& col);
-    void setRendertargets(const std::vector<RTT const*>& rtts, const Depthbuffer* depth_buffer);
-    void setRendertargets(const std::vector<RTT const*>& rtts, const Depthbuffer* depth_buffer, unsigned depth_buffer_layer);
+    void setRendertargets(const RendertargetStack& rtts, const Depthbuffer* depth_buffer);
+    void setRendertargets(const RendertargetStack& rtts, const Depthbuffer* depth_buffer, unsigned depth_buffer_layer);
     void bindBackbuffer(unsigned id) const;
     void ssr(const RTT& lighting_buffer, const RTT& view_space_normals, const Depthbuffer& depth_buffer, const Mat4f& projection_matrix, const Vec4f& blend_weight, RTT& lighting_buffer_copy);
     void separableBlur(const RTT& in, const std::array<std::shared_ptr<RTT>, 2>& out);
@@ -254,7 +257,8 @@ namespace fly
     unsigned _anisotropy = 1u;
     std::unique_ptr<GLMaterialSetup> _materialSetup;
     void checkFramebufferStatus();
-    void setColorBuffers(const std::vector<RTT const*>& rtts);
+    void setColorBuffers(const RendertargetStack & rtts);
+    RendertargetStack _rttHelper;
   };
 }
 

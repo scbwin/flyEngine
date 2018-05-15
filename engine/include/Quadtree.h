@@ -8,6 +8,7 @@
 #include <sstream>
 #include <Settings.h>
 #include <Camera.h>
+#include <FixedStackPOD.h>
 
 namespace fly
 {
@@ -69,11 +70,14 @@ namespace fly
           }
         }
       }
-      void getVisibleElements(std::vector<TPtr>& visible_elements, const Camera& camera) const
+      void getVisibleElements(FixedStackPOD<TPtr>& visible_elements, const Camera& camera) const
       {
         auto result = camera.intersectFrustumAABB(_aabbWorld);
         if (result == IntersectionResult::INSIDE) {
-          visible_elements.insert(visible_elements.end(), _elements.begin(), _elements.end());
+        //  visible_elements.insert(visible_elements.end(), _elements.begin(), _elements.end());
+          for (const auto& e : _elements) {
+            visible_elements.push_back(e);
+          }
           for (const auto& c : _children) {
             if (c) {
               c->getAllElements(visible_elements);
@@ -94,7 +98,7 @@ namespace fly
         }
       }
 
-      void getAllElementsWithDetailCulling(std::vector<TPtr>& all_elements, const Camera& camera)
+      void getAllElementsWithDetailCulling(FixedStackPOD<TPtr>& all_elements, const Camera& camera)
       {
         if (!_aabbWorld.isDetail(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
           for (const auto& e : _elements) {
@@ -110,7 +114,7 @@ namespace fly
         }
       }
 
-      void getVisibleElementsWithDetailCulling(std::vector<TPtr>& visible_elements, const Camera& camera) const
+      void getVisibleElementsWithDetailCulling(FixedStackPOD<TPtr>& visible_elements, const Camera& camera) const
       {
         if (!_aabbWorld.isDetail(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
           auto result = camera.intersectFrustumAABB(_aabbWorld);
@@ -140,9 +144,12 @@ namespace fly
           }
         }
       }
-      void getAllElements(std::vector<TPtr>& all_elements) const
+      void getAllElements(FixedStackPOD<TPtr>& all_elements) const
       {
-        all_elements.insert(all_elements.end(), _elements.begin(), _elements.end());
+      //  all_elements.insert(all_elements.end(), _elements.begin(), _elements.end());
+        for (const auto& e : _elements) {
+          all_elements.push_back(e);
+        }
         for (const auto& c : _children) {
           if (c) {
             c->getAllElements(all_elements);
@@ -256,39 +263,35 @@ namespace fly
         _root->insert(element);
       }
       else {
-        auto all_elements = getAllElements();
+       /* auto all_elements = getAllElements();
         AABB aabb_new = _root->getAABBWorld()->getUnion(*element->getAABBWorld());
         _root = std::make_unique<Node>(aabb_new.getMin().xz(), aabb_new.getMax().xz());
         _root->setAABBWorld(aabb_new);
         _root->insert(element);
         for (const auto& e : all_elements) {
           _root->insert(e);
-        }
+        }*/
+        std::cout << "error" << std::endl;
       }
     }
     void print() const
     {
       _root->print(0);
     }
-    std::vector<TPtr> getVisibleElements(const Camera& camera) const
+    void getVisibleElements(const Camera& camera, FixedStackPOD<TPtr>& stack) const
     {
-      std::vector<TPtr> visible_elements;
-      visible_elements.reserve(_initSize);
-      _root->getVisibleElements(visible_elements, camera);
-      return std::move(visible_elements);
+      stack.clear();
+      _root->getVisibleElements(stack, camera);
     }
-    std::vector<TPtr> getVisibleElementsWithDetailCulling(const Camera& camera) const
+    void getVisibleElementsWithDetailCulling(const Camera& camera, FixedStackPOD<TPtr>& stack) const
     {
-      std::vector<TPtr> visible_elements;
-      visible_elements.reserve(_initSize);
-      _root->getVisibleElementsWithDetailCulling(visible_elements, camera);
-      return std::move(visible_elements);
+      stack.clear();
+      _root->getVisibleElementsWithDetailCulling(stack, camera);
     }
-    std::vector<TPtr> getAllElements() const
+    void getAllElements(FixedStackPOD<TPtr>& stack) const
     {
-      std::vector<TPtr> all_elements;
-      _root->getAllElements(all_elements);
-      return std::move(all_elements);
+      stack.clear();
+      _root->getAllElements(stack);
     }
     std::vector<Node*> getAllNodes()
     {

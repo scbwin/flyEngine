@@ -126,7 +126,7 @@ namespace fly
   }
   void OpenGLAPI::bindShadowmap(const Shadowmap & shadowmap) const
   {
-    GL_CHECK(glActiveTexture(GL_TEXTURE0 + shadowTexUnit()));
+    GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit0()));
     shadowmap.bind();
   }
   void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data) const
@@ -181,13 +181,13 @@ namespace fly
     _vboAABB->setData(bb_buffer.data(), bb_buffer.size(), GL_DYNAMIC_COPY);
     GL_CHECK(glDrawArraysInstanced(GL_POINTS, 0, 1, static_cast<GLsizei>(aabbs.size())));
   }
-  void OpenGLAPI::setRendertargets(const std::vector<RTT const*>& rtts, const Depthbuffer* depth_buffer)
+  void OpenGLAPI::setRendertargets(const RendertargetStack& rtts, const Depthbuffer* depth_buffer)
   {
     setColorBuffers(rtts);
     _offScreenFramebuffer->texture(GL_DEPTH_ATTACHMENT, depth_buffer, 0);
     checkFramebufferStatus();
   }
-  void OpenGLAPI::setRendertargets(const std::vector<RTT const*>& rtts, const Depthbuffer* depth_buffer, unsigned depth_buffer_layer)
+  void OpenGLAPI::setRendertargets(const RendertargetStack& rtts, const Depthbuffer* depth_buffer, unsigned depth_buffer_layer)
   {
     setColorBuffers(rtts);
     _offScreenFramebuffer->textureLayer(GL_DEPTH_ATTACHMENT, depth_buffer, 0, depth_buffer_layer);
@@ -208,17 +208,17 @@ namespace fly
     GL_CHECK(glEnable(GL_BLEND));
     GL_CHECK(glBlendColor(blend_weight[0], blend_weight[1], blend_weight[2], blend_weight[3]));
     GL_CHECK(glBlendFunc(GL_CONSTANT_COLOR, GL_ONE_MINUS_CONSTANT_COLOR));
-    setRendertargets({ &lighting_buffer }, nullptr);
+  //  setRendertargets({ &lighting_buffer }, nullptr);
     _ssrShader->bind();
-    GL_CHECK(glActiveTexture(GL_TEXTURE8));
+    GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit0()));
     view_space_normals.bind();
-    setScalar(_ssrShader->uniformLocation(GLSLShaderGenerator::viewSpaceNormalsSampler()), 8);
-    GL_CHECK(glActiveTexture(GL_TEXTURE0 + lightingTexUnit()));
+    setScalar(_ssrShader->uniformLocation(GLSLShaderGenerator::viewSpaceNormalsSampler()), miscTexUnit0());
+    GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit1()));
     lighting_buffer_copy.bind();
-    setScalar(_ssrShader->uniformLocation(GLSLShaderGenerator::lightingSampler()), lightingTexUnit());
-    GL_CHECK(glActiveTexture(GL_TEXTURE0 + depthTexUnit()));
+    setScalar(_ssrShader->uniformLocation(GLSLShaderGenerator::lightingSampler()), miscTexUnit1());
+    GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit2()));
     depth_buffer.bind();
-    setScalar(_ssrShader->uniformLocation(GLSLShaderGenerator::depthSampler()), depthTexUnit());
+    setScalar(_ssrShader->uniformLocation(GLSLShaderGenerator::depthSampler()), miscTexUnit2());
     setMatrix(_ssrShader->uniformLocation(GLSLShaderGenerator::projectionMatrix()), projection_matrix);
     auto p_inverse = inverse(projection_matrix);
     setMatrix(_ssrShader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverse()), p_inverse);
@@ -236,12 +236,15 @@ namespace fly
     _activeShader->bind();
     setViewport(fly::Vec2u(out[1]->width(), out[1]->height()));
     for (unsigned i = 0; i < 2; i++) {
-      setRendertargets({ out[!i].get() }, nullptr);
+      _rttHelper.clear();
+      _rttHelper.push_back(out[!i].get());
+     // setRendertargets({ out[!i].get() }, nullptr);
+      setRendertargets(_rttHelper, nullptr);
       Vec2f texel_size(1.f / out[0]->width() * i, 1.f / out[0]->height() * !i);
       setVector(_activeShader->uniformLocation(GLSLShaderGenerator::texelSize()), texel_size);
-      GL_CHECK(glActiveTexture(GL_TEXTURE0 + lightingTexUnit()));
+      GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit1()));
       i ? out[1]->bind() : in.bind();
-      setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::toBlurSampler()), lightingTexUnit());
+      setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::toBlurSampler()), miscTexUnit1());
       GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
     }
     in.param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -249,23 +252,23 @@ namespace fly
   void OpenGLAPI::composite(const RTT& lighting_buffer, const GlobalShaderParams& params)
   {
     setupShaderDesc(*_compositeShaderDesc, params);
-    GL_CHECK(glActiveTexture(GL_TEXTURE0 + lightingTexUnit()));
+    GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit1()));
     lighting_buffer.bind();
-    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::lightingSampler()), lightingTexUnit());
+    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::lightingSampler()), miscTexUnit1());
     GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
   }
   void OpenGLAPI::composite(const RTT & lighting_buffer, const GlobalShaderParams & params, const RTT & dof_buffer, const Depthbuffer& depth_buffer)
   {
     setupShaderDesc(*_compositeShaderDesc, params);
-    GL_CHECK(glActiveTexture(GL_TEXTURE0 + lightingTexUnit()));
+    GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit1()));
     lighting_buffer.bind();
-    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::lightingSampler()), lightingTexUnit());
-    GL_CHECK(glActiveTexture(GL_TEXTURE0 + dofTexUnit()));
+    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::lightingSampler()), miscTexUnit1());
+    GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit2()));
     dof_buffer.bind();
-    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::dofSampler()), dofTexUnit());
-    GL_CHECK(glActiveTexture(GL_TEXTURE0 + depthTexUnit()));
+    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::dofSampler()), miscTexUnit2());
+    GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit3()));
     depth_buffer.bind();
-    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::depthSampler()), depthTexUnit());
+    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::depthSampler()), miscTexUnit3());
     GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
   }
   void OpenGLAPI::endFrame() const
@@ -425,7 +428,7 @@ namespace fly
       std::cout << "Framebuffer imcomplete" << std::endl;
     }
   }
-  void OpenGLAPI::setColorBuffers(const std::vector<RTT const*>& rtts)
+  void OpenGLAPI::setColorBuffers(const RendertargetStack& rtts)
   {
     _offScreenFramebuffer->bind();
     _offScreenFramebuffer->clearAttachments();
@@ -562,7 +565,7 @@ namespace fly
     if (settings.getWindAnimations()) {
       ss_flags |= ShaderSetupFlags::WIND | ShaderSetupFlags::TIME;
     }
-    _meshShaderDescWindDepth = api->createShaderDesc(api->createShader(vertex_shadow_file_wind, fragment_shadow_file_wind), ss_flags);
+    _meshShaderDescWindDepth = settings.getWindAnimations() ? api->createShaderDesc(api->createShader(vertex_shadow_file_wind, fragment_shadow_file_wind), ss_flags) : _meshShaderDescDepth;
   }
   void OpenGLAPI::MaterialDesc::setup() const
   {
@@ -636,7 +639,7 @@ namespace fly
     }
     if (flags & ShaderSetupFlags::SHADOWS) {
       _setupFuncs.push_back([this](const GlobalShaderParams& params) {
-        setScalar(_shader->uniformLocation(GLSLShaderGenerator::shadowSampler()), shadowTexUnit());
+        setScalar(_shader->uniformLocation(GLSLShaderGenerator::shadowSampler()), miscTexUnit0());
         setMatrixArray(_shader->uniformLocation(GLSLShaderGenerator::worldToLightMatrices()), params._worldToLight.front(), static_cast<unsigned>(params._worldToLight.size()));
         setScalar(_shader->uniformLocation(GLSLShaderGenerator::numfrustumSplits()), static_cast<int>(params._worldToLight.size()));
         setScalarArray(_shader->uniformLocation(GLSLShaderGenerator::frustumSplits()), params._smFrustumSplits->front(), static_cast<unsigned>(params._smFrustumSplits->size()));

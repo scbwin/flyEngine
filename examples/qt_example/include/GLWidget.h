@@ -10,7 +10,7 @@
 #define SPONZA_MANY 0
 #define TOWERS 0
 #define TREE_SCENE 0
-#define PHYSICS 1
+#define PHYSICS 0
 #define SKYDOME 1
 #define NUM_OBJECTS 100
 #define NUM_TOWERS 15

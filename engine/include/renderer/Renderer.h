@@ -22,6 +22,7 @@
 #include <GraphicsSettings.h>
 #include <Timing.h>
 #include <SkydomeRenderable.h>
+#include <FixedStackPOD.h>
 
 #define RENDERER_STATS 1
 
@@ -144,7 +145,10 @@ namespace fly
       if (entity->getComponent<fly::StaticMeshRenderable>() == component) {
         auto smr = entity->getComponent<fly::StaticMeshRenderable>();
         if (smr->hasWind()) {
-          _staticMeshRenderables[entity] = std::make_shared<StaticMeshRenderableWind>(smr, _api.createMaterial(smr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(smr->getMesh()), _api);
+          auto smrw = std::make_shared<StaticMeshRenderableWind>(smr, _api.createMaterial(smr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(smr->getMesh()), _api);
+          _gs->addListener(smrw);
+          smrw->windAnimationsChanged(_gs);
+          _staticMeshRenderables[entity] = smrw;
         }
         else if (smr->getMaterial()->isReflective()) {
           auto smrr = std::make_shared<StaticMeshRenderableReflective>(smr, _api.createMaterial(smr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(smr->getMesh()), _api, _viewMatrixInverse);
@@ -245,23 +249,22 @@ namespace fly
         Timing timing;
 #endif
         _camera->extractFrustumPlanes(_vpScene);
-        std::vector<MeshRenderable*> visible_meshes = _gs->getDetailCulling() ?
-          _bvh->getVisibleElementsWithDetailCulling(*_camera) :
-          _bvh->getVisibleElements(*_camera);
+        _gs->getDetailCulling() ? _bvh->getVisibleElementsWithDetailCulling(*_camera, _visibleMeshes) : _bvh->getVisibleElements(*_camera, _visibleMeshes);
 #if RENDERER_STATS
         _stats._bvhTraversalMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
         for (const auto& e : _dynamicMeshRenderables) {
           if (_camera->intersectFrustumAABB(*e.second->getAABBWorld()) != IntersectionResult::OUTSIDE) {
-            visible_meshes.push_back(e.second.get());
+            _visibleMeshes.push_back(e.second.get());
           }
         }
         if (_gs->depthPrepassEnabled()) {
-          _api.setRendertargets({}, _depthBuffer.get());
+          _renderTargets.clear();
+          _api.setRendertargets(_renderTargets, _depthBuffer.get());
           _api.clearRendertarget(false, true, false);
           std::map<typename API::ShaderDesc const *, std::map<typename API::MaterialDesc const *, std::vector<MeshRenderable*>>> display_list;
-          for (const auto& e : visible_meshes) {
-            display_list[e->_shaderDescDepth][e->_materialDesc.get()].push_back(e);
+          for (auto m : _visibleMeshes) {
+            display_list[m->_shaderDescDepth][m->_materialDesc.get()].push_back(m);
           }
           for (const auto& e : display_list) {
             _api.setupShaderDesc(*e.first, _gsp);
@@ -276,11 +279,13 @@ namespace fly
           _api.setDepthFunc<API::DepthFunc::EQUAL>();
         }
         if (_offScreenRendering) {
-          std::vector<typename API::RTT const *> rendertargets = { _lightingBuffer.get() };
+          //std::vector<typename API::RTT const *> rendertargets = { _lightingBuffer.get() };
+          _renderTargets.clear();
+          _renderTargets.push_back(_lightingBuffer.get());
           if (_gs->getScreenSpaceReflections()) {
-            rendertargets.push_back(_viewSpaceNormals.get());
+            _renderTargets.push_back(_viewSpaceNormals.get());
           }
-          _api.setRendertargets(rendertargets, _depthBuffer.get());
+          _api.setRendertargets(_renderTargets, _depthBuffer.get());
         }
         else {
           _api.bindBackbuffer(_defaultRenderTarget);
@@ -289,7 +294,7 @@ namespace fly
         if (_shadowMap) {
           _api.bindShadowmap(*_shadowMap);
         }
-        renderMeshes(visible_meshes);
+        renderMeshes();
         if (_skydomeRenderable) {
           _api.setCullMode<API::CullMode::FRONT>();
           Mat4f view_matrix_sky_dome = _gsp._viewMatrix;
@@ -305,12 +310,15 @@ namespace fly
           renderQuadtreeAABBs();
         }
         if (_gs->getDebugObjectAABBs()) {
-          renderObjectAABBs(visible_meshes);
+          renderObjectAABBs();
         }
         if (_offScreenRendering) {
           _api.setDepthTestEnabled<false>();
         }
         if (_gs->getScreenSpaceReflections()) {
+          _renderTargets.clear();
+          _renderTargets.push_back(_lightingBuffer.get());
+          _api.setRendertargets(_renderTargets, nullptr);
           _api.ssr(*_lightingBuffer, *_viewSpaceNormals, *_depthBuffer, _gsp._projectionMatrix, Vec4f(_gs->getSSRBlendWeight()), *_lightingBufferCopy);
         }
         if (_gs->getDepthOfField()) {
@@ -356,6 +364,7 @@ namespace fly
     std::unique_ptr<typename API::RTT> _viewSpaceNormals;
     std::unique_ptr<typename API::Shadowmap> _shadowMap;
     std::array<std::shared_ptr<typename API::RTT>, 2> _dofBuffer;
+    typename API::RendertargetStack _renderTargets;
     unsigned _defaultRenderTarget = 0;
     Mat4f _vpScene;
     Mat3f _viewMatrixInverse;
@@ -532,12 +541,12 @@ namespace fly
         }
         else {
           _renderFunc = [this]() {
-            _api.renderMesh(_meshData, _smr->getModelMatrix(), _smr->getModelMatrixInverse());
+            StaticMeshRenderable::render();
           };
         }
       };
     };
-    struct StaticMeshRenderableWind : public StaticMeshRenderable
+    struct StaticMeshRenderableWind : public StaticMeshRenderable, public GraphicsSettings::Listener
     {
       StaticMeshRenderableWind(const std::shared_ptr<fly::StaticMeshRenderable>& smr,
         const std::shared_ptr<typename API::MaterialDesc>& material_desc, const typename API::MeshGeometryStorage::MeshData& mesh_data, API const & api) :
@@ -545,6 +554,8 @@ namespace fly
       {
         fetchShaderDescs();
       }
+      std::function<void()> _renderFunc;
+      std::function<void()> _renderFuncDepth;
       virtual ~StaticMeshRenderableWind() = default;
       virtual void fetchShaderDescs() override
       {
@@ -553,17 +564,54 @@ namespace fly
       }
       virtual void render() override
       {
+        _renderFunc();
+      }
+      virtual void renderDepth() override
+      {
+        _renderFuncDepth();
+      }
+      virtual void normalMappingChanged(GraphicsSettings const * gs) override {};
+      virtual void shadowsChanged(GraphicsSettings const * gs) override {};
+      virtual void shadowMapSizeChanged(GraphicsSettings const * gs) override {};
+      virtual void depthOfFieldChanged(GraphicsSettings const * gs) override {};
+      virtual void compositingChanged(GraphicsSettings const * gs) override {};
+      virtual void windAnimationsChanged(GraphicsSettings const * gs) override 
+      {
+        if (gs->getWindAnimations()) {
+          _renderFunc = [this]() {
+            _api.renderMesh(_meshData, _smr->getModelMatrix(), _smr->getModelMatrixInverse(), _smr->getWindParams(), *getAABBWorld());
+          };
+          _renderFuncDepth = [this]() {
+            _api.renderMesh(_meshData, _smr->getModelMatrix(), _smr->getWindParams(), *getAABBWorld());
+          };
+        }
+        else {
+          _renderFunc = [this]() {
+            StaticMeshRenderable::render();
+          };
+          _renderFuncDepth = [this]() {
+            StaticMeshRenderable::renderDepth();
+          };
+        }
+      };
+      virtual void anisotropyChanged(GraphicsSettings const * gs) override {};
+      virtual void cameraLerpingChanged(GraphicsSettings const * gs) override {};
+      virtual void gammaChanged(GraphicsSettings const * gs) override {};
+      virtual void screenSpaceReflectionsChanged(GraphicsSettings const * gs) override {};
+    /*  virtual void render() override
+      {
         _api.renderMesh(_meshData, _smr->getModelMatrix(), _smr->getModelMatrixInverse(), _smr->getWindParams(), *getAABBWorld());
       }
       virtual void renderDepth() override
       {
         _api.renderMesh(_meshData, _smr->getModelMatrix(), _smr->getWindParams(), *getAABBWorld());
-      }
+      }*/
     };
     typename API::MeshGeometryStorage _meshGeometryStorage;
     std::map<Entity*, std::shared_ptr<StaticMeshRenderable>> _staticMeshRenderables;
     std::map<Entity*, std::shared_ptr<DynamicMeshRenderable>> _dynamicMeshRenderables;
     std::shared_ptr<SkydomeRenderable> _skydomeRenderable;
+    FixedStackPOD<MeshRenderable*> _visibleMeshes;
     using BVH = Quadtree<MeshRenderable>;
     std::unique_ptr<BVH> _bvh;
     void renderQuadtreeAABBs()
@@ -581,26 +629,26 @@ namespace fly
         _api.renderAABBs(aabbs, _vpScene, Vec3f(1.f, 0.f, 0.f));
       }
     }
-    void renderObjectAABBs(const std::vector<MeshRenderable*>& visible_elements)
+    void renderObjectAABBs()
     {
-      if (visible_elements.size()) {
+      if (_visibleMeshes.size()) {
         _api.setDepthWriteEnabled<true>();
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
         std::vector<AABB const *> aabbs;
-        for (const auto& e : visible_elements) {
-          aabbs.push_back(e->getAABBWorld());
+        for (auto m : _visibleMeshes) {
+          aabbs.push_back(m->getAABBWorld());
         }
         _api.renderAABBs(aabbs, _vpScene, Vec3f(0.f, 1.f, 0.f));
       }
     }
-    void renderMeshes(const std::vector<MeshRenderable*>& meshes)
+    void renderMeshes()
     {
 #if RENDERER_STATS
       Timing timing;
 #endif
       std::map<typename API::ShaderDesc const *, std::map<typename API::MaterialDesc const *, std::vector<MeshRenderable*>>> display_list;
-      for (const auto& e : meshes) {
-        display_list[e->_shaderDesc][e->_materialDesc.get()].push_back(e);
+      for (auto m : _visibleMeshes) {
+        display_list[m->_shaderDesc][m->_materialDesc.get()].push_back(m);
       }
 #if RENDERER_STATS
       _stats._sceneMeshGroupingMicroSeconds = timing.duration<std::chrono::microseconds>();
@@ -631,21 +679,19 @@ namespace fly
       Timing timing;
 #endif
       _camera->extractFrustumPlanes(vp_shadow_volume);
-      auto visible_meshes = _gs->getDetailCulling() ?
-        _bvh->getVisibleElementsWithDetailCulling(*_camera) :
-        _bvh->getVisibleElements(*_camera);
+      _gs->getDetailCulling() ?_bvh->getVisibleElementsWithDetailCulling(*_camera, _visibleMeshes) : _bvh->getVisibleElements(*_camera, _visibleMeshes);
 #if RENDERER_STATS
       _stats._bvhTraversalShadowMapMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
       for (const auto& e : _dynamicMeshRenderables) {
-        visible_meshes.push_back(e.second.get());
+        _visibleMeshes.push_back(e.second.get());
       }
 #if RENDERER_STATS
       timing.start();
 #endif
       std::map<typename API::ShaderDesc const *, std::map<typename API::MaterialDesc const *, std::vector<MeshRenderable*>>> sm_display_list;
-      for (const auto& e : visible_meshes) {
-        sm_display_list[e->_shaderDescDepth][e->_materialDesc.get()].push_back(e);
+      for (auto m : _visibleMeshes) {
+        sm_display_list[m->_shaderDescDepth][m->_materialDesc.get()].push_back(m);
       }
 #if RENDERER_STATS
       _stats._shadowMapGroupingMicroSeconds = timing.duration<std::chrono::microseconds>();
@@ -653,8 +699,9 @@ namespace fly
 #endif
       _api.setDepthClampEnabled<true>();
       _api.setViewport(Vec2u(_gs->getShadowMapSize()));
+      _renderTargets.clear();
       for (unsigned i = 0; i < _gs->getFrustumSplits().size(); i++) {
-        _api.setRendertargets({}, _shadowMap.get(), i);
+        _api.setRendertargets(_renderTargets, _shadowMap.get(), i);
         _api.clearRendertarget(false, true, false);
         _gsp._VP = &_gsp._worldToLight[i];
         for (const auto& e : sm_display_list) {
@@ -691,6 +738,7 @@ namespace fly
     }
     void buildBVH()
     {
+      _visibleMeshes.resize(_staticMeshRenderables.size() + _dynamicMeshRenderables.size());
       _bvh = std::make_unique<BVH>(_sceneMin, _sceneMax);
       std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
       Timing timing;
