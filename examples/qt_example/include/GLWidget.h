@@ -7,7 +7,7 @@
 #include <GraphicsSettings.h>
 #include <math/FlyMath.h>
 
-#define SPONZA_MANY 0
+#define SPONZA_MANY 1
 #define TOWERS 0
 #define TREE_SCENE 0
 #define PHYSICS 0

@@ -456,7 +456,7 @@ namespace fly
       {
         _api.renderMesh(_meshData, _dmr->getModelMatrix());
       }
-      virtual AABB const * getAABBWorld() const override { return _dmr->getAABBWorld(); }
+      virtual AABB const * getAABBWorld() const override final { return _dmr->getAABBWorld(); }
     };
     struct DynamicMeshRenderableReflective : public DynamicMeshRenderable
     {
@@ -511,7 +511,7 @@ namespace fly
       {
         _api.renderMesh(_meshData, _smr->getModelMatrix());
       }
-      virtual AABB const * getAABBWorld() const override { return _smr->getAABBWorld(); }
+      virtual AABB const * getAABBWorld() const override final { return _smr->getAABBWorld(); }
     };
     struct StaticMeshRenderableReflective : public StaticMeshRenderable
     {

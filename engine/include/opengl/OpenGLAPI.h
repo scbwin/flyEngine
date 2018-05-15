@@ -22,7 +22,6 @@ namespace fly
   class GLShaderProgram;
   class Mesh;
   class AABB;
-  class GLMaterialSetup;
   class Material;
   class GLFramebuffer;
   class GLSLShaderGenerator;
@@ -30,8 +29,6 @@ namespace fly
   class GLSampler;
   struct WindParamsLocal;
   class GraphicsSettings;
-  class GLMaterialSetup;
-  class IMaterialSetup;
 
   class OpenGLAPI
   {
@@ -164,7 +161,7 @@ namespace fly
       const std::shared_ptr<GLShaderProgram>& getShader() const;
     private:
       std::shared_ptr<GLShaderProgram> _shader;
-      std::vector<std::function<void(const GlobalShaderParams&)>> _setupFuncs;
+      FixedStackPOD<void(*)(const GlobalShaderParams&, GLShaderProgram*), 10> _setupFuncs;
     };
     class MaterialDesc
     {
@@ -187,8 +184,8 @@ namespace fly
     private:
       GLShaderProgram * & _activeShader;
       std::shared_ptr<Material> _material;
-      FixedStackPOD<IMaterialSetup const *, 10> _materialSetupFuncs;
-      FixedStackPOD<IMaterialSetup const *, 10> _materialSetupFuncsDepth;
+      FixedStackPOD<void(*)(GLShaderProgram*, const OpenGLAPI::MaterialDesc&), 10> _materialSetupFuncs;
+      FixedStackPOD<void(*)(GLShaderProgram*, const OpenGLAPI::MaterialDesc&), 10> _materialSetupFuncsDepth;
       std::shared_ptr<ShaderDesc> _meshShaderDesc;
       std::shared_ptr<ShaderDesc> _meshShaderDescWind;
       std::shared_ptr<ShaderDesc> _meshShaderDescDepth;
@@ -255,7 +252,6 @@ namespace fly
     std::unique_ptr<GLSampler> _samplerAnisotropic;
     GLint _glVersionMajor, _glVersionMinor;
     unsigned _anisotropy = 1u;
-    std::unique_ptr<GLMaterialSetup> _materialSetup;
     void checkFramebufferStatus();
     void setColorBuffers(const RendertargetStack & rtts);
     RendertargetStack _rttHelper;

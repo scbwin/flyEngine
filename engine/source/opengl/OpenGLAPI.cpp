@@ -22,6 +22,7 @@
 #include <opengl/GLMaterialSetup.h>
 #include <opengl/GLShaderProgram.h>
 #include <fstream>
+#include <opengl/GLShaderSetup.h>
 
 namespace fly
 {
@@ -47,8 +48,7 @@ namespace fly
     _shaderDescCache(SoftwareCache<std::shared_ptr<GLShaderProgram>, std::shared_ptr<ShaderDesc>, const std::shared_ptr<GLShaderProgram>&, unsigned>(
       [this](const std::shared_ptr<GLShaderProgram>& shader, unsigned flags) {
     return std::make_shared<ShaderDesc>(shader, flags);
-  })),
-    _materialSetup(std::make_unique<GLMaterialSetup>())
+  }))
   {
     glewExperimental = true;
     auto result = glewInit();
@@ -519,25 +519,25 @@ namespace fly
     unsigned flag = FLAG::NONE;
     if (_diffuseMap) {
       flag |= FLAG::DIFFUSE_MAP;
-      _materialSetupFuncs.push_back_secure(api->_materialSetup->getDiffuseSetup());
+      _materialSetupFuncs.push_back_secure(GLMaterialSetup::setupDiffuse);
     }
     else {
-      _materialSetupFuncs.push_back_secure(api->_materialSetup->getDiffuseColorSetup());
+      _materialSetupFuncs.push_back_secure(GLMaterialSetup::setupDiffuseColor);
     }
     if (_alphaMap) {
       flag |= FLAG::ALPHA_MAP;
-      _materialSetupFuncs.push_back_secure(api->_materialSetup->getAlphaSetup());
-      _materialSetupFuncsDepth.push_back_secure(api->_materialSetup->getAlphaSetup());
+      _materialSetupFuncs.push_back_secure(GLMaterialSetup::setupAlpha);
+      _materialSetupFuncsDepth.push_back_secure(GLMaterialSetup::setupAlpha );
     }
     if (_normalMap && settings.getNormalMapping()) {
       flag |= FLAG::NORMAL_MAP;
-      _materialSetupFuncs.push_back_secure(api->_materialSetup->getNormalSetup());
+      _materialSetupFuncs.push_back_secure(GLMaterialSetup::setupNormal);
     }
     if (_normalMap && _heightMap && settings.getNormalMapping() && settings.getParallaxMapping()) {
       flag |= FLAG::HEIGHT_MAP;
-      _materialSetupFuncs.push_back_secure(api->_materialSetup->getHeightSetup());
+      _materialSetupFuncs.push_back_secure(GLMaterialSetup::setupHeight);
       if (settings.getReliefMapping()) {
-        _materialSetupFuncs.push_back_secure(api->_materialSetup->getReliefMappingSetup());
+        _materialSetupFuncs.push_back_secure(GLMaterialSetup::setupRelief);
       }
     }
     auto fragment_source = api->_shaderGenerator->createMeshFragmentShaderSource(flag, settings);
@@ -558,7 +558,7 @@ namespace fly
   void OpenGLAPI::MaterialDesc::setup() const
   {
     for (const auto& f : _materialSetupFuncs) {
-      f->setup(_activeShader, *this);
+      f(_activeShader, *this);
     }
     setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::ambientConstant()), _material->getKa());
     setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::diffuseConstant()), _material->getKd());
@@ -568,7 +568,7 @@ namespace fly
   void OpenGLAPI::MaterialDesc::setupDepth() const
   {
     for (const auto& f : _materialSetupFuncsDepth) {
-      f->setup(_activeShader, *this);
+      f(_activeShader, *this);
     }
   }
   const std::shared_ptr<OpenGLAPI::ShaderDesc>& OpenGLAPI::MaterialDesc::getMeshShaderDesc() const
@@ -614,55 +614,31 @@ namespace fly
   OpenGLAPI::ShaderDesc::ShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, unsigned flags) : _shader(shader)
   {
     if (flags & ShaderSetupFlags::VP) {
-      _setupFuncs.push_back([this](const GlobalShaderParams& params) {
-        setMatrix(_shader->uniformLocation(GLSLShaderGenerator::viewProjectionMatrix()), *params._VP);
-      });
+      _setupFuncs.push_back_secure(GLShaderSetup::setupVP);
     }
     if (flags & ShaderSetupFlags::LIGHTING) {
-      _setupFuncs.push_back([this](const GlobalShaderParams& params) {
-        setVector(_shader->uniformLocation(GLSLShaderGenerator::lightPositionWorld()), *params._lightPosWorld);
-        setVector(_shader->uniformLocation(GLSLShaderGenerator::lightIntensity()), *params._lightIntensity);
-        setVector(_shader->uniformLocation(GLSLShaderGenerator::cameraPositionWorld()), params._camPosworld);
-      });
+      _setupFuncs.push_back_secure(GLShaderSetup::setupLighting);
     }
     if (flags & ShaderSetupFlags::SHADOWS) {
-      _setupFuncs.push_back([this](const GlobalShaderParams& params) {
-        setScalar(_shader->uniformLocation(GLSLShaderGenerator::shadowSampler()), miscTexUnit0());
-        setMatrixArray(_shader->uniformLocation(GLSLShaderGenerator::worldToLightMatrices()), params._worldToLight.front(), static_cast<unsigned>(params._worldToLight.size()));
-        setScalar(_shader->uniformLocation(GLSLShaderGenerator::numfrustumSplits()), static_cast<int>(params._worldToLight.size()));
-        setScalarArray(_shader->uniformLocation(GLSLShaderGenerator::frustumSplits()), params._smFrustumSplits->front(), static_cast<unsigned>(params._smFrustumSplits->size()));
-        setScalar(_shader->uniformLocation(GLSLShaderGenerator::shadowMapBias()), params._smBias);
-        setScalar(_shader->uniformLocation(GLSLShaderGenerator::shadowDarkenFactor()), params._shadowDarkenFactor);
-      });
+      _setupFuncs.push_back_secure(GLShaderSetup::setupShadows);
     }
     if (flags & ShaderSetupFlags::TIME) {
-      _setupFuncs.push_back([this](const GlobalShaderParams& params) {
-        setScalar(_shader->uniformLocation(GLSLShaderGenerator::time()), params._time);
-      });
+      _setupFuncs.push_back_secure(GLShaderSetup::setupTime);
     }
     if (flags & ShaderSetupFlags::WIND) {
-      _setupFuncs.push_back([this](const GlobalShaderParams& params) {
-        setVector(_shader->uniformLocation(GLSLShaderGenerator::windDir()), params._windParams._dir);
-        setVector(_shader->uniformLocation(GLSLShaderGenerator::windMovement()), params._windParams._movement);
-        setScalar(_shader->uniformLocation(GLSLShaderGenerator::windFrequency()), params._windParams._frequency);
-        setScalar(_shader->uniformLocation(GLSLShaderGenerator::windStrength()), params._windParams._strength);
-      });
+      _setupFuncs.push_back_secure(GLShaderSetup::setupWind);
     }
     if (flags & ShaderSetupFlags::GAMMA) {
-      _setupFuncs.push_back([this](const GlobalShaderParams& params) {
-        setScalar(_shader->uniformLocation(GLSLShaderGenerator::gamma()), params._gamma);
-      });
+      _setupFuncs.push_back_secure(GLShaderSetup::setupGamma);
     }
     if (flags & ShaderSetupFlags::P_INVERSE) {
-      _setupFuncs.push_back([this](const GlobalShaderParams& params) {
-        setMatrix(_shader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverse()), inverse(params._projectionMatrix));
-      });
+      _setupFuncs.push_back_secure(GLShaderSetup::setupPInverse);
     }
   }
   void OpenGLAPI::ShaderDesc::setup(const GlobalShaderParams & params) const
   {
     for (const auto& f : _setupFuncs) {
-      f(params);
+      f(params, _shader.get());
     }
   }
   const std::shared_ptr<GLShaderProgram>& OpenGLAPI::ShaderDesc::getShader() const
