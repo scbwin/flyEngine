@@ -414,6 +414,8 @@ void GLWidget::initGame()
       ent->addComponent(std::make_shared<fly::RigidBody>(fly::Vec3f(3.f, 25 + i * 2.f, 0.f), mass, cube_shape, restitution));
       auto material = std::make_shared<fly::Material>();
       material->setDiffuseColor(fly::Vec3f(col_dist(gen), col_dist(gen), col_dist(gen)));
+      material->setIsReflective(true);
+      material->setNormalPath("assets/ground_normals.png");
       ent->addComponent(std::make_shared<fly::DynamicMeshRenderable>(m, material, ent->getComponent<fly::RigidBody>()));
       _rigidBodys.push_back(ent->getComponent<fly::RigidBody>());
       _rigidBodys.back()->getBtRigidBody()->setUserPointer(ent->getComponent<fly::RigidBody>().get());

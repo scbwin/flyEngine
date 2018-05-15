@@ -18,7 +18,7 @@ set (HEADER_FILES
 	${IDIR}/physics/ParticleSystem.h ${IDIR}/physics/PhysicsSystem.h ${IDIR}/Quadtree.h ${IDIR}/Octree.h ${IDIR}/Settings.h ${IDIR}/GraphicsSettings.h ${IDIR}/LevelOfDetail.h ${IDIR}/Timing.h ${IDIR}/renderer/Renderer.h
 	${IDIR}/StaticModelRenderable.h ${IDIR}/CameraController.h ${IDIR}/StaticMeshRenderable.h ${IDIR}/opengl/GLShaderInterface.h ${IDIR}/opengl/GLFramebuffer.h
 	${IDIR}/opengl/GLSLShaderGenerator.h ${IDIR}/SoftwareCache.h ${IDIR}/opengl/GLSampler.h ${IDIR}/WindParams.h ${IDIR}/WindParamsLocal.h
-	${IDIR}/SkydomeRenderable.h ${IDIR}/opengl/GLMaterialSetup.h ${IDIR}/opengl/GLShaderProgram.h ${IDIR}/opengl/GLShaderSource.h
+	${IDIR}/SkydomeRenderable.h ${IDIR}/opengl/GLMaterialSetup.h ${IDIR}/opengl/GLShaderProgram.h ${IDIR}/opengl/GLShaderSource.h ${IDIR}/FixedStackPOD.h
 )
 
 if(${BUILD_PHYSICS})

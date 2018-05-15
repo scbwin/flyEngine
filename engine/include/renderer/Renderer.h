@@ -160,7 +160,15 @@ namespace fly
       }
       else if (entity->getComponent<fly::DynamicMeshRenderable>() == component) {
         auto dmr = entity->getComponent<fly::DynamicMeshRenderable>();
-        _dynamicMeshRenderables[entity] = std::make_shared<DynamicMeshRenderable>(dmr, _api.createMaterial(dmr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(dmr->getMesh()), _api);
+        if (dmr->getMaterial()->isReflective()) {
+          auto dmrr = std::make_shared<DynamicMeshRenderableReflective>(dmr, _api.createMaterial(dmr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(dmr->getMesh()), _api, _viewMatrixInverse);
+          _gs->addListener(dmrr);
+          _dynamicMeshRenderables[entity] = dmrr;
+          dmrr->screenSpaceReflectionsChanged(_gs);
+        }
+        else {
+          _dynamicMeshRenderables[entity] = std::make_shared<DynamicMeshRenderable>(dmr, _api.createMaterial(dmr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(dmr->getMesh()), _api);
+        }
       }
       else if (entity->getComponent<Camera>() == component) {
         _camera = entity->getComponent<Camera>();
@@ -267,7 +275,6 @@ namespace fly
           _api.setDepthWriteEnabled<false>();
           _api.setDepthFunc<API::DepthFunc::EQUAL>();
         }
-        //_offScreenRendering ? _api.setRendertargets({ _lightingBuffer.get() }, _depthBuffer.get()) : _api.bindBackbuffer(_defaultRenderTarget);
         if (_offScreenRendering) {
           std::vector<typename API::RTT const *> rendertargets = { _lightingBuffer.get() };
           if (_gs->getScreenSpaceReflections()) {
@@ -419,6 +426,51 @@ namespace fly
         _api.renderMesh(_meshData, _dmr->getModelMatrix());
       }
       virtual AABB const * getAABBWorld() const override { return _dmr->getAABBWorld(); }
+    };
+    struct DynamicMeshRenderableReflective : public DynamicMeshRenderable, public GraphicsSettings::Listener
+    {
+      DynamicMeshRenderableReflective(const std::shared_ptr<fly::DynamicMeshRenderable>& dmr,
+        const std::shared_ptr<typename API::MaterialDesc>& material_desc, const typename API::MeshGeometryStorage::MeshData& mesh_data, API const & api, const Mat3f& view_matrix_inverse) :
+        DynamicMeshRenderable(dmr, material_desc, mesh_data, api),
+        _viewMatrixInverse(view_matrix_inverse)
+      {
+        fetchShaderDescs();
+      }
+      virtual void fetchShaderDescs() override
+      {
+        _shaderDesc = _materialDesc->getMeshShaderDescReflective().get();
+        _shaderDescDepth = _materialDesc->getMeshShaderDescDepth().get();
+      }
+      std::function<void()> _renderFunc;
+      Mat3f const & _viewMatrixInverse;
+      virtual void render() override
+      {
+        _renderFunc();
+      }
+      virtual void normalMappingChanged(GraphicsSettings const * gs) override {};
+      virtual void shadowsChanged(GraphicsSettings const * gs) override {};
+      virtual void shadowMapSizeChanged(GraphicsSettings const * gs) override {};
+      virtual void depthOfFieldChanged(GraphicsSettings const * gs) override {};
+      virtual void compositingChanged(GraphicsSettings const * gs) override {};
+      virtual void windAnimationsChanged(GraphicsSettings const * gs) override {};
+      virtual void anisotropyChanged(GraphicsSettings const * gs) override {};
+      virtual void cameraLerpingChanged(GraphicsSettings const * gs) override {};
+      virtual void gammaChanged(GraphicsSettings const * gs) override {};
+      virtual void screenSpaceReflectionsChanged(GraphicsSettings const * gs) override
+      {
+        if (gs->getScreenSpaceReflections()) {
+          _renderFunc = [this]() {
+            const auto& model_matrix = _dmr->getModelMatrix();
+            const auto& model_matrix_inverse = _dmr->getModelMatrixInverse();
+            _api.renderMesh(_meshData, model_matrix, model_matrix_inverse, model_matrix_inverse * _viewMatrixInverse);
+          };
+        }
+        else {
+          _renderFunc = [this]() {
+            DynamicMeshRenderable::render();
+          };
+        }
+      };
     };
     struct StaticMeshRenderable : public MeshRenderable
     {
