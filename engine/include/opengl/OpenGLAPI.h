@@ -14,7 +14,7 @@
 #include <opengl/GLVertexArray.h>
 #include <opengl/GLAppendBuffer.h>
 #include <opengl/GLShaderSource.h>
-#include <FixedStackPOD.h>
+#include <StackPOD.h>
 
 namespace fly
 {
@@ -100,7 +100,7 @@ namespace fly
     using RTT = GLTexture;
     using Depthbuffer = GLTexture;
     using Shadowmap = GLTexture;
-    using RendertargetStack = FixedStackPOD<RTT const *, _maxRendertargets>;
+    using RendertargetStack = StackPOD<RTT const *, _maxRendertargets>;
     /**
     * Geometry data for every single mesh that is added is stored in this structure.
     * There is one vertex array, one big vertex buffer and one big index buffer for the whole scene.
@@ -161,7 +161,7 @@ namespace fly
       const std::shared_ptr<GLShaderProgram>& getShader() const;
     private:
       std::shared_ptr<GLShaderProgram> _shader;
-      FixedStackPOD<void(*)(const GlobalShaderParams&, GLShaderProgram*), 10> _setupFuncs;
+      StackPOD<void(*)(const GlobalShaderParams&, GLShaderProgram*), 8> _setupFuncs;
     };
     class MaterialDesc
     {
@@ -184,8 +184,8 @@ namespace fly
     private:
       GLShaderProgram * & _activeShader;
       std::shared_ptr<Material> _material;
-      FixedStackPOD<void(*)(GLShaderProgram*, const OpenGLAPI::MaterialDesc&), 10> _materialSetupFuncs;
-      FixedStackPOD<void(*)(GLShaderProgram*, const OpenGLAPI::MaterialDesc&), 10> _materialSetupFuncsDepth;
+      StackPOD<void(*)(GLShaderProgram*, const OpenGLAPI::MaterialDesc&), 8> _materialSetupFuncs;
+      StackPOD<void(*)(GLShaderProgram*, const OpenGLAPI::MaterialDesc&), 8> _materialSetupFuncsDepth;
       std::shared_ptr<ShaderDesc> _meshShaderDesc;
       std::shared_ptr<ShaderDesc> _meshShaderDescWind;
       std::shared_ptr<ShaderDesc> _meshShaderDescDepth;

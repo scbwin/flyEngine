@@ -7,22 +7,22 @@
 namespace fly
 {
   template<typename T, size_t init_size = 1>
-  class FixedStackPOD
+  class StackPOD
   {
     static_assert(std::is_pod<T>::value, "T must be a POD type");
     static_assert(init_size > 0, "init_size must not be zero");
 
   public:
-    FixedStackPOD()
+    StackPOD()
     {
       reserve(init_size);
       clear();
     }
-    FixedStackPOD(const FixedStackPOD& other) = delete;
-    FixedStackPOD& operator=(const FixedStackPOD& other) = delete;
-    FixedStackPOD(FixedStackPOD&& other) = delete;
-    FixedStackPOD& operator=(FixedStackPOD&& other) = delete;
-    ~FixedStackPOD()
+    StackPOD(const StackPOD& other) = delete;
+    StackPOD& operator=(const StackPOD& other) = delete;
+    StackPOD(StackPOD&& other) = delete;
+    StackPOD& operator=(StackPOD&& other) = delete;
+    ~StackPOD()
     {
       std::free(_begin);
     }

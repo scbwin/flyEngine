@@ -8,7 +8,7 @@
 #include <sstream>
 #include <Settings.h>
 #include <Camera.h>
-#include <FixedStackPOD.h>
+#include <StackPOD.h>
 
 namespace fly
 {
@@ -17,6 +17,7 @@ namespace fly
   {
     // using TPtr = std::shared_ptr<T>;
     using TPtr = T * ;
+    using Stack = StackPOD<TPtr, 1024>;
   public:
     class Node
     {
@@ -70,7 +71,7 @@ namespace fly
           }
         }
       }
-      void getVisibleElements(FixedStackPOD<TPtr>& visible_elements, const Camera& camera) const
+      void getVisibleElements(Stack& visible_elements, const Camera& camera) const
       {
         auto result = camera.intersectFrustumAABB(_aabbWorld);
         if (result == IntersectionResult::INSIDE) {
@@ -98,7 +99,7 @@ namespace fly
         }
       }
 
-      void getAllElementsWithDetailCulling(FixedStackPOD<TPtr>& all_elements, const Camera& camera)
+      void getAllElementsWithDetailCulling(Stack& all_elements, const Camera& camera)
       {
         if (!_aabbWorld.isDetail(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
           for (const auto& e : _elements) {
@@ -114,7 +115,7 @@ namespace fly
         }
       }
 
-      void getVisibleElementsWithDetailCulling(FixedStackPOD<TPtr>& visible_elements, const Camera& camera) const
+      void getVisibleElementsWithDetailCulling(Stack& visible_elements, const Camera& camera) const
       {
         if (!_aabbWorld.isDetail(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
           auto result = camera.intersectFrustumAABB(_aabbWorld);
@@ -144,7 +145,7 @@ namespace fly
           }
         }
       }
-      void getAllElements(FixedStackPOD<TPtr>& all_elements) const
+      void getAllElements(Stack& all_elements) const
       {
       //  all_elements.insert(all_elements.end(), _elements.begin(), _elements.end());
         for (const auto& e : _elements) {
@@ -278,17 +279,17 @@ namespace fly
     {
       _root->print(0);
     }
-    void getVisibleElements(const Camera& camera, FixedStackPOD<TPtr>& stack) const
+    void getVisibleElements(const Camera& camera, Stack& stack) const
     {
       stack.clear();
       _root->getVisibleElements(stack, camera);
     }
-    void getVisibleElementsWithDetailCulling(const Camera& camera, FixedStackPOD<TPtr>& stack) const
+    void getVisibleElementsWithDetailCulling(const Camera& camera, Stack& stack) const
     {
       stack.clear();
       _root->getVisibleElementsWithDetailCulling(stack, camera);
     }
-    void getAllElements(FixedStackPOD<TPtr>& stack) const
+    void getAllElements(Stack& stack) const
     {
       stack.clear();
       _root->getAllElements(stack);

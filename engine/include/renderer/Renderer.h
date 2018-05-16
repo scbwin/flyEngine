@@ -22,7 +22,7 @@
 #include <GraphicsSettings.h>
 #include <Timing.h>
 #include <SkydomeRenderable.h>
-#include <FixedStackPOD.h>
+#include <StackPOD.h>
 
 #define RENDERER_STATS 1
 
@@ -231,7 +231,7 @@ namespace fly
         _api.setCullMode<API::CullMode::BACK>();
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
         _api.setDepthWriteEnabled<true>();
-        _gsp._lightPosWorld = &_directionalLight->_pos;
+        _gsp._lightPosWorld = &_directionalLight->getPosition();
         _gsp._lightIntensity = &_directionalLight->getIntensity();
         _gsp._time = time;
         _gsp._exposure = _gs->getExposure();
@@ -259,11 +259,11 @@ namespace fly
           _renderTargets.clear();
           _api.setRendertargets(_renderTargets, _depthBuffer.get());
           _api.clearRendertarget(false, true, false);
-          std::map<typename API::ShaderDesc const *, std::map<typename API::MaterialDesc const *, std::vector<MeshRenderable*>>> display_list;
+          _displayList.clear();
           for (auto m : _visibleMeshes) {
-            display_list[m->_shaderDescDepth][m->_materialDesc.get()].push_back(m);
+            _displayList[m->_shaderDescDepth][m->_materialDesc.get()].push_back_secure(m);
           }
-          for (const auto& e : display_list) {
+          for (const auto& e : _displayList) {
             _api.setupShaderDesc(*e.first, _gsp);
             for (const auto& e1 : e.second) {
               e1.first->setupDepth();
@@ -596,7 +596,8 @@ namespace fly
     std::map<Entity*, std::shared_ptr<StaticMeshRenderable>> _staticMeshRenderables;
     std::map<Entity*, std::shared_ptr<DynamicMeshRenderable>> _dynamicMeshRenderables;
     std::shared_ptr<SkydomeRenderable> _skydomeRenderable;
-    FixedStackPOD<MeshRenderable*> _visibleMeshes;
+    StackPOD<MeshRenderable*, 1024> _visibleMeshes;
+    std::map<typename API::ShaderDesc const *, std::map<typename API::MaterialDesc const *, StackPOD<MeshRenderable*, 1024>>> _displayList;
     using BVH = Quadtree<MeshRenderable>;
     std::unique_ptr<BVH> _bvh;
     void renderQuadtreeAABBs()
@@ -631,15 +632,15 @@ namespace fly
 #if RENDERER_STATS
       Timing timing;
 #endif
-      std::map<typename API::ShaderDesc const *, std::map<typename API::MaterialDesc const *, std::vector<MeshRenderable*>>> display_list;
+      _displayList.clear();
       for (auto m : _visibleMeshes) {
-        display_list[m->_shaderDesc][m->_materialDesc.get()].push_back(m);
+        _displayList[m->_shaderDesc][m->_materialDesc.get()].push_back_secure(m);
       }
 #if RENDERER_STATS
       _stats._sceneMeshGroupingMicroSeconds = timing.duration<std::chrono::microseconds>();
       timing.start();
 #endif
-      for (const auto& e : display_list) {
+      for (const auto& e : _displayList) {
         _api.setupShaderDesc(*e.first, _gsp);
         for (const auto& e1 : e.second) {
           e1.first->setup();
@@ -674,9 +675,9 @@ namespace fly
 #if RENDERER_STATS
       timing.start();
 #endif
-      std::map<typename API::ShaderDesc const *, std::map<typename API::MaterialDesc const *, std::vector<MeshRenderable*>>> sm_display_list;
+      _displayList.clear();
       for (auto m : _visibleMeshes) {
-        sm_display_list[m->_shaderDescDepth][m->_materialDesc.get()].push_back(m);
+        _displayList[m->_shaderDescDepth][m->_materialDesc.get()].push_back_secure(m);
       }
 #if RENDERER_STATS
       _stats._shadowMapGroupingMicroSeconds = timing.duration<std::chrono::microseconds>();
@@ -689,7 +690,7 @@ namespace fly
         _api.setRendertargets(_renderTargets, _shadowMap.get(), i);
         _api.clearRendertarget(false, true, false);
         _gsp._VP = &_gsp._worldToLight[i];
-        for (const auto& e : sm_display_list) {
+        for (const auto& e : _displayList) {
           _api.setupShaderDesc(*e.first, _gsp);
           for (const auto& e1 : e.second) {
             e1.first->setupDepth();

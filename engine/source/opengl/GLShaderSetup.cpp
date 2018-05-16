@@ -19,7 +19,7 @@ namespace fly
   void GLShaderSetup::setupShadows(const GlobalShaderParams & params, GLShaderProgram* shader)
   {
     setScalar(shader->uniformLocation(GLSLShaderGenerator::shadowSampler()), OpenGLAPI::miscTexUnit0());
-    setMatrixArray(shader->uniformLocation(GLSLShaderGenerator::worldToLightMatrices()), params._worldToLight.front(), static_cast<unsigned>(params._worldToLight.size()));
+    setMatrixArray(shader->uniformLocation(GLSLShaderGenerator::worldToLightMatrices()), *params._worldToLight.begin(), static_cast<unsigned>(params._worldToLight.size()));
     setScalar(shader->uniformLocation(GLSLShaderGenerator::numfrustumSplits()), static_cast<int>(params._worldToLight.size()));
     setScalarArray(shader->uniformLocation(GLSLShaderGenerator::frustumSplits()), params._smFrustumSplits->front(), static_cast<unsigned>(params._smFrustumSplits->size()));
     setScalar(shader->uniformLocation(GLSLShaderGenerator::shadowMapBias()), params._smBias);

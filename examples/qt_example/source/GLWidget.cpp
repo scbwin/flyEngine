@@ -393,6 +393,8 @@ void GLWidget::initGame()
       float mass = 0.02f;
       float restitution = 1.f;
       auto mat = std::make_shared<fly::Material>();
+      mat->setIsReflective(true);
+      mat->setNormalPath("assets/ground_normals.png");
       mat->setDiffuseColor(fly::Vec3f(col_dist(gen), col_dist(gen), col_dist(gen)));
       auto ent = _engine->getEntityManager()->createEntity();
       ent->addComponent(std::make_shared<fly::RigidBody>(fly::Vec3f(0.f, 30.f + i * 2.f, 0.f), mass, col_shape, restitution));

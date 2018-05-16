@@ -9,7 +9,7 @@
 
 namespace fly
 {
-  Light::Light(const Vec3f & color, const Vec3f& pos, const Vec3f& target) : _color(color), _pos(pos), _target(target)
+  Light::Light(const Vec3f & intensity, const Vec3f& pos, const Vec3f& target) : _intensity(intensity), _pos(pos), _target(target)
   {
   }
 
@@ -21,6 +21,36 @@ namespace fly
   void Light::setIntensity(const Vec3f& i)
   {
     _intensity = i;
+  }
+
+  const Vec3f & Light::getTarget() const
+  {
+    return _target;
+  }
+
+  void Light::setTarget(const Vec3f & target)
+  {
+    _target = target;
+  }
+
+  const Vec3f & Light::getPosition() const
+  {
+    return _pos;
+  }
+
+  void Light::setPosition(const Vec3f & position)
+  {
+    _pos = position;
+  }
+
+  float Light::getLensflareWeight() const
+  {
+    return _lensFlareWeight;
+  }
+
+  float Light::getLensflareRefSamplesPassed() const
+  {
+    return _lensFlareRefSamplesPassed;
   }
 
   SpotLight::SpotLight(const Vec3f& color, const Vec3f& pos, const Vec3f& target, float near, float far, float penumbra_degrees, float umbra_degrees) :
@@ -45,7 +75,7 @@ namespace fly
   }
 
   Mat4f DirectionalLight::getViewProjectionMatrices(float aspect_ratio, float near_plane, float fov_degrees, const Mat4f& view_matrix_inverse,
-    const Mat4f& view_matrix_light, float shadow_map_size, const std::vector<float>& frustum_splits, std::vector<Mat4f>& vp, ZNearMapping z_near_mapping)
+    const Mat4f& view_matrix_light, float shadow_map_size, const std::vector<float>& frustum_splits, StackPOD<Mat4f, 4>& vp, ZNearMapping z_near_mapping)
   {
     vp.clear();
     Vec3f global_min(std::numeric_limits<float>::max());
@@ -81,7 +111,7 @@ namespace fly
       bb_min = floor(bb_min / units_per_texel) * units_per_texel;
       bb_max = ceil(bb_max / units_per_texel) * units_per_texel;
 
-      vp.push_back(MathHelpers::getProjectionMatrixOrtho(bb_min, bb_max, z_near_mapping) * view_matrix_light);
+      vp.push_back_secure(MathHelpers::getProjectionMatrixOrtho(bb_min, bb_max, z_near_mapping) * view_matrix_light);
 
       global_min = minimum(global_min, bb_min);
       global_max = maximum(global_max, bb_max);

@@ -6,6 +6,7 @@
 #include <memory>
 #include "Component.h"
 #include <renderer/RenderParams.h>
+#include <StackPOD.h>
 
 namespace fly
 {
@@ -16,15 +17,20 @@ namespace fly
   {
   public:
     Light(const Vec3f& color, const Vec3f& pos, const Vec3f& target);
-    Vec3f _color;
-    Vec3f _target;
-    Vec3f _pos;
-    float _lensFlareWeight = 1.f;
-    float _lensFlareRefSamplesPassed = 100.f;
     const Vec3f& getIntensity() const;
     void setIntensity(const Vec3f& i);
-  private:
+    const Vec3f& getTarget() const;
+    void setTarget(const Vec3f& target);
+    const Vec3f& getPosition() const;
+    void setPosition(const Vec3f& position);
+    float getLensflareWeight() const;
+    float getLensflareRefSamplesPassed() const;
+  protected:
+    float _lensFlareWeight = 1.f;
+    float _lensFlareRefSamplesPassed = 100.f;
     Vec3f _intensity = Vec3f(1.f);
+    Vec3f _target;
+    Vec3f _pos;
   };
 
   class DirectionalLight : public Light
@@ -33,7 +39,7 @@ namespace fly
     DirectionalLight(const Vec3f& color, const Vec3f& pos, const Vec3f& target);
     float _ambientPower = 0.3f;
     Mat4f getViewProjectionMatrices(float aspect_ratio, float near_plane, float fov_degrees, const Mat4f& view_matrix_inverse,
-      const Mat4f& view_matrix_light, float shadow_map_size, const std::vector<float>& frustum_splits, std::vector<Mat4f>& vp, ZNearMapping z_near_mapping);
+      const Mat4f& view_matrix_light, float shadow_map_size, const std::vector<float>& frustum_splits, StackPOD<Mat4f, 4>& vp, ZNearMapping z_near_mapping);
     Mat4f getViewMatrix();
   };
 

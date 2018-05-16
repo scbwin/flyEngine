@@ -4,6 +4,7 @@
 #include <math/FlyMath.h>
 #include <vector>
 #include <WindParams.h>
+#include <StackPOD.h>
 
 namespace fly
 {
@@ -18,7 +19,7 @@ namespace fly
     Mat4f _projectionMatrix;
     Mat4f _viewMatrix;
     Mat4f const * _VP;
-    std::vector<Mat4f> _worldToLight;
+    StackPOD<Mat4f, 4> _worldToLight;
     std::vector<float> const * _smFrustumSplits;
     float _smBias;
     float _shadowDarkenFactor;
