@@ -333,7 +333,10 @@ void GLWidget::initGame()
     unsigned index = 0;
     for (const auto& mesh : sponza_model->getMeshes()) {
       auto entity = _engine->getEntityManager()->createEntity();
-      bool has_wind = index >= 44 && index <= 62;
+      bool has_wind = index >= 44 && index <= 61;
+      if (has_wind) {
+       // std::cout << mesh->getMaterial()->getDiffusePath() << " " << index << std::endl;
+      }
       fly::Vec3f aabb_offset = has_wind ? fly::Vec3f(0.f, 0.f, 0.25f) : fly::Vec3f(0.f);
       //fly::Vec3f translation(0.f);
 #if !DELETE_CURTAIN

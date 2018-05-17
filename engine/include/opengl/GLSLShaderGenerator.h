@@ -14,23 +14,13 @@ namespace fly
   {
   public:
     GLSLShaderGenerator();
-    enum MeshRenderFlag : unsigned
-    {
-      NONE = 0,
-      DIFFUSE_MAP = 1, 
-      NORMAL_MAP = 2, 
-      ALPHA_MAP = 4,
-      HEIGHT_MAP = 8,
-      WIND = 16,
-      REFLECTIVE = 32
-    };
-    GLShaderSource createMeshVertexShaderSource(unsigned flags, const GraphicsSettings& settings);
-    GLShaderSource createMeshFragmentShaderSource(unsigned flags, const GraphicsSettings& settings);
-    GLShaderSource createMeshVertexShaderDepthSource(unsigned flags, const GraphicsSettings& settings);
-    GLShaderSource createMeshFragmentShaderDepthSource(unsigned flags, const GraphicsSettings& settings);
-    void createCompositeShaderSource(const GraphicsSettings& gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src);
-    void createBlurShaderSource(unsigned flags, const GraphicsSettings& gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src);
-    void createSSRShaderSource(const GraphicsSettings& gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src);
+    GLShaderSource createMeshVertexShaderSource(unsigned flags, const GraphicsSettings& settings) const;
+    GLShaderSource createMeshFragmentShaderSource(unsigned flags, const GraphicsSettings& settings) const;
+    GLShaderSource createMeshVertexShaderDepthSource(unsigned flags, const GraphicsSettings& settings)const;
+    GLShaderSource createMeshFragmentShaderDepthSource(unsigned flags, const GraphicsSettings& settings)const;
+    void createCompositeShaderSource(const GraphicsSettings& gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src)const;
+    void createBlurShaderSource(unsigned flags, const GraphicsSettings& gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src)const;
+    void createSSRShaderSource(const GraphicsSettings& gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src)const;
     static inline constexpr const char* diffuseSampler() { return "ts_d"; };
     static inline constexpr const char* alphaSampler() { return "ts_a"; };
     static inline constexpr const char* normalSampler() { return "ts_n"; };

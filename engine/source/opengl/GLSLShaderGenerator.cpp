@@ -1,6 +1,7 @@
 #include <opengl/GLSLShaderGenerator.h>
 #include <Settings.h>
 #include <GraphicsSettings.h>
+#include <Flags.h>
 
 namespace fly
 {
@@ -24,10 +25,10 @@ uniform vec3 " + std::string(bbMax()) + "; // AABB max xz\n" + std::string(noise
   pos_world.xz += " + std::string(windDir()) + " * (noise(pos_world.xz * " + std::string(windFrequency()) + " + " + std::string(time()) + " * " + std::string(windMovement()) + ") * 2.f - 1.f) * " + std::string(windStrength()) + " * weight;\n\
   pos_world.xz = clamp(pos_world.xz, " + std::string(bbMin()) + ".xz, " + std::string(bbMax()) + ".xz);\n";
   }
-  GLShaderSource GLSLShaderGenerator::createMeshVertexShaderSource(unsigned flags, const GraphicsSettings & settings)
+  GLShaderSource GLSLShaderGenerator::createMeshVertexShaderSource(unsigned flags, const GraphicsSettings & settings)const
   {
     std::string key = "vs";
-    if (flags & MeshRenderFlag::WIND) {
+    if (flags & MeshRenderFlag::MR_WIND) {
       key += "_wind";
     }
     key += ".glsl";
@@ -37,22 +38,22 @@ uniform vec3 " + std::string(bbMax()) + "; // AABB max xz\n" + std::string(noise
     src._type = GL_VERTEX_SHADER;
     return src;
   }
-  GLShaderSource GLSLShaderGenerator::createMeshFragmentShaderSource(unsigned flags, const GraphicsSettings& settings)
+  GLShaderSource GLSLShaderGenerator::createMeshFragmentShaderSource(unsigned flags, const GraphicsSettings& settings)const
   {
     std::string key = "fs";
-    if (flags & MeshRenderFlag::DIFFUSE_MAP) {
+    if (flags & MeshRenderFlag::MR_DIFFUSE_MAP) {
       key += "_albedo";
     }
-    if (flags & MeshRenderFlag::NORMAL_MAP) {
+    if (flags & MeshRenderFlag::MR_NORMAL_MAP) {
       key += "_normal";
-      if (flags & MeshRenderFlag::HEIGHT_MAP) {
+      if (flags & MeshRenderFlag::MR_HEIGHT_MAP) {
         key += "_parallax";
       }
     }
-    if (flags & MeshRenderFlag::ALPHA_MAP) {
+    if (flags & MeshRenderFlag::MR_ALPHA_MAP) {
       key += "_alpha";
     }
-    if (flags & MeshRenderFlag::REFLECTIVE) {
+    if (flags & MeshRenderFlag::MR_REFLECTIVE) {
       key += "_reflective";
     }
     if (settings.getShadows() || settings.getShadowsPCF()) {
@@ -71,10 +72,10 @@ uniform vec3 " + std::string(bbMax()) + "; // AABB max xz\n" + std::string(noise
     src._type = GL_FRAGMENT_SHADER;
     return src;
   }
-  GLShaderSource GLSLShaderGenerator::createMeshVertexShaderDepthSource(unsigned flags, const GraphicsSettings & settings)
+  GLShaderSource GLSLShaderGenerator::createMeshVertexShaderDepthSource(unsigned flags, const GraphicsSettings & settings)const
   {
     std::string key = "vs_depth";
-    if (flags & MeshRenderFlag::WIND) {
+    if (flags & MeshRenderFlag::MR_WIND) {
       key += "_wind";
     }
     key += ".glsl";
@@ -84,10 +85,10 @@ uniform vec3 " + std::string(bbMax()) + "; // AABB max xz\n" + std::string(noise
     src._type = GL_VERTEX_SHADER;
     return src;
   }
-  GLShaderSource GLSLShaderGenerator::createMeshFragmentShaderDepthSource(unsigned flags, const GraphicsSettings & settings)
+  GLShaderSource GLSLShaderGenerator::createMeshFragmentShaderDepthSource(unsigned flags, const GraphicsSettings & settings)const
   {
     std::string key = "fs_depth";
-    if (flags & MeshRenderFlag::ALPHA_MAP) {
+    if (flags & MeshRenderFlag::MR_ALPHA_MAP) {
       key += "_alpha";
     }
     key += ".glsl";
@@ -97,7 +98,7 @@ uniform vec3 " + std::string(bbMax()) + "; // AABB max xz\n" + std::string(noise
     src._type = GL_FRAGMENT_SHADER;
     return src;
   }
-  void GLSLShaderGenerator::createCompositeShaderSource(const GraphicsSettings & gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src)
+  void GLSLShaderGenerator::createCompositeShaderSource(const GraphicsSettings & gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src)const
   {
     vertex_src = _compositeVertexSource;
     std::string key = "fs_composite";
@@ -115,7 +116,7 @@ uniform vec3 " + std::string(bbMax()) + "; // AABB max xz\n" + std::string(noise
     fragment_src._source = createCompositeShaderSource(gs);
     fragment_src._type = GL_FRAGMENT_SHADER;
   }
-  void GLSLShaderGenerator::createBlurShaderSource(unsigned flags, const GraphicsSettings & gs, GLShaderSource & vertex_src, GLShaderSource & fragment_src)
+  void GLSLShaderGenerator::createBlurShaderSource(unsigned flags, const GraphicsSettings & gs, GLShaderSource & vertex_src, GLShaderSource & fragment_src)const
   {
     vertex_src = _compositeVertexSource;
     fragment_src._source = "#version 330 \n\
@@ -138,7 +139,7 @@ const float blur_weights [" + std::to_string(gs.getBlurWeights().size()) + "] = 
     fragment_src._key = "fs_blur";
     fragment_src._type = GL_FRAGMENT_SHADER;
   }
-  void GLSLShaderGenerator::createSSRShaderSource(const GraphicsSettings & gs, GLShaderSource & vertex_src, GLShaderSource & fragment_src)
+  void GLSLShaderGenerator::createSSRShaderSource(const GraphicsSettings & gs, GLShaderSource & vertex_src, GLShaderSource & fragment_src)const
   {
     vertex_src = _compositeVertexSource;
     fragment_src._source = "#version 330 \n\
@@ -208,13 +209,13 @@ out vec3 bitangent_local;\n";
     if (settings.depthPrepassEnabled()) {
       shader_src += "invariant gl_Position; \n";
     }
-    if (flags & MeshRenderFlag::WIND) {
+    if (flags & MeshRenderFlag::MR_WIND) {
       shader_src += _windParamString;
     }
     shader_src += "void main()\n\
 {\n\
   pos_world = (M * vec4(position, 1.f)).xyz;\n";
-    if (flags & MeshRenderFlag::WIND) {
+    if (flags & MeshRenderFlag::MR_WIND) {
       shader_src += _windCodeString;
     }
     shader_src += "  gl_Position = VP * vec4(pos_world, 1.f);\n\
@@ -240,7 +241,7 @@ uniform mat4 " + std::string(viewProjectionMatrix()) + ";\n";
 void main()\n\
 {\n";
     shader_src += "  vec4 pos_world = M * vec4(position, 1.f);\n";
-    if (flags & MeshRenderFlag::WIND) {
+    if (flags & MeshRenderFlag::MR_WIND) {
       shader_src += _windCodeString;
     }
     shader_src += "  gl_Position = VP * pos_world;\n";
@@ -250,7 +251,7 @@ void main()\n\
   }
   std::string GLSLShaderGenerator::createMeshFragmentSource(unsigned flags, const GraphicsSettings& settings) const
   {
-    bool tangent_space = (flags & NORMAL_MAP) || (flags & HEIGHT_MAP);
+    bool tangent_space = (flags & MR_NORMAL_MAP) || (flags & MR_HEIGHT_MAP);
     std::string shader_src = "#version 330 \n\
 layout(location = 0) out vec3 fragmentColor;\n";
     if (settings.getScreenSpaceReflections()) {
@@ -296,7 +297,7 @@ void main()\n\
       shader_src += "  mat3 world_to_tangent = transpose(mat3(normalize(" + std::string(modelMatrixInverse()) + " * tangent_local), normalize(" + std::string(modelMatrixInverse()) + " * bitangent_local), normal_world));\n";
     }
     shader_src += "  vec3 e =" + std::string(tangent_space ? " world_to_tangent *" : "") + " normalize(" + std::string(cameraPositionWorld()) + " - pos_world); \n";
-    if ((flags & NORMAL_MAP) && (flags & HEIGHT_MAP)) { // Parallax only in combination with normal mapping
+    if ((flags & MR_NORMAL_MAP) && (flags & MR_HEIGHT_MAP)) { // Parallax only in combination with normal mapping
       if (!settings.getReliefMapping()) {
         shader_src += "  uv -= e.xy / e.z * (1.f - textureLod(" + std::string(heightSampler()) + ", uv, 0.f).r) * " + std::string(parallaxHeightScale()) + "; \n";
       }
@@ -323,14 +324,14 @@ void main()\n\
   }\n";
       }
     }
-    if (flags & MeshRenderFlag::ALPHA_MAP) {
+    if (flags & MeshRenderFlag::MR_ALPHA_MAP) {
       shader_src += "  if (texture(" + std::string(alphaSampler()) + ", uv).r < 0.5) {\n\
     discard;\n\
     return;\n\
   }\n";
     }
-    shader_src += "  vec3 l = " + std::string((((flags & HEIGHT_MAP) || (flags & NORMAL_MAP)) ? "world_to_tangent *" : "")) + " normalize(" + std::string(lightPositionWorld()) + " - pos_world);\n";
-    if (flags & MeshRenderFlag::NORMAL_MAP) {
+    shader_src += "  vec3 l = " + std::string((((flags & MR_HEIGHT_MAP) || (flags & MR_NORMAL_MAP)) ? "world_to_tangent *" : "")) + " normalize(" + std::string(lightPositionWorld()) + " - pos_world);\n";
+    if (flags & MeshRenderFlag::MR_NORMAL_MAP) {
       shader_src += "  vec3 normal_ts = normalize((texture(" + std::string(normalSampler()) + ", uv).xyz * 2.f - 1.f));\n\
   float diffuse = clamp(dot(l, normal_ts), 0.f, 1.f);\n\
   float specular = pow(clamp(dot(normalize(e + l), normal_ts), 0.f, 1.f), " + std::string(specularExponent()) + ");\n";
@@ -340,7 +341,7 @@ void main()\n\
   float specular = pow(clamp(dot(normalize(e + l), normal_world), 0.f, 1.f), " + std::string(specularExponent()) + ");\n";
     }
 
-    if (flags & MeshRenderFlag::DIFFUSE_MAP) {
+    if (flags & MeshRenderFlag::MR_DIFFUSE_MAP) {
       shader_src += "  vec3 albedo = texture(" + std::string(diffuseSampler()) + ", uv).rgb;\n";
     }
     else {
@@ -368,7 +369,7 @@ void main()\n\
       }
     }
     if (settings.getScreenSpaceReflections()) {
-      if (flags & REFLECTIVE) {
+      if (flags & MR_REFLECTIVE) {
         if (tangent_space) {
           shader_src += "  mat3 tangent_to_view = mat3(normalize(" + std::string(modelViewInverse()) + " * tangent_local), normalize(" + std::string(modelViewInverse()) + " * bitangent_local), normalize(" + std::string(modelViewInverse()) + " * normal_local));\n\
   viewSpaceNormal = normalize(tangent_to_view * normal_ts);\n";
@@ -388,12 +389,12 @@ void main()\n\
   {
     std::string shader_src = "#version 330\n\
 in vec2 uv_out;\n";
-    if (flags & ALPHA_MAP) {
+    if (flags & MR_ALPHA_MAP) {
       shader_src += "uniform sampler2D " + std::string(alphaSampler()) + ";\n";
     }
     shader_src += "void main()\n\
 {\n";
-    if (flags & ALPHA_MAP) {
+    if (flags & MR_ALPHA_MAP) {
       shader_src += "  if (texture(" + std::string(alphaSampler()) + ", uv_out).r < 0.5f){\n\
     discard;\n\
   }\n";

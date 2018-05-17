@@ -17,7 +17,7 @@ namespace fly
   {
     // using TPtr = std::shared_ptr<T>;
     using TPtr = T * ;
-    using Stack = StackPOD<TPtr, 1024>;
+    using Stack = StackPOD<TPtr, 4096>;
   public:
     class Node
     {

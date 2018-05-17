@@ -15,6 +15,8 @@
 #include <opengl/GLAppendBuffer.h>
 #include <opengl/GLShaderSource.h>
 #include <StackPOD.h>
+#include <opengl/GLMaterialSetup.h>
+#include <opengl/GLSLShaderGenerator.h>
 
 namespace fly
 {
@@ -100,7 +102,11 @@ namespace fly
     using RTT = GLTexture;
     using Depthbuffer = GLTexture;
     using Shadowmap = GLTexture;
+    using Texture = GLTexture;
+    using Shader = GLShaderProgram;
     using RendertargetStack = StackPOD<RTT const *, _maxRendertargets>;
+    using ShaderGenerator = GLSLShaderGenerator;
+    using MaterialSetup = GLMaterialSetup;
     /**
     * Geometry data for every single mesh that is added is stored in this structure.
     * There is one vertex array, one big vertex buffer and one big index buffer for the whole scene.
@@ -139,17 +145,6 @@ namespace fly
     static constexpr const int miscTexUnit1() { return 5; }
     static constexpr const int miscTexUnit2() { return 6; }
     static constexpr const int miscTexUnit3() { return 7; }
-    enum ShaderSetupFlags : unsigned
-    {
-      NONE = 0,
-      SHADOWS = 1,
-      TIME = 2,
-      WIND = 4,
-      VP = 8,
-      LIGHTING = 16,
-      GAMMA = 32,
-      P_INVERSE = 64
-    };
     /**
     * Class that is used to only send uniform data to the GPU that is actually needed.
     */
@@ -162,39 +157,6 @@ namespace fly
     private:
       std::shared_ptr<GLShaderProgram> _shader;
       StackPOD<void(*)(const GlobalShaderParams&, GLShaderProgram*), 8> _setupFuncs;
-    };
-    class MaterialDesc
-    {
-    public:
-      MaterialDesc(const std::shared_ptr<Material>& material, OpenGLAPI* api, const GraphicsSettings& settings);
-      void create(OpenGLAPI* api, const GraphicsSettings& settings);
-      void setup() const;
-      void setupDepth() const;
-      using ShaderProgram = GLShaderProgram;
-      const std::shared_ptr<ShaderDesc>& getMeshShaderDesc() const;
-      const std::shared_ptr<ShaderDesc>& getMeshShaderDescWind() const;
-      const std::shared_ptr<ShaderDesc>& getMeshShaderDescReflective() const;
-      const std::shared_ptr<ShaderDesc>& getMeshShaderDescDepth() const;
-      const std::shared_ptr<ShaderDesc>& getMeshShaderDescDepthWind() const;
-      const std::shared_ptr<Material>& getMaterial() const;
-      const std::shared_ptr<GLTexture>& diffuseMap() const;
-      const std::shared_ptr<GLTexture>& normalMap() const;
-      const std::shared_ptr<GLTexture>& alphaMap() const;
-      const std::shared_ptr<GLTexture>& heightMap() const;
-    private:
-      GLShaderProgram * & _activeShader;
-      std::shared_ptr<Material> _material;
-      StackPOD<void(*)(GLShaderProgram*, const OpenGLAPI::MaterialDesc&), 8> _materialSetupFuncs;
-      StackPOD<void(*)(GLShaderProgram*, const OpenGLAPI::MaterialDesc&), 8> _materialSetupFuncsDepth;
-      std::shared_ptr<ShaderDesc> _meshShaderDesc;
-      std::shared_ptr<ShaderDesc> _meshShaderDescWind;
-      std::shared_ptr<ShaderDesc> _meshShaderDescDepth;
-      std::shared_ptr<ShaderDesc> _meshShaderDescWindDepth;
-      std::shared_ptr<ShaderDesc> _meshShaderDescReflective;
-      std::shared_ptr<GLTexture> const _diffuseMap;
-      std::shared_ptr<GLTexture> const _normalMap;
-      std::shared_ptr<GLTexture> const _alphaMap;
-      std::shared_ptr<GLTexture> const _heightMap;
     };
     void beginFrame() const;
     void bindShader(GLShaderProgram* shader);
@@ -217,8 +179,8 @@ namespace fly
     void composite(const RTT& lighting_buffer, const GlobalShaderParams& params, const RTT& dof_buffer, const Depthbuffer& depth_buffer);
     void endFrame() const;
     void setAnisotropy(unsigned anisotropy);
-    std::shared_ptr<GLTexture> createTexture(const std::string& path);
-    std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material, const GraphicsSettings& settings);
+    std::shared_ptr<OpenGLAPI::Texture> createTexture(const std::string& path);
+    //std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material, const GraphicsSettings& settings);
     std::shared_ptr<GLShaderProgram> createShader(GLShaderSource& vs, GLShaderSource& fs, GLShaderSource& gs = GLShaderSource());
     std::shared_ptr<ShaderDesc> createShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, unsigned flags);
     std::unique_ptr<RTT> createRenderToTexture(const Vec2u& size, TexFilter filter);
@@ -229,14 +191,15 @@ namespace fly
     void createBlurShader(const GraphicsSettings& gs);
     void createCompositeShader(const GraphicsSettings& gs);
     void createScreenSpaceReflectionsShader(const GraphicsSettings& gs);
-    std::vector<std::shared_ptr<Material>> getAllMaterials();
+   // std::vector<std::shared_ptr<Material>> getAllMaterials();
     const std::shared_ptr<ShaderDesc>& getSkyboxShaderDesc() const;
     void writeShadersToDisk() const;
+    const ShaderGenerator& getShaderGenerator() const;
+    Shader*& getActiveShader();
   private:
     GLShaderProgram * _activeShader;
-    SoftwareCache<std::string, std::shared_ptr<GLTexture>, const std::string& > _textureCache;
     SoftwareCache<std::string, std::shared_ptr<GLShaderProgram>, GLShaderSource&, GLShaderSource&, GLShaderSource&> _shaderCache;
-    SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
+   // SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
     SoftwareCache<std::shared_ptr<GLShaderProgram>, std::shared_ptr<ShaderDesc>, const std::shared_ptr<GLShaderProgram>&, unsigned> _shaderDescCache;
     std::shared_ptr<GLShaderProgram> _aabbShader;
     std::unique_ptr<ShaderDesc> _compositeShaderDesc;
@@ -248,7 +211,7 @@ namespace fly
     std::shared_ptr<GLVertexArray> _vaoAABB;
     std::shared_ptr<GLBuffer> _vboAABB;
     std::unique_ptr<GLFramebuffer> _offScreenFramebuffer;
-    std::unique_ptr<GLSLShaderGenerator> _shaderGenerator;
+    ShaderGenerator _shaderGenerator;
     std::unique_ptr<GLSampler> _samplerAnisotropic;
     GLint _glVersionMajor, _glVersionMinor;
     unsigned _anisotropy = 1u;
