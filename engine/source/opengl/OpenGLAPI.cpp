@@ -9,7 +9,6 @@
 #include <Timing.h>
 #include <StaticModelRenderable.h>
 #include <SOIL/SOIL.h>
-#include <opengl/GLAppendBuffer.h>
 #include <Material.h>
 #include <opengl/GLShaderInterface.h>
 #include <opengl/GLFramebuffer.h>
@@ -21,26 +20,14 @@
 #include <opengl/GLMaterialSetup.h>
 #include <opengl/GLShaderProgram.h>
 #include <fstream>
-//#include <opengl/GLShaderSetup.h>
 #include <Flags.h>
 #include <ShaderDesc.h>
 
+#define INIT_BUFFER_SIZE 1024 * 1024 * 8 // Allocate 8 MB video RAM for the vertex and index buffer each.
+
 namespace fly
 {
-  OpenGLAPI::OpenGLAPI(const Vec4f& clear_color)/* :
-    _shaderCache(SoftwareCache<std::string, std::shared_ptr<GLShaderProgram>, GLShaderSource&,
-      GLShaderSource&, GLShaderSource& >([](GLShaderSource& vs, GLShaderSource& fs, GLShaderSource& gs) {
-    auto ret = std::make_shared<GLShaderProgram>();
-    ret->add(vs);
-    if (gs._key != "") { ret->add(gs); }
-    ret->add(fs);
-    ret->link();
-    return ret;
-  }))/*,
-    _shaderDescCache(SoftwareCache<std::shared_ptr<GLShaderProgram>, std::shared_ptr<ShaderDesc>, const std::shared_ptr<GLShaderProgram>&, unsigned>(
-      [this](const std::shared_ptr<GLShaderProgram>& shader, unsigned flags) {
-    return std::make_shared<ShaderDesc>(shader, flags);
-  }))*/
+  OpenGLAPI::OpenGLAPI(const Vec4f& clear_color)
   {
     glewExperimental = true;
     auto result = glewInit();
@@ -103,11 +90,9 @@ namespace fly
   }
   void OpenGLAPI::beginFrame() const
   {
-    if (_anisotropy > 1) {
-      for (unsigned i = 0; i <= static_cast<unsigned>(heightTexUnit()); i++) {
+      for (unsigned i = 0; _anisotropy > 1 && i <= static_cast<unsigned>(heightTexUnit()); i++) {
         _samplerAnisotropic->bind(i);
       }
-    }
   }
   void OpenGLAPI::bindShader(GLShaderProgram * shader)
   {
@@ -241,7 +226,6 @@ namespace fly
   }
   void OpenGLAPI::composite(const RTT& lighting_buffer, const GlobalShaderParams& params)
   {
-  //  setupShaderDesc(*_compositeShaderDesc, params);
     _compositeShaderDesc->setup(params);
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit1()));
     lighting_buffer.bind();
@@ -250,7 +234,6 @@ namespace fly
   }
   void OpenGLAPI::composite(const RTT & lighting_buffer, const GlobalShaderParams & params, const RTT & dof_buffer, const Depthbuffer& depth_buffer)
   {
-  //  setupShaderDesc(*_compositeShaderDesc, params);
     _compositeShaderDesc->setup(params);
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit1()));
     lighting_buffer.bind();
@@ -375,25 +358,6 @@ namespace fly
   {
     return _skydomeShaderDesc;
   }
-  void OpenGLAPI::writeShadersToDisk() const
-  {
-   /* std::vector<GLShaderProgram*> shaders;
-    for (const auto& s : _shaderCache.getElements()) {
-      shaders.push_back(s.get());
-    }
-    if (_ssrShader) {
-      shaders.push_back(_ssrShader.get());
-    }
-    //if (_sepBlurShaderDesc) {
-      shaders.push_back(_blurShader.get());
-  //  }
-    for (const auto& s : shaders) {
-      for (const auto& source : s->getSources()) {
-        std::ofstream os("generated/" + source._key);
-        os << source._source;
-      }
-    }*/
-  }
   const OpenGLAPI::ShaderGenerator& OpenGLAPI::getShaderGenerator() const
   {
     return _shaderGenerator;
@@ -404,8 +368,7 @@ namespace fly
   }
   void OpenGLAPI::checkFramebufferStatus()
   {
-    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    if (status != GL_FRAMEBUFFER_COMPLETE) {
+    if (GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
       std::cout << "Framebuffer imcomplete" << std::endl;
     }
   }
@@ -413,21 +376,21 @@ namespace fly
   {
     _offScreenFramebuffer->bind();
     _offScreenFramebuffer->clearAttachments();
-    std::vector<GLenum> draw_buffers;
+    _drawBuffers.clear();
     if (rtts.size()) {
       for (unsigned i = 0; i < rtts.size(); i++) {
-        draw_buffers.push_back(GL_COLOR_ATTACHMENT0 + i);
-        _offScreenFramebuffer->texture(draw_buffers.back(), rtts[i], 0);
+        _drawBuffers.push_back(GL_COLOR_ATTACHMENT0 + i);
+        _offScreenFramebuffer->texture(_drawBuffers.back(), rtts[i], 0);
       }
     }
     else {
-      draw_buffers.push_back(GL_NONE);
+      _drawBuffers.push_back(GL_NONE);
     }
-    GL_CHECK(glDrawBuffers(static_cast<GLsizei>(draw_buffers.size()), draw_buffers.data()));
+    GL_CHECK(glDrawBuffers(static_cast<GLsizei>(_drawBuffers.size()), _drawBuffers.begin()));
   }
   OpenGLAPI::MeshGeometryStorage::MeshGeometryStorage() :
-    _vboAppend(GL_ARRAY_BUFFER),
-    _iboAppend(GL_ELEMENT_ARRAY_BUFFER),
+    _vboStack(GL_ARRAY_BUFFER, INIT_BUFFER_SIZE),
+    _iboStack(GL_ELEMENT_ARRAY_BUFFER, INIT_BUFFER_SIZE),
     _meshDataCache(SoftwareCache<std::shared_ptr<Mesh>, MeshData, const std::shared_ptr<Mesh>&>([this](
       const std::shared_ptr<Mesh>& mesh) {
     MeshData mesh_data;
@@ -435,24 +398,24 @@ namespace fly
     mesh_data._baseVertex = static_cast<GLint>(_baseVertex);
     mesh_data._indices = reinterpret_cast<GLvoid*>(_indices);
     _baseVertex += mesh->getVertices().size();
-    _vboAppend.appendData(mesh->getVertices().data(), mesh->getVertices().size());
+    _vboStack.push_back(mesh->getVertices().data(), mesh->getVertices().size());
     if (mesh->getVertices().size() - 1 <= static_cast<size_t>(std::numeric_limits<unsigned short>::max())) {
       std::vector<unsigned short> indices;
       for (const auto& i : mesh->getIndices()) {
         indices.push_back(static_cast<unsigned short>(i));
       }
       _indices += indices.size() * sizeof(indices.front());
-      _iboAppend.appendData(indices.data(), indices.size());
+      _iboStack.push_back(indices.data(), indices.size());
       mesh_data._type = GL_UNSIGNED_SHORT;
     }
     else {
       _indices += mesh->getIndices().size() * sizeof(mesh->getIndices().front());
-      _iboAppend.appendData(mesh->getIndices().data(), mesh->getIndices().size());
+      _iboStack.push_back(mesh->getIndices().data(), mesh->getIndices().size());
       mesh_data._type = GL_UNSIGNED_INT;
     }
     _vao.bind();
-    _vboAppend.getBuffer().bind();
-    _iboAppend.getBuffer().bind();
+    _vboStack.getBuffer().bind();
+    _iboStack.getBuffer().bind();
     for (unsigned i = 0; i < 5; i++) {
       GL_CHECK(glEnableVertexAttribArray(i));
     }
@@ -477,38 +440,4 @@ namespace fly
   {
     return _meshDataCache.getOrCreate(mesh, mesh);
   }
-  /*OpenGLAPI::ShaderDesc::ShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, unsigned flags) : _shader(shader)
-  {
-    if (flags & ShaderSetupFlags::SS_VP) {
-      _setupFuncs.push_back_secure(GLShaderSetup::setupVP);
-    }
-    if (flags & ShaderSetupFlags::SS_LIGHTING) {
-      _setupFuncs.push_back_secure(GLShaderSetup::setupLighting);
-    }
-    if (flags & ShaderSetupFlags::SS_SHADOWS) {
-      _setupFuncs.push_back_secure(GLShaderSetup::setupShadows);
-    }
-    if (flags & ShaderSetupFlags::SS_TIME) {
-      _setupFuncs.push_back_secure(GLShaderSetup::setupTime);
-    }
-    if (flags & ShaderSetupFlags::SS_WIND) {
-      _setupFuncs.push_back_secure(GLShaderSetup::setupWind);
-    }
-    if (flags & ShaderSetupFlags::SS_GAMMA) {
-      _setupFuncs.push_back_secure(GLShaderSetup::setupGamma);
-    }
-    if (flags & ShaderSetupFlags::SS_P_INVERSE) {
-      _setupFuncs.push_back_secure(GLShaderSetup::setupPInverse);
-    }
-  }
-  void OpenGLAPI::ShaderDesc::setup(const GlobalShaderParams & params) const
-  {
-    for (const auto& f : _setupFuncs) {
-      f(params, _shader.get());
-    }
-  }
-  const std::shared_ptr<GLShaderProgram>& OpenGLAPI::ShaderDesc::getShader() const
-  {
-    return _shader;
-  }*/
 }

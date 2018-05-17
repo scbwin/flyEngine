@@ -19,14 +19,14 @@ namespace fly
   void GLFramebuffer::texture(GLenum attachment, const GLTexture* tex, GLint level)
   {
     if (tex) {
-      _attachments.insert(attachment);
+      _attachments.push_back_secure(attachment);
     }
     GL_CHECK(glFramebufferTexture(GL_FRAMEBUFFER, attachment, tex ? tex->id() : 0, level));
   }
   void GLFramebuffer::textureLayer(GLenum attachment, const GLTexture* tex, GLint level, GLint layer)
   {
     if (tex) {
-      _attachments.insert(attachment);
+      _attachments.push_back_secure(attachment);
     }
     GL_CHECK(glFramebufferTextureLayer(GL_FRAMEBUFFER, attachment, tex ? tex->id() : 0, level, layer));
   }

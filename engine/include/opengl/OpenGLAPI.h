@@ -12,7 +12,7 @@
 #include <opengl/GLTexture.h>
 #include <SoftwareCache.h>
 #include <opengl/GLVertexArray.h>
-#include <opengl/GLAppendBuffer.h>
+#include <opengl/GLByteBufferStack.h>
 #include <opengl/GLShaderSource.h>
 #include <StackPOD.h>
 #include <opengl/GLMaterialSetup.h>
@@ -135,8 +135,8 @@ namespace fly
       MeshData addMesh(const std::shared_ptr<Mesh>& mesh);
     private:
       GLVertexArray _vao;
-      GLAppendBuffer _vboAppend;
-      GLAppendBuffer _iboAppend;
+      GLByteBufferStack _vboStack;
+      GLByteBufferStack _iboStack;
       SoftwareCache<std::shared_ptr<Mesh>, MeshData, const std::shared_ptr<Mesh>&> _meshDataCache;
       size_t _indices = 0;
       size_t _baseVertex = 0;
@@ -180,7 +180,6 @@ namespace fly
     void createCompositeShader(const GraphicsSettings& gs);
     void createScreenSpaceReflectionsShader(const GraphicsSettings& gs);
     const std::unique_ptr<ShaderDesc<OpenGLAPI>>& getSkyboxShaderDesc() const;
-    void writeShadersToDisk() const;
     const ShaderGenerator& getShaderGenerator() const;
     Shader*& getActiveShader();
   private:
@@ -201,6 +200,7 @@ namespace fly
     void checkFramebufferStatus();
     void setColorBuffers(const RendertargetStack & rtts);
     RendertargetStack _rttHelper;
+    StackPOD<GLenum, _maxRendertargets> _drawBuffers;
   };
 }
 

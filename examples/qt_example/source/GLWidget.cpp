@@ -148,7 +148,7 @@ void GLWidget::keyPressEvent(QKeyEvent * e)
     _camController->deceleratePressed();
   }
   if (e->key() == Qt::Key::Key_I) {
-    _renderer->getApi()->writeShadersToDisk();
+  //  _renderer->getApi()->writeShadersToDisk();
   }
 }
 
@@ -170,7 +170,7 @@ void GLWidget::mousePressEvent(QMouseEvent * e)
       _camController->mousePress(fly::Vec3f(static_cast<float>(e->localPos().x()), static_cast<float>(e->localPos().y()), 0.f));
     }
   }
-  else if (e->button() == Qt::MouseButton::RightButton) {
+  else if (e->button() == Qt::MouseButton::RightButton || e->button() == Qt::MouseButton::MiddleButton ) {
 #if PHYSICS
     _camController->mousePress(fly::Vec3f(static_cast<float>(e->localPos().x()), static_cast<float>(e->localPos().y()), 0.f));
     _selectedRigidBody = nullptr;
@@ -191,6 +191,7 @@ void GLWidget::mousePressEvent(QMouseEvent * e)
       if (rigid_body) {
         rigid_body->getBtRigidBody()->activate();
         _selectedRigidBody = rigid_body;
+        _smashItem = e->button() == Qt::MouseButton::RightButton;
       }
     }
 #endif
@@ -218,12 +219,14 @@ void GLWidget::mouseReleaseEvent(QMouseEvent * e)
       TwMouseButton(TwMouseAction::TW_MOUSE_RELEASED, TwMouseButtonID::TW_MOUSE_LEFT);
     }
   }
-  if (e->button() == Qt::MouseButton::RightButton) {
+  if (e->button() == Qt::MouseButton::RightButton || e->button() == Qt::MouseButton::MiddleButton) {
 #if PHYSICS
     if (_selectedRigidBody) {
       _selectedRigidBody->getBtRigidBody()->activate();
-      fly::Vec3f impulse = _camController->getCamera()->getDirection();
-      _selectedRigidBody->getBtRigidBody()->applyImpulse(btVector3(impulse[0], impulse[1], impulse[2]), btVector3(0, 0, 0));
+      if (_smashItem) {
+        fly::Vec3f impulse = _camController->getCamera()->getDirection() * _impulseStrengthSmash;
+        _selectedRigidBody->getBtRigidBody()->applyImpulse(btVector3(impulse[0], impulse[1], impulse[2]), btVector3(0, 0, 0));
+      }
     }
     _selectedRigidBody = nullptr;
 

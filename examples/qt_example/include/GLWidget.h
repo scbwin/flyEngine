@@ -72,8 +72,10 @@ private:
   std::vector<std::shared_ptr<fly::RigidBody>> _rigidBodys;
   fly::RigidBody* _selectedRigidBody = nullptr;
   fly::Vec2f _viewPortSize;
-  float _focusDist = 2.f;
+  float _focusDist = 3.f;
   float _impulseStrength = 0.001f;
+  float _impulseStrengthSmash = 0.65f;
+  bool _smashItem = false;
 #endif
   void initGame();
   float _measure = 0.f;

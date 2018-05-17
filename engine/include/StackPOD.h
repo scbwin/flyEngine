@@ -1,5 +1,5 @@
-#ifndef FIXEDSTACKPOD_H
-#define FIXEDSTACKPOD_H
+#ifndef STACKPOD_H
+#define STACKPOD_H
 
 #include <cstdlib>
 #include <type_traits>
@@ -52,9 +52,9 @@ namespace fly
     inline void push_back_secure(const T& element)
     {
       if (size() == _capacity) {
-        auto temp = size();
-        reserve(size() * 2);
-        _end = _begin + temp;
+        auto size_old = size();
+        reserve(capacity() * 2);
+        _end = _begin + size_old;
       }
       push_back(element);
     }
@@ -81,6 +81,14 @@ namespace fly
     inline size_t capacity() const
     {
       return _capacity;
+    }
+    inline T& back()
+    {
+      return *(_end - 1);
+    }
+    inline const T& back() const
+    {
+      return *(_end - 1);
     }
   private:
     T * _begin = nullptr;

@@ -3,7 +3,7 @@
 
 #include <GL/glew.h>
 #include <memory>
-#include <unordered_set>
+#include <StackPOD.h>
 
 namespace fly
 {
@@ -22,7 +22,7 @@ namespace fly
     void clearAttachments();
   private:
     GLuint _id;
-    std::unordered_set<GLenum> _attachments;
+    StackPOD<GLenum, 8> _attachments;
   };
 }
 
