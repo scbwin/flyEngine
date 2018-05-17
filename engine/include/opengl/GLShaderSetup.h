@@ -1,11 +1,10 @@
 #ifndef GLSHADERSETUP_H
 #define GLSHADERSETUP_H
 
-#include <opengl/OpenGLAPI.h>
-
 namespace fly
 {
   struct GlobalShaderParams;
+  class GLShaderProgram;
 
   class GLShaderSetup
   {

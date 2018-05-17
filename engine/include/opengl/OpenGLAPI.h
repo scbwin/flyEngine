@@ -16,12 +16,13 @@
 #include <opengl/GLShaderSource.h>
 #include <StackPOD.h>
 #include <opengl/GLMaterialSetup.h>
+#include <opengl/GLShaderSetup.h>
 #include <opengl/GLSLShaderGenerator.h>
+#include <opengl/GLShaderProgram.h>
 
 namespace fly
 {
   class GLBuffer;
-  class GLShaderProgram;
   class Mesh;
   class AABB;
   class Material;
@@ -31,6 +32,8 @@ namespace fly
   class GLSampler;
   struct WindParamsLocal;
   class GraphicsSettings;
+  template<typename API>
+  class ShaderDesc;
 
   class OpenGLAPI
   {
@@ -107,6 +110,8 @@ namespace fly
     using RendertargetStack = StackPOD<RTT const *, _maxRendertargets>;
     using ShaderGenerator = GLSLShaderGenerator;
     using MaterialSetup = GLMaterialSetup;
+    using ShaderSetup = GLShaderSetup;
+    using ShaderSource = GLShaderSource;
     /**
     * Geometry data for every single mesh that is added is stored in this structure.
     * There is one vertex array, one big vertex buffer and one big index buffer for the whole scene.
@@ -145,22 +150,8 @@ namespace fly
     static constexpr const int miscTexUnit1() { return 5; }
     static constexpr const int miscTexUnit2() { return 6; }
     static constexpr const int miscTexUnit3() { return 7; }
-    /**
-    * Class that is used to only send uniform data to the GPU that is actually needed.
-    */
-    class ShaderDesc
-    {
-    public:
-      ShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, unsigned flags);
-      void setup(const GlobalShaderParams& params) const;
-      const std::shared_ptr<GLShaderProgram>& getShader() const;
-    private:
-      std::shared_ptr<GLShaderProgram> _shader;
-      StackPOD<void(*)(const GlobalShaderParams&, GLShaderProgram*), 8> _setupFuncs;
-    };
     void beginFrame() const;
     void bindShader(GLShaderProgram* shader);
-    void setupShaderDesc(const ShaderDesc& desc, const GlobalShaderParams& params);
     void bindShadowmap(const Shadowmap& shadowmap) const;
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data) const;
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix) const;
@@ -180,31 +171,23 @@ namespace fly
     void endFrame() const;
     void setAnisotropy(unsigned anisotropy);
     std::shared_ptr<OpenGLAPI::Texture> createTexture(const std::string& path);
-    //std::shared_ptr<MaterialDesc> createMaterial(const std::shared_ptr<Material>& material, const GraphicsSettings& settings);
     std::shared_ptr<GLShaderProgram> createShader(GLShaderSource& vs, GLShaderSource& fs, GLShaderSource& gs = GLShaderSource());
-    std::shared_ptr<ShaderDesc> createShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, unsigned flags);
     std::unique_ptr<RTT> createRenderToTexture(const Vec2u& size, TexFilter filter);
     std::unique_ptr<Depthbuffer> createDepthbuffer(const Vec2u& size);
     std::unique_ptr<Shadowmap> createShadowmap(const GraphicsSettings& settings);
     void resizeShadowmap(Shadowmap* shadow_map, const GraphicsSettings& settings);
-    void recreateShadersAndMaterials(const GraphicsSettings& gs);
     void createBlurShader(const GraphicsSettings& gs);
     void createCompositeShader(const GraphicsSettings& gs);
     void createScreenSpaceReflectionsShader(const GraphicsSettings& gs);
-   // std::vector<std::shared_ptr<Material>> getAllMaterials();
-    const std::shared_ptr<ShaderDesc>& getSkyboxShaderDesc() const;
+    const std::unique_ptr<ShaderDesc<OpenGLAPI>>& getSkyboxShaderDesc() const;
     void writeShadersToDisk() const;
     const ShaderGenerator& getShaderGenerator() const;
     Shader*& getActiveShader();
   private:
     GLShaderProgram * _activeShader;
-    SoftwareCache<std::string, std::shared_ptr<GLShaderProgram>, GLShaderSource&, GLShaderSource&, GLShaderSource&> _shaderCache;
-   // SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
-    SoftwareCache<std::shared_ptr<GLShaderProgram>, std::shared_ptr<ShaderDesc>, const std::shared_ptr<GLShaderProgram>&, unsigned> _shaderDescCache;
     std::shared_ptr<GLShaderProgram> _aabbShader;
-    std::unique_ptr<ShaderDesc> _compositeShaderDesc;
- //   std::unique_ptr<ShaderDesc> _sepBlurShaderDesc;
-    std::shared_ptr<ShaderDesc> _skydomeShaderDesc;
+    std::unique_ptr<ShaderDesc<OpenGLAPI>> _compositeShaderDesc;
+    std::unique_ptr<ShaderDesc<OpenGLAPI>> _skydomeShaderDesc;
     std::unique_ptr<GLShaderProgram> _ssrShader;
     std::unique_ptr<GLShaderProgram> _blurShader;
     std::shared_ptr<GLShaderProgram> _skydomeShader;

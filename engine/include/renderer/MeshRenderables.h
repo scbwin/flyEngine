@@ -18,8 +18,8 @@ namespace fly
   {
     std::shared_ptr<MaterialDesc<API>> const _materialDesc;
     typename API::MeshGeometryStorage::MeshData const _meshData;
-    typename API::ShaderDesc const * _shaderDesc;
-    typename API::ShaderDesc const * _shaderDescDepth;
+    ShaderDesc<API> const * _shaderDesc;
+    ShaderDesc<API> const * _shaderDescDepth;
     API const & _api;
     MeshRenderable(const std::shared_ptr<MaterialDesc<API>>& material_desc, const typename API::MeshGeometryStorage::MeshData& mesh_data, API const & api) :
       _materialDesc(material_desc), _meshData(mesh_data), _api(api)
@@ -61,7 +61,7 @@ namespace fly
   template<typename API>
   struct SkydomeRenderableWrapper : public MeshRenderable<API>
   {
-    SkydomeRenderableWrapper(const typename API::MeshGeometryStorage::MeshData& mesh_data, typename API::ShaderDesc* shader_desc, API const & api) :
+    SkydomeRenderableWrapper(const typename API::MeshGeometryStorage::MeshData& mesh_data, ShaderDesc<API>* shader_desc, API const & api) :
       MeshRenderable(nullptr, mesh_data, api)
     {
       _shaderDesc = shader_desc;

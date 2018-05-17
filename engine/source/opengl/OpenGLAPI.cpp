@@ -21,12 +21,13 @@
 #include <opengl/GLMaterialSetup.h>
 #include <opengl/GLShaderProgram.h>
 #include <fstream>
-#include <opengl/GLShaderSetup.h>
+//#include <opengl/GLShaderSetup.h>
 #include <Flags.h>
+#include <ShaderDesc.h>
 
 namespace fly
 {
-  OpenGLAPI::OpenGLAPI(const Vec4f& clear_color) :
+  OpenGLAPI::OpenGLAPI(const Vec4f& clear_color)/* :
     _shaderCache(SoftwareCache<std::string, std::shared_ptr<GLShaderProgram>, GLShaderSource&,
       GLShaderSource&, GLShaderSource& >([](GLShaderSource& vs, GLShaderSource& fs, GLShaderSource& gs) {
     auto ret = std::make_shared<GLShaderProgram>();
@@ -35,11 +36,11 @@ namespace fly
     ret->add(fs);
     ret->link();
     return ret;
-  })),
+  }))/*,
     _shaderDescCache(SoftwareCache<std::shared_ptr<GLShaderProgram>, std::shared_ptr<ShaderDesc>, const std::shared_ptr<GLShaderProgram>&, unsigned>(
       [this](const std::shared_ptr<GLShaderProgram>& shader, unsigned flags) {
     return std::make_shared<ShaderDesc>(shader, flags);
-  }))
+  }))*/
   {
     glewExperimental = true;
     auto result = glewInit();
@@ -73,7 +74,7 @@ namespace fly
     vs_skydome.initFromFile("assets/opengl/vs_skybox.glsl", GL_VERTEX_SHADER);
     fs_skydome.initFromFile("assets/opengl/fs_skydome_new.glsl", GL_FRAGMENT_SHADER);
     _skydomeShader = createShader(vs_skydome, fs_skydome);
-    _skydomeShaderDesc = createShaderDesc(_skydomeShader, ShaderSetupFlags::SS_VP);
+    _skydomeShaderDesc = std::make_unique<ShaderDesc<OpenGLAPI>>(_skydomeShader, ShaderSetupFlags::SS_VP, *this);
 
     _samplerAnisotropic = std::make_unique<GLSampler>();
 
@@ -95,9 +96,9 @@ namespace fly
   }
   void OpenGLAPI::reloadShaders()
   {
-    for (const auto& e : _shaderCache.getElements()) {
+   // for (const auto& e : _shaderCache.getElements()) {
       // e->reload();
-    }
+   // }
     // _skydomeShader->reload();
   }
   void OpenGLAPI::beginFrame() const
@@ -112,11 +113,6 @@ namespace fly
   {
     _activeShader = shader;
     _activeShader->bind();
-  }
-  void OpenGLAPI::setupShaderDesc(const ShaderDesc & desc, const GlobalShaderParams& params)
-  {
-    bindShader(desc.getShader().get());
-    desc.setup(params);
   }
   void OpenGLAPI::bindShadowmap(const Shadowmap & shadowmap) const
   {
@@ -245,7 +241,8 @@ namespace fly
   }
   void OpenGLAPI::composite(const RTT& lighting_buffer, const GlobalShaderParams& params)
   {
-    setupShaderDesc(*_compositeShaderDesc, params);
+  //  setupShaderDesc(*_compositeShaderDesc, params);
+    _compositeShaderDesc->setup(params);
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit1()));
     lighting_buffer.bind();
     setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::lightingSampler()), miscTexUnit1());
@@ -253,7 +250,8 @@ namespace fly
   }
   void OpenGLAPI::composite(const RTT & lighting_buffer, const GlobalShaderParams & params, const RTT & dof_buffer, const Depthbuffer& depth_buffer)
   {
-    setupShaderDesc(*_compositeShaderDesc, params);
+  //  setupShaderDesc(*_compositeShaderDesc, params);
+    _compositeShaderDesc->setup(params);
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit1()));
     lighting_buffer.bind();
     setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::lightingSampler()), miscTexUnit1());
@@ -285,18 +283,14 @@ namespace fly
     auto tex = SOIL_load_OGL_texture(path.c_str(), SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_TEXTURE_REPEATS | SOIL_FLAG_COMPRESS_TO_DXT);
     return tex != 0 ? std::make_shared<OpenGLAPI::Texture>(tex, GL_TEXTURE_2D) : nullptr;
   }
- /* std::shared_ptr<OpenGLAPI::MaterialDesc> OpenGLAPI::createMaterial(const std::shared_ptr<Material>& material, const GraphicsSettings& settings)
-  {
-    return _matDescCache.getOrCreate(material, material, settings);
-  }*/
   std::shared_ptr<GLShaderProgram> OpenGLAPI::createShader(GLShaderSource& vs, GLShaderSource& fs, GLShaderSource& gs)
   {
-    std::string key = vs._key + fs._key + gs._key;
-    return _shaderCache.getOrCreate(key, vs, fs, gs);
-  }
-  std::shared_ptr<OpenGLAPI::ShaderDesc> OpenGLAPI::createShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, unsigned flags)
-  {
-    return _shaderDescCache.getOrCreate(shader, shader, flags);
+    auto ret = std::make_shared<GLShaderProgram>();
+    ret->add(vs);
+    if (gs._key != "") { ret->add(gs); }
+    ret->add(fs);
+    ret->link();
+    return ret;
   }
   std::unique_ptr<OpenGLAPI::RTT> OpenGLAPI::createRenderToTexture(const Vec2u & size, OpenGLAPI::TexFilter filter)
   {
@@ -343,15 +337,6 @@ namespace fly
   {
     shadow_map->image3D(0, GL_DEPTH_COMPONENT24, Vec3u(Vec2u(settings.getShadowMapSize()), static_cast<unsigned>(settings.getFrustumSplits().size())), 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
   }
-  void OpenGLAPI::recreateShadersAndMaterials(const GraphicsSettings& settings)
-  {
-    _shaderCache.clear();
-    _shaderDescCache.clear();
-   /* for (const auto& e : _matDescCache.getElements()) {
-      e->create(this, settings);
-    }*/
-    createCompositeShader(settings);
-  }
   void OpenGLAPI::createBlurShader(const GraphicsSettings & gs)
   {
     GLShaderSource vs, fs;
@@ -374,7 +359,7 @@ namespace fly
     shader->add(vs);
     shader->add(fs);
     shader->link();
-    _compositeShaderDesc = std::make_unique<ShaderDesc>(shader, ss_flags);
+    _compositeShaderDesc = std::make_unique<ShaderDesc<OpenGLAPI>>(shader, ss_flags, *this);
   }
   void OpenGLAPI::createScreenSpaceReflectionsShader(const GraphicsSettings & gs)
   {
@@ -386,13 +371,13 @@ namespace fly
     shader.link();
     *_ssrShader = std::move(shader);
   }
-  const std::shared_ptr<OpenGLAPI::ShaderDesc>& OpenGLAPI::getSkyboxShaderDesc() const
+  const std::unique_ptr<ShaderDesc<OpenGLAPI>>& OpenGLAPI::getSkyboxShaderDesc() const
   {
     return _skydomeShaderDesc;
   }
   void OpenGLAPI::writeShadersToDisk() const
   {
-    std::vector<GLShaderProgram*> shaders;
+   /* std::vector<GLShaderProgram*> shaders;
     for (const auto& s : _shaderCache.getElements()) {
       shaders.push_back(s.get());
     }
@@ -407,7 +392,7 @@ namespace fly
         std::ofstream os("generated/" + source._key);
         os << source._source;
       }
-    }
+    }*/
   }
   const OpenGLAPI::ShaderGenerator& OpenGLAPI::getShaderGenerator() const
   {
@@ -492,7 +477,7 @@ namespace fly
   {
     return _meshDataCache.getOrCreate(mesh, mesh);
   }
-  OpenGLAPI::ShaderDesc::ShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, unsigned flags) : _shader(shader)
+  /*OpenGLAPI::ShaderDesc::ShaderDesc(const std::shared_ptr<GLShaderProgram>& shader, unsigned flags) : _shader(shader)
   {
     if (flags & ShaderSetupFlags::SS_VP) {
       _setupFuncs.push_back_secure(GLShaderSetup::setupVP);
@@ -525,5 +510,5 @@ namespace fly
   const std::shared_ptr<GLShaderProgram>& OpenGLAPI::ShaderDesc::getShader() const
   {
     return _shader;
-  }
+  }*/
 }

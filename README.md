@@ -39,7 +39,7 @@ Possible improvements are:
 * Tessellation for arbitrary objects, not only terrain
 * Level of detail system
 #### Guidelines
-* Development goes into "AbstractRenderer" and "OpenGLAPI", the classes "RenderingSystemOpenGL" and "RenderingSystemDX11" are considered deprecated, but are further maintained for compatibility. 
+* Development goes into "Renderer" and "OpenGLAPI", the classes "RenderingSystemOpenGL" and "RenderingSystemDX11" are considered deprecated, but are further maintained for compatibility. 
 * Stick to the ECS design pattern.
 * Do not add any member variables of third-party datatypes to core engine components. E.g. the Material class shouldn't store pointers to DirectX Shader resource views, just store a std::string that contains the path to the texture instead.
 * Avoid dynamic memory allocations in the rendering loop if possible.

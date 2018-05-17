@@ -25,7 +25,7 @@ namespace fly
       Node(const Vec2f& min, const Vec2f& max) :
         _min(min),
         _max(max),
-        _aabbWorld(Vec3f(std::numeric_limits<float>::max()), Vec3f(std::numeric_limits<float>::lowest())),
+        _aabbWorld(),
         _largestElementAABBWorldSize(0.f)
       {
       }

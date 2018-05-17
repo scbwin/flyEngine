@@ -7,6 +7,7 @@
 #include <Flags.h>
 #include <SoftwareCache.h>
 #include <StackPOD.h>
+#include <ShaderDesc.h>
 //#include <renderer/MeshRenderables.h>
 
 namespace fly
@@ -15,17 +16,22 @@ namespace fly
   class MaterialDesc
   {
   public:
-    MaterialDesc(const std::shared_ptr<Material>& material, API* api, const GraphicsSettings& settings, SoftwareCache<std::string, std::shared_ptr<typename API::Texture>, const std::string&>& texture_cache) :
+    MaterialDesc(const std::shared_ptr<Material>& material, API& api, const GraphicsSettings& settings,
+      SoftwareCache<std::string, std::shared_ptr<typename API::Texture>, const std::string&>& texture_cache,
+      SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&>& shader_desc_cache,
+      SoftwareCache<std::string, std::shared_ptr<typename API::Shader>, typename API::ShaderSource&, typename API::ShaderSource&, typename API::ShaderSource&>& shader_cache) :
       _material(material),
-      _activeShader(api->getActiveShader()),
+      _activeShader(api.getActiveShader()),
       _diffuseMap(texture_cache.getOrCreate(material->getDiffusePath(), material->getDiffusePath())),
       _normalMap(texture_cache.getOrCreate(material->getNormalPath(), material->getNormalPath())),
       _alphaMap(texture_cache.getOrCreate(material->getOpacityPath(), material->getOpacityPath())),
-      _heightMap(texture_cache.getOrCreate(material->getHeightPath(), material->getHeightPath()))
+      _heightMap(texture_cache.getOrCreate(material->getHeightPath(), material->getHeightPath())),
+      _shaderDescCache(shader_desc_cache),
+      _shaderCache(shader_cache)
     {
       create(api, settings);
     }
-    void create(API* api, const GraphicsSettings& settings)
+    void create(API& api, const GraphicsSettings& settings)
     {
       _materialSetupFuncs.clear();
       _materialSetupFuncsDepth.clear();
@@ -56,8 +62,8 @@ namespace fly
           _materialSetupFuncs.push_back_secure(typename API::MaterialSetup::setupRelief);
         }
       }
-      auto fragment_source = api->getShaderGenerator().createMeshFragmentShaderSource(flag, settings);
-      auto vertex_source = api->getShaderGenerator().createMeshVertexShaderSource(flag, settings);
+      auto fragment_source = api.getShaderGenerator().createMeshFragmentShaderSource(flag, settings);
+      auto vertex_source = api.getShaderGenerator().createMeshVertexShaderSource(flag, settings);
       unsigned ss_flags = ShaderSetupFlags::SS_LIGHTING | ShaderSetupFlags::SS_VP;
       if (settings.gammaEnabled()) {
         ss_flags |= ShaderSetupFlags::SS_GAMMA;
@@ -65,11 +71,11 @@ namespace fly
       if (settings.getShadows() || settings.getShadowsPCF()) {
         ss_flags |= ShaderSetupFlags::SS_SHADOWS;
       }
-      _meshShaderDesc = api->createShaderDesc(api->createShader(vertex_source, fragment_source), ss_flags);
-      _meshShaderDescReflective = settings.getScreenSpaceReflections() ? api->createShaderDesc(api->createShader(vertex_source, api->getShaderGenerator().createMeshFragmentShaderSource(flag | FLAG::MR_REFLECTIVE, settings)), ss_flags) : _meshShaderDesc;
-      _meshShaderDescWind = settings.getWindAnimations() ? api->createShaderDesc(api->createShader(api->getShaderGenerator().createMeshVertexShaderSource(flag | FLAG::MR_WIND, settings), fragment_source), ss_flags | ShaderSetupFlags::SS_WIND | ShaderSetupFlags::SS_TIME) : _meshShaderDesc;
-      _meshShaderDescDepth = api->createShaderDesc(api->createShader(api->getShaderGenerator().createMeshVertexShaderDepthSource(flag, settings), api->getShaderGenerator().createMeshFragmentShaderDepthSource(flag, settings)), ShaderSetupFlags::SS_VP);
-      _meshShaderDescWindDepth = settings.getWindAnimations() ? api->createShaderDesc(api->createShader(api->getShaderGenerator().createMeshVertexShaderDepthSource(flag | FLAG::MR_WIND, settings), api->getShaderGenerator().createMeshFragmentShaderDepthSource(flag | FLAG::MR_WIND, settings)), ShaderSetupFlags::SS_VP | ShaderSetupFlags::SS_WIND | ShaderSetupFlags::SS_TIME) : _meshShaderDescDepth;
+      _meshShaderDesc = createShaderDesc(createShader(vertex_source, fragment_source), ss_flags, api);
+      _meshShaderDescReflective = settings.getScreenSpaceReflections() ? createShaderDesc(createShader(vertex_source, api.getShaderGenerator().createMeshFragmentShaderSource(flag | FLAG::MR_REFLECTIVE, settings)), ss_flags, api) : _meshShaderDesc;
+      _meshShaderDescWind = settings.getWindAnimations() ? createShaderDesc(createShader(api.getShaderGenerator().createMeshVertexShaderSource(flag | FLAG::MR_WIND, settings), fragment_source), ss_flags | ShaderSetupFlags::SS_WIND | ShaderSetupFlags::SS_TIME, api) : _meshShaderDesc;
+      _meshShaderDescDepth = createShaderDesc(createShader(api.getShaderGenerator().createMeshVertexShaderDepthSource(flag, settings), api.getShaderGenerator().createMeshFragmentShaderDepthSource(flag, settings)), ShaderSetupFlags::SS_VP, api);
+      _meshShaderDescWindDepth = settings.getWindAnimations() ? createShaderDesc(createShader(api.getShaderGenerator().createMeshVertexShaderDepthSource(flag | FLAG::MR_WIND, settings), api.getShaderGenerator().createMeshFragmentShaderDepthSource(flag | FLAG::MR_WIND, settings)), ShaderSetupFlags::SS_VP | ShaderSetupFlags::SS_WIND | ShaderSetupFlags::SS_TIME, api) : _meshShaderDescDepth;
     }
     inline void setup() const
     {
@@ -103,45 +109,55 @@ namespace fly
     {
       return _heightMap;
     }
-    inline const std::shared_ptr<typename API::ShaderDesc>& getMeshShaderDesc() const
+    inline const std::shared_ptr<ShaderDesc<API>>& getMeshShaderDesc() const
     {
       return _meshShaderDesc;
     }
-    inline const std::shared_ptr<typename API::ShaderDesc>& getMeshShaderDescWind() const
+    inline const std::shared_ptr<ShaderDesc<API>>& getMeshShaderDescWind() const
     {
       return _meshShaderDescWind;
     }
-    inline const std::shared_ptr<typename API::ShaderDesc>& getMeshShaderDescReflective() const
+    inline const std::shared_ptr<ShaderDesc<API>>& getMeshShaderDescReflective() const
     {
       return _meshShaderDescReflective;
     }
-    inline const std::shared_ptr<typename API::ShaderDesc>& getMeshShaderDescDepth() const
+    inline const std::shared_ptr<ShaderDesc<API>>& getMeshShaderDescDepth() const
     {
       return _meshShaderDescDepth;
     }
-    inline const std::shared_ptr<typename API::ShaderDesc>& getMeshShaderDescDepthWind() const
+    inline const std::shared_ptr<ShaderDesc<API>>& getMeshShaderDescDepthWind() const
     {
       return _meshShaderDescWindDepth;
     }
-   /* inline StackPOD<MeshRenderable<API>*, 1024>& getRenderables()
+    inline std::shared_ptr<ShaderDesc<API>> createShaderDesc(const std::shared_ptr<typename API::Shader>& shader, unsigned flags, API& api)
     {
-      return _renderables;
+      return _shaderDescCache.getOrCreate(shader, shader, flags, api);
+    }
+    inline std::shared_ptr<typename API::Shader> createShader(typename API::ShaderSource& vs, typename API::ShaderSource& fs, typename API::ShaderSource& gs = typename API::ShaderSource())
+    {
+      return _shaderCache.getOrCreate(vs._key + fs._key + gs._key, vs, fs, gs);
+    }
+    /* inline StackPOD<MeshRenderable<API>*, 1024>& getRenderables()
+    {
+    return _renderables;
     }*/
   private:
     typename API::Shader * & _activeShader;
     std::shared_ptr<Material> _material;
     StackPOD<void(*)(typename API::Shader*, const MaterialDesc&), 8> _materialSetupFuncs;
     StackPOD<void(*)(typename API::Shader*, const MaterialDesc&), 8> _materialSetupFuncsDepth;
-    std::shared_ptr<typename API::ShaderDesc> _meshShaderDesc;
-    std::shared_ptr<typename API::ShaderDesc> _meshShaderDescWind;
-    std::shared_ptr<typename API::ShaderDesc> _meshShaderDescDepth;
-    std::shared_ptr<typename API::ShaderDesc> _meshShaderDescWindDepth;
-    std::shared_ptr<typename API::ShaderDesc> _meshShaderDescReflective;
+    std::shared_ptr<ShaderDesc<API>> _meshShaderDesc;
+    std::shared_ptr<ShaderDesc<API>> _meshShaderDescWind;
+    std::shared_ptr<ShaderDesc<API>> _meshShaderDescDepth;
+    std::shared_ptr<ShaderDesc<API>> _meshShaderDescWindDepth;
+    std::shared_ptr<ShaderDesc<API>> _meshShaderDescReflective;
     std::shared_ptr<typename API::Texture> const _diffuseMap;
     std::shared_ptr<typename API::Texture> const _normalMap;
     std::shared_ptr<typename API::Texture> const _alphaMap;
     std::shared_ptr<typename API::Texture> const _heightMap;
-//    StackPOD<MeshRenderable<API>*, 1024> _renderables;
+    SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&>& _shaderDescCache;
+    SoftwareCache<std::string, std::shared_ptr<typename API::Shader>, typename API::ShaderSource&, typename API::ShaderSource&, typename API::ShaderSource&>& _shaderCache;
+    //    StackPOD<MeshRenderable<API>*, 1024> _renderables;
   };
 }
 

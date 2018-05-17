@@ -14,15 +14,11 @@ namespace fly
   {
   }
   Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices, unsigned int material_index) :
-    _vertices(vertices), _indices(indices), _materialIndex(material_index)
+    _vertices(vertices), 
+    _indices(indices), 
+    _materialIndex(material_index), 
+    _aabb(*this)
   {
-    Vec3f bb_min(std::numeric_limits<float>::max());
-    Vec3f bb_max(std::numeric_limits<float>::lowest());
-    for (auto& v : _vertices) {
-      bb_min = minimum(bb_min, v._position);
-      bb_max = maximum(bb_max, v._position);
-    }
-    _aabb = std::make_unique<AABB>(bb_min, bb_max);
   }
   const std::vector<Vertex>& Mesh::getVertices() const
   {
@@ -45,9 +41,9 @@ namespace fly
   {
     return _materialIndex;
   }
-  AABB* Mesh::getAABB() const
+  AABB const * Mesh::getAABB() const
   {
-    return _aabb.get();
+    return &_aabb;
   }
   void Mesh::setMaterialIndex(unsigned material_index)
   {

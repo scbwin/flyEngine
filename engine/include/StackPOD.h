@@ -6,6 +6,9 @@
 
 namespace fly
 {
+  /**
+  * A lightweight alternative to std::vector for POD (Plain Old Data) types.
+  */
   template<typename T, size_t init_size = 1>
   class StackPOD
   {
@@ -26,7 +29,7 @@ namespace fly
     {
       std::free(_begin);
     }
-    void reserve(size_t new_size)
+    inline void reserve(size_t new_size)
     {
       _begin = reinterpret_cast<T*>(std::realloc(_begin, new_size * sizeof(T)));
       _capacity = new_size;
@@ -67,15 +70,15 @@ namespace fly
     {
       return _end - _begin;
     }
-    const T& operator[] (unsigned i) const
+    inline const T& operator[] (unsigned i) const
     {
       return _begin[i];
     }
-    T& operator[] (unsigned i)
+    inline T& operator[] (unsigned i)
     {
       return _begin[i];
     }
-    size_t capacity() const
+    inline size_t capacity() const
     {
       return _capacity;
     }

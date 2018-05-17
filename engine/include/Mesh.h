@@ -23,7 +23,7 @@ namespace fly
     void setVertices(const std::vector<Vertex>& vertices);
     void setIndices(const std::vector<unsigned>& indices);
     unsigned int getMaterialIndex() const;
-    AABB* getAABB() const;
+    AABB const * getAABB() const;
     void setMaterialIndex(unsigned material_index);
     void setMaterial(const std::shared_ptr<Material>& material);
     const std::shared_ptr<Material>& getMaterial() const;
@@ -33,7 +33,7 @@ namespace fly
     std::vector<unsigned int> _indices;
     unsigned int _materialIndex;
     std::shared_ptr<Material> _material;
-    std::unique_ptr<AABB> _aabb;
+    AABB _aabb;
 
   };
 }

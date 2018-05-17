@@ -23,12 +23,12 @@ namespace fly
     void setMaterials(const std::vector<std::shared_ptr<Material>>& materials);
     void sortMeshesByMaterial();
     void mergeMeshesByMaterial();
-    AABB* getAABB() const;
+    AABB const * getAABB() const;
 
   private:
     std::vector<std::shared_ptr<Mesh>> _meshes;
     std::vector<std::shared_ptr<Material>> _materials;
-    std::unique_ptr<AABB> _aabb;
+    AABB _aabb;
   };
 }
 

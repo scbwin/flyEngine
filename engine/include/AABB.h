@@ -8,12 +8,21 @@
 
 namespace fly
 {
+  class Mesh;
+  struct Vertex;
+  class Model;
+
   class AABB
   {
   public:
-    AABB() = default;
+    AABB();
+    AABB(const AABB& other);
+    AABB& operator= (const AABB& other);
     AABB(const Vec3f& bb_min, const Vec3f& bb_max);
     AABB(const AABB& aabb_local, const Mat4f& world_matrix);
+    AABB(const Model& model);
+    AABB(const Mesh& mesh);
+    AABB(const std::vector<Vertex>& vertices);
     const Vec3f& getMin() const;
     const Vec3f& getMax() const;
     inline Vec3f center() const

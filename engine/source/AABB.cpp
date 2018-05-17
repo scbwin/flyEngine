@@ -1,24 +1,56 @@
 #include <AABB.h>
+#include <Mesh.h>
+#include <Model.h>
 
 namespace fly
 {
+  AABB::AABB() :
+    _bbMin(std::numeric_limits<float>::max()),
+    _bbMax(std::numeric_limits<float>::lowest())
+  {
+  }
+  AABB::AABB(const AABB & other) :
+    _bbMin(other._bbMin),
+    _bbMax(other._bbMax)
+  {
+  }
+  AABB& AABB::operator=(const AABB & other)
+  {
+    _bbMin = other._bbMin;
+    _bbMax = other._bbMax;
+    return *this;
+  }
   AABB::AABB(const Vec3f & bb_min, const Vec3f & bb_max) :
     _bbMin(bb_min),
     _bbMax(bb_max)
-   // _size(distance2(bb_min, bb_max)),
-   // _center((bb_min + bb_max) * 0.5f)
   {
   }
-  AABB::AABB(const AABB& aabb_local, const Mat4f & world_matrix)
+  AABB::AABB(const AABB& aabb_local, const Mat4f & world_matrix) :
+    AABB()
   {
-    _bbMin = Vec3f(std::numeric_limits<float>::max());
-    _bbMax = Vec3f(std::numeric_limits<float>::lowest());
     for (unsigned i = 0; i < 8; i++) {
       _bbMin = minimum(_bbMin, (world_matrix * Vec4f(aabb_local.getVertex(i), 1.f)).xyz());
       _bbMax = maximum(_bbMax, (world_matrix * Vec4f(aabb_local.getVertex(i), 1.f)).xyz());
     }
-  //  _size = distance2(_bbMin, _bbMax);
-   // _center = (_bbMin + _bbMax) * 0.5f;
+  }
+  AABB::AABB(const Model & model) :
+    AABB()
+  {
+    for (const auto& m : model.getMeshes()) {
+      *this = getUnion(*m->getAABB());
+    }
+  }
+  AABB::AABB(const Mesh & mesh) : 
+    AABB(mesh.getVertices())
+  {
+  }
+  AABB::AABB(const std::vector<Vertex>& vertices) :
+    AABB()
+  {
+    for (const auto& v : vertices) {
+      _bbMin = minimum(_bbMin, v._position);
+      _bbMax = maximum(_bbMax, v._position);
+    }
   }
   const Vec3f& AABB::getMin() const
   {
@@ -28,14 +60,14 @@ namespace fly
   {
     return _bbMax;
   }
- /* Vec3f AABB::center() const
-  {
-    return (_bbMin + _bbMax) * 0.5f;
-  }
-  float AABB::size() const
-  {
-    return distance2(_bbMin, _bbMax);
-  }*/
+  /* Vec3f AABB::center() const
+   {
+     return (_bbMin + _bbMax) * 0.5f;
+   }
+   float AABB::size() const
+   {
+     return distance2(_bbMin, _bbMax);
+   }*/
   bool AABB::contains(const AABB & other) const
   {
     return _bbMin <= other._bbMin && _bbMax >= other._bbMax;

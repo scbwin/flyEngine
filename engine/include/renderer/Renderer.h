@@ -56,10 +56,18 @@ namespace fly
     Renderer(GraphicsSettings * gs) : _api(Vec4f(0.149f, 0.509f, 0.929f, 1.f)), _gs(gs),
       _matDescCache(SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&>(
         [this](const std::shared_ptr<Material>& material, const GraphicsSettings&  settings) {
-      return std::make_shared<MaterialDesc<API>>(material, &_api, settings, _textureCache);
+      return std::make_shared<MaterialDesc<API>>(material, _api, settings, _textureCache, _shaderDescCache, _shaderCache);
+    })),
+      _shaderDescCache(SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&>(
+        [this](const std::shared_ptr<typename API::Shader>& shader, unsigned flags, API& api) {
+      return std::make_shared<ShaderDesc<API>>(shader, flags, api);
     })),
       _textureCache(SoftwareCache<std::string, std::shared_ptr<typename API::Texture>, const std::string&>([this](const std::string& path) {
       return _api.createTexture(path);
+    })),
+      _shaderCache(SoftwareCache<std::string, std::shared_ptr<typename API::Shader>, typename API::ShaderSource&,
+        typename API::ShaderSource&, typename API::ShaderSource& >([this](typename API::ShaderSource& vs, typename API::ShaderSource& fs, typename API::ShaderSource& gs) {
+      return _api.createShader(vs, fs, gs);
     }))
     {
       _pp._near = 0.1f;
@@ -268,23 +276,11 @@ namespace fly
           _api.setRendertargets(_renderTargets, _depthBuffer.get());
           _api.clearRendertarget(false, true, false);
           groupMeshes<true>();
-          for (const auto& e : _displayList) {
-            _api.setupShaderDesc(*e.first, _gsp);
-            for (const auto& e1 : e.second) {
-              e1.first->setupDepth();
-              for (const auto& mr : e1.second) {
-                //  e1->setupDepth();
-                 // for (const auto& mr : e1->getRenderables()) {
-                mr->renderDepth();
-              }
-              //  e1->getRenderables().clear();
-            }
-          }
+          renderMeshes<true>();
           _api.setDepthWriteEnabled<false>();
           _api.setDepthFunc<API::DepthFunc::EQUAL>();
         }
         if (_offScreenRendering) {
-          //std::vector<typename API::RTT const *> rendertargets = { _lightingBuffer.get() };
           _renderTargets.clear();
           _renderTargets.push_back(_lightingBuffer.get());
           if (_gs->getScreenSpaceReflections()) {
@@ -299,14 +295,14 @@ namespace fly
         if (_shadowMap) {
           _api.bindShadowmap(*_shadowMap);
         }
-        renderMeshes();
+        renderScene();
         if (_skydomeRenderable) {
           _api.setCullMode<API::CullMode::FRONT>();
           Mat4f view_matrix_sky_dome = _gsp._viewMatrix;
           view_matrix_sky_dome[3] = Vec4f(Vec3f(0.f), 1.f);
           auto skydome_vp = _gsp._projectionMatrix * view_matrix_sky_dome;
           _gsp._VP = &skydome_vp;
-          _api.setupShaderDesc(*_skydomeRenderable->_shaderDesc, _gsp);
+          _skydomeRenderable->_shaderDesc->setup(_gsp);
           _skydomeRenderable->render();
           _gsp._VP = &_vpScene; // Restore view projection matrix
           _api.setCullMode<API::CullMode::BACK>();
@@ -387,11 +383,13 @@ namespace fly
     std::map<Entity*, std::shared_ptr<DynamicMeshRenderableWrapper<API>>> _dynamicMeshRenderables;
     std::shared_ptr<SkydomeRenderableWrapper<API>> _skydomeRenderable;
     StackPOD<MeshRenderable<API>*, 4096> _visibleMeshes;
-    std::map<typename API::ShaderDesc const *, std::map<MaterialDesc<API> const *, StackPOD<MeshRenderable<API>*, 1024>>> _displayList;
-  //  std::map<typename API::ShaderDesc const *, std::set<MaterialDesc<API>*>> _displayList;
+    std::map<ShaderDesc<API> const *, std::map<MaterialDesc<API> const *, StackPOD<MeshRenderable<API>*, 1024>>> _displayList;
+    //  std::map<typename API::ShaderDesc const *, std::set<MaterialDesc<API>*>> _displayList;
     using BVH = Quadtree<MeshRenderable<API>>;
     std::unique_ptr<BVH> _bvh;
     SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
+    SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&> _shaderDescCache;
+    SoftwareCache<std::string, std::shared_ptr<typename API::Shader>, typename API::ShaderSource&, typename API::ShaderSource&, typename API::ShaderSource&> _shaderCache;
     SoftwareCache<std::string, std::shared_ptr<typename API::Texture>, const std::string&> _textureCache;
     void renderQuadtreeAABBs()
     {
@@ -420,7 +418,7 @@ namespace fly
         _api.renderAABBs(aabbs, _vpScene, Vec3f(0.f, 1.f, 0.f));
       }
     }
-    void renderMeshes()
+    void renderScene()
     {
 #if RENDERER_STATS
       Timing timing;
@@ -430,23 +428,10 @@ namespace fly
       _stats._sceneMeshGroupingMicroSeconds = timing.duration<std::chrono::microseconds>();
       timing.start();
 #endif
-      for (const auto& e : _displayList) {
-        _api.setupShaderDesc(*e.first, _gsp);
-        for (const auto& e1 : e.second) {
-          e1.first->setup();
-          // e1->setup();
-          for (const auto& mr : e1.second) {
-            //  for (auto mr : e1->getRenderables()) {
-            mr->render();
+      auto stats = renderMeshes();
 #if RENDERER_STATS
-            _stats._renderedTriangles += mr->_meshData.numTriangles();
-            _stats._renderedMeshes++;
-#endif
-          }
-        //  e1->getRenderables().clear();
-        }
-      }
-#if RENDERER_STATS
+      _stats._renderedMeshes = stats._renderedMeshes;
+      _stats._renderedTriangles = stats._renderedTriangles;
       _stats._sceneRenderingCPUMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
     }
@@ -478,28 +463,12 @@ namespace fly
         _api.setRendertargets(_renderTargets, _shadowMap.get(), i);
         _api.clearRendertarget(false, true, false);
         _gsp._VP = &_gsp._worldToLight[i];
-        for (const auto& e : _displayList) {
-          _api.setupShaderDesc(*e.first, _gsp);
-          for (const auto& e1 : e.second) {
-            e1.first->setupDepth();
-            for (const auto& mr : e1.second) {
-              // e1->setupDepth();
-           //    for (const auto& mr : e1->getRenderables()) {
-              mr->renderDepth();
+        auto stats = renderMeshes<true>();
 #if RENDERER_STATS
-              _stats._renderedTrianglesShadow += mr->_meshData.numTriangles();
-              _stats._renderedMeshesShadow++;
+        _stats._renderedMeshesShadow += stats._renderedMeshes;
+        _stats._renderedTrianglesShadow += stats._renderedTriangles;
 #endif
-            }
-          }
-        }
       }
-      /*  for (const auto& e : _displayList) {
-          _api.setupShaderDesc(*e.first, _gsp);
-          for (const auto& e1 : e.second) {
-            e1->getRenderables().clear();
-          }
-        }*/
 
 #if RENDERER_STATS
       _stats._shadowMapRenderCPUMicroSeconds = timing.duration<std::chrono::microseconds>();
@@ -522,20 +491,19 @@ namespace fly
     }
     void graphicsSettingsChanged()
     {
-      _api.recreateShadersAndMaterials(*_gs);
+      _shaderCache.clear();
+      _shaderDescCache.clear();
       for (const auto& e : _matDescCache.getElements()) {
-        e->create(&_api, *_gs);
+        e->create(_api, *_gs);
       }
+      _api.createCompositeShader(*_gs);
     }
     template<bool depth = false>
     inline void groupMeshes()
     {
       _displayList.clear();
       for (auto m : _visibleMeshes) {
-           _displayList[depth ? m->_shaderDescDepth : m->_shaderDesc][m->_materialDesc.get()].push_back_secure(m);
-     /*   auto material_desc = m->_materialDesc.get();
-        _displayList[depth ? m->_shaderDescDepth : m->_shaderDesc].insert(material_desc);
-        material_desc->getRenderables().push_back_secure(m);*/
+        _displayList[depth ? m->_shaderDescDepth : m->_shaderDesc][m->_materialDesc.get()].push_back_secure(m);
       }
     }
     inline void getVisibleDynamicMeshes()
@@ -545,6 +513,30 @@ namespace fly
           _visibleMeshes.push_back(e.second.get());
         }
       }
+    }
+    struct MeshRenderStats
+    {
+      unsigned _renderedTriangles;
+      unsigned _renderedMeshes;
+    };
+    template<bool depth = false>
+    inline MeshRenderStats renderMeshes()
+    {
+      MeshRenderStats stats = {};
+      for (const auto& e : _displayList) { // For each shader
+        e.first->setup(_gsp);
+        for (const auto& e1 : e.second) { // For each material
+          depth ? e1.first->setupDepth() : e1.first->setup();
+          for (const auto& mr : e1.second) { // For each mesh renderable
+            depth ? mr->renderDepth() : mr->render();
+#if RENDERER_STATS
+            stats._renderedTriangles += mr->_meshData.numTriangles();
+            stats._renderedMeshes++;
+#endif
+          }
+        }
+      }
+      return stats;
     }
   };
 }

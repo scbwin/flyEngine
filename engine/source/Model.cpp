@@ -5,22 +5,18 @@
 
 namespace fly
 {
-  Model::Model(const std::vector<std::shared_ptr<Mesh>>& meshes, const std::vector<std::shared_ptr<Material>>& materials) : _meshes(meshes), _materials(materials)
+  Model::Model(const std::vector<std::shared_ptr<Mesh>>& meshes, const std::vector<std::shared_ptr<Material>>& materials) : 
+    _meshes(meshes), 
+    _materials(materials),
+    _aabb(*this)
   {
     sortMeshesByMaterial();
-    Vec3f bb_min(std::numeric_limits<float>::max());
-    Vec3f bb_max(std::numeric_limits<float>::lowest());
-    for (const auto& m : _meshes) {
-      bb_min = minimum(bb_min, m->getAABB()->getMin());
-      bb_max = maximum(bb_max, m->getAABB()->getMax());
-    }
-    _aabb = std::make_unique<AABB>(bb_min, bb_max);
   }
 
   Model::Model(const Model& other) : 
     _meshes(other._meshes), 
     _materials(other._materials), 
-    _aabb(std::make_unique<AABB>(*other.getAABB()))
+    _aabb(other._aabb)
   {
   }
 
@@ -81,8 +77,8 @@ namespace fly
       _meshes.back()->setMaterial(_materials[e.first]);
     }
   }
-  AABB * Model::getAABB() const
+  AABB const * Model::getAABB() const
   {
-    return _aabb.get();
+    return &_aabb;
   }
 }
