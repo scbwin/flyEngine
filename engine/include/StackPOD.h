@@ -9,16 +9,15 @@ namespace fly
   /**
   * A lightweight alternative to std::vector for POD (Plain Old Data) types.
   */
-  template<typename T, size_t init_size = 1>
+  template<typename T>
   class StackPOD
   {
     static_assert(std::is_pod<T>::value, "T must be a POD type");
-    static_assert(init_size > 0, "init_size must not be zero");
 
   public:
     StackPOD()
     {
-      reserve(init_size);
+      reserve(8);
       clear();
     }
     StackPOD(const StackPOD& other) = delete;

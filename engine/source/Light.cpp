@@ -75,7 +75,7 @@ namespace fly
   }
 
   Mat4f DirectionalLight::getViewProjectionMatrices(float aspect_ratio, float near_plane, float fov_degrees, const Mat4f& view_matrix_inverse,
-    const Mat4f& view_matrix_light, float shadow_map_size, const std::vector<float>& frustum_splits, StackPOD<Mat4f, 4>& vp, ZNearMapping z_near_mapping)
+    const Mat4f& view_matrix_light, float shadow_map_size, const std::vector<float>& frustum_splits, StackPOD<Mat4f>& vp, ZNearMapping z_near_mapping)
   {
     vp.clear();
     Vec3f global_min(std::numeric_limits<float>::max());

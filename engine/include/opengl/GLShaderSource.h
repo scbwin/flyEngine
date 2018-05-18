@@ -8,11 +8,12 @@ namespace fly
 {
   struct GLShaderSource
   {
+    GLShaderSource() = default;
+    GLShaderSource(const std::string& file, GLenum type);
     std::string _key;
     std::string _source;
     GLenum _type;
     GLuint _id;
-    void initFromFile(const std::string& file, GLenum type);
   };
 }
 

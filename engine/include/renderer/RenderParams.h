@@ -19,7 +19,7 @@ namespace fly
     Mat4f _projectionMatrix;
     Mat4f _viewMatrix;
     Mat4f const * _VP;
-    StackPOD<Mat4f, 4> _worldToLight;
+    StackPOD<Mat4f> _worldToLight;
     std::vector<float> const * _smFrustumSplits;
     float _smBias;
     float _shadowDarkenFactor;

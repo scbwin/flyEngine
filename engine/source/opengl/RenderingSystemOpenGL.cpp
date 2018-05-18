@@ -382,7 +382,7 @@ namespace fly
       auto leaf_mesh = leaf_model->getMeshes()[0];
       auto& wind_prm = terrain->getWindParams();
       if (directional_light) {
-        StackPOD<Mat4f, 4> vp;
+        StackPOD<Mat4f> vp;
         auto dl = directional_light->getComponent<DirectionalLight>();
     //    auto transform = directional_light->getComponent<Transform>();
   //      auto pos_world_space = transform->getTranslation();
@@ -830,7 +830,7 @@ namespace fly
 
     auto dl = (*_directionalLights.begin())->getComponent<DirectionalLight>();
     auto shadow_map = _shadowMaps[*_directionalLights.begin()];
-    StackPOD<Mat4f, 4> vp;
+    StackPOD<Mat4f> vp;
     auto light_volume = dl->getViewProjectionMatrices(_aspectRatio, _zNear, _fovDegrees, inverse(_viewMatrix), dl->getViewMatrix(), shadow_map->width(), _settings._smFrustumSplits, vp, ZNearMapping::MINUS_ONE);
     for (auto& t : _terrainRenderables) {
       t.second->_visibleNodes.clear();
@@ -1344,8 +1344,8 @@ namespace fly
     auto light = directional_light->getComponent<DirectionalLight>();
     auto csm_distances = _settings._smFrustumSplits;
     auto shadow_map = _shadowMaps[directional_light];
-    StackPOD<Mat4f, 4> vp;
-    StackPOD<Mat4f, 4> v_inverse_vp_light;
+    StackPOD<Mat4f> vp;
+    StackPOD<Mat4f> v_inverse_vp_light;
     light->getViewProjectionMatrices(_aspectRatio, _zNear, _fovDegrees, inverse(_viewMatrix), light->getViewMatrix(), shadow_map->width(), _settings._smFrustumSplits, vp, ZNearMapping::MINUS_ONE);
     for (unsigned int i = 0; i < vp.size(); i++) {
       v_inverse_vp_light.push_back(vp[i] * Mat4f(inverse(_viewMatrix)));
@@ -1908,7 +1908,7 @@ namespace fly
     auto shader = _shaderProgramDepthLayered;
     shader->bind();
 
-    StackPOD<Mat4f, 4> vp;
+    StackPOD<Mat4f> vp;
     auto dl = entity->getComponent<DirectionalLight>();
     dl->getViewProjectionMatrices(_aspectRatio, _zNear, _fovDegrees, inverse(_viewMatrix), dl->getViewMatrix(),_shadowMaps[entity]->width(), _settings._smFrustumSplits, vp, ZNearMapping::MINUS_ONE);
     GL_CHECK(glUniform1i(shader->uniformLocation("numLayers"), vp.size()));

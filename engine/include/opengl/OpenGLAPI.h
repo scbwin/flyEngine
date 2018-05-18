@@ -19,6 +19,8 @@
 #include <opengl/GLShaderSetup.h>
 #include <opengl/GLSLShaderGenerator.h>
 #include <opengl/GLShaderProgram.h>
+#include <opengl/GLFramebuffer.h>
+#include <opengl/GLSampler.h>
 
 namespace fly
 {
@@ -26,7 +28,6 @@ namespace fly
   class Mesh;
   class AABB;
   class Material;
-  class GLFramebuffer;
   class GLSLShaderGenerator;
   struct GlobalShaderParams;
   class GLSampler;
@@ -107,7 +108,7 @@ namespace fly
     using Shadowmap = GLTexture;
     using Texture = GLTexture;
     using Shader = GLShaderProgram;
-    using RendertargetStack = StackPOD<RTT const *, _maxRendertargets>;
+    using RendertargetStack = StackPOD<RTT const *>;
     using ShaderGenerator = GLSLShaderGenerator;
     using MaterialSetup = GLMaterialSetup;
     using ShaderSetup = GLShaderSetup;
@@ -165,7 +166,7 @@ namespace fly
     void setRendertargets(const RendertargetStack& rtts, const Depthbuffer* depth_buffer, unsigned depth_buffer_layer);
     void bindBackbuffer(unsigned id) const;
     void ssr(const RTT& lighting_buffer, const RTT& view_space_normals, const Depthbuffer& depth_buffer, const Mat4f& projection_matrix, const Vec4f& blend_weight, RTT& lighting_buffer_copy);
-    void separableBlur(const RTT& in, const std::array<std::shared_ptr<RTT>, 2>& out);
+    void separableBlur(const RTT& in, const std::array<std::shared_ptr<RTT>, 2>& out, RendertargetStack& rtt_stack);
     void composite(const RTT& lighting_buffer, const GlobalShaderParams& params);
     void composite(const RTT& lighting_buffer, const GlobalShaderParams& params, const RTT& dof_buffer, const Depthbuffer& depth_buffer);
     void endFrame() const;
@@ -183,24 +184,27 @@ namespace fly
     const ShaderGenerator& getShaderGenerator() const;
     Shader*& getActiveShader();
   private:
-    GLShaderProgram * _activeShader;
-    std::shared_ptr<GLShaderProgram> _aabbShader;
-    std::unique_ptr<ShaderDesc<OpenGLAPI>> _compositeShaderDesc;
-    std::unique_ptr<ShaderDesc<OpenGLAPI>> _skydomeShaderDesc;
-    std::unique_ptr<GLShaderProgram> _ssrShader;
-    std::unique_ptr<GLShaderProgram> _blurShader;
-    std::shared_ptr<GLShaderProgram> _skydomeShader;
-    std::shared_ptr<GLVertexArray> _vaoAABB;
-    std::shared_ptr<GLBuffer> _vboAABB;
-    std::unique_ptr<GLFramebuffer> _offScreenFramebuffer;
-    ShaderGenerator _shaderGenerator;
-    std::unique_ptr<GLSampler> _samplerAnisotropic;
-    GLint _glVersionMajor, _glVersionMinor;
-    unsigned _anisotropy = 1u;
+    struct GlewInit
+    {
+      GlewInit();
+    };
     void checkFramebufferStatus();
     void setColorBuffers(const RendertargetStack & rtts);
-    RendertargetStack _rttHelper;
-    StackPOD<GLenum, _maxRendertargets> _drawBuffers;
+    GlewInit _glewInit;
+    GLShaderProgram * _activeShader;
+    GLFramebuffer _offScreenFramebuffer;
+    StackPOD<GLenum> _drawBuffers;
+    std::unique_ptr<ShaderDesc<OpenGLAPI>> _compositeShaderDesc;
+    std::unique_ptr<ShaderDesc<OpenGLAPI>> _skydomeShaderDesc;
+    GLShaderProgram _ssrShader;
+    GLShaderProgram _blurShader;
+    GLShaderProgram _aabbShader;
+    GLVertexArray _vaoAABB;
+    GLBuffer _vboAABB;
+    ShaderGenerator _shaderGenerator;
+    GLSampler _samplerAnisotropic;
+    GLint _glVersionMajor, _glVersionMinor;
+    unsigned _anisotropy = 1u;
   };
 }
 

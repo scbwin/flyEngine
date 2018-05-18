@@ -11,14 +11,11 @@
 #include <SOIL/SOIL.h>
 #include <Material.h>
 #include <opengl/GLShaderInterface.h>
-#include <opengl/GLFramebuffer.h>
 #include <Settings.h>
 #include <renderer/RenderParams.h>
-#include <opengl/GLSampler.h>
 #include <WindParamsLocal.h>
 #include <GraphicsSettings.h>
 #include <opengl/GLMaterialSetup.h>
-#include <opengl/GLShaderProgram.h>
 #include <fstream>
 #include <Flags.h>
 #include <ShaderDesc.h>
@@ -27,22 +24,15 @@
 
 namespace fly
 {
-  OpenGLAPI::OpenGLAPI(const Vec4f& clear_color)
+  OpenGLAPI::OpenGLAPI(const Vec4f& clear_color) :
+    _vboAABB(GL_ARRAY_BUFFER),
+    _aabbShader(std::move(*createShader(GLShaderSource("assets/opengl/vs_aabb.glsl", GL_VERTEX_SHADER), GLShaderSource("assets/opengl/fs_aabb.glsl", GL_FRAGMENT_SHADER), GLShaderSource("assets/opengl/gs_aabb.glsl", GL_GEOMETRY_SHADER))))
   {
-    glewExperimental = true;
-    auto result = glewInit();
-    if (result == GLEW_OK) {
-      GL_CHECK(glGetIntegerv(GL_MAJOR_VERSION, &_glVersionMajor));
-      GL_CHECK(glGetIntegerv(GL_MINOR_VERSION, &_glVersionMinor));
-      std::cout << "OpenGLAPI::OpenGLAPI(): Initialized GLEW, GL Version: " << _glVersionMajor << "." << _glVersionMinor << std::endl;
-    }
-    else {
-      std::cout << "OpenGLAPI::OpenGLAPI() Failed to initialized GLEW: " << glewGetErrorString(result) << std::endl;
-    }
-    _vaoAABB = std::make_shared<GLVertexArray>();
-    _vaoAABB->bind();
-    _vboAABB = std::make_shared<GLBuffer>(GL_ARRAY_BUFFER);
-    _vboAABB->bind();
+    GL_CHECK(glGetIntegerv(GL_MAJOR_VERSION, &_glVersionMajor));
+    GL_CHECK(glGetIntegerv(GL_MINOR_VERSION, &_glVersionMinor));
+    std::cout << ", GL Version: " << _glVersionMajor << "." << _glVersionMinor << std::endl;
+    _vaoAABB.bind();
+    _vboAABB.bind();
     for (unsigned i = 0; i < 2; i++) {
       GL_CHECK(glEnableVertexAttribArray(i));
       GL_CHECK(glVertexAttribDivisor(i, 1));
@@ -50,25 +40,9 @@ namespace fly
     GL_CHECK(glVertexAttribPointer(0, 3, GL_FLOAT, false, 2 * sizeof(Vec3f), 0));
     GL_CHECK(glVertexAttribPointer(1, 3, GL_FLOAT, false, 2 * sizeof(Vec3f), reinterpret_cast<const void*>(sizeof(Vec3f))));
 
-    _offScreenFramebuffer = std::make_unique<GLFramebuffer>();
-
-    GLShaderSource vs_aabb, gs_aabb, fs_aabb;
-    vs_aabb.initFromFile("assets/opengl/vs_aabb.glsl", GL_VERTEX_SHADER);
-    gs_aabb.initFromFile("assets/opengl/gs_aabb.glsl", GL_GEOMETRY_SHADER);
-    fs_aabb.initFromFile("assets/opengl/fs_aabb.glsl", GL_FRAGMENT_SHADER);
-    _aabbShader = createShader(vs_aabb, fs_aabb, gs_aabb);
-    GLShaderSource vs_skydome, fs_skydome;
-    vs_skydome.initFromFile("assets/opengl/vs_skybox.glsl", GL_VERTEX_SHADER);
-    fs_skydome.initFromFile("assets/opengl/fs_skydome_new.glsl", GL_FRAGMENT_SHADER);
-    _skydomeShader = createShader(vs_skydome, fs_skydome);
-    _skydomeShaderDesc = std::make_unique<ShaderDesc<OpenGLAPI>>(_skydomeShader, ShaderSetupFlags::SS_VP, *this);
-
-    _samplerAnisotropic = std::make_unique<GLSampler>();
+    _skydomeShaderDesc = std::make_unique<ShaderDesc<OpenGLAPI>>(createShader(GLShaderSource("assets/opengl/vs_skybox.glsl", GL_VERTEX_SHADER), GLShaderSource("assets/opengl/fs_skydome_new.glsl", GL_FRAGMENT_SHADER)), ShaderSetupFlags::SS_VP, *this);
 
     GL_CHECK(glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]));
-
-    _ssrShader = std::make_unique<GLShaderProgram>();
-    _blurShader = std::make_unique<GLShaderProgram>();
   }
   OpenGLAPI::~OpenGLAPI()
   {
@@ -91,7 +65,7 @@ namespace fly
   void OpenGLAPI::beginFrame() const
   {
       for (unsigned i = 0; _anisotropy > 1 && i <= static_cast<unsigned>(heightTexUnit()); i++) {
-        _samplerAnisotropic->bind(i);
+        _samplerAnisotropic.bind(i);
       }
   }
   void OpenGLAPI::bindShader(GLShaderProgram * shader)
@@ -144,8 +118,8 @@ namespace fly
   }
   void OpenGLAPI::renderAABBs(const std::vector<AABB const *>& aabbs, const Mat4f& transform, const Vec3f& col)
   {
-    _vaoAABB->bind();
-    bindShader(_aabbShader.get());
+    _vaoAABB.bind();
+    bindShader(&_aabbShader);
     setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::viewProjectionMatrix()), transform);
     setVector(_activeShader->uniformLocation("c"), col);
     std::vector<Vec3f> bb_buffer;
@@ -153,19 +127,19 @@ namespace fly
       bb_buffer.push_back(aabb->getMin());
       bb_buffer.push_back(aabb->getMax());
     }
-    _vboAABB->setData(bb_buffer.data(), bb_buffer.size(), GL_DYNAMIC_COPY);
+    _vboAABB.setData(bb_buffer.data(), bb_buffer.size(), GL_DYNAMIC_COPY);
     GL_CHECK(glDrawArraysInstanced(GL_POINTS, 0, 1, static_cast<GLsizei>(aabbs.size())));
   }
   void OpenGLAPI::setRendertargets(const RendertargetStack& rtts, const Depthbuffer* depth_buffer)
   {
     setColorBuffers(rtts);
-    _offScreenFramebuffer->texture(GL_DEPTH_ATTACHMENT, depth_buffer, 0);
+    _offScreenFramebuffer.texture(GL_DEPTH_ATTACHMENT, depth_buffer, 0);
     checkFramebufferStatus();
   }
   void OpenGLAPI::setRendertargets(const RendertargetStack& rtts, const Depthbuffer* depth_buffer, unsigned depth_buffer_layer)
   {
     setColorBuffers(rtts);
-    _offScreenFramebuffer->textureLayer(GL_DEPTH_ATTACHMENT, depth_buffer, 0, depth_buffer_layer);
+    _offScreenFramebuffer.textureLayer(GL_DEPTH_ATTACHMENT, depth_buffer, 0, depth_buffer_layer);
     checkFramebufferStatus();
   }
   void OpenGLAPI::bindBackbuffer(unsigned id) const
@@ -184,37 +158,36 @@ namespace fly
     GL_CHECK(glBlendColor(blend_weight[0], blend_weight[1], blend_weight[2], blend_weight[3]));
     GL_CHECK(glBlendFunc(GL_CONSTANT_COLOR, GL_ONE_MINUS_CONSTANT_COLOR));
     //  setRendertargets({ &lighting_buffer }, nullptr);
-    _ssrShader->bind();
+    _ssrShader.bind();
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit0()));
     view_space_normals.bind();
-    setScalar(_ssrShader->uniformLocation(GLSLShaderGenerator::viewSpaceNormalsSampler()), miscTexUnit0());
+    setScalar(_ssrShader.uniformLocation(GLSLShaderGenerator::viewSpaceNormalsSampler()), miscTexUnit0());
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit1()));
     lighting_buffer_copy.bind();
-    setScalar(_ssrShader->uniformLocation(GLSLShaderGenerator::lightingSampler()), miscTexUnit1());
+    setScalar(_ssrShader.uniformLocation(GLSLShaderGenerator::lightingSampler()), miscTexUnit1());
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit2()));
     depth_buffer.bind();
-    setScalar(_ssrShader->uniformLocation(GLSLShaderGenerator::depthSampler()), miscTexUnit2());
-    setMatrix(_ssrShader->uniformLocation(GLSLShaderGenerator::projectionMatrix()), projection_matrix);
+    setScalar(_ssrShader.uniformLocation(GLSLShaderGenerator::depthSampler()), miscTexUnit2());
+    setMatrix(_ssrShader.uniformLocation(GLSLShaderGenerator::projectionMatrix()), projection_matrix);
     auto p_inverse = inverse(projection_matrix);
-    setMatrix(_ssrShader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverse()), p_inverse);
-    setVector(_ssrShader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverseThirdRow()), p_inverse.row(2));
-    setVector(_ssrShader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverseFourthRow()), p_inverse.row(3));
+    setMatrix(_ssrShader.uniformLocation(GLSLShaderGenerator::projectionMatrixInverse()), p_inverse);
+    setVector(_ssrShader.uniformLocation(GLSLShaderGenerator::projectionMatrixInverseThirdRow()), p_inverse.row(2));
+    setVector(_ssrShader.uniformLocation(GLSLShaderGenerator::projectionMatrixInverseFourthRow()), p_inverse.row(3));
     GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
     GL_CHECK(glDisable(GL_BLEND));
     depth_buffer.param(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     depth_buffer.param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   }
-  void OpenGLAPI::separableBlur(const RTT & in, const std::array<std::shared_ptr<RTT>, 2>& out)
+  void OpenGLAPI::separableBlur(const RTT & in, const std::array<std::shared_ptr<RTT>, 2>& out, OpenGLAPI::RendertargetStack& rtt_stack)
   {
     in.param(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    _activeShader = _blurShader.get();
+    _activeShader = &_blurShader;
     _activeShader->bind();
     setViewport(fly::Vec2u(out[1]->width(), out[1]->height()));
     for (unsigned i = 0; i < 2; i++) {
-      _rttHelper.clear();
-      _rttHelper.push_back(out[!i].get());
-      // setRendertargets({ out[!i].get() }, nullptr);
-      setRendertargets(_rttHelper, nullptr);
+      rtt_stack.clear();
+      rtt_stack.push_back_secure(out[!i].get());
+      setRendertargets(rtt_stack, nullptr);
       Vec2f texel_size(1.f / out[0]->width() * i, 1.f / out[0]->height() * !i);
       setVector(_activeShader->uniformLocation(GLSLShaderGenerator::texelSize()), texel_size);
       GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit1()));
@@ -249,7 +222,7 @@ namespace fly
   void OpenGLAPI::endFrame() const
   {
     for (unsigned i = 0; i <= static_cast<unsigned>(heightTexUnit()); i++) {
-      _samplerAnisotropic->unbind(i);
+      _samplerAnisotropic.unbind(i);
     }
   }
   void OpenGLAPI::setAnisotropy(unsigned anisotropy)
@@ -258,7 +231,7 @@ namespace fly
       float max_ani;
       GL_CHECK(glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &max_ani));
       _anisotropy = glm::clamp(anisotropy, 1u, static_cast<unsigned>(max_ani));
-      _samplerAnisotropic->param(GL_TEXTURE_MAX_ANISOTROPY, static_cast<float>(_anisotropy));
+      _samplerAnisotropic.param(GL_TEXTURE_MAX_ANISOTROPY, static_cast<float>(_anisotropy));
     }
   }
   std::shared_ptr<OpenGLAPI::Texture> OpenGLAPI::createTexture(const std::string & path)
@@ -328,7 +301,7 @@ namespace fly
     shader.add(vs);
     shader.add(fs);
     shader.link();
-    *_blurShader = std::move(shader);
+    _blurShader = std::move(shader);
   }
   void OpenGLAPI::createCompositeShader(const GraphicsSettings & gs)
   {
@@ -352,7 +325,7 @@ namespace fly
     shader.add(vs);
     shader.add(fs);
     shader.link();
-    *_ssrShader = std::move(shader);
+    _ssrShader = std::move(shader);
   }
   const std::unique_ptr<ShaderDesc<OpenGLAPI>>& OpenGLAPI::getSkyboxShaderDesc() const
   {
@@ -374,17 +347,17 @@ namespace fly
   }
   void OpenGLAPI::setColorBuffers(const RendertargetStack& rtts)
   {
-    _offScreenFramebuffer->bind();
-    _offScreenFramebuffer->clearAttachments();
+    _offScreenFramebuffer.bind();
+    _offScreenFramebuffer.clearAttachments();
     _drawBuffers.clear();
     if (rtts.size()) {
       for (unsigned i = 0; i < rtts.size(); i++) {
-        _drawBuffers.push_back(GL_COLOR_ATTACHMENT0 + i);
-        _offScreenFramebuffer->texture(_drawBuffers.back(), rtts[i], 0);
+        _drawBuffers.push_back_secure(GL_COLOR_ATTACHMENT0 + i);
+        _offScreenFramebuffer.texture(_drawBuffers.back(), rtts[i], 0);
       }
     }
     else {
-      _drawBuffers.push_back(GL_NONE);
+      _drawBuffers.push_back_secure(GL_NONE);
     }
     GL_CHECK(glDrawBuffers(static_cast<GLsizei>(_drawBuffers.size()), _drawBuffers.begin()));
   }
@@ -439,5 +412,16 @@ namespace fly
   OpenGLAPI::MeshGeometryStorage::MeshData OpenGLAPI::MeshGeometryStorage::addMesh(const std::shared_ptr<Mesh>& mesh)
   {
     return _meshDataCache.getOrCreate(mesh, mesh);
+  }
+  OpenGLAPI::GlewInit::GlewInit()
+  {
+    glewExperimental = true;
+    auto result = glewInit();
+    if (result == GLEW_OK) {
+      std::cout << "OpenGLAPI::OpenGLAPI(): Initialized GLEW";
+    }
+    else {
+      std::cout << "OpenGLAPI::OpenGLAPI() Failed to initialized GLEW: " << glewGetErrorString(result) << std::endl;
+    }
   }
 }

@@ -22,7 +22,7 @@ namespace fly
     void clearAttachments();
   private:
     GLuint _id;
-    StackPOD<GLenum, 8> _attachments;
+    StackPOD<GLenum> _attachments;
   };
 }
 

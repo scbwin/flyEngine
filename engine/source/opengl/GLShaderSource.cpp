@@ -3,7 +3,7 @@
 
 namespace fly
 {
-  void GLShaderSource::initFromFile(const std::string & file, GLenum type)
+  GLShaderSource::GLShaderSource(const std::string & file, GLenum type)
   {
     _key = file;
     _type = type;

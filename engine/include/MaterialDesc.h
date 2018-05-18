@@ -143,9 +143,9 @@ namespace fly
     }*/
   private:
     typename API::Shader * & _activeShader;
-    std::shared_ptr<Material> _material;
-    StackPOD<void(*)(typename API::Shader*, const MaterialDesc&), 8> _materialSetupFuncs;
-    StackPOD<void(*)(typename API::Shader*, const MaterialDesc&), 8> _materialSetupFuncsDepth;
+    std::shared_ptr<Material> const _material;
+    StackPOD<void(*)(typename API::Shader const *, const MaterialDesc&)> _materialSetupFuncs;
+    StackPOD<void(*)(typename API::Shader const *, const MaterialDesc&)> _materialSetupFuncsDepth;
     std::shared_ptr<ShaderDesc<API>> _meshShaderDesc;
     std::shared_ptr<ShaderDesc<API>> _meshShaderDescWind;
     std::shared_ptr<ShaderDesc<API>> _meshShaderDescDepth;

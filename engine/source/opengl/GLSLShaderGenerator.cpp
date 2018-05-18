@@ -5,10 +5,9 @@
 
 namespace fly
 {
-  GLSLShaderGenerator::GLSLShaderGenerator()
+  GLSLShaderGenerator::GLSLShaderGenerator() :
+    _compositeVertexSource(std::string(vertexFileComposite()), GL_VERTEX_SHADER)
   {
-    _compositeVertexSource.initFromFile(std::string(vertexFileComposite()), GL_VERTEX_SHADER);
-
     _windParamString = "uniform float " + std::string(time()) + "; \n\
 // Global wind params\n\
 uniform vec2 " + std::string(windDir()) + "; // Wind direction\n\

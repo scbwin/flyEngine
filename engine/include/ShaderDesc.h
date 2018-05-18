@@ -51,7 +51,7 @@ namespace fly
     }
   private:
     std::shared_ptr<typename API::Shader> _shader;
-    StackPOD<void(*)(const GlobalShaderParams&, typename API::Shader*), 8> _setupFuncs;
+    StackPOD<void(*)(const GlobalShaderParams&, typename API::Shader*)> _setupFuncs;
     API& _api;
   };
 }

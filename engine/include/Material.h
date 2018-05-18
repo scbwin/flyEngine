@@ -47,25 +47,26 @@ namespace fly
     void setParallaxBinarySearchSteps(float steps);
 
   private:
-    Vec3f _diffuseColor;
-    // Texture paths
-    std::string _diffusePath;
-    std::string _normalPath;
-    std::string _opacityPath;
-    std::string _heightPath;
-    float _specularExponent = 48.f;
-    bool _hasWindX = false;
-    bool _hasWindZ = false;
-    float _windStrength;
-    float _windFrequency;
-    bool _isReflective = false;
     float _ka = 0.025f;
     float _kd = 1.f;
     float _ks = 1.f;
+    float _specularExponent = 48.f;
     float _parallaxHeightScale = 0.04f;
     float _parallaxMinSteps = 1.f;
     float _parallaxMaxSteps = 2.f;
     float _parallaxBinarySearchSteps = 6.f;
+    Vec3f _diffuseColor;
+    std::string _diffusePath;
+    std::string _normalPath;
+    std::string _opacityPath;
+    std::string _heightPath;
+    bool _isReflective = false;
+
+    // Deprecated
+    bool _hasWindX = false;
+    bool _hasWindZ = false;
+    float _windStrength;
+    float _windFrequency;
   };
 }
 

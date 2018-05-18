@@ -323,7 +323,7 @@ namespace fly
           _api.ssr(*_lightingBuffer, *_viewSpaceNormals, *_depthBuffer, _gsp._projectionMatrix, Vec4f(_gs->getSSRBlendWeight()), *_lightingBufferCopy);
         }
         if (_gs->getDepthOfField()) {
-          _api.separableBlur(*_lightingBuffer, _dofBuffer);
+          _api.separableBlur(*_lightingBuffer, _dofBuffer, _renderTargets);
           _api.setViewport(_viewPortSize);
         }
         if (_offScreenRendering) {
@@ -382,9 +382,8 @@ namespace fly
     std::map<Entity*, std::shared_ptr<StaticMeshRenderableWrapper<API>>> _staticMeshRenderables;
     std::map<Entity*, std::shared_ptr<DynamicMeshRenderableWrapper<API>>> _dynamicMeshRenderables;
     std::shared_ptr<SkydomeRenderableWrapper<API>> _skydomeRenderable;
-    StackPOD<MeshRenderable<API>*, 4096> _visibleMeshes;
-    std::map<ShaderDesc<API> const *, std::map<MaterialDesc<API> const *, StackPOD<MeshRenderable<API>*, 1024>>> _displayList;
-    //  std::map<typename API::ShaderDesc const *, std::set<MaterialDesc<API>*>> _displayList;
+    StackPOD<MeshRenderable<API>*> _visibleMeshes;
+    std::map<ShaderDesc<API> const *, std::map<MaterialDesc<API> const *, StackPOD<MeshRenderable<API>*>>> _displayList;
     using BVH = Quadtree<MeshRenderable<API>>;
     std::unique_ptr<BVH> _bvh;
     SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;

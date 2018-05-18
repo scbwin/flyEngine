@@ -17,7 +17,7 @@ namespace fly
   {
     // using TPtr = std::shared_ptr<T>;
     using TPtr = T * ;
-    using Stack = StackPOD<TPtr, 4096>;
+    using Stack = StackPOD<TPtr>;
   public:
     class Node
     {
@@ -237,14 +237,14 @@ namespace fly
       }
     private:
       std::unique_ptr<Node> _children[4];
-      // Node min max
-      Vec2f _min, _max;
       // Axis aligned bounding box for the enclosed elements (union)
       AABB _aabbWorld;
       // Largest element aabb size that is enclosed by this node, useful for detail culling
       float _largestElementAABBWorldSize;
       // Pointers to the elements
       std::vector<TPtr> _elements;
+      // Node min max
+      Vec2f _min, _max;
       void getChildBounds(Vec2f& min, Vec2f& max, unsigned char index) const
       {
         auto new_size = getSize() * 0.5f;
