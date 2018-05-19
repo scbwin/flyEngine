@@ -9,18 +9,10 @@ namespace fly
     _material(material),
     _modelMatrix(model_matrix),
     _modelMatrixInverse(inverse(glm::mat3(model_matrix))),
-    _hasWind(has_wind)
+    _hasWind(has_wind),
+    _aabbWorld(*mesh->getAABB(), model_matrix)
   {
-    Vec3f bb_min(std::numeric_limits<float>::max());
-    Vec3f bb_max(std::numeric_limits<float>::lowest());
-    for (const auto& v : mesh->getVertices()) {
-      Vec3f v_world = (model_matrix * Vec4f(v._position, 1.f)).xyz();
-      bb_min = minimum(bb_min, v_world);
-      bb_max = maximum(bb_max, v_world);
-    }
-    bb_min -= aabb_offset;
-    bb_max += aabb_offset;
-    _aabbWorld = AABB(bb_min, bb_max);
+    _aabbWorld.expand(aabb_offset);
     _windParams._pivotWorld = _aabbWorld.getMax()[1];
     _windParams._bendFactorExponent = 2.5f;
   }

@@ -107,9 +107,11 @@ namespace fly
       Vec3f bb_max = aabb_light.center() + sphere_radius;
 
       // Avoids shimmering edges when the camera is moving
-      Vec3f units_per_texel = (bb_max - bb_min) / shadow_map_size;
-      bb_min = floor(bb_min / units_per_texel) * units_per_texel;
-      bb_max = ceil(bb_max / units_per_texel) * units_per_texel;
+      Vec2f units_per_texel = (bb_max.xy() - bb_min.xy()) / shadow_map_size;
+      Vec2f bb_min_xy = floor(bb_min.xy() / units_per_texel) * units_per_texel;
+      Vec2f bb_max_xy = ceil(bb_max.xy() / units_per_texel) * units_per_texel;
+      bb_min = Vec3f(bb_min_xy, bb_min[2]);
+      bb_max = Vec3f(bb_max_xy, bb_max[2]);
 
       vp.push_back_secure(MathHelpers::getProjectionMatrixOrtho(bb_min, bb_max, z_near_mapping) * view_matrix_light);
 

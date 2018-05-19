@@ -7,8 +7,9 @@
 #include <SkydomeRenderable.h>
 #include <Model.h>
 #include <GameTimer.h>
+#include <qwidget.h>
 
-AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, fly::Camera* camera, fly::CameraController* camera_controller, fly::Entity* skydome, fly::GameTimer* game_timer)
+AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, fly::Camera* camera, fly::CameraController* camera_controller, fly::Entity* skydome, fly::GameTimer* game_timer, QWidget* widget)
 {
   TwAddVarCB(bar, "Shadows", TwType::TW_TYPE_BOOLCPP, cbSetShadows, cbGetShadows, gs, nullptr);
   TwAddVarCB(bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, cbSetPCF, cbGetPCF, gs, nullptr);
@@ -45,6 +46,7 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "SSR ray len scale", TwType::TW_TYPE_FLOAT, setSSRRayLenScale, getSSRRayLenScale, gs, "step=0.1f");
   TwAddVarCB(bar, "SSR min ray len", TwType::TW_TYPE_FLOAT, setSSRMinRayLen, getSSRMinRayLen, gs, "step=0.1f");
   TwAddVarCB(bar, "SSR blend weight", TwType::TW_TYPE_FLOAT, setSSRBlendWeight, getSSRBlendWeight, gs, "step=0.005f");
+  TwAddVarCB(bar, "Fullscreen", TwType::TW_TYPE_BOOLCPP, setFullScreen, getFullScreen, widget, nullptr);
 }
 
 void AntWrapper::cbSetShadows(const void * value, void * client_data)
@@ -397,4 +399,14 @@ void AntWrapper::setSSRBlendWeight(const void * value, void * client_data)
 void AntWrapper::getSSRBlendWeight(void * value, void * client_data)
 {
   *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getSSRBlendWeight();
+}
+
+void AntWrapper::setFullScreen(const void * value, void * client_data)
+{
+  *cast<bool>(value) ? cast<QWidget>(client_data)->showFullScreen() : cast<QWidget>(client_data)->showNormal();
+}
+
+void AntWrapper::getFullScreen(void * value, void * client_data)
+{
+  *cast<bool>(value) = cast<QWidget>(client_data)->isFullScreen();
 }

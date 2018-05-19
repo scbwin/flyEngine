@@ -77,6 +77,11 @@ namespace fly
     {
       return Vector<2, T>(_data[0], _data[2]);
     }
+    template<unsigned D = Dim>
+    inline typename std::enable_if<D >= 2, Vector<2, T>>::type xy() const
+    {
+      return Vector<2, T>(_data[0], _data[1]);
+    }
     /**
     * Vector/vector calculations
     */
