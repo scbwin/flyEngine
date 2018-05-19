@@ -1,3 +1,5 @@
+#if INCLUDE_OPENCV
+
 #include <Renderables.h>
 #include <Transform.h>
 #include <Model.h>
@@ -64,3 +66,5 @@ namespace fly
   {
   }
 }
+
+#endif

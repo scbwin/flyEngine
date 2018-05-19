@@ -1,6 +1,8 @@
 #ifndef TERRAIN_H
 #define TERRAIN_H
 
+#if INCLUDE_OPENCV
+
 #include <opencv2/opencv.hpp>
 #include <memory>
 #include <glm/glm.hpp>
@@ -150,5 +152,5 @@ namespace fly
 
   };
 }
-
+#endif
 #endif // !GEOMIPMAP_H

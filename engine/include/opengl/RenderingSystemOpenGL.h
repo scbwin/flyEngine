@@ -1,6 +1,8 @@
 #ifndef OPENGLINTERFACE_H
 #define OPENGLINTERFACE_H
 
+#if INCLUDE_OPENCV
+
 #include "RenderingSystem.h"
 #include "GL/glew.h"
 #include "opengl/GLWrappers.h"
@@ -22,7 +24,7 @@ namespace fly
 {
   class Camera;
   class Transform;
-
+  // Deprecated
   class RenderingSystemOpenGL : public RenderingSystem
   {
   public:
@@ -377,5 +379,5 @@ namespace fly
     }
   };
 }
-
+#endif
 #endif

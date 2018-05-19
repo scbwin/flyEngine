@@ -1,3 +1,5 @@
+#if INCLUDE_OPENCV
+
 #define GLM_ENABLE_EXPERIMENTAL
 #include <Terrain.h>
 #include <iostream>
@@ -627,3 +629,5 @@ namespace fly
   {
   }
 }
+
+#endif

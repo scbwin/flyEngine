@@ -1,3 +1,5 @@
+#if INCLUDE_OPENCV
+
 #include "RenderingSystem.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
@@ -267,3 +269,5 @@ namespace fly
     return _renderWireFrame;
   }
 }
+
+#endif

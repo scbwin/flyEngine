@@ -6,26 +6,30 @@ flyEngine is an Open Source 3D engine based on the OpenGL and Direct3D graphics 
 ![](https://github.com/fleissna/flyEngine/blob/master/screenshots/screenshot2.png)
 
 ## Installation
-You have to download/clone and build the dependencies by yourself. Use CMake to resolve them and to generate project files for Visual Studio. flyEngine is built as a static library, make sure to <s>link against it in your application</s> include it with CMake's ```find_package```. Two examples are included that demonstrate how to integrate the library, one for OpenGL and another one for DirectX. You can switch between Crytek's Sponza scene and a terrain scene through the SPONZA preprocessor define.
+You have to download/clone and build the dependencies by yourself. Use CMake to resolve them and to generate project files for Visual Studio. flyEngine is built as a static library, make sure to <s>link against it in your application</s> include it with CMake's ```find_package```. A few examples are included that demonstrate how to integrate the library. There are currently some pre-processor defines that allow to switch between different scenes.
 
 ### Software
 * Visual Studio 2017 Community Edition 64 Bit (2015 should work as well)
 * CMake
 ### Library Dependencies
 * [GLM](https://glm.g-truc.net/0.9.9/index.html)
+* [Assimp](https://github.com/assimp/assimp)
 * [SOIL](https://github.com/kbranigan/Simple-OpenGL-Image-Library)
+* [GLEW](http://glew.sourceforge.net/)
+* Qt 5.10.1 (Open Source version)
+* [AntTweakBar](http://anttweakbar.sourceforge.net/doc/)
+#### Optional
+* [Bullet Physics](https://github.com/bulletphysics/bullet3)
 * [DXUT](https://github.com/Microsoft/DXUT)
 * [FX11](https://github.com/Microsoft/FX11)
 * [DirectXTex](https://github.com/Microsoft/DirectXTex)
 * [DirectXTK](https://github.com/Microsoft/DirectXTK)
-* [GLEW](http://glew.sourceforge.net/)
-* [Assimp](https://github.com/assimp/assimp)
 * [OpenCV](https://github.com/opencv/opencv)
-* [AntTweakBar](http://anttweakbar.sourceforge.net/doc/)
-* Qt 5.10.1 (Open Source version)
-* [Bullet Physics](https://github.com/bulletphysics/bullet3)
 
 DXUT, FX11, DirectXTex, and DirectXTK repositories contain solution files for Visual Studio 2017. GLM is header-only, SOIL, Assimp and OpenCV are shipped with their own CMake files. Qt offers an installer that contains pre-built binaries. For GLEW and AntTweakBar you can use the pre-build binaries too.
+
+### Conventions
+flyEngine uses a right-handed coordinate system. X is right, Y is up and the camera points towards negative Z. Column-major matrices are used throughout the engine, regardless of the underlying rendering API. Matrix multiplication order goes from right to left, a vector being the right-most term.
 
 ### Contributions
 Feel free to contribute if you have any ideas to enhance the engine.

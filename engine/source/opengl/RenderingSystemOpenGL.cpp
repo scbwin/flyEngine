@@ -1,3 +1,5 @@
+#if INCLUDE_OPENCV
+
 #define GLM_ENABLE_EXPERIMENTAL
 #include <opencv2/opencv.hpp>
 #include "opengl/RenderingSystemOpenGL.h"
@@ -3051,3 +3053,5 @@ namespace fly
     return _settings;
   }
 }
+
+#endif

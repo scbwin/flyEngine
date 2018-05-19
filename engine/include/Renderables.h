@@ -1,6 +1,10 @@
 #ifndef RENDERABLES_H
 #define RENDERABLES_H
 
+#if INCLUDE_OPENCV
+
+// Deprecated
+
 #include <opencv2/opencv.hpp>
 #include <Component.h>
 #include <glm/glm.hpp>
@@ -52,5 +56,7 @@ namespace fly
     float _frequencyScale;
   };
 }
+
+#endif
 
 #endif

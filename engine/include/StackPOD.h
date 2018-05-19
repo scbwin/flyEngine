@@ -17,8 +17,12 @@ namespace fly
   public:
     StackPOD()
     {
-      reserve(8);
-      clear();
+      allocate(8);
+    }
+    StackPOD(size_t size)
+    {
+      allocate(size);
+      _end = _begin + size;
     }
     StackPOD(const StackPOD& other) = delete;
     StackPOD& operator=(const StackPOD& other) = delete;
@@ -28,10 +32,11 @@ namespace fly
     {
       std::free(_begin);
     }
-    inline void reserve(size_t new_size)
+    inline void reserve(size_t new_capacity)
     {
-      _begin = reinterpret_cast<T*>(std::realloc(_begin, new_size * sizeof(T)));
-      _capacity = new_size;
+      if (new_capacity > _capacity) {
+        allocate(new_capacity);
+      }
     }
     inline void clear()
     {
@@ -51,9 +56,7 @@ namespace fly
     inline void push_back_secure(const T& element)
     {
       if (size() == _capacity) {
-        auto size_old = size();
-        reserve(capacity() * 2);
-        _end = _begin + size_old;
+        allocate(_capacity * 2);
       }
       push_back(element);
     }
@@ -69,11 +72,11 @@ namespace fly
     {
       return _end - _begin;
     }
-    inline const T& operator[] (unsigned i) const
+    inline const T& operator[] (size_t i) const
     {
       return _begin[i];
     }
-    inline T& operator[] (unsigned i)
+    inline T& operator[] (size_t i)
     {
       return _begin[i];
     }
@@ -91,8 +94,16 @@ namespace fly
     }
   private:
     T * _begin = nullptr;
-    T * _end;
+    T * _end = nullptr;
     size_t _capacity;
+
+    inline void allocate(size_t new_capacity)
+    {
+      size_t size_old = size();
+      _begin = reinterpret_cast<T*>(std::realloc(_begin, new_capacity * sizeof(T)));
+      _capacity = new_capacity;
+      _end = _begin + size_old;
+    }
   };
 }
 #endif

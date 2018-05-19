@@ -6,6 +6,7 @@ set (SDIR source)
 
 set(BUILD_DX11 "" CACHE BOOL "")
 set(BUILD_PHYSICS "" CACHE BOOL "")
+set(INCLUDE_OPENCV "" CACHE BOOL "")
 
 set (HEADER_FILES
 	${IDIR}/AABB.h ${IDIR}/Animation.h ${IDIR}/AnimationSystem.h ${IDIR}/AssimpImporter.h ${IDIR}/Billboard.h ${IDIR}/Camera.h ${IDIR}/Component.h ${IDIR}/Engine.h ${IDIR}/Entity.h ${IDIR}/EntityManager.h ${IDIR}/FixedTimestepSystem.h
@@ -65,7 +66,9 @@ IF (WIN32)
 ENDIF()
 find_package(OpenGL)
 find_package(assimp REQUIRED)
+if(${INCLUDE_OPENCV})
 find_package(OpenCV REQUIRED)
+endif()
 if(${BUILD_PHYSICS})
 find_package(Bullet REQUIRED)
 endif()
@@ -100,6 +103,10 @@ if(${BUILD_PHYSICS})
 endif()
 if(${BUILD_DX11})
 	set(LIBRARIES ${LIBRARIES} ${DXUT_LIB} ${FX11_LIB} ${DXTEX_LIB} ${DXTK_LIB} d3d11.lib comctl32.lib)
+endif()
+
+if(${INCLUDE_OPENCV})
+add_definitions(-DINCLUDE_OPENCV)
 endif()
 
 include_directories(${INCLUDE_DIRS} )

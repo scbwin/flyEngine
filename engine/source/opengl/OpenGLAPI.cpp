@@ -373,12 +373,12 @@ namespace fly
     _baseVertex += mesh->getVertices().size();
     _vboStack.push_back(mesh->getVertices().data(), mesh->getVertices().size());
     if (mesh->getVertices().size() - 1 <= static_cast<size_t>(std::numeric_limits<unsigned short>::max())) {
-      std::vector<unsigned short> indices;
-      for (const auto& i : mesh->getIndices()) {
-        indices.push_back(static_cast<unsigned short>(i));
+      StackPOD<unsigned short> indices(mesh->getIndices().size());
+      for (unsigned i = 0; i < indices.size(); i++) {
+        indices[i] = static_cast<unsigned short>(mesh->getIndices()[i]);
       }
-      _indices += indices.size() * sizeof(indices.front());
-      _iboStack.push_back(indices.data(), indices.size());
+      _indices += indices.size() * sizeof(*indices.begin());
+      _iboStack.push_back(indices.begin(), indices.size());
       mesh_data._type = GL_UNSIGNED_SHORT;
     }
     else {

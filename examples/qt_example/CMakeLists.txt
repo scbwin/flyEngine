@@ -19,7 +19,6 @@ set(SOURCE_FILES
 
 find_package(Qt5Widgets)
 find_package(Qt5OpenGL)
-find_package(OpenCV REQUIRED)
 find_package(flyEngine REQUIRED)
 set (ANT_DIR "" CACHE PATH "")
 set (ANT_LIB "" CACHE FILEPATH "")

@@ -1,3 +1,5 @@
+#if INCLUDE_OPENCV
+
 #ifndef RENDERINTERFACE_H
 #define RENDERINTERFACE_H
 
@@ -148,5 +150,7 @@ namespace fly
     bool _renderAABBs = false;
   };
 }
+
+#endif
 
 #endif
