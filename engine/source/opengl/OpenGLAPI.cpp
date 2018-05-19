@@ -336,7 +336,7 @@ namespace fly
   {
     return _shaderGenerator;
   }
-  OpenGLAPI::Shader*& OpenGLAPI::getActiveShader()
+  OpenGLAPI::Shader const *& OpenGLAPI::getActiveShader()
   {
     return _activeShader;
   }

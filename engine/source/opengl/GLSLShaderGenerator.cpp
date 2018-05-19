@@ -285,6 +285,7 @@ uniform float " + std::string(specularExponent()) + ";\n\
 uniform float " + std::string(gamma()) + ";\n\
 uniform mat3 " + std::string(modelMatrixInverse()) + ";\n\
 uniform mat3 " + std::string(modelViewInverse()) + ";\n\
+uniform vec4 " + std::string(viewMatrixThirdRow()) + ";\n\
 in vec3 normal_local;\n\
 in vec3 tangent_local;\n\
 in vec3 bitangent_local;\n\
@@ -353,7 +354,7 @@ void main()\n\
     if (settings.getShadows() || settings.getShadowsPCF()) {
       shader_src += "  int index = " + std::string(numfrustumSplits()) + "-1;\n\
   for (int i = " + std::string(numfrustumSplits()) + "-2; i >= 0; i--) {\n\
-    index -= int(distance(" + std::string(cameraPositionWorld()) + ", pos_world) < " + std::string(frustumSplits()) + "[i]);\n\
+    index -= int(-dot(" + std::string(viewMatrixThirdRow()) + ", vec4(pos_world, 1.f)) < " + std::string(frustumSplits()) + "[i]);\n\
   }\n";
       shader_src += "  vec4 shadow_coord = " + std::string(worldToLightMatrices()) + "[index] * vec4(pos_world, 1.f);\n\
   shadow_coord.xyz /= shadow_coord.w;\n\

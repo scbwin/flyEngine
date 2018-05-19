@@ -68,6 +68,7 @@ namespace fly
     static inline constexpr const char* depthSampler() { return "ts_d"; };
     static inline constexpr const char* dofSampler() { return "ts_dof"; };
     static inline constexpr const char* viewSpaceNormalsSampler() { return "ts_n"; };
+    static inline constexpr const char* viewMatrixThirdRow() { return "v3"; };
     static inline constexpr const char* noiseCodeGLSL() {
       return "float hash(vec2 p)\n\
 {\n\

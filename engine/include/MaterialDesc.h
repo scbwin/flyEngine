@@ -142,7 +142,7 @@ namespace fly
     return _renderables;
     }*/
   private:
-    typename API::Shader * & _activeShader;
+    typename API::Shader const * & _activeShader;
     std::shared_ptr<Material> const _material;
     StackPOD<void(*)(typename API::Shader const *, const MaterialDesc&)> _materialSetupFuncs;
     StackPOD<void(*)(typename API::Shader const *, const MaterialDesc&)> _materialSetupFuncsDepth;

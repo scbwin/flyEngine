@@ -45,14 +45,14 @@ namespace fly
         f(params, _shader.get());
       }
     }
-    inline const std::shared_ptr<typename API::Shader>& getShader() const
+   /* inline const std::shared_ptr<typename API::Shader>& getShader() const
     {
       return _shader;
-    }
+    }*/
   private:
     std::shared_ptr<typename API::Shader> _shader;
-    StackPOD<void(*)(const GlobalShaderParams&, typename API::Shader*)> _setupFuncs;
-    API& _api;
+    StackPOD<void(*)(const GlobalShaderParams&, typename API::Shader const *)> _setupFuncs;
+    API & _api;
   };
 }
 

@@ -182,7 +182,7 @@ namespace fly
     void createScreenSpaceReflectionsShader(const GraphicsSettings& gs);
     const std::unique_ptr<ShaderDesc<OpenGLAPI>>& getSkyboxShaderDesc() const;
     const ShaderGenerator& getShaderGenerator() const;
-    Shader*& getActiveShader();
+    Shader const *& getActiveShader();
   private:
     struct GlewInit
     {
@@ -191,7 +191,7 @@ namespace fly
     void checkFramebufferStatus();
     void setColorBuffers(const RendertargetStack & rtts);
     GlewInit _glewInit;
-    GLShaderProgram * _activeShader;
+    GLShaderProgram const * _activeShader;
     GLFramebuffer _offScreenFramebuffer;
     StackPOD<GLenum> _drawBuffers;
     std::unique_ptr<ShaderDesc<OpenGLAPI>> _compositeShaderDesc;
