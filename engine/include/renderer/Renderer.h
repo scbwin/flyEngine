@@ -73,6 +73,7 @@ namespace fly
       _pp._near = 0.1f;
       _pp._far = 10000.f;
       _pp._fieldOfViewDegrees = 45.f;
+      _renderTargets.reserve(_api._maxRendertargets);
     }
     virtual ~Renderer() {}
     virtual void normalMappingChanged(GraphicsSettings const * gs) override
@@ -383,7 +384,7 @@ namespace fly
     std::map<Entity*, std::shared_ptr<DynamicMeshRenderableWrapper<API>>> _dynamicMeshRenderables;
     std::shared_ptr<SkydomeRenderableWrapper<API>> _skydomeRenderable;
     StackPOD<MeshRenderable<API>*> _visibleMeshes;
-    std::map<ShaderDesc<API> const *, std::map<MaterialDesc<API> const *, StackPOD<MeshRenderable<API>*>>> _displayList;
+    std::map<ShaderDesc<API> const *, std::map<MaterialDesc<API> const *, StackPOD<MeshRenderable<API>*, 64>>> _displayList;
     using BVH = Quadtree<MeshRenderable<API>>;
     std::unique_ptr<BVH> _bvh;
     SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;

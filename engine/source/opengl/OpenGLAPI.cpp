@@ -122,12 +122,13 @@ namespace fly
     bindShader(&_aabbShader);
     setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::viewProjectionMatrix()), transform);
     setVector(_activeShader->uniformLocation("c"), col);
-    std::vector<Vec3f> bb_buffer;
+    StackPOD<Vec3f> bb_buffer;
+    bb_buffer.reserve(aabbs.size() * 2u);
     for (const auto& aabb : aabbs) {
       bb_buffer.push_back(aabb->getMin());
       bb_buffer.push_back(aabb->getMax());
     }
-    _vboAABB.setData(bb_buffer.data(), bb_buffer.size(), GL_DYNAMIC_COPY);
+    _vboAABB.setData(bb_buffer.begin(), bb_buffer.size(), GL_DYNAMIC_COPY);
     GL_CHECK(glDrawArraysInstanced(GL_POINTS, 0, 1, static_cast<GLsizei>(aabbs.size())));
   }
   void OpenGLAPI::setRendertargets(const RendertargetStack& rtts, const Depthbuffer* depth_buffer)

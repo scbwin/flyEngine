@@ -9,7 +9,7 @@ namespace fly
   /**
   * A lightweight alternative to std::vector for POD (Plain Old Data) types.
   */
-  template<typename T>
+  template<typename T, size_t initial_capacity = 0>
   class StackPOD
   {
     static_assert(std::is_pod<T>::value, "T must be a POD type");
@@ -17,7 +17,9 @@ namespace fly
   public:
     StackPOD()
     {
-      allocate(8);
+      if (initial_capacity) {
+        reserve(initial_capacity);
+      }
     }
     StackPOD(size_t size)
     {
@@ -56,7 +58,7 @@ namespace fly
     inline void push_back_secure(const T& element)
     {
       if (size() == _capacity) {
-        allocate(_capacity * 2);
+        allocate(_capacity == 0 ? 1 : _capacity * 2);
       }
       push_back(element);
     }
@@ -95,7 +97,7 @@ namespace fly
   private:
     T * _begin = nullptr;
     T * _end = nullptr;
-    size_t _capacity;
+    size_t _capacity = 0;
 
     inline void allocate(size_t new_capacity)
     {

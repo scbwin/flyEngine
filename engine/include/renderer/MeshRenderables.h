@@ -8,10 +8,11 @@
 #include <StaticMeshRenderable.h>
 #include <DynamicMeshRenderable.h>
 #include <Material.h>
+#include <AABB.h>
 
 namespace fly
 {
-  class AABB;
+ // class AABB;
 
   template<typename API>
   struct MeshRenderable : public GraphicsSettings::Listener
@@ -138,23 +139,29 @@ namespace fly
   template<typename API>
   struct StaticMeshRenderableWrapper : public MeshRenderable<API>
   {
-    std::shared_ptr<StaticMeshRenderable> _smr;
+   // StaticMeshRenderable const * _smr;
+    AABB _aabb;
+    Mat4f _modelMatrix;
+    Mat3f _modelMatrixInverse;
     StaticMeshRenderableWrapper(const std::shared_ptr<StaticMeshRenderable>& smr,
       const std::shared_ptr<MaterialDesc<API>>& material_desc, const typename API::MeshGeometryStorage::MeshData& mesh_data, API const & api) :
       MeshRenderable(material_desc, mesh_data, api),
-      _smr(smr)
+    //  _smr(smr.get()),
+      _aabb(*smr->getAABBWorld()),
+      _modelMatrix(smr->getModelMatrix()),
+      _modelMatrixInverse(smr->getModelMatrixInverse())
     {
     }
     virtual ~StaticMeshRenderableWrapper() = default;
     virtual void render() override
     {
-      _api.renderMesh(_meshData, _smr->getModelMatrix(), _smr->getModelMatrixInverse());
+      _api.renderMesh(_meshData, _modelMatrix, _modelMatrixInverse);
     }
     virtual void renderDepth() override
     {
-      _api.renderMesh(_meshData, _smr->getModelMatrix());
+      _api.renderMesh(_meshData, _modelMatrix);
     }
-    virtual AABB const * getAABBWorld() const override final { return _smr->getAABBWorld(); }
+    virtual AABB const * getAABBWorld() const override final { return &_aabb; }
   };
   template<typename API>
   struct StaticMeshRenderableReflectiveWrapper : public StaticMeshRenderableWrapper<API>
@@ -181,7 +188,7 @@ namespace fly
     {
       if (gs->getScreenSpaceReflections()) {
         _renderFunc = [this]() {
-          _api.renderMesh(_meshData, _smr->getModelMatrix(), _smr->getModelMatrixInverse(), _smr->getModelMatrixInverse() * _viewMatrixInverse);
+          _api.renderMesh(_meshData, _modelMatrix, _modelMatrixInverse, _modelMatrixInverse * _viewMatrixInverse);
         };
       }
       else {
@@ -197,11 +204,13 @@ namespace fly
   {
     StaticMeshRenderableWindWrapper(const std::shared_ptr<StaticMeshRenderable>& smr,
       const std::shared_ptr<MaterialDesc<API>>& material_desc, const typename API::MeshGeometryStorage::MeshData& mesh_data, API const & api) :
-      StaticMeshRenderableWrapper(smr, material_desc, mesh_data, api)
+      StaticMeshRenderableWrapper(smr, material_desc, mesh_data, api),
+      _windParamsLocal(smr->getWindParams())
     {
     }
     std::function<void()> _renderFunc;
     std::function<void()> _renderFuncDepth;
+    WindParamsLocal _windParamsLocal;
     virtual ~StaticMeshRenderableWindWrapper() = default;
     virtual void fetchShaderDescs() override
     {
@@ -222,10 +231,10 @@ namespace fly
     {
       if (gs->getWindAnimations()) {
         _renderFunc = [this]() {
-          _api.renderMesh(_meshData, _smr->getModelMatrix(), _smr->getModelMatrixInverse(), _smr->getWindParams(), *getAABBWorld());
+          _api.renderMesh(_meshData, _modelMatrix, _modelMatrixInverse, _windParamsLocal, _aabb);
         };
         _renderFuncDepth = [this]() {
-          _api.renderMesh(_meshData, _smr->getModelMatrix(), _smr->getWindParams(), *getAABBWorld());
+          _api.renderMesh(_meshData, _modelMatrix, _windParamsLocal, _aabb);
         };
       }
       else {
