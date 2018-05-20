@@ -19,6 +19,7 @@
 #include <physics/Bullet3PhysicsSystem.h>
 #include <physics/RigidBody.h>
 #include <random>
+#include <StaticInstancedMeshRenderable.h>
 
 GLWidget::GLWidget()
 {
@@ -334,6 +335,7 @@ void GLWidget::initGame()
   if (!intersects) {
 #endif
     unsigned index = 0;
+#if SPONZA
     for (const auto& mesh : sponza_model->getMeshes()) {
       auto entity = _engine->getEntityManager()->createEntity();
       bool has_wind = index >= 44 && index <= 61;
@@ -364,6 +366,7 @@ void GLWidget::initGame()
 #endif
       index++;
     }
+#endif
 #if TOWERS
   }
 #endif
@@ -454,6 +457,20 @@ void GLWidget::initGame()
     entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(m,
       plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(translation, scale).getModelMatrix(), false));
   }
+#endif
+
+#if INSTANCED_MESHES
+  fly::Vec2i num_meshes(NUM_INSTANCED_MESHES_PER_DIR);
+  auto instanced_entity = _engine->getEntityManager()->createEntity();
+  std::vector<fly::Mat4f> model_matrices;
+  for (int x = 0; x < num_meshes[0]; x++) {
+    for (int z = 0; z < num_meshes[1]; z++) {
+      model_matrices.push_back(fly::Transform(fly::Vec3f(static_cast<float>(x), 0.f, static_cast<float>(z)) * 5.f).getModelMatrix());
+    }
+  }
+  auto mesh = sphere_model->getMeshes()[0];
+  auto instanced_renderable = std::make_shared<fly::StaticInstancedMeshRenderable>(mesh, mesh->getMaterial(), *mesh->getAABB(), model_matrices);
+  instanced_entity->addComponent(instanced_renderable);
 #endif
 
   auto cam_entity = _engine->getEntityManager()->createEntity();

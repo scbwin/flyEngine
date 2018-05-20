@@ -10,9 +10,11 @@ namespace fly
 {
   static inline void setScalar(int loc, int s) { GL_CHECK(glUniform1i(loc, s)); }
   static inline void setScalar(int loc, float s) { GL_CHECK(glUniform1f(loc, s)); }
+  static inline void setScalar(int loc, unsigned s) { GL_CHECK(glUniform1ui(loc, s)); }
   static inline void setVector(int loc, const Vec2f& v) { GL_CHECK(glUniform2f(loc, v[0], v[1])); }
   static inline void setVector(int loc, const Vec3f& v) { GL_CHECK(glUniform3f(loc, v[0], v[1], v[2])); }
   static inline void setVector(int loc, const Vec4f& v) { GL_CHECK(glUniform4f(loc, v[0], v[1], v[2], v[3])); }
+  static inline void setVectorArray(int loc, const Vec4f& first, unsigned count) { GL_CHECK(glUniform4fv(loc, count, first.ptr())); }
   static inline void setMatrix(int loc, const Mat2f& m) { GL_CHECK(glUniformMatrix2fv(loc, 1, false, m.ptr())); }
   static inline void setMatrix(int loc, const Mat3f& m) { GL_CHECK(glUniformMatrix3fv(loc, 1, false, m.ptr())); }
   static inline void setMatrix(int loc, const Mat4f& m) { GL_CHECK(glUniformMatrix4fv(loc, 1, false, m.ptr())); }

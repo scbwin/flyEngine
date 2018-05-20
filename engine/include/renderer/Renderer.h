@@ -175,6 +175,11 @@ namespace fly
         _sceneMin = minimum(_sceneMin, smr->getAABBWorld()->getMin());
         _sceneMax = maximum(_sceneMax, smr->getAABBWorld()->getMax());
       }
+      else if (entity->getComponent<fly::StaticInstancedMeshRenderable>() == component) {
+        auto simr = entity->getComponent<fly::StaticInstancedMeshRenderable>();
+        _staticInstancedMeshRenderables[entity] = std::make_shared<StaticInstancedMeshRenderableWrapper<API>>(simr, _matDescCache.getOrCreate(simr->getMaterial(), simr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(simr->getMesh()), _api, _camera);
+        mr = _staticInstancedMeshRenderables[entity];
+      }
       else if (entity->getComponent<fly::DynamicMeshRenderable>() == component) {
         auto dmr = entity->getComponent<fly::DynamicMeshRenderable>();
         if (dmr->getMaterial()->isReflective()) {
@@ -271,7 +276,7 @@ namespace fly
 #if RENDERER_STATS
         _stats._bvhTraversalMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
-        getVisibleDynamicMeshes();
+        getVisibleMeshesMisc();
         if (_gs->depthPrepassEnabled()) {
           _renderTargets.clear();
           _api.setRendertargets(_renderTargets, _depthBuffer.get());
@@ -382,6 +387,7 @@ namespace fly
     typename API::MeshGeometryStorage _meshGeometryStorage;
     std::map<Entity*, std::shared_ptr<StaticMeshRenderableWrapper<API>>> _staticMeshRenderables;
     std::map<Entity*, std::shared_ptr<DynamicMeshRenderableWrapper<API>>> _dynamicMeshRenderables;
+    std::map<Entity*, std::shared_ptr<StaticInstancedMeshRenderableWrapper<API>>> _staticInstancedMeshRenderables;
     std::shared_ptr<SkydomeRenderableWrapper<API>> _skydomeRenderable;
     StackPOD<MeshRenderable<API>*> _visibleMeshes;
     std::map<ShaderDesc<API> const *, std::map<MaterialDesc<API> const *, StackPOD<MeshRenderable<API>*, 64>>> _displayList;
@@ -447,7 +453,7 @@ namespace fly
 #if RENDERER_STATS
       _stats._bvhTraversalShadowMapMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
-      getVisibleDynamicMeshes();
+      getVisibleMeshesMisc();
 #if RENDERER_STATS
       timing.start();
 #endif
@@ -506,13 +512,16 @@ namespace fly
         _displayList[depth ? m->_shaderDescDepth : m->_shaderDesc][m->_materialDesc.get()].push_back_secure(m);
       }
     }
-    inline void getVisibleDynamicMeshes()
+    inline void getVisibleMeshesMisc()
     {
       for (const auto& e : _dynamicMeshRenderables) {
         if (_camera->intersectFrustumAABB(*e.second->getAABBWorld()) != IntersectionResult::OUTSIDE) {
           _visibleMeshes.push_back(e.second.get());
         }
       }
+    /*  for (const auto& e : _staticInstancedMeshRenderables) {
+        _visibleMeshes.push_back(e.second.get());
+      }*/
     }
     struct MeshRenderStats
     {
@@ -536,6 +545,16 @@ namespace fly
           }
         }
       }
+
+      if (!depth) {
+        for (const auto& e : _staticInstancedMeshRenderables) {
+          e.second->cullInstances(_api);
+          depth ? e.second->_shaderDescDepth->setup(_gsp) : e.second->_shaderDesc->setup(_gsp);
+          depth ? e.second->_materialDesc->setupDepth() : e.second->_materialDesc->setup();
+          depth ? e.second->renderDepth() : e.second->render();
+        }
+      }
+
       return stats;
     }
   };

@@ -2,6 +2,7 @@
 #include <Settings.h>
 #include <GraphicsSettings.h>
 #include <Flags.h>
+#include <iostream>
 
 namespace fly
 {
@@ -24,20 +25,23 @@ uniform vec3 " + std::string(bbMax()) + "; // AABB max xz\n" + std::string(noise
   pos_world.xz += " + std::string(windDir()) + " * (noise(pos_world.xz * " + std::string(windFrequency()) + " + " + std::string(time()) + " * " + std::string(windMovement()) + ") * 2.f - 1.f) * " + std::string(windStrength()) + " * weight;\n\
   pos_world.xz = clamp(pos_world.xz, " + std::string(bbMin()) + ".xz, " + std::string(bbMax()) + ".xz);\n";
   }
-  GLShaderSource GLSLShaderGenerator::createMeshVertexShaderSource(unsigned flags, const GraphicsSettings & settings)const
+  GLShaderSource GLSLShaderGenerator::createMeshVertexShaderSource(unsigned flags, const GraphicsSettings & settings, bool instanced)const
   {
     std::string key = "vs";
     if (flags & MeshRenderFlag::MR_WIND) {
       key += "_wind";
     }
+    if (instanced) {
+      key += "_instanced";
+    }
     key += ".glsl";
     GLShaderSource src;
     src._key = key;
-    src._source = createMeshVertexSource(flags, settings);;
+    src._source = createMeshVertexSource(flags, settings, instanced);
     src._type = GL_VERTEX_SHADER;
     return src;
   }
-  GLShaderSource GLSLShaderGenerator::createMeshFragmentShaderSource(unsigned flags, const GraphicsSettings& settings)const
+  GLShaderSource GLSLShaderGenerator::createMeshFragmentShaderSource(unsigned flags, const GraphicsSettings& settings, bool instanced)const
   {
     std::string key = "fs";
     if (flags & MeshRenderFlag::MR_DIFFUSE_MAP) {
@@ -64,10 +68,13 @@ uniform vec3 " + std::string(bbMax()) + "; // AABB max xz\n" + std::string(noise
     if (settings.gammaEnabled()) {
       key += "_gamma";
     }
+    if (instanced) {
+      key += "_instanced";
+    }
     key += ".glsl";
     GLShaderSource src;
     src._key = key;
-    src._source = createMeshFragmentSource(flags, settings);
+    src._source = createMeshFragmentSource(flags, settings, instanced);
     src._type = GL_FRAGMENT_SHADER;
     return src;
   }
@@ -187,10 +194,11 @@ void main()\n\
     fragment_src._key = "fs_ssr";
     fragment_src._type = GL_FRAGMENT_SHADER;
   }
-  std::string GLSLShaderGenerator::createMeshVertexSource(unsigned flags, const GraphicsSettings & settings) const
+  std::string GLSLShaderGenerator::createMeshVertexSource(unsigned flags, const GraphicsSettings & settings, bool instanced) const
   {
+    std::string version = instanced ? "450" : "330";
     std::string shader_src;
-    shader_src += "#version 330\n\
+    shader_src += "#version " + version + "\n\
 layout(location = 0) in vec3 position;\n\
 layout(location = 1) in vec3 normal;\n\
 layout(location = 2) in vec2 uv;\n\
@@ -205,6 +213,21 @@ out vec3 normal_local;\n\
 out vec2 uv_out;\n\
 out vec3 tangent_local;\n\
 out vec3 bitangent_local;\n";
+    if (instanced) {
+      shader_src += "layout (std430, binding = 0) buffer matrix_buffer \n\
+{\n\
+  mat4 world_matrices[];\n\
+};\n\
+layout (std430, binding = 1) buffer index_buffer \n\
+{ \n\
+  uint indices[]; \n\
+}; \n\
+layout (std430, binding = 2) buffer matrix_buffer2 \n\
+{ \n\
+  mat4 world_matrices_inverse[]; \n\
+};\n\
+out mat3 " + std::string(modelMatrixInverse()) + ";";
+    }
     if (settings.depthPrepassEnabled()) {
       shader_src += "invariant gl_Position; \n";
     }
@@ -213,7 +236,7 @@ out vec3 bitangent_local;\n";
     }
     shader_src += "void main()\n\
 {\n\
-  pos_world = (M * vec4(position, 1.f)).xyz;\n";
+  pos_world = (" + (instanced ? std::string("world_matrices[indices[gl_InstanceID]]") : std::string("M")) + " * vec4(position, 1.f)).xyz;\n";
     if (flags & MeshRenderFlag::MR_WIND) {
       shader_src += _windCodeString;
     }
@@ -221,8 +244,11 @@ out vec3 bitangent_local;\n";
   normal_local = normal;\n\
   uv_out = uv;\n\
   tangent_local = tangent;\n\
-  bitangent_local = bitangent;\n\
-}";
+  bitangent_local = bitangent;\n";
+    if (instanced) {
+      shader_src += "  " + std::string(modelMatrixInverse()) + " = mat3(world_matrices_inverse[indices[gl_InstanceID]]);\n";
+    }
+    shader_src += "}\n";
     return shader_src;
   }
   std::string GLSLShaderGenerator::createMeshVertexDepthSource(unsigned flags, const GraphicsSettings & settings) const
@@ -248,10 +274,11 @@ void main()\n\
 }\n";
     return shader_src;
   }
-  std::string GLSLShaderGenerator::createMeshFragmentSource(unsigned flags, const GraphicsSettings& settings) const
+  std::string GLSLShaderGenerator::createMeshFragmentSource(unsigned flags, const GraphicsSettings& settings, bool instanced) const
   {
+    std::string version = instanced ? "450" : "330";
     bool tangent_space = (flags & MR_NORMAL_MAP) || (flags & MR_HEIGHT_MAP);
-    std::string shader_src = "#version 330 \n\
+    std::string shader_src = "#version " + version + " \n\
 layout(location = 0) out vec3 fragmentColor;\n";
     if (settings.getScreenSpaceReflections()) {
       shader_src += "layout(location = 1) out vec3 viewSpaceNormal; \n";
@@ -282,14 +309,14 @@ uniform float " + std::string(ambientConstant()) + ";\n\
 uniform float " + std::string(diffuseConstant()) + ";\n\
 uniform float " + std::string(specularConstant()) + ";\n\
 uniform float " + std::string(specularExponent()) + ";\n\
-uniform float " + std::string(gamma()) + ";\n\
-uniform mat3 " + std::string(modelMatrixInverse()) + ";\n\
+uniform float " + std::string(gamma()) + ";\n" + 
+(instanced ? std::string("in") : std::string("uniform")) + " mat3 " + std::string(modelMatrixInverse()) + ";\n\
 uniform mat3 " + std::string(modelViewInverse()) + ";\n\
 uniform vec4 " + std::string(viewMatrixThirdRow()) + ";\n\
 in vec3 normal_local;\n\
 in vec3 tangent_local;\n\
-in vec3 bitangent_local;\n\
-void main()\n\
+in vec3 bitangent_local;\n";
+shader_src += "void main()\n\
 {\n\
   vec2 uv = uv_out;\n\
   vec3 normal_world = normalize(" + std::string(modelMatrixInverse()) + " * normal_local);\n";

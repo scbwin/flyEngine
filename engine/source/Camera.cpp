@@ -58,7 +58,7 @@ namespace fly
   {
     _isActive = active;
   }
-  const std::array<Vec4f, 6>& Camera::extractFrustumPlanes(const Mat4f & vp, bool directx)
+  void Camera::extractFrustumPlanes(const Mat4f & vp, bool directx)
   {
     _frustumPlanes[0] = (vp.row(3) + vp.row(0)) * -1.f; // left plane
     _frustumPlanes[1] = (vp.row(3) - vp.row(0)) * -1.f; // right plane
@@ -66,24 +66,28 @@ namespace fly
     _frustumPlanes[3] = (vp.row(3) - vp.row(1)) * -1.f; // top plane
     _frustumPlanes[4] = (directx ? vp.row(2) : (vp.row(3) + vp.row(2))) * -1.f; // near plane
     _frustumPlanes[5] = (vp.row(3) - vp.row(2)) * -1.f; // far plane
-
+  }
+  const std::array<Vec4f, 6>& Camera::getFrustumPlanes() const
+  {
     return _frustumPlanes;
   }
-  IntersectionResult Camera::intersectPlaneAABB(const Vec4f & plane, const AABB & aabb) const
+  IntersectionResult Camera::intersectPlaneAABB(const Vec4f & plane, const Vec3f& h, const Vec4f& center) const
   {
-    auto h = (aabb.getMax() - aabb.getMin()) * 0.5f;
+ //   auto h = (aabb.getMax() - aabb.getMin()) * 0.5f;
     auto e = dot(h, abs(plane.xyz()));
-    auto s = dot(Vec4f(aabb.center(), 1.f), plane);
-    if (s - e > 0) {
+    auto s = dot(center, plane);
+    if (s - e > 0.f) {
       return IntersectionResult::OUTSIDE;
     }
-    return s + e < 0 ? IntersectionResult::INSIDE : IntersectionResult::INTERSECTING;
+    return s + e < 0.f ? IntersectionResult::INSIDE : IntersectionResult::INTERSECTING;
   }
   IntersectionResult Camera::intersectFrustumAABB(const AABB & aabb) const
   {
     bool intersecting = false;
+    auto h = (aabb.getMax() - aabb.getMin()) * 0.5f;
+    Vec4f center(aabb.center(), 1.f);
     for (const auto& p : _frustumPlanes) {
-      auto result = intersectPlaneAABB(p, aabb);
+      auto result = intersectPlaneAABB(p, h, center);
       if (result == IntersectionResult::OUTSIDE) {
         return IntersectionResult::OUTSIDE;
       }

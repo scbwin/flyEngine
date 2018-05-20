@@ -29,8 +29,9 @@ namespace fly
     void setEulerAngles(const Vec3f& euler_angles);
     bool isActive() const;
     void setActive(bool active);
-    const std::array<Vec4f, 6>& extractFrustumPlanes(const Mat4f& vp, bool directx = false);
-    IntersectionResult intersectPlaneAABB(const Vec4f& plane, const AABB& aabb) const;
+    void extractFrustumPlanes(const Mat4f& vp, bool directx = false);
+    const std::array<Vec4f, 6>& getFrustumPlanes() const;
+    IntersectionResult intersectPlaneAABB(const Vec4f& plane, const Vec3f& h, const Vec4f& center) const;
     IntersectionResult intersectFrustumAABB(const AABB& aabb) const;
     float getDetailCullingThreshold() const;
     void setDetailCullingThreshold(float threshold);

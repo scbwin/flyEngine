@@ -26,7 +26,8 @@ namespace fly
 {
   OpenGLAPI::OpenGLAPI(const Vec4f& clear_color) :
     _vboAABB(GL_ARRAY_BUFFER),
-    _aabbShader(std::move(*createShader(GLShaderSource("assets/opengl/vs_aabb.glsl", GL_VERTEX_SHADER), GLShaderSource("assets/opengl/fs_aabb.glsl", GL_FRAGMENT_SHADER), GLShaderSource("assets/opengl/gs_aabb.glsl", GL_GEOMETRY_SHADER))))
+    _aabbShader(std::move(*createShader(GLShaderSource("assets/opengl/vs_aabb.glsl", GL_VERTEX_SHADER), GLShaderSource("assets/opengl/fs_aabb.glsl", GL_FRAGMENT_SHADER), GLShaderSource("assets/opengl/gs_aabb.glsl", GL_GEOMETRY_SHADER)))),
+    _cullingShader(createComputeShader(GLShaderSource("assets/opengl/cs_culling.glsl", GL_COMPUTE_SHADER)))
   {
     GL_CHECK(glGetIntegerv(GL_MAJOR_VERSION, &_glVersionMajor));
     GL_CHECK(glGetIntegerv(GL_MINOR_VERSION, &_glVersionMinor));
@@ -130,6 +131,49 @@ namespace fly
     }
     _vboAABB.setData(bb_buffer.begin(), bb_buffer.size(), GL_DYNAMIC_COPY);
     GL_CHECK(glDrawArraysInstanced(GL_POINTS, 0, 1, static_cast<GLsizei>(aabbs.size())));
+  }
+  void OpenGLAPI::cullInstances(const StorageBuffer & aabb_buffer, 
+    unsigned num_intances, const std::array<Vec4f, 6>& frustum_planes, const StorageBuffer& indices_buffer, const IndirectBuffer& indirect_draw_buffer, IndirectInfo& info)
+  {
+    bindShader(&_cullingShader);
+    info._primCount = 0;
+    indirect_draw_buffer.setData(&info, 1);
+
+    GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
+    unsigned group_size = 1024;
+    unsigned num_groups = std::ceil(static_cast<float>(num_intances) / static_cast<float>(group_size));
+
+    aabb_buffer.bindBase(0);
+    indices_buffer.bindBase(1);
+    indirect_draw_buffer.bindBase(GL_SHADER_STORAGE_BUFFER, 2);
+
+    setScalar(_activeShader->uniformLocation("ni"), num_intances);
+    setVectorArray(_activeShader->uniformLocation("fp"), frustum_planes.front(), frustum_planes.size());
+
+    GL_CHECK(glDispatchCompute(num_groups, 1, 1));
+    GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
+    
+    auto draw_indirect_ptr = indirect_draw_buffer.map<IndirectInfo>(GL_READ_ONLY);
+    auto num_visible_instances = draw_indirect_ptr->_primCount;
+    std::cout << "Num visible instances:" << num_visible_instances << std::endl;
+    indirect_draw_buffer.unmap();
+
+   /* auto indices_ptr = indices_buffer.map<unsigned>(GL_READ_ONLY);
+    std::cout << "Visible indices:" << std::endl;
+    for (unsigned i = 0; i < num_visible_instances; i++) {
+      std::cout << indices_ptr[i] << std::endl;
+    }
+    indices_buffer.unmap();*/
+  }
+  void OpenGLAPI::renderInstances(const StorageBuffer & indices_buffer, const IndirectBuffer & indirect_draw_buffer, const StorageBuffer & world_matrices, const IndirectInfo& info, const StorageBuffer& world_matrices_inverse) const
+  {
+    world_matrices.bindBase(0);
+    indices_buffer.bindBase(1);
+    world_matrices_inverse.bindBase(2);
+
+    GL_CHECK(glMemoryBarrier(GL_COMMAND_BARRIER_BIT));
+    indirect_draw_buffer.bind(GL_DRAW_INDIRECT_BUFFER);
+    GL_CHECK(glDrawElementsIndirect(GL_TRIANGLES, info._type, 0));
   }
   void OpenGLAPI::setRendertargets(const RendertargetStack& rtts, const Depthbuffer* depth_buffer)
   {
@@ -249,6 +293,13 @@ namespace fly
     ret->link();
     return ret;
   }
+  GLShaderProgram OpenGLAPI::createComputeShader(GLShaderSource & source)
+  {
+    GLShaderProgram program;
+    program.add(source);
+    program.link();
+    return program;
+  }
   std::unique_ptr<OpenGLAPI::RTT> OpenGLAPI::createRenderToTexture(const Vec2u & size, OpenGLAPI::TexFilter filter)
   {
     auto tex = std::make_unique<GLTexture>(GL_TEXTURE_2D);
@@ -289,6 +340,12 @@ namespace fly
     }
     resizeShadowmap(tex.get(), settings);
     return tex;
+  }
+  OpenGLAPI::IndirectBuffer OpenGLAPI::createIndirectBuffer(const IndirectInfo & info) const
+  {
+    IndirectBuffer buffer(GL_DRAW_INDIRECT_BUFFER);
+    buffer.setData(&info, 1);
+    return buffer;
   }
   void OpenGLAPI::resizeShadowmap(Shadowmap* shadow_map, const GraphicsSettings& settings)
   {

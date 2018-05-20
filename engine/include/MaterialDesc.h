@@ -64,6 +64,8 @@ namespace fly
       }
       auto fragment_source = api.getShaderGenerator().createMeshFragmentShaderSource(flag, settings);
       auto vertex_source = api.getShaderGenerator().createMeshVertexShaderSource(flag, settings);
+      auto vertex_source_instanced = api.getShaderGenerator().createMeshVertexShaderSource(flag, settings, true);
+      auto fragment_source_instanced = api.getShaderGenerator().createMeshFragmentShaderSource(flag, settings, true);
       unsigned ss_flags = ShaderSetupFlags::SS_LIGHTING | ShaderSetupFlags::SS_VP;
       if (settings.gammaEnabled()) {
         ss_flags |= ShaderSetupFlags::SS_GAMMA;
@@ -72,6 +74,7 @@ namespace fly
         ss_flags |= ShaderSetupFlags::SS_SHADOWS;
       }
       _meshShaderDesc = createShaderDesc(createShader(vertex_source, fragment_source), ss_flags, api);
+      _meshShaderDescInstanced = createShaderDesc(createShader(vertex_source_instanced, fragment_source_instanced), ss_flags, api);
       _meshShaderDescReflective = settings.getScreenSpaceReflections() ? createShaderDesc(createShader(vertex_source, api.getShaderGenerator().createMeshFragmentShaderSource(flag | FLAG::MR_REFLECTIVE, settings)), ss_flags, api) : _meshShaderDesc;
       _meshShaderDescWind = settings.getWindAnimations() ? createShaderDesc(createShader(api.getShaderGenerator().createMeshVertexShaderSource(flag | FLAG::MR_WIND, settings), fragment_source), ss_flags | ShaderSetupFlags::SS_WIND | ShaderSetupFlags::SS_TIME, api) : _meshShaderDesc;
       _meshShaderDescDepth = createShaderDesc(createShader(api.getShaderGenerator().createMeshVertexShaderDepthSource(flag, settings), api.getShaderGenerator().createMeshFragmentShaderDepthSource(flag, settings)), ShaderSetupFlags::SS_VP, api);
@@ -113,6 +116,10 @@ namespace fly
     {
       return _meshShaderDesc;
     }
+    inline const std::shared_ptr<ShaderDesc<API>>& getMeshShaderDescInstanced() const
+    {
+      return _meshShaderDescInstanced;
+    }
     inline const std::shared_ptr<ShaderDesc<API>>& getMeshShaderDescWind() const
     {
       return _meshShaderDescWind;
@@ -151,6 +158,7 @@ namespace fly
     std::shared_ptr<ShaderDesc<API>> _meshShaderDescDepth;
     std::shared_ptr<ShaderDesc<API>> _meshShaderDescWindDepth;
     std::shared_ptr<ShaderDesc<API>> _meshShaderDescReflective;
+    std::shared_ptr<ShaderDesc<API>> _meshShaderDescInstanced;
     std::shared_ptr<typename API::Texture> const _diffuseMap;
     std::shared_ptr<typename API::Texture> const _normalMap;
     std::shared_ptr<typename API::Texture> const _alphaMap;

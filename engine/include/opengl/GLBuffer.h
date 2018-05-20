@@ -17,6 +17,8 @@ namespace fly
     GLBuffer& operator=(GLBuffer&& other);
     void bind() const;
     void bind(GLenum target) const;
+    void bindBase(unsigned index) const;
+    void bindBase(GLenum target, unsigned index) const;
     template<typename T> void setData(const T* data, size_t num_elements, GLenum usage = GL_STATIC_DRAW) const
     {
       bind();
@@ -24,6 +26,7 @@ namespace fly
     }
     template<typename T> T* map(GLenum access) const
     {
+      bind();
       T* ptr;
       GL_CHECK(ptr = reinterpret_cast<T*>(glMapBuffer(_target, access)));
       return ptr;

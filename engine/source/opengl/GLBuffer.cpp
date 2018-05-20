@@ -13,9 +13,10 @@ namespace fly
       GL_CHECK(glDeleteBuffers(1, &_id));
     }
   }
-  GLBuffer::GLBuffer(GLBuffer && other)
+  GLBuffer::GLBuffer(GLBuffer && other) :
+    _id(other._id),
+    _target(other._target)
   {
-    _id = other._id;
     other._id = 0;
   }
   GLBuffer & GLBuffer::operator=(GLBuffer && other)
@@ -24,6 +25,7 @@ namespace fly
       GL_CHECK(glDeleteBuffers(1, &_id));
     }
     _id = other._id;
+    _target = other._target;
     other._id = 0;
     return *this;
   }
@@ -34,5 +36,17 @@ namespace fly
   void GLBuffer::bind(GLenum target) const
   {
     GL_CHECK(glBindBuffer(target, _id));
+  }
+  void GLBuffer::bindBase(unsigned index) const
+  {
+    GL_CHECK(glBindBufferBase(_target, index, _id));
+  }
+  void GLBuffer::bindBase(GLenum target, unsigned index) const
+  {
+    GL_CHECK(glBindBufferBase(target, index, _id));
+  }
+  void GLBuffer::unmap() const
+  {
+    GL_CHECK(glUnmapBuffer(_target));
   }
 }

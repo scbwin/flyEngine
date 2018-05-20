@@ -14,8 +14,8 @@ namespace fly
   {
   public:
     GLSLShaderGenerator();
-    GLShaderSource createMeshVertexShaderSource(unsigned flags, const GraphicsSettings& settings) const;
-    GLShaderSource createMeshFragmentShaderSource(unsigned flags, const GraphicsSettings& settings) const;
+    GLShaderSource createMeshVertexShaderSource(unsigned flags, const GraphicsSettings& settings, bool instanced = false) const;
+    GLShaderSource createMeshFragmentShaderSource(unsigned flags, const GraphicsSettings& settings, bool instanced = false) const;
     GLShaderSource createMeshVertexShaderDepthSource(unsigned flags, const GraphicsSettings& settings)const;
     GLShaderSource createMeshFragmentShaderDepthSource(unsigned flags, const GraphicsSettings& settings)const;
     void createCompositeShaderSource(const GraphicsSettings& gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src)const;
@@ -85,9 +85,9 @@ float noise(vec2 p)\n\
     static inline constexpr const char* vertexFileComposite() { return "assets/opengl/vs_screen.glsl"; };
     static inline constexpr const char* directory() { return "generated/"; };
   private:
-    std::string createMeshVertexSource(unsigned flags, const GraphicsSettings& settings) const;
+    std::string createMeshVertexSource(unsigned flags, const GraphicsSettings& settings, bool instanced) const;
     std::string createMeshVertexDepthSource(unsigned flags, const GraphicsSettings& settings) const;
-    std::string createMeshFragmentSource(unsigned flags, const GraphicsSettings& settings) const;
+    std::string createMeshFragmentSource(unsigned flags, const GraphicsSettings& settings, bool instanced) const;
     std::string createMeshFragmentDepthSource(unsigned flags, const GraphicsSettings& settings) const;
     std::string createCompositeShaderSource(const GraphicsSettings& gs) const;
     std::string _windParamString;
