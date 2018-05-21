@@ -13,9 +13,9 @@ layout (std430, binding = 0) buffer aabb_buffer
 	AABB aabbs [];
 };
 
-layout (std430, binding = 1) buffer index_buffer
+layout (std430, binding = 1) buffer instance_buffer
 {
-	uint indices [];
+	uint instances [];
 };
 
 struct IndirectInfo
@@ -25,15 +25,20 @@ struct IndirectInfo
   uint _firstIndex;
   uint _baseVertex;
   uint _baseInstance;
+  uint _type;
 };
 
 layout (std430, binding = 2) buffer draw_indirect_info
 {
-	IndirectInfo indirect_info;
+	IndirectInfo indirect_info [];
 };
 
 uniform uint ni; // num_instances
 uniform vec4 fp [6]; // frustum planes
+uniform vec3 cp_w; // camera pos world
+uniform uint ml; // max lod
+uniform float lm; // lod multiplier
+uniform float de; // detail culling error thresh
 
 bool aabbOutsideFrustum(uint i, vec3 h, vec4 center)
 {
@@ -42,9 +47,9 @@ bool aabbOutsideFrustum(uint i, vec3 h, vec4 center)
 	return bool(s - e > 0.f);
 }
 
-bool intersectFrustumAABB()
+bool intersectFrustumAABB(vec3 diag)
 {
-	vec3 h = (aabbs[gl_GlobalInvocationID.x].bb_max.xyz - aabbs[gl_GlobalInvocationID.x].bb_min.xyz) * 0.5f; // Half diagonal vector
+	vec3 h = diag * 0.5f; // Half diagonal vector
 	vec4 center = (aabbs[gl_GlobalInvocationID.x].bb_max + aabbs[gl_GlobalInvocationID.x].bb_min) * 0.5f; // Bounding box center 
 	for (uint i = 0; i < 6; i++) {
 		if (aabbOutsideFrustum(i, h, center)) {
@@ -56,10 +61,15 @@ bool intersectFrustumAABB()
 
 void main()
 {
-	if (gl_GlobalInvocationID.x < ni) {
-		if (intersectFrustumAABB()) {
-			 uint index = atomicAdd(indirect_info._primCount, 1);
-			 indices[index] = gl_GlobalInvocationID.x;
-		}
+  if (gl_GlobalInvocationID.x < ni) {
+	vec3 nearest_point = clamp(cp_w,  aabbs[gl_GlobalInvocationID.x].bb_min.xyz, aabbs[gl_GlobalInvocationID.x].bb_max.xyz);
+	vec3 to_cam = cp_w - nearest_point;
+	float dist2 = dot(to_cam, to_cam);
+	vec3 diag = aabbs[gl_GlobalInvocationID.x].bb_max.xyz - aabbs[gl_GlobalInvocationID.x].bb_min.xyz;
+	float size2 = dot(diag, diag);
+    if (size2 / dist2 > de && intersectFrustumAABB(diag)) {
+	  uint lod = min(uint(distance(cp_w, nearest_point) * lm), ml);
+	  instances[atomicAdd(indirect_info[lod]._primCount, 1) + lod * ni] = gl_GlobalInvocationID.x;
 	}
+  }
 }

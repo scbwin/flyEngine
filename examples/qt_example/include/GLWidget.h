@@ -7,7 +7,7 @@
 #include <GraphicsSettings.h>
 #include <math/FlyMath.h>
 
-#define SPONZA 1
+#define SPONZA 0
 #define SPONZA_MANY 0
 #define TOWERS 0
 #define TREE_SCENE 0
@@ -16,8 +16,8 @@
 #define NUM_OBJECTS 100
 #define NUM_TOWERS 15
 #define DELETE_CURTAIN 1
-#define INSTANCED_MESHES 0
-#define NUM_INSTANCED_MESHES_PER_DIR 200
+#define INSTANCED_MESHES 1
+#define NUM_INSTANCED_MESHES_PER_DIR 1000
 
 class btTriangleMesh;
 
@@ -85,6 +85,7 @@ private:
   unsigned _fps = 0;
   CTwBar* _bar;
   const char* _fpsButtonName = "FPS";
+  const char* _rendererCPUTimeName = "Renderer CPU time";
   const char* _renderedTrianglesName = "Triangles";
   const char* _renderedTrianglesShadowName = "Triangles shadow";
   const char* _renderedMeshesName = "Meshes";
@@ -95,6 +96,7 @@ private:
   const char* _smRenderingCPUName = "CPU shadow map rendering time";
   const char* _sceneMeshGroupingUName = "Scene mesh grouping time";
   const char* _shadowMapGroupingUName = "Shadow map grouping time";
+
   std::string formatNumber(unsigned number);
 };
 

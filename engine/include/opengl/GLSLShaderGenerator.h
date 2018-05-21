@@ -16,10 +16,10 @@ namespace fly
     GLSLShaderGenerator();
     GLShaderSource createMeshVertexShaderSource(unsigned flags, const GraphicsSettings& settings, bool instanced = false) const;
     GLShaderSource createMeshFragmentShaderSource(unsigned flags, const GraphicsSettings& settings, bool instanced = false) const;
-    GLShaderSource createMeshVertexShaderDepthSource(unsigned flags, const GraphicsSettings& settings)const;
-    GLShaderSource createMeshFragmentShaderDepthSource(unsigned flags, const GraphicsSettings& settings)const;
-    void createCompositeShaderSource(const GraphicsSettings& gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src)const;
-    void createBlurShaderSource(unsigned flags, const GraphicsSettings& gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src)const;
+    GLShaderSource createMeshVertexShaderDepthSource(unsigned flags, const GraphicsSettings& settings, bool instanced = false) const;
+    GLShaderSource createMeshFragmentShaderDepthSource(unsigned flags, const GraphicsSettings& settings) const;
+    void createCompositeShaderSource(const GraphicsSettings& gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src) const;
+    void createBlurShaderSource(unsigned flags, const GraphicsSettings& gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src) const;
     void createSSRShaderSource(const GraphicsSettings& gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src)const;
     static inline constexpr const char* diffuseSampler() { return "ts_d"; };
     static inline constexpr const char* alphaSampler() { return "ts_a"; };
@@ -86,7 +86,7 @@ float noise(vec2 p)\n\
     static inline constexpr const char* directory() { return "generated/"; };
   private:
     std::string createMeshVertexSource(unsigned flags, const GraphicsSettings& settings, bool instanced) const;
-    std::string createMeshVertexDepthSource(unsigned flags, const GraphicsSettings& settings) const;
+    std::string createMeshVertexDepthSource(unsigned flags, const GraphicsSettings& settings, bool instanced) const;
     std::string createMeshFragmentSource(unsigned flags, const GraphicsSettings& settings, bool instanced) const;
     std::string createMeshFragmentDepthSource(unsigned flags, const GraphicsSettings& settings) const;
     std::string createCompositeShaderSource(const GraphicsSettings& gs) const;

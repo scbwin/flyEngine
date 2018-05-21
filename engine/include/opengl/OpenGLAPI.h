@@ -148,7 +148,7 @@ namespace fly
     struct IndirectInfo
     {
       unsigned _count;
-      unsigned _primCount; // Number of instances, typically updated dynamically from compute shader
+      unsigned _primCount; // Number of instances, typically updated dynamically by a compute shader
       unsigned _firstIndex;
       unsigned _baseVertex;
       unsigned _baseInstance;
@@ -163,6 +163,7 @@ namespace fly
         _type = mesh_data._type;
       }
     };
+    std::vector<IndirectInfo> indirectFromMeshData(const std::vector<MeshGeometryStorage::MeshData>& mesh_data) const;
     // Texture unit bindings
     static constexpr const int diffuseTexUnit() { return 0; }
     static constexpr const int alphaTexUnit() { return 1; }
@@ -183,9 +184,13 @@ namespace fly
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse, const WindParamsLocal& wind_params, const AABB& aabb) const;
     void renderMeshMVP(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mvp) const;
     void renderAABBs(const std::vector<AABB const *>& aabbs, const Mat4f& transform, const Vec3f& col);
-    void cullInstances(const StorageBuffer& aabb_buffer, unsigned num_intances,
-      const std::array<Vec4f, 6>& frustum_planes, const StorageBuffer& indices_buffer, const IndirectBuffer& indirect_draw_buffer, IndirectInfo& info);
-    void renderInstances(const StorageBuffer& indices_buffer, const IndirectBuffer& indirect_draw_buffer, const StorageBuffer& world_matrices, const IndirectInfo& info, const StorageBuffer& world_matrices_inverse) const;
+    void cullInstances(const StorageBuffer& aabb_buffer, unsigned num_instances,
+      const std::array<Vec4f, 6>& frustum_planes, const StorageBuffer& instance_buffer, 
+      const IndirectBuffer& indirect_draw_buffer, std::vector<IndirectInfo>& info, const Vec3f& cam_pos_world, float lod_multiplier, float detail_culling_thresh);
+    void renderInstances(const StorageBuffer& instance_buffer, const IndirectBuffer& indirect_draw_buffer, const StorageBuffer& world_matrices, 
+      const std::vector<IndirectInfo>& info, const StorageBuffer& world_matrices_inverse, unsigned num_instances) const;
+    void renderInstances(const StorageBuffer& instance_buffer, const IndirectBuffer& indirect_draw_buffer, const StorageBuffer& world_matrices,
+      const std::vector<IndirectInfo>& info, unsigned num_instances) const;
     void setRendertargets(const RendertargetStack& rtts, const Depthbuffer* depth_buffer);
     void setRendertargets(const RendertargetStack& rtts, const Depthbuffer* depth_buffer, unsigned depth_buffer_layer);
     void bindBackbuffer(unsigned id) const;
@@ -206,14 +211,10 @@ namespace fly
     {
       StorageBuffer buffer(GL_SHADER_STORAGE_BUFFER);
       buffer.setData(data, num_elements);
-     /* auto ptr = buffer.map<T>(GL_READ_ONLY);
-      for (size_t i = 0; i < num_elements; i++) {
-        std::cout << ptr[i] << std::endl;
-      }
-      buffer.unmap();*/
       return buffer;
     }
     IndirectBuffer createIndirectBuffer(const IndirectInfo& info) const;
+    IndirectBuffer createIndirectBuffer(const std::vector<IndirectInfo>& info) const;
     void resizeShadowmap(Shadowmap* shadow_map, const GraphicsSettings& settings);
     void createBlurShader(const GraphicsSettings& gs);
     void createCompositeShader(const GraphicsSettings& gs);

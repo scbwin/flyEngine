@@ -131,7 +131,7 @@ namespace fly
     float _depthOfFieldScaleFactor = 0.5f;
     float _dofNear = 1.f;
     float _dofCenter = 5.f;
-    float _dofFar = 50.f;
+    float _dofFar = 2500.f;
     bool _screenSpaceReflections = true;
     float _ssrSteps = 16.f;
     unsigned _ssrBinarySteps = 10u;

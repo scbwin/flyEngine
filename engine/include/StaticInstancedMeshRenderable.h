@@ -16,20 +16,23 @@ namespace fly
   class StaticInstancedMeshRenderable : public Component
   {
   public:
-    StaticInstancedMeshRenderable(const std::shared_ptr<Mesh>& mesh, const std::shared_ptr<Material>& material, const AABB& aabb_local, const std::vector<Mat4f>& model_matrices);
+    StaticInstancedMeshRenderable(const std::vector<std::shared_ptr<Mesh>>& meshes, const std::shared_ptr<Material>& material, const std::vector<Mat4f>& model_matrices, float lod_multiplier);
     const std::vector<AABB>& getAABBsWorld() const;
     const std::vector<Mat4f>& getModelMatrices() const;
     const std::vector<Mat4f>& getModelMatricesInverse() const;
-    const std::shared_ptr<Mesh>& getMesh() const;
+    const std::vector<std::shared_ptr<Mesh>>& getMeshes() const;
     const std::shared_ptr<Material>& getMaterial() const;
     AABB const * getAABBWorld() const;
+    float getLodMultiplier() const;
+    void setLodMultiplier(float lod_multiplier);
   private:
     std::vector<AABB> _aabbsWorld;
     std::vector<Mat4f> _modelMatrices;
     std::vector<Mat4f> _modelMatricesInverse;
-    std::shared_ptr<Mesh> _mesh;
+    std::vector<std::shared_ptr<Mesh>> _meshes;
     std::shared_ptr<Material> _material;
     AABB _aabb;
+    float _lodMultiplier;
   };
 }
 

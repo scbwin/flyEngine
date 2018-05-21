@@ -255,22 +255,22 @@ namespace fly
   {
     StaticInstancedMeshRenderable* _simr;
     std::shared_ptr<Camera> const & _camera;
-    typename API::IndirectInfo _indirectInfo;
+    std::vector<typename API::IndirectInfo> _indirectInfo;
     typename API::StorageBuffer _aabbBuffer;
-    typename API::StorageBuffer _visibleIndexBuffer; // Stores the indices of the visible instances
+    typename API::StorageBuffer _instanceBuffer; // Stores the visible instances
     typename API::StorageBuffer _worldMatrices;
     typename API::StorageBuffer _worldMatricesInverse;
     typename API::IndirectBuffer _indirectBuffer;
     StaticInstancedMeshRenderableWrapper(const std::shared_ptr<StaticInstancedMeshRenderable>& simr,
-      const std::shared_ptr<MaterialDesc<API>>& material_desc, const typename API::MeshGeometryStorage::MeshData& mesh_data, API const & api, std::shared_ptr<Camera> const & camera ) :
-      MeshRenderable(material_desc, mesh_data, api),
+      const std::shared_ptr<MaterialDesc<API>>& material_desc, const std::vector<typename API::MeshGeometryStorage::MeshData>& mesh_data, API const & api, std::shared_ptr<Camera> const & camera ) :
+      MeshRenderable(material_desc, mesh_data[0], api),
       _simr(simr.get()),
       _camera(camera),
-      _indirectInfo(mesh_data),
-      _visibleIndexBuffer(api.createStorageBuffer<unsigned>(nullptr, simr->getModelMatrices().size())),
+      _instanceBuffer(api.createStorageBuffer<unsigned>(nullptr, simr->getModelMatrices().size() * mesh_data.size())),
       _aabbBuffer(api.createStorageBuffer<Vec4f>(nullptr, 1)),
       _worldMatrices(api.createStorageBuffer<Mat4f>(simr->getModelMatrices().data(), simr->getModelMatrices().size())),
       _worldMatricesInverse(api.createStorageBuffer<Mat4f>(simr->getModelMatricesInverse().data(), simr->getModelMatricesInverse().size())),
+      _indirectInfo(api.indirectFromMeshData(mesh_data)),
       _indirectBuffer(api.createIndirectBuffer(_indirectInfo))
     {
       StackPOD<Vec4f> bounds;
@@ -284,21 +284,22 @@ namespace fly
     virtual ~StaticInstancedMeshRenderableWrapper() = default;
     void cullInstances(API& api)
     {
-      api.cullInstances(_aabbBuffer, _simr->getAABBsWorld().size(), _camera->getFrustumPlanes(), _visibleIndexBuffer, _indirectBuffer, _indirectInfo);
+      api.cullInstances(_aabbBuffer, static_cast<unsigned>(_simr->getAABBsWorld().size()), _camera->getFrustumPlanes(), _instanceBuffer, _indirectBuffer, 
+        _indirectInfo, _camera->getPosition(), _simr->getLodMultiplier(), _camera->getDetailCullingThreshold());
     }
     virtual void render() override
     {
-      _api.renderInstances(_visibleIndexBuffer, _indirectBuffer, _worldMatrices, _indirectInfo, _worldMatricesInverse);
+      _api.renderInstances(_instanceBuffer, _indirectBuffer, _worldMatrices, _indirectInfo, _worldMatricesInverse, static_cast<unsigned>(_simr->getAABBsWorld().size()));
     }
     virtual void renderDepth() override
     {
-     // _api.renderMesh(_meshData, _modelMatrix);
+      _api.renderInstances(_instanceBuffer, _indirectBuffer, _worldMatrices, _indirectInfo, static_cast<unsigned>(_simr->getAABBsWorld().size()));
     }
     virtual AABB const * getAABBWorld() const override final { return _simr->getAABBWorld(); }
     virtual void fetchShaderDescs() override
     {
       _shaderDesc = _materialDesc->getMeshShaderDescInstanced().get();
-   //   _shaderDescDepth = _materialDesc->getMeshShaderDescDepthWind().get();
+      _shaderDescDepth = _materialDesc->getMeshShaderDescDepthInstanced().get();
     }
   };
 }

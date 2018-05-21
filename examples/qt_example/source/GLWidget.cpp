@@ -50,6 +50,7 @@ void GLWidget::initializeGL()
   _bar = TwNewBar("Stats");
   TwAddButton(_bar, _fpsButtonName, nullptr, nullptr, nullptr);
 #if RENDERER_STATS
+  TwAddButton(_bar, _rendererCPUTimeName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _renderedMeshesName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _renderedMeshesShadowName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _renderedTrianglesName, nullptr, nullptr, nullptr);
@@ -123,6 +124,7 @@ void GLWidget::paintGL()
     TwSetParam(_bar, _fpsButtonName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, fps_label_str.c_str());
 #if RENDERER_STATS
     const auto& stats = _renderer->getStats();
+    TwSetParam(_bar, _rendererCPUTimeName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Renderer total CPU microseconds:" + formatNumber(stats._rendererTotalCPUMicroSeconds)).c_str());
     TwSetParam(_bar, _renderedMeshesName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Meshes:" + formatNumber(stats._renderedMeshes)).c_str());
     TwSetParam(_bar, _renderedMeshesShadowName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Meshes SM:" + formatNumber(stats._renderedMeshesShadow)).c_str());
     TwSetParam(_bar, _renderedTrianglesName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Triangles:" + formatNumber(stats._renderedTriangles)).c_str());
@@ -463,13 +465,23 @@ void GLWidget::initGame()
   fly::Vec2i num_meshes(NUM_INSTANCED_MESHES_PER_DIR);
   auto instanced_entity = _engine->getEntityManager()->createEntity();
   std::vector<fly::Mat4f> model_matrices;
+  std::mt19937 gen;
+  std::uniform_real_distribution<float> dist(0.f, 3.f);
   for (int x = 0; x < num_meshes[0]; x++) {
     for (int z = 0; z < num_meshes[1]; z++) {
-      model_matrices.push_back(fly::Transform(fly::Vec3f(static_cast<float>(x), 0.f, static_cast<float>(z)) * 5.f).getModelMatrix());
+      model_matrices.push_back(fly::Transform(fly::Vec3f(static_cast<float>(x) * 5.f + dist(gen), 1.2f + dist(gen), static_cast<float>(z) * 5.f + dist(gen))).getModelMatrix());
     }
   }
-  auto mesh = sphere_model->getMeshes()[0];
-  auto instanced_renderable = std::make_shared<fly::StaticInstancedMeshRenderable>(mesh, mesh->getMaterial(), *mesh->getAABB(), model_matrices);
+  std::vector<std::shared_ptr<fly::Mesh>> sphere_lods;
+  //sphere_lods.push_back(sphere_model->getMeshes()[0]);
+  for (unsigned i = 0; i < 5; i++) {
+    sphere_lods.push_back(importer->loadModel("assets/sphere_lod" + std::to_string(i) + ".obj")->getMeshes()[0]);
+  }
+  auto material = sphere_lods[0]->getMaterial();
+  material->setNormalPath("assets/ground_normals.png");
+  material->setSpecularExponent(128.f);
+  material->setKs(2.f);
+  auto instanced_renderable = std::make_shared<fly::StaticInstancedMeshRenderable>(sphere_lods, material, model_matrices, 0.1f);
   instanced_entity->addComponent(instanced_renderable);
 #endif
 

@@ -29,7 +29,7 @@ namespace fly
     {
       return (_bbMin + _bbMax) * 0.5f;
     }
-    inline float size() const
+    inline float size2() const
     {
       return distance2(_bbMin, _bbMax);
     }
@@ -45,7 +45,7 @@ namespace fly
     }
     inline bool isDetail(const Vec3f& cam_pos, float error_tresh) const
     {
-      return isDetail(cam_pos, error_tresh, size());
+      return isDetail(cam_pos, error_tresh, size2());
     }
     inline Vec3f closestPoint(const Vec3f& point) const
     {

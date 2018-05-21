@@ -50,6 +50,7 @@ namespace fly
       unsigned _shadowMapRenderCPUMicroSeconds;
       unsigned _sceneMeshGroupingMicroSeconds;
       unsigned _shadowMapGroupingMicroSeconds;
+      unsigned _rendererTotalCPUMicroSeconds;
     };
     const RendererStats& getStats() const { return _stats; }
 #endif
@@ -177,7 +178,11 @@ namespace fly
       }
       else if (entity->getComponent<fly::StaticInstancedMeshRenderable>() == component) {
         auto simr = entity->getComponent<fly::StaticInstancedMeshRenderable>();
-        _staticInstancedMeshRenderables[entity] = std::make_shared<StaticInstancedMeshRenderableWrapper<API>>(simr, _matDescCache.getOrCreate(simr->getMaterial(), simr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(simr->getMesh()), _api, _camera);
+        std::vector<typename API::MeshGeometryStorage::MeshData> mesh_data;
+        for (const auto& m : simr->getMeshes()) {
+          mesh_data.push_back(_meshGeometryStorage.addMesh(m));
+        }
+        _staticInstancedMeshRenderables[entity] = std::make_shared<StaticInstancedMeshRenderableWrapper<API>>(simr, _matDescCache.getOrCreate(simr->getMaterial(), simr->getMaterial(), *_gs), mesh_data, _api, _camera);
         mr = _staticInstancedMeshRenderables[entity];
       }
       else if (entity->getComponent<fly::DynamicMeshRenderable>() == component) {
@@ -231,6 +236,7 @@ namespace fly
     {
 #if RENDERER_STATS
       _stats = {};
+      Timing timing_total;
 #endif
       if (_camera && _directionalLight) {
         if (!_bvh) {
@@ -338,6 +344,7 @@ namespace fly
         }
         _api.endFrame();
       }
+      _stats._rendererTotalCPUMicroSeconds = timing_total.duration<std::chrono::microseconds>();
     }
     void onResize(const Vec2u& window_size)
     {
@@ -519,9 +526,9 @@ namespace fly
           _visibleMeshes.push_back(e.second.get());
         }
       }
-    /*  for (const auto& e : _staticInstancedMeshRenderables) {
-        _visibleMeshes.push_back(e.second.get());
-      }*/
+      /*  for (const auto& e : _staticInstancedMeshRenderables) {
+          _visibleMeshes.push_back(e.second.get());
+        }*/
     }
     struct MeshRenderStats
     {
@@ -545,16 +552,12 @@ namespace fly
           }
         }
       }
-
-      if (!depth) {
-        for (const auto& e : _staticInstancedMeshRenderables) {
-          e.second->cullInstances(_api);
-          depth ? e.second->_shaderDescDepth->setup(_gsp) : e.second->_shaderDesc->setup(_gsp);
-          depth ? e.second->_materialDesc->setupDepth() : e.second->_materialDesc->setup();
-          depth ? e.second->renderDepth() : e.second->render();
-        }
+      for (const auto& e : _staticInstancedMeshRenderables) {
+        e.second->cullInstances(_api);
+        depth ? e.second->_shaderDescDepth->setup(_gsp) : e.second->_shaderDesc->setup(_gsp);
+        depth ? e.second->_materialDesc->setupDepth() : e.second->_materialDesc->setup();
+        depth ? e.second->renderDepth() : e.second->render();
       }
-
       return stats;
     }
   };

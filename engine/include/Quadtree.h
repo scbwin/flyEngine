@@ -38,7 +38,7 @@ namespace fly
       {
         AABB const * aabb_element = element->getAABBWorld();
         _aabbWorld = _aabbWorld.getUnion(*aabb_element);
-        _largestElementAABBWorldSize = std::max(_largestElementAABBWorldSize, aabb_element->size());
+        _largestElementAABBWorldSize = std::max(_largestElementAABBWorldSize, aabb_element->size2());
         for (unsigned char i = 0; i < 4; i++) {
           Vec2f child_min, child_max;
           getChildBounds(child_min, child_max, i);

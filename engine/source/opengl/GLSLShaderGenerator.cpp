@@ -78,16 +78,19 @@ uniform vec3 " + std::string(bbMax()) + "; // AABB max xz\n" + std::string(noise
     src._type = GL_FRAGMENT_SHADER;
     return src;
   }
-  GLShaderSource GLSLShaderGenerator::createMeshVertexShaderDepthSource(unsigned flags, const GraphicsSettings & settings)const
+  GLShaderSource GLSLShaderGenerator::createMeshVertexShaderDepthSource(unsigned flags, const GraphicsSettings & settings, bool instanced)const
   {
     std::string key = "vs_depth";
     if (flags & MeshRenderFlag::MR_WIND) {
       key += "_wind";
     }
+    if (instanced) {
+      key += "_instanced";
+    }
     key += ".glsl";
     GLShaderSource src;
     src._key = key;
-    src._source = createMeshVertexDepthSource(flags, settings);
+    src._source = createMeshVertexDepthSource(flags, settings, instanced);
     src._type = GL_VERTEX_SHADER;
     return src;
   }
@@ -220,12 +223,13 @@ out vec3 bitangent_local;\n";
 };\n\
 layout (std430, binding = 1) buffer index_buffer \n\
 { \n\
-  uint indices[]; \n\
+  uint instances[]; \n\
 }; \n\
 layout (std430, binding = 2) buffer matrix_buffer2 \n\
 { \n\
   mat4 world_matrices_inverse[]; \n\
 };\n\
+uniform uint offs; \n\
 out mat3 " + std::string(modelMatrixInverse()) + ";";
     }
     if (settings.depthPrepassEnabled()) {
@@ -236,7 +240,7 @@ out mat3 " + std::string(modelMatrixInverse()) + ";";
     }
     shader_src += "void main()\n\
 {\n\
-  pos_world = (" + (instanced ? std::string("world_matrices[indices[gl_InstanceID]]") : std::string("M")) + " * vec4(position, 1.f)).xyz;\n";
+  pos_world = (" + (instanced ? std::string("world_matrices[instances[gl_InstanceID + offs]]") : std::string("M")) + " * vec4(position, 1.f)).xyz;\n";
     if (flags & MeshRenderFlag::MR_WIND) {
       shader_src += _windCodeString;
     }
@@ -246,14 +250,15 @@ out mat3 " + std::string(modelMatrixInverse()) + ";";
   tangent_local = tangent;\n\
   bitangent_local = bitangent;\n";
     if (instanced) {
-      shader_src += "  " + std::string(modelMatrixInverse()) + " = mat3(world_matrices_inverse[indices[gl_InstanceID]]);\n";
+      shader_src += "  " + std::string(modelMatrixInverse()) + " = mat3(world_matrices_inverse[instances[gl_InstanceID + offs]]);\n";
     }
     shader_src += "}\n";
     return shader_src;
   }
-  std::string GLSLShaderGenerator::createMeshVertexDepthSource(unsigned flags, const GraphicsSettings & settings) const
+  std::string GLSLShaderGenerator::createMeshVertexDepthSource(unsigned flags, const GraphicsSettings & settings, bool instanced) const
   {
-    std::string shader_src = "#version 330\n\
+    std::string version = instanced ? "450" : "330";
+    std::string shader_src = "#version "  + version + "\n\
 layout(location = 0) in vec3 position;\n\
 layout(location = 2) in vec2 uv;\n";
     if (settings.depthPrepassEnabled()) {
@@ -262,10 +267,22 @@ layout(location = 2) in vec2 uv;\n";
     shader_src += "uniform mat4 " + std::string(modelMatrix()) + ";\n\
 uniform mat4 " + std::string(viewProjectionMatrix()) + ";\n";
     shader_src += _windParamString;
-    shader_src += "out vec2 uv_out;\n\
-void main()\n\
+    shader_src += "out vec2 uv_out;\n";
+    if (instanced) {
+      shader_src += "layout (std430, binding = 0) buffer matrix_buffer \n\
+{\n\
+  mat4 world_matrices[];\n\
+};\n\
+layout (std430, binding = 1) buffer index_buffer \n\
+{ \n\
+  uint instances[]; \n\
+}; \n\
+uniform uint offs; \n\
+out mat3 " + std::string(modelMatrixInverse()) + ";";
+    }
+    shader_src += "void main()\n\
 {\n";
-    shader_src += "  vec4 pos_world = M * vec4(position, 1.f);\n";
+    shader_src += "  vec4 pos_world = " + (instanced ? std::string("world_matrices[instances[gl_InstanceID + offs]]") : std::string("M")) + " * vec4(position, 1.f);\n";
     if (flags & MeshRenderFlag::MR_WIND) {
       shader_src += _windCodeString;
     }

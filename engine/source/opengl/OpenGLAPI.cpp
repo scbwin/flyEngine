@@ -63,6 +63,14 @@ namespace fly
    // }
     // _skydomeShader->reload();
   }
+  std::vector<OpenGLAPI::IndirectInfo> OpenGLAPI::indirectFromMeshData(const std::vector<MeshGeometryStorage::MeshData>& mesh_data) const
+  {
+    std::vector<IndirectInfo> infos;
+    for (const auto& d : mesh_data) {
+      infos.push_back(IndirectInfo(d));
+    }
+    return infos;
+  }
   void OpenGLAPI::beginFrame() const
   {
       for (unsigned i = 0; _anisotropy > 1 && i <= static_cast<unsigned>(heightTexUnit()); i++) {
@@ -132,48 +140,57 @@ namespace fly
     _vboAABB.setData(bb_buffer.begin(), bb_buffer.size(), GL_DYNAMIC_COPY);
     GL_CHECK(glDrawArraysInstanced(GL_POINTS, 0, 1, static_cast<GLsizei>(aabbs.size())));
   }
-  void OpenGLAPI::cullInstances(const StorageBuffer & aabb_buffer, 
-    unsigned num_intances, const std::array<Vec4f, 6>& frustum_planes, const StorageBuffer& indices_buffer, const IndirectBuffer& indirect_draw_buffer, IndirectInfo& info)
+  void OpenGLAPI::cullInstances(const StorageBuffer& aabb_buffer, unsigned num_instances,
+    const std::array<Vec4f, 6>& frustum_planes, const StorageBuffer& instance_buffer, const IndirectBuffer& indirect_draw_buffer,
+    std::vector<IndirectInfo>& info, const Vec3f& cam_pos_world, float lod_multiplier, float detail_culling_thresh)
   {
     bindShader(&_cullingShader);
-    info._primCount = 0;
-    indirect_draw_buffer.setData(&info, 1);
+    for (auto& i : info) {
+      i._primCount = 0;
+    }
+    indirect_draw_buffer.setData(info.data(), info.size());
 
-    GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
     unsigned group_size = 1024;
-    unsigned num_groups = std::ceil(static_cast<float>(num_intances) / static_cast<float>(group_size));
+    unsigned num_groups = std::ceil(static_cast<float>(num_instances) / static_cast<float>(group_size));
 
     aabb_buffer.bindBase(0);
-    indices_buffer.bindBase(1);
+    instance_buffer.bindBase(1);
     indirect_draw_buffer.bindBase(GL_SHADER_STORAGE_BUFFER, 2);
 
-    setScalar(_activeShader->uniformLocation("ni"), num_intances);
+    setScalar(_activeShader->uniformLocation("ni"), num_instances);
     setVectorArray(_activeShader->uniformLocation("fp"), frustum_planes.front(), frustum_planes.size());
+    setVector(_activeShader->uniformLocation("cp_w"), cam_pos_world);
+    setScalar(_activeShader->uniformLocation("ml"), static_cast<unsigned>(info.size() - 1));
+    setScalar(_activeShader->uniformLocation("lm"), lod_multiplier);
+    setScalar(_activeShader->uniformLocation("de"), detail_culling_thresh);
 
     GL_CHECK(glDispatchCompute(num_groups, 1, 1));
     GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
     
-    auto draw_indirect_ptr = indirect_draw_buffer.map<IndirectInfo>(GL_READ_ONLY);
-    auto num_visible_instances = draw_indirect_ptr->_primCount;
-    std::cout << "Num visible instances:" << num_visible_instances << std::endl;
-    indirect_draw_buffer.unmap();
-
-   /* auto indices_ptr = indices_buffer.map<unsigned>(GL_READ_ONLY);
-    std::cout << "Visible indices:" << std::endl;
-    for (unsigned i = 0; i < num_visible_instances; i++) {
-      std::cout << indices_ptr[i] << std::endl;
+   /* auto draw_indirect_ptr = indirect_draw_buffer.map<IndirectInfo>(GL_READ_ONLY);
+    for (unsigned i = 0; i < info.size(); i++) {
+      auto num_visible_instances = draw_indirect_ptr[i]._primCount;
+      std::cout << "Visible instances lod " << i << ":" << num_visible_instances << std::endl;
     }
-    indices_buffer.unmap();*/
+    indirect_draw_buffer.unmap();*/
   }
-  void OpenGLAPI::renderInstances(const StorageBuffer & indices_buffer, const IndirectBuffer & indirect_draw_buffer, const StorageBuffer & world_matrices, const IndirectInfo& info, const StorageBuffer& world_matrices_inverse) const
+  void OpenGLAPI::renderInstances(const StorageBuffer & instance_buffer, const IndirectBuffer & indirect_draw_buffer, 
+    const StorageBuffer & world_matrices, const std::vector<IndirectInfo>& info, const StorageBuffer& world_matrices_inverse, unsigned num_instances) const
+  {
+    world_matrices_inverse.bindBase(2);
+    renderInstances(instance_buffer, indirect_draw_buffer, world_matrices, info, num_instances);
+  }
+  void OpenGLAPI::renderInstances(const StorageBuffer & instance_buffer, const IndirectBuffer & indirect_draw_buffer,
+    const StorageBuffer & world_matrices, const std::vector<IndirectInfo>& info, unsigned num_instances) const
   {
     world_matrices.bindBase(0);
-    indices_buffer.bindBase(1);
-    world_matrices_inverse.bindBase(2);
-
+    instance_buffer.bindBase(1);
     GL_CHECK(glMemoryBarrier(GL_COMMAND_BARRIER_BIT));
     indirect_draw_buffer.bind(GL_DRAW_INDIRECT_BUFFER);
-    GL_CHECK(glDrawElementsIndirect(GL_TRIANGLES, info._type, 0));
+    for (unsigned i = 0; i < info.size(); i++) {
+      setScalar(_activeShader->uniformLocation("offs"), num_instances * i);
+      GL_CHECK(glDrawElementsIndirect(GL_TRIANGLES, info[i]._type, reinterpret_cast<void*>(i * sizeof(IndirectInfo))));
+    }
   }
   void OpenGLAPI::setRendertargets(const RendertargetStack& rtts, const Depthbuffer* depth_buffer)
   {
@@ -345,6 +362,12 @@ namespace fly
   {
     IndirectBuffer buffer(GL_DRAW_INDIRECT_BUFFER);
     buffer.setData(&info, 1);
+    return buffer;
+  }
+  OpenGLAPI::IndirectBuffer OpenGLAPI::createIndirectBuffer(const std::vector<IndirectInfo>& info) const
+  {
+    IndirectBuffer buffer(GL_DRAW_INDIRECT_BUFFER);
+    buffer.setData(info.data(), info.size());
     return buffer;
   }
   void OpenGLAPI::resizeShadowmap(Shadowmap* shadow_map, const GraphicsSettings& settings)

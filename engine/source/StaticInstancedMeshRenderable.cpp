@@ -1,12 +1,19 @@
 #include <StaticInstancedMeshRenderable.h>
+#include <Mesh.h>
 
 namespace fly
 {
-  StaticInstancedMeshRenderable::StaticInstancedMeshRenderable(const std::shared_ptr<Mesh>& mesh, const std::shared_ptr<Material>& material, const AABB& aabb_local, const std::vector<Mat4f>& model_matrices) :
-    _mesh(mesh),
+  StaticInstancedMeshRenderable::StaticInstancedMeshRenderable(const std::vector<std::shared_ptr<Mesh>>& meshes, 
+    const std::shared_ptr<Material>& material, const std::vector<Mat4f>& model_matrices, float lod_multiplier) :
+    _meshes(meshes),
     _material(material),
-    _modelMatrices(model_matrices)
+    _modelMatrices(model_matrices),
+    _lodMultiplier(lod_multiplier)
   {
+    AABB aabb_local;
+    for (const auto& m : _meshes) {
+      aabb_local = aabb_local.getUnion(*m->getAABB());
+    }
     for (const auto& m : model_matrices) {
       _aabbsWorld.push_back(AABB(aabb_local, m));
       _modelMatricesInverse.push_back(transpose(inverse(glm::mat4(m))));
@@ -27,9 +34,9 @@ namespace fly
   {
     return _modelMatricesInverse;
   }
-  const std::shared_ptr<Mesh>& StaticInstancedMeshRenderable::getMesh() const
+  const std::vector<std::shared_ptr<Mesh>>& StaticInstancedMeshRenderable::getMeshes() const
   {
-    return _mesh;
+    return _meshes;
   }
   const std::shared_ptr<Material>& StaticInstancedMeshRenderable::getMaterial() const
   {
@@ -38,5 +45,13 @@ namespace fly
   AABB const * StaticInstancedMeshRenderable::getAABBWorld() const
   {
     return &_aabb;
+  }
+  float StaticInstancedMeshRenderable::getLodMultiplier() const
+  {
+    return _lodMultiplier;
+  }
+  void StaticInstancedMeshRenderable::setLodMultiplier(float lod_multiplier)
+  {
+    _lodMultiplier = lod_multiplier;
   }
 }
