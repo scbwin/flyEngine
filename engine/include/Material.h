@@ -3,6 +3,7 @@
 
 #include <string>
 #include <math/FlyMath.h>
+#include <vector>
 
 namespace fly
 {
@@ -45,6 +46,8 @@ namespace fly
     void setParallaxMaxSteps(float max_steps);
     float getParallaxBinarySearchSteps() const;
     void setParallaxBinarySearchSteps(float steps);
+    void setDiffuseColors(const std::vector<Vec4f>& colors);
+    const std::vector<Vec4f>& getDiffuseColors() const;
 
   private:
     float _ka = 0.025f;
@@ -61,6 +64,7 @@ namespace fly
     std::string _opacityPath;
     std::string _heightPath;
     bool _isReflective = false;
+    std::vector<Vec4f> _diffuseColors;
 
     // Deprecated
     bool _hasWindX = false;

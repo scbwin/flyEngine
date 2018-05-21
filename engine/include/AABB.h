@@ -29,6 +29,10 @@ namespace fly
     {
       return (_bbMin + _bbMax) * 0.5f;
     }
+    inline float size() const
+    {
+      return distance(_bbMin, _bbMax);
+    }
     inline float size2() const
     {
       return distance2(_bbMin, _bbMax);

@@ -148,4 +148,12 @@ namespace fly
   {
     _parallaxBinarySearchSteps = std::max(steps, 0.f);
   }
+  void Material::setDiffuseColors(const std::vector<Vec4f>& colors)
+  {
+    _diffuseColors = colors;
+  }
+  const std::vector<Vec4f>& Material::getDiffuseColors() const
+  {
+    return _diffuseColors;
+  }
 }

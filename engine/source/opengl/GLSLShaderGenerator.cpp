@@ -229,7 +229,12 @@ layout (std430, binding = 2) buffer matrix_buffer2 \n\
 { \n\
   mat4 world_matrices_inverse[]; \n\
 };\n\
+layout (std430, binding = 3) buffer color_buffer \n\
+{ \n\
+  vec4 diffuse_colors[]; \n\
+}; \n\
 uniform uint offs; \n\
+out vec3 " + std::string(diffuseColor()) + ";\n\
 out mat3 " + std::string(modelMatrixInverse()) + ";";
     }
     if (settings.depthPrepassEnabled()) {
@@ -239,10 +244,16 @@ out mat3 " + std::string(modelMatrixInverse()) + ";";
       shader_src += _windParamString;
     }
     shader_src += "void main()\n\
-{\n\
-  pos_world = (" + (instanced ? std::string("world_matrices[instances[gl_InstanceID + offs]]") : std::string("M")) + " * vec4(position, 1.f)).xyz;\n";
+{\n";
+    if (instanced) {
+      shader_src += "  uint instance_id = instances[gl_InstanceID + offs]; \n";
+    }
+    shader_src += "  pos_world = (" + (instanced ? std::string("world_matrices[instance_id]") : std::string("M")) + " * vec4(position, 1.f)).xyz;\n";
     if (flags & MeshRenderFlag::MR_WIND) {
       shader_src += _windCodeString;
+    }
+    if (instanced) {
+      shader_src += "  " + std::string(diffuseColor()) + " = diffuse_colors[instance_id].rgb;\n";
     }
     shader_src += "  gl_Position = VP * vec4(pos_world, 1.f);\n\
   normal_local = normal;\n\
@@ -250,7 +261,7 @@ out mat3 " + std::string(modelMatrixInverse()) + ";";
   tangent_local = tangent;\n\
   bitangent_local = bitangent;\n";
     if (instanced) {
-      shader_src += "  " + std::string(modelMatrixInverse()) + " = mat3(world_matrices_inverse[instances[gl_InstanceID + offs]]);\n";
+      shader_src += "  " + std::string(modelMatrixInverse()) + " = mat3(world_matrices_inverse[instance_id]);\n";
     }
     shader_src += "}\n";
     return shader_src;
@@ -258,7 +269,7 @@ out mat3 " + std::string(modelMatrixInverse()) + ";";
   std::string GLSLShaderGenerator::createMeshVertexDepthSource(unsigned flags, const GraphicsSettings & settings, bool instanced) const
   {
     std::string version = instanced ? "450" : "330";
-    std::string shader_src = "#version "  + version + "\n\
+    std::string shader_src = "#version " + version + "\n\
 layout(location = 0) in vec3 position;\n\
 layout(location = 2) in vec2 uv;\n";
     if (settings.depthPrepassEnabled()) {
@@ -278,7 +289,7 @@ layout (std430, binding = 1) buffer index_buffer \n\
   uint instances[]; \n\
 }; \n\
 uniform uint offs; \n\
-out mat3 " + std::string(modelMatrixInverse()) + ";";
+out mat3 " + std::string(modelMatrixInverse()) + ";\n";
     }
     shader_src += "void main()\n\
 {\n";
@@ -302,8 +313,8 @@ layout(location = 0) out vec3 fragmentColor;\n";
     }
     shader_src += "in vec3 pos_world;\n\
 in vec2 uv_out;\n\
-// Uniform variables are the same for each shader variation, the compiler will optimize away unused variables anyway\n\
-uniform vec3 " + std::string(diffuseColor()) + ";\n\
+// Uniform variables are the same for each shader variation, the compiler will optimize away unused variables anyway\n"
++ (instanced ? std::string("in") : std::string("uniform")) + " vec3 " + std::string(diffuseColor()) + ";\n\
 uniform sampler2D " + std::string(diffuseSampler()) + ";\n\
 uniform sampler2D " + std::string(alphaSampler()) + ";\n\
 uniform sampler2D " + std::string(normalSampler()) + ";\n\
@@ -326,14 +337,14 @@ uniform float " + std::string(ambientConstant()) + ";\n\
 uniform float " + std::string(diffuseConstant()) + ";\n\
 uniform float " + std::string(specularConstant()) + ";\n\
 uniform float " + std::string(specularExponent()) + ";\n\
-uniform float " + std::string(gamma()) + ";\n" + 
+uniform float " + std::string(gamma()) + ";\n" +
 (instanced ? std::string("in") : std::string("uniform")) + " mat3 " + std::string(modelMatrixInverse()) + ";\n\
 uniform mat3 " + std::string(modelViewInverse()) + ";\n\
 uniform vec4 " + std::string(viewMatrixThirdRow()) + ";\n\
 in vec3 normal_local;\n\
 in vec3 tangent_local;\n\
 in vec3 bitangent_local;\n";
-shader_src += "void main()\n\
+    shader_src += "void main()\n\
 {\n\
   vec2 uv = uv_out;\n\
   vec3 normal_world = normalize(" + std::string(modelMatrixInverse()) + " * normal_local);\n";

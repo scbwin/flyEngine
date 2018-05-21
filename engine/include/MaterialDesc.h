@@ -44,7 +44,13 @@ namespace fly
         _materialSetupFuncs.push_back_secure(typename API::MaterialSetup::setupDiffuse);
       }
       else {
-        _materialSetupFuncs.push_back_secure(typename API::MaterialSetup::setupDiffuseColor);
+        if (_material->getDiffuseColors().size()) {
+          _diffuseColorBuffer = std::make_unique<typename API::StorageBuffer>(std::move(api.createStorageBuffer(_material->getDiffuseColors().data(), _material->getDiffuseColors().size())));
+          _materialSetupFuncs.push_back_secure(typename API::MaterialSetup::setupDiffuseColors);
+        }
+        else {
+          _materialSetupFuncs.push_back_secure(typename API::MaterialSetup::setupDiffuseColor);
+        }
       }
       if (_alphaMap) {
         flag |= FLAG::MR_ALPHA_MAP;
@@ -149,6 +155,10 @@ namespace fly
     {
       return _shaderCache.getOrCreate(vs._key + fs._key + gs._key, vs, fs, gs);
     }
+    inline const std::unique_ptr<typename API::StorageBuffer>& getDiffuseColorBuffer() const
+    {
+      return _diffuseColorBuffer;
+    }
     /* inline StackPOD<MeshRenderable<API>*, 1024>& getRenderables()
     {
     return _renderables;
@@ -169,6 +179,7 @@ namespace fly
     std::shared_ptr<typename API::Texture> const _normalMap;
     std::shared_ptr<typename API::Texture> const _alphaMap;
     std::shared_ptr<typename API::Texture> const _heightMap;
+    std::unique_ptr<typename API::StorageBuffer> _diffuseColorBuffer;
     SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&>& _shaderDescCache;
     SoftwareCache<std::string, std::shared_ptr<typename API::Shader>, typename API::ShaderSource&, typename API::ShaderSource&, typename API::ShaderSource&>& _shaderCache;
     //    StackPOD<MeshRenderable<API>*, 1024> _renderables;

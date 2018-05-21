@@ -55,8 +55,8 @@ void GLWidget::initializeGL()
   TwAddButton(_bar, _renderedMeshesShadowName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _renderedTrianglesName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _renderedTrianglesShadowName, nullptr, nullptr, nullptr);
-  TwAddButton(_bar, _bvhTraversalName, nullptr, nullptr, nullptr);
-  TwAddButton(_bar, _bvhTraversalShadowMapName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _cullingName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _cullingShadowMapName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _sceneRenderingCPUName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _smRenderingCPUName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _sceneMeshGroupingUName, nullptr, nullptr, nullptr);
@@ -129,8 +129,8 @@ void GLWidget::paintGL()
     TwSetParam(_bar, _renderedMeshesShadowName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Meshes SM:" + formatNumber(stats._renderedMeshesShadow)).c_str());
     TwSetParam(_bar, _renderedTrianglesName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Triangles:" + formatNumber(stats._renderedTriangles)).c_str());
     TwSetParam(_bar, _renderedTrianglesShadowName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Triangles SM:" + formatNumber(stats._renderedTrianglesShadow)).c_str());
-    TwSetParam(_bar, _bvhTraversalName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("BVH traversal microseconds:" + formatNumber(stats._bvhTraversalMicroSeconds)).c_str());
-    TwSetParam(_bar, _bvhTraversalShadowMapName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("BVH traversal shadow map microseconds:" + formatNumber(stats._bvhTraversalShadowMapMicroSeconds)).c_str());
+    TwSetParam(_bar, _cullingName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Culling microseconds:" + formatNumber(stats._cullingMicroSeconds)).c_str());
+    TwSetParam(_bar, _cullingShadowMapName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Culling shadow map microseconds:" + formatNumber(stats._cullingShadowMapMicroSeconds)).c_str());
     TwSetParam(_bar, _sceneRenderingCPUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Scene render CPU microseconds:" + formatNumber(stats._sceneRenderingCPUMicroSeconds)).c_str());
     TwSetParam(_bar, _smRenderingCPUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Shadow map render CPU microseconds:" + formatNumber(stats._shadowMapRenderCPUMicroSeconds)).c_str());
     TwSetParam(_bar, _sceneMeshGroupingUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Scene mesh grouping microseconds:" + formatNumber(stats._sceneMeshGroupingMicroSeconds)).c_str());
@@ -462,27 +462,37 @@ void GLWidget::initGame()
 #endif
 
 #if INSTANCED_MESHES
-  fly::Vec2i num_meshes(NUM_INSTANCED_MESHES_PER_DIR);
-  auto instanced_entity = _engine->getEntityManager()->createEntity();
-  std::vector<fly::Mat4f> model_matrices;
-  std::mt19937 gen;
-  std::uniform_real_distribution<float> dist(0.f, 3.f);
-  for (int x = 0; x < num_meshes[0]; x++) {
-    for (int z = 0; z < num_meshes[1]; z++) {
-      model_matrices.push_back(fly::Transform(fly::Vec3f(static_cast<float>(x) * 5.f + dist(gen), 1.2f + dist(gen), static_cast<float>(z) * 5.f + dist(gen))).getModelMatrix());
-    }
-  }
   std::vector<std::shared_ptr<fly::Mesh>> sphere_lods;
-  //sphere_lods.push_back(sphere_model->getMeshes()[0]);
   for (unsigned i = 0; i < 5; i++) {
     sphere_lods.push_back(importer->loadModel("assets/sphere_lod" + std::to_string(i) + ".obj")->getMeshes()[0]);
   }
-  auto material = sphere_lods[0]->getMaterial();
-  material->setNormalPath("assets/ground_normals.png");
-  material->setSpecularExponent(128.f);
-  material->setKs(2.f);
-  auto instanced_renderable = std::make_shared<fly::StaticInstancedMeshRenderable>(sphere_lods, material, model_matrices, 0.1f);
-  instanced_entity->addComponent(instanced_renderable);
+  fly::Vec2i num_cells(NUM_CELLS);
+  fly::Vec2i num_meshes(ITEMS_PER_CELL);
+  float cell_size = sphere_lods[0]->getAABB()->size() * ITEMS_PER_CELL;
+#if !PHYSICS
+  std::mt19937 gen;
+#endif
+  std::uniform_real_distribution<float> dist(0.f, 3.f);
+  for (int cell_x = 0; cell_x < num_cells[0]; cell_x++) {
+    for (int cell_z = 0; cell_z < num_cells[1]; cell_z++) {
+      auto instanced_entity = _engine->getEntityManager()->createEntity();
+      std::vector<fly::Mat4f> model_matrices;
+      std::vector<fly::Vec4f> diffuse_colors;
+      for (int x = 0; x < num_meshes[0]; x++) {
+        for (int z = 0; z < num_meshes[1]; z++) {
+          model_matrices.push_back(fly::Transform(fly::Vec3f(static_cast<float>(x) * sphere_lods[0]->getAABB()->size() + dist(gen) + cell_x * cell_size, 1.2f + dist(gen) * 5.f, static_cast<float>(z) * sphere_lods[0]->getAABB()->size() + dist(gen) + cell_z * cell_size)).getModelMatrix());
+          diffuse_colors.push_back(fly::Vec4f(dist(gen), dist(gen), dist(gen), 1.f));
+        }
+      }
+      auto material = std::make_shared<fly::Material>(*sphere_lods[0]->getMaterial());
+      material->setNormalPath("assets/ground_normals.png");
+      material->setSpecularExponent(128.f);
+      material->setKs(2.f);
+      material->setDiffuseColors(diffuse_colors);
+      auto instanced_renderable = std::make_shared<fly::StaticInstancedMeshRenderable>(sphere_lods, material, model_matrices, 0.1f);
+      instanced_entity->addComponent(instanced_renderable);
+    }
+  }
 #endif
 
   auto cam_entity = _engine->getEntityManager()->createEntity();

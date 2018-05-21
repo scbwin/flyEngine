@@ -52,4 +52,8 @@ namespace fly
     setScalar(shader->uniformLocation(GLSLShaderGenerator::specularConstant()), desc.getMaterial()->getKs());
     setScalar(shader->uniformLocation(GLSLShaderGenerator::specularExponent()), desc.getMaterial()->getSpecularExponent());
   }
+  void GLMaterialSetup::setupDiffuseColors(GLShaderProgram const * shader, const MaterialDesc<OpenGLAPI>& desc)
+  {
+    desc.getDiffuseColorBuffer()->bindBase(3);
+  }
 }

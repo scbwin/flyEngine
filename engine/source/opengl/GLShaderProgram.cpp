@@ -72,6 +72,7 @@ namespace fly
       std::cout << "Failed to link _program but error log is empty" << std::endl;
       for (auto& s : _sources) {
         std::cout << s._key << std::endl;
+        std::cout << s._source << std::endl;
       }
     }
     for (const auto& s : _sources) {

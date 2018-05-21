@@ -281,17 +281,14 @@ namespace fly
     }
     void getVisibleElements(const Camera& camera, Stack& stack) const
     {
-      stack.clear();
       _root->getVisibleElements(stack, camera);
     }
     void getVisibleElementsWithDetailCulling(const Camera& camera, Stack& stack) const
     {
-      stack.clear();
       _root->getVisibleElementsWithDetailCulling(stack, camera);
     }
     void getAllElements(Stack& stack) const
     {
-      stack.clear();
       _root->getAllElements(stack);
     }
     std::vector<Node*> getAllNodes()

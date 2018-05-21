@@ -44,8 +44,8 @@ namespace fly
       unsigned _renderedTrianglesShadow;
       unsigned _renderedMeshes;
       unsigned _renderedMeshesShadow;
-      unsigned _bvhTraversalMicroSeconds;
-      unsigned _bvhTraversalShadowMapMicroSeconds;
+      unsigned _cullingMicroSeconds;
+      unsigned _cullingShadowMapMicroSeconds;
       unsigned _sceneRenderingCPUMicroSeconds;
       unsigned _shadowMapRenderCPUMicroSeconds;
       unsigned _sceneMeshGroupingMicroSeconds;
@@ -277,12 +277,10 @@ namespace fly
 #if RENDERER_STATS
         Timing timing;
 #endif
-        _camera->extractFrustumPlanes(_vpScene);
-        _gs->getDetailCulling() ? _bvh->getVisibleElementsWithDetailCulling(*_camera, _visibleMeshes) : _bvh->getVisibleElements(*_camera, _visibleMeshes);
+        cullMeshes(_vpScene);
 #if RENDERER_STATS
-        _stats._bvhTraversalMicroSeconds = timing.duration<std::chrono::microseconds>();
+        _stats._cullingMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
-        getVisibleMeshesMisc();
         if (_gs->depthPrepassEnabled()) {
           _renderTargets.clear();
           _api.setRendertargets(_renderTargets, _depthBuffer.get());
@@ -455,12 +453,10 @@ namespace fly
 #if RENDERER_STATS
       Timing timing;
 #endif
-      _camera->extractFrustumPlanes(vp_shadow_volume);
-      _gs->getDetailCulling() ? _bvh->getVisibleElementsWithDetailCulling(*_camera, _visibleMeshes) : _bvh->getVisibleElements(*_camera, _visibleMeshes);
+      cullMeshes(vp_shadow_volume);
 #if RENDERER_STATS
-      _stats._bvhTraversalShadowMapMicroSeconds = timing.duration<std::chrono::microseconds>();
+      _stats._cullingShadowMapMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
-      getVisibleMeshesMisc();
 #if RENDERER_STATS
       timing.start();
 #endif
@@ -493,7 +489,7 @@ namespace fly
     }
     void buildBVH()
     {
-      _visibleMeshes.reserve(_staticMeshRenderables.size() + _dynamicMeshRenderables.size());
+      _visibleMeshes.reserve(_staticMeshRenderables.size() + _dynamicMeshRenderables.size() + _staticInstancedMeshRenderables.size());
       _bvh = std::make_unique<BVH>(_sceneMin, _sceneMax);
       std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
       Timing timing;
@@ -519,17 +515,6 @@ namespace fly
         _displayList[depth ? m->_shaderDescDepth : m->_shaderDesc][m->_materialDesc.get()].push_back_secure(m);
       }
     }
-    inline void getVisibleMeshesMisc()
-    {
-      for (const auto& e : _dynamicMeshRenderables) {
-        if (_camera->intersectFrustumAABB(*e.second->getAABBWorld()) != IntersectionResult::OUTSIDE) {
-          _visibleMeshes.push_back(e.second.get());
-        }
-      }
-      /*  for (const auto& e : _staticInstancedMeshRenderables) {
-          _visibleMeshes.push_back(e.second.get());
-        }*/
-    }
     struct MeshRenderStats
     {
       unsigned _renderedTriangles;
@@ -552,13 +537,34 @@ namespace fly
           }
         }
       }
-      for (const auto& e : _staticInstancedMeshRenderables) {
-        e.second->cullInstances(_api);
-        depth ? e.second->_shaderDescDepth->setup(_gsp) : e.second->_shaderDesc->setup(_gsp);
-        depth ? e.second->_materialDesc->setupDepth() : e.second->_materialDesc->setup();
-        depth ? e.second->renderDepth() : e.second->render();
-      }
       return stats;
+    }
+    inline void cullMeshes(const Mat4f& view_projection_matrix)
+    {
+      _camera->extractFrustumPlanes(view_projection_matrix);
+
+      _visibleMeshes.clear();
+
+      // Static meshes
+      _gs->getDetailCulling() ? _bvh->getVisibleElementsWithDetailCulling(*_camera, _visibleMeshes) : _bvh->getVisibleElements(*_camera, _visibleMeshes);
+
+      // Dynamic meshes
+      for (const auto& e : _dynamicMeshRenderables) {
+        if (!e.second->getAABBWorld()->isDetail(_camera->getPosition(), _camera->getDetailCullingThreshold()) 
+          &&_camera->intersectFrustumAABB(*e.second->getAABBWorld()) != IntersectionResult::OUTSIDE) {
+          _visibleMeshes.push_back(e.second.get());
+        }
+      }
+
+      // Static instanced meshes
+    //  std::cout << _staticInstancedMeshRenderables.size() << std::endl;
+      for (const auto& e : _staticInstancedMeshRenderables) {
+        if (!e.second->getAABBWorld()->isDetail(_camera->getPosition(), _camera->getDetailCullingThreshold(), e.second->_largestAABBSize) 
+          && _camera->intersectFrustumAABB(*e.second->getAABBWorld()) != IntersectionResult::OUTSIDE) {
+          e.second->cullInstances(_api);
+          _visibleMeshes.push_back(e.second.get());
+        }
+      }
     }
   };
 }

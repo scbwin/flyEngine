@@ -25,6 +25,7 @@ namespace fly
     AABB const * getAABBWorld() const;
     float getLodMultiplier() const;
     void setLodMultiplier(float lod_multiplier);
+    float getLargestAABBSize() const;
   private:
     std::vector<AABB> _aabbsWorld;
     std::vector<Mat4f> _modelMatrices;
@@ -33,6 +34,7 @@ namespace fly
     std::shared_ptr<Material> _material;
     AABB _aabb;
     float _lodMultiplier;
+    float _largestAABBSize = 0.f;
   };
 }
 

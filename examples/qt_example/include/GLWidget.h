@@ -17,7 +17,9 @@
 #define NUM_TOWERS 15
 #define DELETE_CURTAIN 1
 #define INSTANCED_MESHES 1
-#define NUM_INSTANCED_MESHES_PER_DIR 1000
+//#define NUM_INSTANCED_MESHES_PER_DIR 1000
+#define NUM_CELLS 64
+#define ITEMS_PER_CELL 64
 
 class btTriangleMesh;
 
@@ -90,8 +92,8 @@ private:
   const char* _renderedTrianglesShadowName = "Triangles shadow";
   const char* _renderedMeshesName = "Meshes";
   const char* _renderedMeshesShadowName = "Meshes shadow";
-  const char* _bvhTraversalName = "BVH traversal microseconds";
-  const char* _bvhTraversalShadowMapName = "BVH traversal shadow map microseconds";
+  const char* _cullingName = "Culling microseconds";
+  const char* _cullingShadowMapName = "Culling shadow map microseconds";
   const char* _sceneRenderingCPUName = "CPU scene rendering time";
   const char* _smRenderingCPUName = "CPU shadow map rendering time";
   const char* _sceneMeshGroupingUName = "Scene mesh grouping time";

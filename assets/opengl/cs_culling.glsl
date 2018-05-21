@@ -15,17 +15,17 @@ layout (std430, binding = 0) buffer aabb_buffer
 
 layout (std430, binding = 1) buffer instance_buffer
 {
-	uint instances [];
+	uint instances []; // visible instance indices
 };
 
 struct IndirectInfo
 {
-  uint _count;
-  uint _primCount;
-  uint _firstIndex;
-  uint _baseVertex;
-  uint _baseInstance;
-  uint _type;
+  uint _count; //Index count
+  uint _primCount; // Number of visible instances, this program only updates this variable
+  uint _firstIndex; // Offset into GL_ELEMENT_ARRAY_BUFFER for this mesh
+  uint _baseVertex; // Offset into GL_ARRAY_BUFFER for this mesh
+  uint _baseInstance; // Not used
+  uint _type; // Either GL_UNSIGNED_INT or GL_UNSIGNED_SHORT, depending on the number of vertices
 };
 
 layout (std430, binding = 2) buffer draw_indirect_info
@@ -40,13 +40,13 @@ uniform uint ml; // max lod
 uniform float lm; // lod multiplier
 uniform float de; // detail culling error thresh
 
+// Implemented as described in Real-Time Rendering Third Edition
 bool aabbOutsideFrustum(uint i, vec3 h, vec4 center)
 {
 	float e = dot(h, abs(fp[i].xyz));
 	float s = dot(center, fp[i]);
-	return bool(s - e > 0.f);
+	return s - e > 0.f;
 }
-
 bool intersectFrustumAABB(vec3 diag)
 {
 	vec3 h = diag * 0.5f; // Half diagonal vector

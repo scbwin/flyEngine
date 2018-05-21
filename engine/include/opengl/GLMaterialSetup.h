@@ -19,6 +19,7 @@ namespace fly
     static void setupDiffuseColor(GLShaderProgram const * shader, const MaterialDesc<OpenGLAPI>& desc);
     static void setupRelief(GLShaderProgram const * shader, const MaterialDesc<OpenGLAPI>& desc);
     static void setupMaterialConstants(GLShaderProgram const * shader, const MaterialDesc<OpenGLAPI>& desc);
+    static void setupDiffuseColors(GLShaderProgram const * shader, const MaterialDesc<OpenGLAPI>& desc);
   };
 }
 

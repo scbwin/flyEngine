@@ -261,6 +261,8 @@ namespace fly
     typename API::StorageBuffer _worldMatrices;
     typename API::StorageBuffer _worldMatricesInverse;
     typename API::IndirectBuffer _indirectBuffer;
+    AABB _aabb;
+    float _largestAABBSize;
     StaticInstancedMeshRenderableWrapper(const std::shared_ptr<StaticInstancedMeshRenderable>& simr,
       const std::shared_ptr<MaterialDesc<API>>& material_desc, const std::vector<typename API::MeshGeometryStorage::MeshData>& mesh_data, API const & api, std::shared_ptr<Camera> const & camera ) :
       MeshRenderable(material_desc, mesh_data[0], api),
@@ -271,7 +273,9 @@ namespace fly
       _worldMatrices(api.createStorageBuffer<Mat4f>(simr->getModelMatrices().data(), simr->getModelMatrices().size())),
       _worldMatricesInverse(api.createStorageBuffer<Mat4f>(simr->getModelMatricesInverse().data(), simr->getModelMatricesInverse().size())),
       _indirectInfo(api.indirectFromMeshData(mesh_data)),
-      _indirectBuffer(api.createIndirectBuffer(_indirectInfo))
+      _indirectBuffer(api.createIndirectBuffer(_indirectInfo)),
+      _aabb(*simr->getAABBWorld()),
+      _largestAABBSize(simr->getLargestAABBSize())
     {
       StackPOD<Vec4f> bounds;
       bounds.reserve(simr->getAABBsWorld().size() * 2u);
@@ -295,7 +299,7 @@ namespace fly
     {
       _api.renderInstances(_instanceBuffer, _indirectBuffer, _worldMatrices, _indirectInfo, static_cast<unsigned>(_simr->getAABBsWorld().size()));
     }
-    virtual AABB const * getAABBWorld() const override final { return _simr->getAABBWorld(); }
+    virtual AABB const * getAABBWorld() const override final { return &_aabb; }
     virtual void fetchShaderDescs() override
     {
       _shaderDesc = _materialDesc->getMeshShaderDescInstanced().get();

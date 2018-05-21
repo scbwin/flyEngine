@@ -16,6 +16,7 @@ namespace fly
     }
     for (const auto& m : model_matrices) {
       _aabbsWorld.push_back(AABB(aabb_local, m));
+      _largestAABBSize = std::max(_largestAABBSize, _aabbsWorld.back().size2());
       _modelMatricesInverse.push_back(transpose(inverse(glm::mat4(m))));
     }
     for (const auto& aabb : _aabbsWorld) {
@@ -53,5 +54,9 @@ namespace fly
   void StaticInstancedMeshRenderable::setLodMultiplier(float lod_multiplier)
   {
     _lodMultiplier = lod_multiplier;
+  }
+  float StaticInstancedMeshRenderable::getLargestAABBSize() const
+  {
+    return _largestAABBSize;
   }
 }
