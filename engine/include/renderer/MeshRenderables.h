@@ -263,6 +263,7 @@ namespace fly
     typename API::IndirectBuffer _indirectBuffer;
     AABB _aabb;
     float _largestAABBSize;
+    unsigned _numInstances;
     StaticInstancedMeshRenderableWrapper(const std::shared_ptr<StaticInstancedMeshRenderable>& simr,
       const std::shared_ptr<MaterialDesc<API>>& material_desc, const std::vector<typename API::MeshGeometryStorage::MeshData>& mesh_data, API const & api, std::shared_ptr<Camera> const & camera ) :
       MeshRenderable(material_desc, mesh_data[0], api),
@@ -275,7 +276,8 @@ namespace fly
       _indirectInfo(api.indirectFromMeshData(mesh_data)),
       _indirectBuffer(api.createIndirectBuffer(_indirectInfo)),
       _aabb(*simr->getAABBWorld()),
-      _largestAABBSize(simr->getLargestAABBSize())
+      _largestAABBSize(simr->getLargestAABBSize()),
+      _numInstances(simr->getModelMatrices().size())
     {
       StackPOD<Vec4f> bounds;
       bounds.reserve(simr->getAABBsWorld().size() * 2u);
@@ -286,18 +288,18 @@ namespace fly
       _aabbBuffer = std::move(api.createStorageBuffer<Vec4f>(bounds.begin(), bounds.size()));
     }
     virtual ~StaticInstancedMeshRenderableWrapper() = default;
-    void cullInstances(API& api)
+    void cullInstances()
     {
-      api.cullInstances(_aabbBuffer, static_cast<unsigned>(_simr->getAABBsWorld().size()), _camera->getFrustumPlanes(), _instanceBuffer, _indirectBuffer, 
+      _api.cullInstances(_aabbBuffer, _numInstances, _camera->getFrustumPlanes(), _instanceBuffer, _indirectBuffer,
         _indirectInfo, _camera->getPosition(), _simr->getLodMultiplier(), _camera->getDetailCullingThreshold());
     }
     virtual void render() override
     {
-      _api.renderInstances(_instanceBuffer, _indirectBuffer, _worldMatrices, _indirectInfo, _worldMatricesInverse, static_cast<unsigned>(_simr->getAABBsWorld().size()));
+      _api.renderInstances(_instanceBuffer, _indirectBuffer, _worldMatrices, _indirectInfo, _worldMatricesInverse, _numInstances);
     }
     virtual void renderDepth() override
     {
-      _api.renderInstances(_instanceBuffer, _indirectBuffer, _worldMatrices, _indirectInfo, static_cast<unsigned>(_simr->getAABBsWorld().size()));
+      _api.renderInstances(_instanceBuffer, _indirectBuffer, _worldMatrices, _indirectInfo, _numInstances);
     }
     virtual AABB const * getAABBWorld() const override final { return &_aabb; }
     virtual void fetchShaderDescs() override

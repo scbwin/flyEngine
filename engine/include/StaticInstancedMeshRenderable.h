@@ -26,6 +26,7 @@ namespace fly
     float getLodMultiplier() const;
     void setLodMultiplier(float lod_multiplier);
     float getLargestAABBSize() const;
+    void clear();
   private:
     std::vector<AABB> _aabbsWorld;
     std::vector<Mat4f> _modelMatrices;

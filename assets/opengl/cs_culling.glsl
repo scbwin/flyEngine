@@ -2,18 +2,19 @@
 
 layout(local_size_x = 1024) in;
 
+// vec4 is used instead of vec3 because of alignment restrictions
 struct AABB
 {
 	vec4 bb_min;
 	vec4 bb_max;
 };
 
-layout (std430, binding = 0) buffer aabb_buffer
+layout (std430, binding = 0) readonly buffer aabb_buffer
 {
 	AABB aabbs [];
 };
 
-layout (std430, binding = 1) buffer instance_buffer
+layout (std430, binding = 1) writeonly buffer instance_buffer
 {
 	uint instances []; // visible instance indices
 };
@@ -25,7 +26,7 @@ struct IndirectInfo
   uint _firstIndex; // Offset into GL_ELEMENT_ARRAY_BUFFER for this mesh
   uint _baseVertex; // Offset into GL_ARRAY_BUFFER for this mesh
   uint _baseInstance; // Not used
-  uint _type; // Either GL_UNSIGNED_INT or GL_UNSIGNED_SHORT, depending on the number of vertices
+  uint _type; // Either GL_UNSIGNED_INT or GL_UNSIGNED_SHORT, depending on the number of vertices of this mesh
 };
 
 layout (std430, binding = 2) buffer draw_indirect_info
@@ -69,7 +70,7 @@ void main()
 	float size2 = dot(diag, diag);
     if (size2 / dist2 > de && intersectFrustumAABB(diag)) {
 	  uint lod = min(uint(distance(cp_w, nearest_point) * lm), ml);
-	  instances[atomicAdd(indirect_info[lod]._primCount, 1) + lod * ni] = gl_GlobalInvocationID.x;
+	  instances[atomicAdd(indirect_info[lod]._primCount, 1u) + lod * ni] = gl_GlobalInvocationID.x;
 	}
   }
 }

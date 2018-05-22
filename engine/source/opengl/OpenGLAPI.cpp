@@ -140,11 +140,14 @@ namespace fly
     _vboAABB.setData(bb_buffer.begin(), bb_buffer.size(), GL_DYNAMIC_COPY);
     GL_CHECK(glDrawArraysInstanced(GL_POINTS, 0, 1, static_cast<GLsizei>(aabbs.size())));
   }
-  void OpenGLAPI::cullInstances(const StorageBuffer& aabb_buffer, unsigned num_instances,
-    const std::array<Vec4f, 6>& frustum_planes, const StorageBuffer& instance_buffer, const IndirectBuffer& indirect_draw_buffer,
-    std::vector<IndirectInfo>& info, const Vec3f& cam_pos_world, float lod_multiplier, float detail_culling_thresh)
+  void OpenGLAPI::prepareCulling()
   {
     bindShader(&_cullingShader);
+  }
+  void OpenGLAPI::cullInstances(const StorageBuffer& aabb_buffer, unsigned num_instances,
+    const std::array<Vec4f, 6>& frustum_planes, const StorageBuffer& instance_buffer, const IndirectBuffer& indirect_draw_buffer,
+    std::vector<IndirectInfo>& info, const Vec3f& cam_pos_world, float lod_multiplier, float detail_culling_thresh) const
+  {
     for (auto& i : info) {
       i._primCount = 0;
     }

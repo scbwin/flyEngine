@@ -11,7 +11,7 @@ namespace fly
     _lodMultiplier(lod_multiplier)
   {
     AABB aabb_local;
-    for (const auto& m : _meshes) {
+    for (const auto& m : _meshes) { // The bounding box that encloses all LODs is computed.
       aabb_local = aabb_local.getUnion(*m->getAABB());
     }
     for (const auto& m : model_matrices) {
@@ -19,7 +19,7 @@ namespace fly
       _largestAABBSize = std::max(_largestAABBSize, _aabbsWorld.back().size2());
       _modelMatricesInverse.push_back(transpose(inverse(glm::mat4(m))));
     }
-    for (const auto& aabb : _aabbsWorld) {
+    for (const auto& aabb : _aabbsWorld) { // Bounding box that encloses all instances
       _aabb = _aabb.getUnion(aabb);
     }
   }
@@ -58,5 +58,11 @@ namespace fly
   float StaticInstancedMeshRenderable::getLargestAABBSize() const
   {
     return _largestAABBSize;
+  }
+  void StaticInstancedMeshRenderable::clear()
+  {
+    _aabbsWorld = std::vector<AABB>();
+    _modelMatrices = std::vector<Mat4f>();
+    _modelMatricesInverse = std::vector<Mat4f>();
   }
 }

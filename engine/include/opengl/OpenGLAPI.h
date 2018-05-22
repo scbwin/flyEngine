@@ -184,9 +184,10 @@ namespace fly
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse, const WindParamsLocal& wind_params, const AABB& aabb) const;
     void renderMeshMVP(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mvp) const;
     void renderAABBs(const std::vector<AABB const *>& aabbs, const Mat4f& transform, const Vec3f& col);
+    void prepareCulling();
     void cullInstances(const StorageBuffer& aabb_buffer, unsigned num_instances,
       const std::array<Vec4f, 6>& frustum_planes, const StorageBuffer& instance_buffer, 
-      const IndirectBuffer& indirect_draw_buffer, std::vector<IndirectInfo>& info, const Vec3f& cam_pos_world, float lod_multiplier, float detail_culling_thresh);
+      const IndirectBuffer& indirect_draw_buffer, std::vector<IndirectInfo>& info, const Vec3f& cam_pos_world, float lod_multiplier, float detail_culling_thresh) const;
     void renderInstances(const StorageBuffer& instance_buffer, const IndirectBuffer& indirect_draw_buffer, const StorageBuffer& world_matrices, 
       const std::vector<IndirectInfo>& info, const StorageBuffer& world_matrices_inverse, unsigned num_instances) const;
     void renderInstances(const StorageBuffer& instance_buffer, const IndirectBuffer& indirect_draw_buffer, const StorageBuffer& world_matrices,

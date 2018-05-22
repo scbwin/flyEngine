@@ -462,6 +462,10 @@ void GLWidget::initGame()
 #endif
 
 #if INSTANCED_MESHES
+  _graphicsSettings.setShadowMapSize(8192);
+  _graphicsSettings.setShadowBias(_graphicsSettings.getShadowBias() * 0.1f);
+  _graphicsSettings.setExposure(0.5f);
+  _graphicsSettings.setDebugObjectAABBs(true);
   std::vector<std::shared_ptr<fly::Mesh>> sphere_lods;
   for (unsigned i = 0; i < 5; i++) {
     sphere_lods.push_back(importer->loadModel("assets/sphere_lod" + std::to_string(i) + ".obj")->getMeshes()[0]);
@@ -469,6 +473,9 @@ void GLWidget::initGame()
   fly::Vec2i num_cells(NUM_CELLS);
   fly::Vec2i num_meshes(ITEMS_PER_CELL);
   float cell_size = sphere_lods[0]->getAABB()->size() * ITEMS_PER_CELL;
+  fly::Vec2i total_size = num_cells * static_cast<int>(cell_size);
+  std::cout << "Instanced meshes total extents: " << total_size << std::endl;
+  unsigned total_meshes = 0;
 #if !PHYSICS
   std::mt19937 gen;
 #endif
@@ -480,21 +487,25 @@ void GLWidget::initGame()
       std::vector<fly::Vec4f> diffuse_colors;
       for (int x = 0; x < num_meshes[0]; x++) {
         for (int z = 0; z < num_meshes[1]; z++) {
-          model_matrices.push_back(fly::Transform(fly::Vec3f(static_cast<float>(x) * sphere_lods[0]->getAABB()->size() + dist(gen) + cell_x * cell_size, 1.2f + dist(gen) * 5.f, static_cast<float>(z) * sphere_lods[0]->getAABB()->size() + dist(gen) + cell_z * cell_size)).getModelMatrix());
+          model_matrices.push_back(fly::Transform(fly::Vec3f(static_cast<float>(x) * sphere_lods[0]->getAABB()->size() + dist(gen) + cell_x * cell_size - total_size[0] * 0.5f,
+            1.2f + dist(gen) * 5.f, 
+            static_cast<float>(z) * sphere_lods[0]->getAABB()->size() + dist(gen) + cell_z * cell_size - total_size[1] * 0.5f)).getModelMatrix());
           diffuse_colors.push_back(fly::Vec4f(dist(gen), dist(gen), dist(gen), 1.f));
         }
       }
       auto material = std::make_shared<fly::Material>(*sphere_lods[0]->getMaterial());
       material->setNormalPath("assets/ground_normals.png");
       material->setSpecularExponent(128.f);
-      material->setKs(2.f);
+      //material->setKs(2.f);
       material->setDiffuseColors(diffuse_colors);
       auto instanced_renderable = std::make_shared<fly::StaticInstancedMeshRenderable>(sphere_lods, material, model_matrices, 0.1f);
       instanced_entity->addComponent(instanced_renderable);
+      instanced_renderable->clear();
+      total_meshes += model_matrices.size();
     }
   }
 #endif
-
+  std::cout << "Num instances:" << total_meshes << std::endl;
   auto cam_entity = _engine->getEntityManager()->createEntity();
   cam_entity->addComponent(std::make_shared<fly::Camera>(glm::vec3(4.f, 2.f, 0.f), glm::vec3(glm::radians(270.f), 0.f, 0.f)));
   auto dl_entity = _engine->getEntityManager()->createEntity();
@@ -502,7 +513,7 @@ void GLWidget::initGame()
   dl_entity->addComponent(_dl);
 
   _camController = std::make_unique<fly::CameraController>(cam_entity->getComponent<fly::Camera>(), 20.f);
-#if SPONZA_MANY
+#if SPONZA_MANY || INSTANCED_MESHES
   _camController->setSpeed(100.f);
 #endif
   std::cout << "Init game took " << init_game_timing.duration<std::chrono::milliseconds>() << " milliseconds." << std::endl;

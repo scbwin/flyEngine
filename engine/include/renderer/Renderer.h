@@ -557,11 +557,13 @@ namespace fly
       }
 
       // Static instanced meshes
-    //  std::cout << _staticInstancedMeshRenderables.size() << std::endl;
+      if (_staticInstancedMeshRenderables.size()) {
+        _api.prepareCulling();
+      }
       for (const auto& e : _staticInstancedMeshRenderables) {
         if (!e.second->getAABBWorld()->isDetail(_camera->getPosition(), _camera->getDetailCullingThreshold(), e.second->_largestAABBSize) 
           && _camera->intersectFrustumAABB(*e.second->getAABBWorld()) != IntersectionResult::OUTSIDE) {
-          e.second->cullInstances(_api);
+          e.second->cullInstances();
           _visibleMeshes.push_back(e.second.get());
         }
       }
