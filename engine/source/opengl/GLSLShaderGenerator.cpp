@@ -413,8 +413,8 @@ in vec3 bitangent_local;\n";
   }\n";
       shader_src += "  vec4 shadow_coord = " + std::string(worldToLightMatrices()) + "[index] * vec4(pos_world, 1.f);\n\
   shadow_coord.xyz /= shadow_coord.w;\n\
-  shadow_coord = shadow_coord * 0.5f + 0.5f;\n\
-  shadow_coord.z -= " + std::string(shadowMapBias()) + ";\n";
+  shadow_coord = shadow_coord * 0.5f + 0.5f;\n";
+ // shadow_coord.z -= " + std::string(shadowMapBias()) + ";\n";
       if (!settings.getShadowsPCF()) {
         shader_src += "  if (all(greaterThanEqual(shadow_coord.xyz, vec3(0.f))) && all(lessThanEqual(shadow_coord.xyz, vec3(1.f)))) {\n  ";
       }

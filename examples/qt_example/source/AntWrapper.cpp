@@ -14,6 +14,8 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "Shadows", TwType::TW_TYPE_BOOLCPP, cbSetShadows, cbGetShadows, gs, nullptr);
   TwAddVarCB(bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, cbSetPCF, cbGetPCF, gs, nullptr);
   TwAddVarCB(bar, "Shadow darken factor", TwType::TW_TYPE_FLOAT, setShadowFactor, getShadowFactor, gs, "step = 0.005f");
+  TwAddVarCB(bar, "Shadow polygon offset factor", TwType::TW_TYPE_FLOAT, setSMPOFactor, getSMPOFactor, gs, "step=0.01f");
+  TwAddVarCB(bar, "Shadow polygon offset units", TwType::TW_TYPE_FLOAT, setSMPOUnits, getSMPOUnits, gs, "step=0.01f");
   TwAddVarCB(bar, "Normal mapping", TwType::TW_TYPE_BOOLCPP, cbSetNormalMapping, cbGetNormalMapping, gs, nullptr);
   TwAddVarCB(bar, "Parallax mapping", TwType::TW_TYPE_BOOLCPP, cbSetParallaxMapping, cbGetParallaxMapping, gs, nullptr);
   TwAddVarCB(bar, "Relief mapping", TwType::TW_TYPE_BOOLCPP, cbSetReliefMapping, cbGetReliefMapping, gs, nullptr);
@@ -409,4 +411,24 @@ void AntWrapper::setFullScreen(const void * value, void * client_data)
 void AntWrapper::getFullScreen(void * value, void * client_data)
 {
   *cast<bool>(value) = cast<QWidget>(client_data)->isFullScreen();
+}
+
+void AntWrapper::setSMPOFactor(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setShadowPolygonOffsetFactor(*cast<float>(value));
+}
+
+void AntWrapper::setSMPOUnits(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setShadowPolygonOffsetUnits(*cast<float>(value));
+}
+
+void AntWrapper::getSMPOFactor(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getShadowPolygonOffsetFactor();
+}
+
+void AntWrapper::getSMPOUnits(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getShadowPolygonOffsetUnits();
 }

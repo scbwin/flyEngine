@@ -99,6 +99,10 @@ namespace fly
     void setSSRRayLenScale(float scale);
     void setSSRMinRayLen(float len);
     void setSSRBlendWeight(float weight);
+    void setShadowPolygonOffsetFactor(float factor);
+    void setShadowPolygonOffsetUnits(float units);
+    float getShadowPolygonOffsetFactor() const;
+    float getShadowPolygonOffsetUnits() const;
 
   private:
     std::list<std::weak_ptr<Listener>> _listeners;
@@ -138,6 +142,8 @@ namespace fly
     float _ssrRayLenScale = 3.f;
     float _ssrMinRayLen = 24.f;
     float _ssrBlendWeight = 0.8f;
+    float _shadowPolygonOffsetFactor = 1.f;
+    float _shadowPolygonOffsetUnits = 1.f;
 
     void notifiyNormalMappingChanged();
     void notifyShadowsChanged();

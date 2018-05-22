@@ -461,11 +461,18 @@ void GLWidget::initGame()
   }
 #endif
 
+  auto cam_entity = _engine->getEntityManager()->createEntity();
+  cam_entity->addComponent(std::make_shared<fly::Camera>(glm::vec3(4.f, 2.f, 0.f), glm::vec3(glm::radians(270.f), 0.f, 0.f)));
+  auto dl_entity = _engine->getEntityManager()->createEntity();
+  _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(-1000.f, 2000.f, -1000.f), glm::vec3(-500.f, 0.f, -500.f));
+  dl_entity->addComponent(_dl);
+
 #if INSTANCED_MESHES
   _graphicsSettings.setShadowMapSize(8192);
   _graphicsSettings.setShadowBias(_graphicsSettings.getShadowBias() * 0.1f);
   _graphicsSettings.setExposure(0.5f);
   _graphicsSettings.setDebugObjectAABBs(true);
+  cam_entity->getComponent<fly::Camera>()->setDetailCullingThreshold(0.000005f);
   std::vector<std::shared_ptr<fly::Mesh>> sphere_lods;
   for (unsigned i = 0; i < 5; i++) {
     sphere_lods.push_back(importer->loadModel("assets/sphere_lod" + std::to_string(i) + ".obj")->getMeshes()[0]);
@@ -504,13 +511,8 @@ void GLWidget::initGame()
       total_meshes += model_matrices.size();
     }
   }
-#endif
   std::cout << "Num instances:" << total_meshes << std::endl;
-  auto cam_entity = _engine->getEntityManager()->createEntity();
-  cam_entity->addComponent(std::make_shared<fly::Camera>(glm::vec3(4.f, 2.f, 0.f), glm::vec3(glm::radians(270.f), 0.f, 0.f)));
-  auto dl_entity = _engine->getEntityManager()->createEntity();
-  _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(-1000.f, 2000.f, -1000.f), glm::vec3(-500.f, 0.f, -500.f));
-  dl_entity->addComponent(_dl);
+#endif
 
   _camController = std::make_unique<fly::CameraController>(cam_entity->getComponent<fly::Camera>(), 20.f);
 #if SPONZA_MANY || INSTANCED_MESHES

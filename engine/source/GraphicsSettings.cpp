@@ -358,6 +358,22 @@ namespace fly
       l->screenSpaceReflectionsChanged(this);
     });
   }
+  void GraphicsSettings::setShadowPolygonOffsetFactor(float factor)
+  {
+    _shadowPolygonOffsetFactor = factor;
+  }
+  void GraphicsSettings::setShadowPolygonOffsetUnits(float units)
+  {
+    _shadowPolygonOffsetUnits = units;
+  }
+  float GraphicsSettings::getShadowPolygonOffsetFactor() const
+  {
+    return _shadowPolygonOffsetFactor;
+  }
+  float GraphicsSettings::getShadowPolygonOffsetUnits() const
+  {
+    return _shadowPolygonOffsetUnits;
+  }
   void GraphicsSettings::setCameraLerping(bool enable)
   {
     _cameraLerping = enable;

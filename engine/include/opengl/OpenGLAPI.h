@@ -201,6 +201,8 @@ namespace fly
     void composite(const RTT& lighting_buffer, const GlobalShaderParams& params, const RTT& dof_buffer, const Depthbuffer& depth_buffer);
     void endFrame() const;
     void setAnisotropy(unsigned anisotropy);
+    void enablePolygonOffset(float factor, float units) const;
+    void disablePolygonOffset() const;
     std::shared_ptr<OpenGLAPI::Texture> createTexture(const std::string& path);
     std::shared_ptr<GLShaderProgram> createShader(GLShaderSource& vs, GLShaderSource& fs, GLShaderSource& gs = GLShaderSource());
     GLShaderProgram createComputeShader(GLShaderSource& source);

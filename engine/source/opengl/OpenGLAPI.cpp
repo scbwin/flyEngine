@@ -299,6 +299,15 @@ namespace fly
       _samplerAnisotropic.param(GL_TEXTURE_MAX_ANISOTROPY, static_cast<float>(_anisotropy));
     }
   }
+  void OpenGLAPI::enablePolygonOffset(float factor, float units) const
+  {
+    GL_CHECK(glEnable(GL_POLYGON_OFFSET_FILL));
+    GL_CHECK(glPolygonOffset(factor, units));
+  }
+  void OpenGLAPI::disablePolygonOffset() const
+  {
+    GL_CHECK(glDisable(GL_POLYGON_OFFSET_FILL));
+  }
   std::shared_ptr<OpenGLAPI::Texture> OpenGLAPI::createTexture(const std::string & path)
   {
     auto tex = SOIL_load_OGL_texture(path.c_str(), SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_TEXTURE_REPEATS | SOIL_FLAG_COMPRESS_TO_DXT);

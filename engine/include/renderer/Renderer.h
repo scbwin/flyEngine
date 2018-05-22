@@ -466,6 +466,7 @@ namespace fly
       timing.start();
 #endif
       _api.setDepthClampEnabled<true>();
+      _api.enablePolygonOffset(_gs->getShadowPolygonOffsetFactor(), _gs->getShadowPolygonOffsetUnits());
       _api.setViewport(Vec2u(_gs->getShadowMapSize()));
       _renderTargets.clear();
       for (unsigned i = 0; i < _gs->getFrustumSplits().size(); i++) {
@@ -478,6 +479,7 @@ namespace fly
         _stats._renderedTrianglesShadow += stats._renderedTriangles;
 #endif
       }
+      _api.disablePolygonOffset();
 
 #if RENDERER_STATS
       _stats._shadowMapRenderCPUMicroSeconds = timing.duration<std::chrono::microseconds>();

@@ -91,6 +91,10 @@ private:
   static void getSSRBlendWeight(void* value, void* client_data);
   static void setFullScreen(const void* value, void* client_data);
   static void getFullScreen(void* value, void* client_data);
+  static void setSMPOFactor(const void* value, void* client_data);
+  static void setSMPOUnits(const void* value, void* client_data);
+  static void getSMPOFactor(void* value, void* client_data);
+  static void getSMPOUnits(void* value, void* client_data);
   template<typename T> static T* cast(void* data){return reinterpret_cast<T*>(data);}
   template<typename T> static const T* cast(const void* data) { return reinterpret_cast<const T*>(data); }
 };

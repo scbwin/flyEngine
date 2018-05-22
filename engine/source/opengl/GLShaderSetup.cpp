@@ -22,7 +22,7 @@ namespace fly
     setMatrixArray(shader->uniformLocation(GLSLShaderGenerator::worldToLightMatrices()), *params._worldToLight.begin(), static_cast<unsigned>(params._worldToLight.size()));
     setScalar(shader->uniformLocation(GLSLShaderGenerator::numfrustumSplits()), static_cast<int>(params._worldToLight.size()));
     setScalarArray(shader->uniformLocation(GLSLShaderGenerator::frustumSplits()), params._smFrustumSplits->front(), static_cast<unsigned>(params._smFrustumSplits->size()));
-    setScalar(shader->uniformLocation(GLSLShaderGenerator::shadowMapBias()), params._smBias);
+  //  setScalar(shader->uniformLocation(GLSLShaderGenerator::shadowMapBias()), params._smBias);
     setScalar(shader->uniformLocation(GLSLShaderGenerator::shadowDarkenFactor()), params._shadowDarkenFactor);
     setVector(shader->uniformLocation(GLSLShaderGenerator::viewMatrixThirdRow()), params._viewMatrix.row(2));
   }
