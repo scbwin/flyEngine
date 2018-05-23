@@ -63,7 +63,7 @@ void GLWidget::initializeGL()
   TwAddButton(_bar, _shadowMapGroupingUName, nullptr, nullptr, nullptr);
 #endif
   auto settings_bar = TwNewBar("Settings");
-  AntWrapper(settings_bar, &_graphicsSettings, _renderer->getApi(), _camController->getCamera().get(), _camController.get(), _skydome.get(), _gameTimer.get(), this, _dl.get());
+  AntWrapper(settings_bar, &_graphicsSettings, _renderer->getApi(), _camController->getCamera().get(), _camController.get(), _skydome.get(), _gameTimer.get(), this);
   TwSetTopBar(_bar);
 }
 
@@ -316,21 +316,17 @@ void GLWidget::initGame()
     }
   }
 #endif
-#if SPONZA
-  size_t num_renderables = sponza_model->getMeshes().size();
+
 #if SPONZA_MANY
-  num_renderables *= NUM_OBJECTS * NUM_OBJECTS;
-#endif
+  unsigned num_renderables = NUM_OBJECTS * NUM_OBJECTS * sponza_model->getMeshes().size();
   std::vector<std::shared_ptr<fly::Entity>> entities;
   std::vector<std::shared_ptr<fly::StaticMeshRenderable>> smrs;
   entities.reserve(num_renderables);
   smrs.reserve(num_renderables);
-#endif
-#if SPONZA_MANY
-
   /*for (unsigned i = 0; i < NUM_OBJECTS * NUM_OBJECTS * sponza_model->getMeshes().size(); i++) {
     entities.push_back(_engine->getEntityManager()->createEntity());
   }*/
+  unsigned ent_index = 0;
   for (int x = 0; x < NUM_OBJECTS; x++) {
     for (int y = 0; y < NUM_OBJECTS; y++) {
       auto model_matrix = fly::Transform(fly::Vec3f(x * 60.f, -sponza_model->getAABB()->getMin()[1] * sponza_scale[1], y * 60.f), fly::Vec3f(sponza_scale)).getModelMatrix();
@@ -376,6 +372,7 @@ void GLWidget::initGame()
 #else
         mesh->getMaterial(), model_matrix, has_wind, aabb_offset));
 #endif
+      ent_index++;
 #if PHYSICS
       const auto& model_matrix = entity->getComponent<fly::StaticMeshRenderable>()->getModelMatrix();
       entity->addComponent(std::make_shared<fly::RigidBody>(model_matrix[3].xyz(), 0.f, _sponzaShapes[index], 0.1f));
@@ -389,10 +386,10 @@ void GLWidget::initGame()
 #if SPONZA_MANY
     }
   }
-#endif
   for (unsigned i = 0; i < entities.size(); i++) {
     entities[i]->addComponent(smrs[i]);
   }
+#endif
 #endif
 #if PHYSICS || SKYDOME
   auto sphere_model = importer->loadModel("assets/sphere.obj");
@@ -479,9 +476,9 @@ void GLWidget::initGame()
 #endif
 
   auto cam_entity = _engine->getEntityManager()->createEntity();
-  cam_entity->addComponent(std::make_shared<fly::Camera>(fly::Vec3f(4.f, 2.f, 0.f), fly::Vec3f(glm::radians(270.f), 0.f, 0.f)));
+  cam_entity->addComponent(std::make_shared<fly::Camera>(glm::vec3(4.f, 2.f, 0.f), glm::vec3(glm::radians(270.f), 0.f, 0.f)));
   auto dl_entity = _engine->getEntityManager()->createEntity();
-  _dl = std::make_shared<fly::DirectionalLight>(fly::Vec3f(1.f), fly::Vec3f(-1000.f, 2000.f, -1000.f), fly::Vec3f(1.16f, -1.16f, 0.f));
+  _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(-1000.f, 2000.f, -1000.f), glm::vec3(-500.f, 0.f, -500.f));
   dl_entity->addComponent(_dl);
 
 #if INSTANCED_MESHES

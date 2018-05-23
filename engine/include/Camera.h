@@ -18,6 +18,7 @@ namespace fly
   {
   public:
     Camera(const Vec3f& pos, const Vec3f& euler_angles);
+    virtual ~Camera();
     Mat4f getViewMatrix(const Vec3f& pos, const Vec3f& euler_angles);
     const Vec3f& getPosition() const;
     const Vec3f& getDirection() const;

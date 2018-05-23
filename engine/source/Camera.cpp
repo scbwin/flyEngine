@@ -8,16 +8,19 @@ namespace fly
   {
   }
 
+  Camera::~Camera()
+  {
+  }
+
   Mat4f Camera::getViewMatrix(const Vec3f& pos, const Vec3f& euler_angles)
   {
     _direction = Vec3f(cos(euler_angles[1]) * sin(euler_angles[0]), sin(euler_angles[1]), cos(euler_angles[1]) * cos(euler_angles[0]));
     _right = Vec3f(sin(euler_angles[0] - glm::half_pi<float>()), sin(euler_angles[2]), cos(euler_angles[0] - glm::half_pi<float>()));
     _up = cross(glm::vec3(_right), glm::vec3(_direction));
 
-    return Mat4f({ Vec4f(_right[0], _up[0], -_direction[0], 0.f),
-      Vec4f(_right[1], _up[1], -_direction[1], 0.f),
-      Vec4f(_right[2], _up[2], -_direction[2], 0.f),
-      Vec4f(-dot(_right, pos), -dot(_up, pos), dot(_direction, pos), 1.f) });
+    Vec3f target = pos + _direction;
+
+    return glm::lookAt(glm::vec3(pos), glm::vec3(target), glm::vec3(_up));
   }
   const Vec3f & Camera::getPosition() const
   {
@@ -70,6 +73,7 @@ namespace fly
   }
   IntersectionResult Camera::intersectPlaneAABB(const Vec4f & plane, const Vec3f& h, const Vec4f& center) const
   {
+ //   auto h = (aabb.getMax() - aabb.getMin()) * 0.5f;
     auto e = dot(h, abs(plane.xyz()));
     auto s = dot(center, plane);
     if (s - e > 0.f) {
