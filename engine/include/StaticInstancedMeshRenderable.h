@@ -16,10 +16,9 @@ namespace fly
   class StaticInstancedMeshRenderable : public Component
   {
   public:
-    StaticInstancedMeshRenderable(const std::vector<std::shared_ptr<Mesh>>& meshes, const std::shared_ptr<Material>& material, const std::vector<Mat4f>& model_matrices, float lod_multiplier);
+    StaticInstancedMeshRenderable(const std::vector<std::shared_ptr<Mesh>>& meshes, const std::shared_ptr<Material>& material, 
+      const std::vector<Mat4f>& model_matrices, const std::vector<unsigned>& indices, float lod_multiplier);
     const std::vector<AABB>& getAABBsWorld() const;
-    const std::vector<Mat4f>& getModelMatrices() const;
-    const std::vector<Mat4f>& getModelMatricesInverse() const;
     const std::vector<std::shared_ptr<Mesh>>& getMeshes() const;
     const std::shared_ptr<Material>& getMaterial() const;
     AABB const * getAABBWorld() const;
@@ -27,10 +26,17 @@ namespace fly
     void setLodMultiplier(float lod_multiplier);
     float getLargestAABBSize() const;
     void clear();
+    struct InstanceData
+    {
+      Mat4f _modelMatrix;
+      Mat4f _modelMatrixInverse;
+      unsigned _index; // Can be an index into a color array or an index into a texture array
+      unsigned _padding[3];
+    };
+    const std::vector<InstanceData> getInstanceData() const;
   private:
     std::vector<AABB> _aabbsWorld;
-    std::vector<Mat4f> _modelMatrices;
-    std::vector<Mat4f> _modelMatricesInverse;
+    std::vector<InstanceData> _instanceData;
     std::vector<std::shared_ptr<Mesh>> _meshes;
     std::shared_ptr<Material> _material;
     AABB _aabb;

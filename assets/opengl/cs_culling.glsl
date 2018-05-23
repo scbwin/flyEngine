@@ -16,7 +16,7 @@ layout (std430, binding = 0) readonly buffer aabb_buffer
 
 layout (std430, binding = 1) writeonly buffer instance_buffer
 {
-	uint instances []; // visible instance indices
+	uint visible_instances []; // visible instance indices
 };
 
 struct IndirectInfo
@@ -41,6 +41,9 @@ uniform uint ml; // max lod
 uniform float lm; // lod multiplier
 uniform float de; // detail culling error thresh
 
+
+#define ID gl_GlobalInvocationID.x
+
 // Implemented as described in Real-Time Rendering Third Edition
 bool aabbOutsideFrustum(uint i, vec3 h, vec4 center)
 {
@@ -51,8 +54,8 @@ bool aabbOutsideFrustum(uint i, vec3 h, vec4 center)
 bool intersectFrustumAABB(vec3 diag)
 {
 	vec3 h = diag * 0.5f; // Half diagonal vector
-	vec4 center = (aabbs[gl_GlobalInvocationID.x].bb_max + aabbs[gl_GlobalInvocationID.x].bb_min) * 0.5f; // Bounding box center 
-	for (uint i = 0; i < 6; i++) {
+	vec4 center = (aabbs[ID].bb_max + aabbs[ID].bb_min) * 0.5f; // Bounding box center 
+	for (uint i = 0; i < 6u; i++) {
 		if (aabbOutsideFrustum(i, h, center)) {
 			return false;
 		}
@@ -62,15 +65,15 @@ bool intersectFrustumAABB(vec3 diag)
 
 void main()
 {
-  if (gl_GlobalInvocationID.x < ni) {
-	vec3 nearest_point = clamp(cp_w,  aabbs[gl_GlobalInvocationID.x].bb_min.xyz, aabbs[gl_GlobalInvocationID.x].bb_max.xyz);
+  if (ID < ni) {
+	vec3 nearest_point = clamp(cp_w,  aabbs[ID].bb_min.xyz, aabbs[ID].bb_max.xyz);
 	vec3 to_cam = cp_w - nearest_point;
 	float dist2 = dot(to_cam, to_cam);
-	vec3 diag = aabbs[gl_GlobalInvocationID.x].bb_max.xyz - aabbs[gl_GlobalInvocationID.x].bb_min.xyz;
+	vec3 diag = aabbs[ID].bb_max.xyz - aabbs[ID].bb_min.xyz;
 	float size2 = dot(diag, diag);
     if (size2 / dist2 > de && intersectFrustumAABB(diag)) {
 	  uint lod = min(uint(distance(cp_w, nearest_point) * lm), ml);
-	  instances[atomicAdd(indirect_info[lod]._primCount, 1u) + lod * ni] = gl_GlobalInvocationID.x;
+	  visible_instances[lod * ni + atomicAdd(indirect_info[lod]._primCount, 1u)] = ID;
 	}
   }
 }

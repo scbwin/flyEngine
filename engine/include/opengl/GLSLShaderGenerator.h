@@ -69,6 +69,11 @@ namespace fly
     static inline constexpr const char* dofSampler() { return "ts_dof"; };
     static inline constexpr const char* viewSpaceNormalsSampler() { return "ts_n"; };
     static inline constexpr const char* viewMatrixThirdRow() { return "v3"; };
+    static inline constexpr const unsigned bufferBindingAABB() { return 0; };
+    static inline constexpr const unsigned bufferBindingVisibleInstances() { return 1; };
+    static inline constexpr const unsigned bufferBindingIndirectInfo() { return 2; };
+    static inline constexpr const unsigned bufferBindingInstanceData() { return 3; };
+    static inline constexpr const unsigned bufferBindingDiffuseColors() { return 4; };
     static inline constexpr const char* noiseCodeGLSL() {
       return "float hash(vec2 p)\n\
 {\n\
@@ -92,6 +97,7 @@ float noise(vec2 p)\n\
     std::string createCompositeShaderSource(const GraphicsSettings& gs) const;
     std::string _windParamString;
     std::string _windCodeString;
+    std::string _instanceDataStr;
     GLShaderSource _compositeVertexSource;
   };
 }

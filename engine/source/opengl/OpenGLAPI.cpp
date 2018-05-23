@@ -140,13 +140,19 @@ namespace fly
     _vboAABB.setData(bb_buffer.begin(), bb_buffer.size(), GL_DYNAMIC_COPY);
     GL_CHECK(glDrawArraysInstanced(GL_POINTS, 0, 1, static_cast<GLsizei>(aabbs.size())));
   }
-  void OpenGLAPI::prepareCulling()
+  void OpenGLAPI::prepareCulling(const std::array<Vec4f, 6>& frustum_planes, const Vec3f& cam_pos_world)
   {
     bindShader(&_cullingShader);
+    setVectorArray(_activeShader->uniformLocation("fp"), frustum_planes.front(), frustum_planes.size());
+    setVector(_activeShader->uniformLocation("cp_w"), cam_pos_world);
+  }
+  void OpenGLAPI::endCulling() const
+  {
+    GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT));
   }
   void OpenGLAPI::cullInstances(const StorageBuffer& aabb_buffer, unsigned num_instances,
-    const std::array<Vec4f, 6>& frustum_planes, const StorageBuffer& instance_buffer, const IndirectBuffer& indirect_draw_buffer,
-    std::vector<IndirectInfo>& info, const Vec3f& cam_pos_world, float lod_multiplier, float detail_culling_thresh) const
+    const StorageBuffer& visible_instances, const IndirectBuffer& indirect_draw_buffer,
+    std::vector<IndirectInfo>& info, float lod_multiplier, float detail_culling_thresh) const
   {
     for (auto& i : info) {
       i._primCount = 0;
@@ -156,39 +162,31 @@ namespace fly
     unsigned group_size = 1024;
     unsigned num_groups = std::ceil(static_cast<float>(num_instances) / static_cast<float>(group_size));
 
-    aabb_buffer.bindBase(0);
-    instance_buffer.bindBase(1);
-    indirect_draw_buffer.bindBase(GL_SHADER_STORAGE_BUFFER, 2);
+    aabb_buffer.bindBase(GLSLShaderGenerator::bufferBindingAABB());
+    visible_instances.bindBase(GLSLShaderGenerator::bufferBindingVisibleInstances());
+    indirect_draw_buffer.bindBase(GL_SHADER_STORAGE_BUFFER, GLSLShaderGenerator::bufferBindingIndirectInfo());
 
     setScalar(_activeShader->uniformLocation("ni"), num_instances);
-    setVectorArray(_activeShader->uniformLocation("fp"), frustum_planes.front(), frustum_planes.size());
-    setVector(_activeShader->uniformLocation("cp_w"), cam_pos_world);
     setScalar(_activeShader->uniformLocation("ml"), static_cast<unsigned>(info.size() - 1));
     setScalar(_activeShader->uniformLocation("lm"), lod_multiplier);
     setScalar(_activeShader->uniformLocation("de"), detail_culling_thresh);
 
     GL_CHECK(glDispatchCompute(num_groups, 1, 1));
-    GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
     
-   /* auto draw_indirect_ptr = indirect_draw_buffer.map<IndirectInfo>(GL_READ_ONLY);
+   /* 
+   GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
+    auto draw_indirect_ptr = indirect_draw_buffer.map<IndirectInfo>(GL_READ_ONLY);
     for (unsigned i = 0; i < info.size(); i++) {
       auto num_visible_instances = draw_indirect_ptr[i]._primCount;
       std::cout << "Visible instances lod " << i << ":" << num_visible_instances << std::endl;
     }
     indirect_draw_buffer.unmap();*/
   }
-  void OpenGLAPI::renderInstances(const StorageBuffer & instance_buffer, const IndirectBuffer & indirect_draw_buffer, 
-    const StorageBuffer & world_matrices, const std::vector<IndirectInfo>& info, const StorageBuffer& world_matrices_inverse, unsigned num_instances) const
+  void OpenGLAPI::renderInstances(const StorageBuffer & visible_instances, const IndirectBuffer & indirect_draw_buffer,
+    const StorageBuffer & instance_data, const std::vector<IndirectInfo>& info, unsigned num_instances) const
   {
-    world_matrices_inverse.bindBase(2);
-    renderInstances(instance_buffer, indirect_draw_buffer, world_matrices, info, num_instances);
-  }
-  void OpenGLAPI::renderInstances(const StorageBuffer & instance_buffer, const IndirectBuffer & indirect_draw_buffer,
-    const StorageBuffer & world_matrices, const std::vector<IndirectInfo>& info, unsigned num_instances) const
-  {
-    world_matrices.bindBase(0);
-    instance_buffer.bindBase(1);
-    GL_CHECK(glMemoryBarrier(GL_COMMAND_BARRIER_BIT));
+    instance_data.bindBase(GLSLShaderGenerator::bufferBindingInstanceData());
+    visible_instances.bindBase(GLSLShaderGenerator::bufferBindingVisibleInstances());
     indirect_draw_buffer.bind(GL_DRAW_INDIRECT_BUFFER);
     for (unsigned i = 0; i < info.size(); i++) {
       setScalar(_activeShader->uniformLocation("offs"), num_instances * i);

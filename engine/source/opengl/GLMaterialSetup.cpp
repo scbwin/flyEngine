@@ -54,6 +54,6 @@ namespace fly
   }
   void GLMaterialSetup::setupDiffuseColors(GLShaderProgram const * shader, const MaterialDesc<OpenGLAPI>& desc)
   {
-    desc.getDiffuseColorBuffer()->bindBase(3);
+    desc.getDiffuseColorBuffer()->bindBase(GLSLShaderGenerator::bufferBindingDiffuseColors());
   }
 }

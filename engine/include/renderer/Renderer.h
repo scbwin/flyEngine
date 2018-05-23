@@ -552,22 +552,23 @@ namespace fly
 
       // Dynamic meshes
       for (const auto& e : _dynamicMeshRenderables) {
-        if (!e.second->getAABBWorld()->isDetail(_camera->getPosition(), _camera->getDetailCullingThreshold()) 
-          &&_camera->intersectFrustumAABB(*e.second->getAABBWorld()) != IntersectionResult::OUTSIDE) {
+        if (!e.second->getAABBWorld()->isDetail(_camera->getPosition(), _camera->getDetailCullingThreshold())
+          && _camera->intersectFrustumAABB(*e.second->getAABBWorld()) != IntersectionResult::OUTSIDE) {
           _visibleMeshes.push_back(e.second.get());
         }
       }
 
       // Static instanced meshes
       if (_staticInstancedMeshRenderables.size()) {
-        _api.prepareCulling();
-      }
-      for (const auto& e : _staticInstancedMeshRenderables) {
-        if (!e.second->getAABBWorld()->isDetail(_camera->getPosition(), _camera->getDetailCullingThreshold(), e.second->_largestAABBSize) 
-          && _camera->intersectFrustumAABB(*e.second->getAABBWorld()) != IntersectionResult::OUTSIDE) {
-          e.second->cullInstances();
-          _visibleMeshes.push_back(e.second.get());
+        _api.prepareCulling(_camera->getFrustumPlanes(), _camera->getPosition());
+        for (const auto& e : _staticInstancedMeshRenderables) {
+          if (!e.second->getAABBWorld()->isDetail(_camera->getPosition(), _camera->getDetailCullingThreshold(), e.second->_largestAABBSize)
+            && _camera->intersectFrustumAABB(*e.second->getAABBWorld()) != IntersectionResult::OUTSIDE) {
+            e.second->cullInstances();
+            _visibleMeshes.push_back(e.second.get());
+          }
         }
+        _api.endCulling();
       }
     }
   };

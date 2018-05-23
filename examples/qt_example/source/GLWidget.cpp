@@ -470,7 +470,7 @@ void GLWidget::initGame()
 #if INSTANCED_MESHES
   _graphicsSettings.setShadowMapSize(8192);
   _graphicsSettings.setShadowBias(_graphicsSettings.getShadowBias() * 0.1f);
-  _graphicsSettings.setExposure(0.5f);
+  //_graphicsSettings.setExposure(0.5f);
   _graphicsSettings.setDebugObjectAABBs(true);
   cam_entity->getComponent<fly::Camera>()->setDetailCullingThreshold(0.000005f);
   std::vector<std::shared_ptr<fly::Mesh>> sphere_lods;
@@ -487,25 +487,30 @@ void GLWidget::initGame()
   std::mt19937 gen;
 #endif
   std::uniform_real_distribution<float> dist(0.f, 3.f);
+  auto material = std::make_shared<fly::Material>(*sphere_lods[0]->getMaterial());
+  material->setNormalPath("assets/ground_normals.png");
+  material->setSpecularExponent(128.f);
+  std::vector<fly::Vec4f> diffuse_colors(512);
+  for (unsigned i = 0; i < diffuse_colors.size(); i++) {
+    diffuse_colors[i] = fly::Vec4f(dist(gen) / 3.f, dist(gen) / 3.f, dist(gen) / 3.f, dist(gen) / 3.f);
+  }
+  //material->setKs(2.f);
+  material->setDiffuseColors(diffuse_colors);
+  std::uniform_int_distribution<unsigned> dist_uint(0, diffuse_colors.size() - 1);
   for (int cell_x = 0; cell_x < num_cells[0]; cell_x++) {
     for (int cell_z = 0; cell_z < num_cells[1]; cell_z++) {
       auto instanced_entity = _engine->getEntityManager()->createEntity();
       std::vector<fly::Mat4f> model_matrices;
-      std::vector<fly::Vec4f> diffuse_colors;
+      std::vector<unsigned> indices;
       for (int x = 0; x < num_meshes[0]; x++) {
         for (int z = 0; z < num_meshes[1]; z++) {
           model_matrices.push_back(fly::Transform(fly::Vec3f(static_cast<float>(x) * sphere_lods[0]->getAABB()->size() + dist(gen) + cell_x * cell_size - total_size[0] * 0.5f,
             1.2f + dist(gen) * 5.f, 
             static_cast<float>(z) * sphere_lods[0]->getAABB()->size() + dist(gen) + cell_z * cell_size - total_size[1] * 0.5f)).getModelMatrix());
-          diffuse_colors.push_back(fly::Vec4f(dist(gen), dist(gen), dist(gen), 1.f));
+          indices.push_back(dist_uint(gen));
         }
       }
-      auto material = std::make_shared<fly::Material>(*sphere_lods[0]->getMaterial());
-      material->setNormalPath("assets/ground_normals.png");
-      material->setSpecularExponent(128.f);
-      //material->setKs(2.f);
-      material->setDiffuseColors(diffuse_colors);
-      auto instanced_renderable = std::make_shared<fly::StaticInstancedMeshRenderable>(sphere_lods, material, model_matrices, 0.1f);
+      auto instanced_renderable = std::make_shared<fly::StaticInstancedMeshRenderable>(sphere_lods, material, model_matrices, indices, 0.1f);
       instanced_entity->addComponent(instanced_renderable);
       instanced_renderable->clear();
       total_meshes += model_matrices.size();

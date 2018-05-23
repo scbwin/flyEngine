@@ -4,20 +4,19 @@
 namespace fly
 {
   StaticInstancedMeshRenderable::StaticInstancedMeshRenderable(const std::vector<std::shared_ptr<Mesh>>& meshes, 
-    const std::shared_ptr<Material>& material, const std::vector<Mat4f>& model_matrices, float lod_multiplier) :
+    const std::shared_ptr<Material>& material, const std::vector<Mat4f>& model_matrices, const std::vector<unsigned>& indices, float lod_multiplier) :
     _meshes(meshes),
     _material(material),
-    _modelMatrices(model_matrices),
     _lodMultiplier(lod_multiplier)
   {
     AABB aabb_local;
     for (const auto& m : _meshes) { // The bounding box that encloses all LODs is computed.
       aabb_local = aabb_local.getUnion(*m->getAABB());
     }
-    for (const auto& m : model_matrices) {
-      _aabbsWorld.push_back(AABB(aabb_local, m));
+    for (unsigned i = 0; i < model_matrices.size(); i++) {
+      _aabbsWorld.push_back(AABB(aabb_local, model_matrices[i]));
       _largestAABBSize = std::max(_largestAABBSize, _aabbsWorld.back().size2());
-      _modelMatricesInverse.push_back(transpose(inverse(glm::mat4(m))));
+      _instanceData.push_back({ model_matrices[i], transpose(inverse(glm::mat4(model_matrices[i]))), indices[i] });
     }
     for (const auto& aabb : _aabbsWorld) { // Bounding box that encloses all instances
       _aabb = _aabb.getUnion(aabb);
@@ -26,14 +25,6 @@ namespace fly
   const std::vector<AABB>& StaticInstancedMeshRenderable::getAABBsWorld() const
   {
     return _aabbsWorld;
-  }
-  const std::vector<Mat4f>& StaticInstancedMeshRenderable::getModelMatrices() const
-  {
-    return _modelMatrices;
-  }
-  const std::vector<Mat4f>& StaticInstancedMeshRenderable::getModelMatricesInverse() const
-  {
-    return _modelMatricesInverse;
   }
   const std::vector<std::shared_ptr<Mesh>>& StaticInstancedMeshRenderable::getMeshes() const
   {
@@ -62,7 +53,10 @@ namespace fly
   void StaticInstancedMeshRenderable::clear()
   {
     _aabbsWorld = std::vector<AABB>();
-    _modelMatrices = std::vector<Mat4f>();
-    _modelMatricesInverse = std::vector<Mat4f>();
+    _instanceData = std::vector<InstanceData>();
+  }
+  const std::vector<StaticInstancedMeshRenderable::InstanceData> StaticInstancedMeshRenderable::getInstanceData() const
+  {
+    return _instanceData;
   }
 }

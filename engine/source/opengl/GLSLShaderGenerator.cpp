@@ -24,6 +24,13 @@ uniform vec3 " + std::string(bbMax()) + "; // AABB max xz\n" + std::string(noise
     _windCodeString = "  float weight = pow(smoothstep(0.f, " + std::string(bbMax()) + ".y - " + std::string(bbMin()) + ".y, abs(" + std::string(windPivot()) + " - pos_world.y)), " + std::string(windExponent()) + ");\n\
   pos_world.xz += " + std::string(windDir()) + " * (noise(pos_world.xz * " + std::string(windFrequency()) + " + " + std::string(time()) + " * " + std::string(windMovement()) + ") * 2.f - 1.f) * " + std::string(windStrength()) + " * weight;\n\
   pos_world.xz = clamp(pos_world.xz, " + std::string(bbMin()) + ".xz, " + std::string(bbMax()) + ".xz);\n";
+
+    _instanceDataStr = "struct InstanceData \n\
+{\n\
+  mat4 world_matrix;\n\
+  mat4 world_matrix_inverse_transpose;\n\
+  uint index;  // Can be an index into a color array or an index into a texture array \n\
+};\n";
   }
   GLShaderSource GLSLShaderGenerator::createMeshVertexShaderSource(unsigned flags, const GraphicsSettings & settings, bool instanced)const
   {
@@ -217,19 +224,15 @@ out vec2 uv_out;\n\
 out vec3 tangent_local;\n\
 out vec3 bitangent_local;\n";
     if (instanced) {
-      shader_src += "layout (std430, binding = 0) buffer matrix_buffer \n\
+      shader_src += _instanceDataStr + "layout (std430, binding = " + std::to_string(bufferBindingInstanceData()) + ") readonly buffer instance_data_buffer \n\
 {\n\
-  mat4 world_matrices[];\n\
+  InstanceData instance_data[];\n\
 };\n\
-layout (std430, binding = 1) buffer index_buffer \n\
+layout (std430, binding = " + std::to_string(bufferBindingVisibleInstances()) + ") readonly buffer instance_buffer \n\
 { \n\
   uint instances[]; \n\
 }; \n\
-layout (std430, binding = 2) buffer matrix_buffer2 \n\
-{ \n\
-  mat4 world_matrices_inverse[]; \n\
-};\n\
-layout (std430, binding = 3) buffer color_buffer \n\
+layout (std430, binding = " + std::to_string(bufferBindingDiffuseColors()) + ") readonly buffer color_buffer \n\
 { \n\
   vec4 diffuse_colors[]; \n\
 }; \n\
@@ -248,12 +251,12 @@ out mat3 " + std::string(modelMatrixInverse()) + ";";
     if (instanced) {
       shader_src += "  uint instance_id = instances[gl_InstanceID + offs]; \n";
     }
-    shader_src += "  pos_world = (" + (instanced ? std::string("world_matrices[instance_id]") : std::string("M")) + " * vec4(position, 1.f)).xyz;\n";
+    shader_src += "  pos_world = (" + (instanced ? std::string("instance_data[instance_id].world_matrix") : std::string("M")) + " * vec4(position, 1.f)).xyz;\n";
     if (flags & MeshRenderFlag::MR_WIND) {
       shader_src += _windCodeString;
     }
     if (instanced) {
-      shader_src += "  " + std::string(diffuseColor()) + " = diffuse_colors[instance_id].rgb;\n";
+      shader_src += "  " + std::string(diffuseColor()) + " = diffuse_colors[instance_data[instance_id].index].rgb;\n";
     }
     shader_src += "  gl_Position = VP * vec4(pos_world, 1.f);\n\
   normal_local = normal;\n\
@@ -261,7 +264,7 @@ out mat3 " + std::string(modelMatrixInverse()) + ";";
   tangent_local = tangent;\n\
   bitangent_local = bitangent;\n";
     if (instanced) {
-      shader_src += "  " + std::string(modelMatrixInverse()) + " = mat3(world_matrices_inverse[instance_id]);\n";
+      shader_src += "  " + std::string(modelMatrixInverse()) + " = mat3(instance_data[instance_id].world_matrix_inverse_transpose);\n";
     }
     shader_src += "}\n";
     return shader_src;
@@ -280,11 +283,11 @@ uniform mat4 " + std::string(viewProjectionMatrix()) + ";\n";
     shader_src += _windParamString;
     shader_src += "out vec2 uv_out;\n";
     if (instanced) {
-      shader_src += "layout (std430, binding = 0) buffer matrix_buffer \n\
+      shader_src += _instanceDataStr + "layout (std430, binding = " + std::to_string(bufferBindingInstanceData()) + ") readonly buffer instance_data_buffer \n\
 {\n\
-  mat4 world_matrices[];\n\
+  InstanceData instance_data[];\n\
 };\n\
-layout (std430, binding = 1) buffer index_buffer \n\
+layout (std430, binding = " + std::to_string(bufferBindingVisibleInstances()) + ") buffer index_buffer \n\
 { \n\
   uint instances[]; \n\
 }; \n\
@@ -293,7 +296,7 @@ out mat3 " + std::string(modelMatrixInverse()) + ";\n";
     }
     shader_src += "void main()\n\
 {\n";
-    shader_src += "  vec4 pos_world = " + (instanced ? std::string("world_matrices[instances[gl_InstanceID + offs]]") : std::string("M")) + " * vec4(position, 1.f);\n";
+    shader_src += "  vec4 pos_world = " + (instanced ? std::string("instance_data[instances[gl_InstanceID + offs]].world_matrix") : std::string("M")) + " * vec4(position, 1.f);\n";
     if (flags & MeshRenderFlag::MR_WIND) {
       shader_src += _windCodeString;
     }
