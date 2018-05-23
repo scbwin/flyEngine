@@ -253,10 +253,10 @@ namespace fly
       }
     };
 
-    Quadtree(const Vec3f& min, const Vec3f& max)
+    Quadtree(const AABB& bounds)
     {
-      _root = std::make_unique<Node>(min.xz(), max.xz());
-      _root->setAABBWorld(AABB(min, max));
+      _root = std::make_unique<Node>(bounds.getMin().xz(), bounds.getMax().xz());
+      _root->setAABBWorld(bounds);
     }
     void insert(const TPtr& element)
     {

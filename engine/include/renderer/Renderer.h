@@ -173,8 +173,7 @@ namespace fly
           _staticMeshRenderables[entity] = std::make_shared<StaticMeshRenderableWrapper<API>>(smr, _matDescCache.getOrCreate(smr->getMaterial(), smr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(smr->getMesh()), _api);
           mr = _staticMeshRenderables[entity];
         }
-        _sceneMin = minimum(_sceneMin, smr->getAABBWorld()->getMin());
-        _sceneMax = maximum(_sceneMax, smr->getAABBWorld()->getMax());
+        _sceneAABB = _sceneAABB.getUnion(*smr->getAABBWorld());
       }
       else if (entity->getComponent<fly::StaticInstancedMeshRenderable>() == component) {
         auto simr = entity->getComponent<fly::StaticInstancedMeshRenderable>();
@@ -352,8 +351,8 @@ namespace fly
     }
     inline void setDefaultRendertarget(unsigned rt) { _defaultRenderTarget = rt; }
     API* getApi() { return &_api; }
-    const Vec3f& getSceneMin() const { return _sceneMin; }
-    const Vec3f& getSceneMax() const { return _sceneMax; }
+    const Vec3f& getSceneMin() const { return _sceneAABB.getMin(); }
+    const Vec3f& getSceneMax() const { return _sceneAABB.getMax(); }
     std::vector<std::shared_ptr<Material>> getAllMaterials() { return _api.getAllMaterials(); }
     const Mat4f& getViewProjectionMatrix() const
     {
@@ -367,8 +366,7 @@ namespace fly
     Vec3f _camEulerAngles = Vec3f(0.f);
     std::shared_ptr<Camera> _camera;
     std::shared_ptr<DirectionalLight> _directionalLight;
-    Vec3f _sceneMin = Vec3f(std::numeric_limits<float>::max());
-    Vec3f _sceneMax = Vec3f(std::numeric_limits<float>::lowest());
+    AABB _sceneAABB;
     GraphicsSettings * const _gs;
     std::unique_ptr<typename API::RTT> _lightingBuffer;
     std::unique_ptr<typename API::RTT> _lightingBufferCopy;
@@ -492,7 +490,7 @@ namespace fly
     void buildBVH()
     {
       _visibleMeshes.reserve(_staticMeshRenderables.size() + _dynamicMeshRenderables.size() + _staticInstancedMeshRenderables.size());
-      _bvh = std::make_unique<BVH>(_sceneMin, _sceneMax);
+      _bvh = std::make_unique<BVH>(_sceneAABB);
       std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
       Timing timing;
       for (const auto& e : _staticMeshRenderables) {

@@ -318,6 +318,15 @@ void GLWidget::initGame()
 #endif
 
 #if SPONZA_MANY
+  unsigned num_renderables = NUM_OBJECTS * NUM_OBJECTS * sponza_model->getMeshes().size();
+  std::vector<std::shared_ptr<fly::Entity>> entities;
+  std::vector<std::shared_ptr<fly::StaticMeshRenderable>> smrs;
+  entities.reserve(num_renderables);
+  smrs.reserve(num_renderables);
+  /*for (unsigned i = 0; i < NUM_OBJECTS * NUM_OBJECTS * sponza_model->getMeshes().size(); i++) {
+    entities.push_back(_engine->getEntityManager()->createEntity());
+  }*/
+  unsigned ent_index = 0;
   for (int x = 0; x < NUM_OBJECTS; x++) {
     for (int y = 0; y < NUM_OBJECTS; y++) {
       auto model_matrix = fly::Transform(fly::Vec3f(x * 60.f, -sponza_model->getAABB()->getMin()[1] * sponza_scale[1], y * 60.f), fly::Vec3f(sponza_scale)).getModelMatrix();
@@ -339,7 +348,7 @@ void GLWidget::initGame()
     unsigned index = 0;
 #if SPONZA
     for (const auto& mesh : sponza_model->getMeshes()) {
-      auto entity = _engine->getEntityManager()->createEntity();
+      //auto entity = _engine->getEntityManager()->createEntity();
       bool has_wind = index >= 44 && index <= 61;
       if (has_wind) {
        // std::cout << mesh->getMaterial()->getDiffusePath() << " " << index << std::endl;
@@ -356,12 +365,14 @@ void GLWidget::initGame()
 #endif
       fly::AABB aabb_world(*mesh->getAABB(), model_matrix);
       aabb_world.expand(aabb_offset);
-      entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(mesh,
+      entities.push_back(_engine->getEntityManager()->createEntity());
+      smrs.push_back(std::make_shared<fly::StaticMeshRenderable>(mesh,
 #if SPONZA_MANY
         mesh->getMaterial(), model_matrix, has_wind, aabb_world));
 #else
         mesh->getMaterial(), model_matrix, has_wind, aabb_offset));
 #endif
+      ent_index++;
 #if PHYSICS
       const auto& model_matrix = entity->getComponent<fly::StaticMeshRenderable>()->getModelMatrix();
       entity->addComponent(std::make_shared<fly::RigidBody>(model_matrix[3].xyz(), 0.f, _sponzaShapes[index], 0.1f));
@@ -374,6 +385,9 @@ void GLWidget::initGame()
 #endif
 #if SPONZA_MANY
     }
+  }
+  for (unsigned i = 0; i < entities.size(); i++) {
+    entities[i]->addComponent(smrs[i]);
   }
 #endif
 #endif
