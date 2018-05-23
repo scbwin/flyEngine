@@ -275,7 +275,7 @@ namespace fly
       _indirectBuffer(api.createIndirectBuffer(_indirectInfo)),
       _aabb(*simr->getAABBWorld()),
       _largestAABBSize(simr->getLargestAABBSize()),
-      _numInstances(simr->getInstanceData().size())
+      _numInstances(static_cast<unsigned>(simr->getInstanceData().size()))
     {
       StackPOD<Vec4f> bounds;
       bounds.reserve(simr->getAABBsWorld().size() * 2u);

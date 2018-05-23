@@ -87,15 +87,10 @@ namespace fly
       _meshShaderDescDepthInstanced = createShaderDesc(createShader(api.getShaderGenerator().createMeshVertexShaderDepthSource(flag, settings, true), api.getShaderGenerator().createMeshFragmentShaderDepthSource(flag, settings)), ShaderSetupFlags::SS_VP, api);
       _meshShaderDescWindDepth = settings.getWindAnimations() ? createShaderDesc(createShader(api.getShaderGenerator().createMeshVertexShaderDepthSource(flag | FLAG::MR_WIND, settings), api.getShaderGenerator().createMeshFragmentShaderDepthSource(flag | FLAG::MR_WIND, settings)), ShaderSetupFlags::SS_VP | ShaderSetupFlags::SS_WIND | ShaderSetupFlags::SS_TIME, api) : _meshShaderDescDepth;
     }
+    template<bool depth>
     inline void setup() const
     {
-      for (const auto& f : _materialSetupFuncs) {
-        f(_activeShader, *this);
-      }
-    }
-    inline void setupDepth() const
-    {
-      for (const auto& f : _materialSetupFuncsDepth) {
+      for (const auto& f : (depth ? _materialSetupFuncsDepth : _materialSetupFuncs)) {
         f(_activeShader, *this);
       }
     }

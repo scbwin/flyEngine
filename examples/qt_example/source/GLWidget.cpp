@@ -482,7 +482,7 @@ void GLWidget::initGame()
   float cell_size = sphere_lods[0]->getAABB()->size() * ITEMS_PER_CELL;
   fly::Vec2i total_size = num_cells * static_cast<int>(cell_size);
   std::cout << "Instanced meshes total extents: " << total_size << std::endl;
-  unsigned total_meshes = 0;
+  size_t total_meshes = 0;
 #if !PHYSICS
   std::mt19937 gen;
 #endif
@@ -496,7 +496,7 @@ void GLWidget::initGame()
   }
   //material->setKs(2.f);
   material->setDiffuseColors(diffuse_colors);
-  std::uniform_int_distribution<unsigned> dist_uint(0, diffuse_colors.size() - 1);
+  std::uniform_int_distribution<unsigned> dist_uint(0, static_cast<unsigned>(diffuse_colors.size() - 1));
   for (int cell_x = 0; cell_x < num_cells[0]; cell_x++) {
     for (int cell_z = 0; cell_z < num_cells[1]; cell_z++) {
       auto instanced_entity = _engine->getEntityManager()->createEntity();

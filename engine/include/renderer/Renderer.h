@@ -509,38 +509,6 @@ namespace fly
       }
       _api.createCompositeShader(*_gs);
     }
-    template<bool depth = false>
-    inline void groupMeshes()
-    {
-      _displayList.clear();
-      for (auto m : _visibleMeshes) {
-        _displayList[depth ? m->_shaderDescDepth : m->_shaderDesc][m->_materialDesc.get()].push_back_secure(m);
-      }
-    }
-    struct MeshRenderStats
-    {
-      unsigned _renderedTriangles;
-      unsigned _renderedMeshes;
-    };
-    template<bool depth = false>
-    inline MeshRenderStats renderMeshes()
-    {
-      MeshRenderStats stats = {};
-      for (const auto& e : _displayList) { // For each shader
-        e.first->setup(_gsp);
-        for (const auto& e1 : e.second) { // For each material
-          depth ? e1.first->setupDepth() : e1.first->setup();
-          for (const auto& mr : e1.second) { // For each mesh renderable
-            depth ? mr->renderDepth() : mr->render();
-#if RENDERER_STATS
-            stats._renderedTriangles += mr->_meshData.numTriangles();
-            stats._renderedMeshes++;
-#endif
-          }
-        }
-      }
-      return stats;
-    }
     inline void cullMeshes(const Mat4f& view_projection_matrix)
     {
       _camera->extractFrustumPlanes(view_projection_matrix);
@@ -570,6 +538,38 @@ namespace fly
         }
         _api.endCulling();
       }
+    }
+    template<bool depth = false>
+    inline void groupMeshes()
+    {
+      _displayList.clear();
+      for (auto m : _visibleMeshes) {
+        _displayList[depth ? m->_shaderDescDepth : m->_shaderDesc][m->_materialDesc.get()].push_back_secure(m);
+      }
+    }
+    struct MeshRenderStats
+    {
+      unsigned _renderedTriangles;
+      unsigned _renderedMeshes;
+    };
+    template<bool depth = false>
+    inline MeshRenderStats renderMeshes()
+    {
+      MeshRenderStats stats = {};
+      for (const auto& e : _displayList) { // For each shader
+        e.first->setup(_gsp);
+        for (const auto& e1 : e.second) { // For each material
+          e1.first->setup<depth>();
+          for (const auto& mr : e1.second) { // For each mesh renderable
+            depth ? mr->renderDepth() : mr->render();
+#if RENDERER_STATS
+            stats._renderedTriangles += mr->_meshData.numTriangles();
+            stats._renderedMeshes++;
+#endif
+          }
+        }
+      }
+      return stats;
     }
   };
 }
