@@ -8,8 +8,10 @@
 #include <Model.h>
 #include <GameTimer.h>
 #include <qwidget.h>
+#include <Light.h>
 
-AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, fly::Camera* camera, fly::CameraController* camera_controller, fly::Entity* skydome, fly::GameTimer* game_timer, QWidget* widget)
+AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, fly::Camera* camera, 
+  fly::CameraController* camera_controller, fly::Entity* skydome, fly::GameTimer* game_timer, QWidget* widget, fly::DirectionalLight* dl)
 {
   TwAddVarCB(bar, "Shadows", TwType::TW_TYPE_BOOLCPP, cbSetShadows, cbGetShadows, gs, nullptr);
   TwAddVarCB(bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, cbSetPCF, cbGetPCF, gs, nullptr);
@@ -49,6 +51,9 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "SSR min ray len", TwType::TW_TYPE_FLOAT, setSSRMinRayLen, getSSRMinRayLen, gs, "step=0.1f");
   TwAddVarCB(bar, "SSR blend weight", TwType::TW_TYPE_FLOAT, setSSRBlendWeight, getSSRBlendWeight, gs, "step=0.005f");
   TwAddVarCB(bar, "Fullscreen", TwType::TW_TYPE_BOOLCPP, setFullScreen, getFullScreen, widget, nullptr);
+  TwAddVarCB(bar, "Light euler X", TwType::TW_TYPE_FLOAT, setDLEulerX, getDLEulerX, dl, "step=0.01f");
+  TwAddVarCB(bar, "Light euler Y", TwType::TW_TYPE_FLOAT, setDLEulerY, getDLEulerY, dl, "step=0.01f");
+  TwAddVarCB(bar, "Light euler Z", TwType::TW_TYPE_FLOAT, setDLEulerZ, getDLEulerZ, dl, "step=0.01f");
 }
 
 void AntWrapper::cbSetShadows(const void * value, void * client_data)
@@ -431,4 +436,39 @@ void AntWrapper::getSMPOFactor(void * value, void * client_data)
 void AntWrapper::getSMPOUnits(void * value, void * client_data)
 {
   *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getShadowPolygonOffsetUnits();
+}
+
+void AntWrapper::setDLEulerX(const void * value, void * client_data)
+{
+  auto euler_angles = cast<fly::DirectionalLight>(client_data)->getEulerAngles();
+  euler_angles[0] = *cast<float>(value);
+  cast<fly::DirectionalLight>(client_data)->setEulerAngles(euler_angles);
+}
+
+void AntWrapper::getDLEulerX(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::DirectionalLight>(client_data)->getEulerAngles()[0];
+}
+
+void AntWrapper::setDLEulerY(const void * value, void * client_data)
+{
+  auto euler_angles = cast<fly::DirectionalLight>(client_data)->getEulerAngles();
+  euler_angles[1] = *cast<float>(value);
+  cast<fly::DirectionalLight>(client_data)->setEulerAngles(euler_angles);
+}
+
+void AntWrapper::getDLEulerY(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::DirectionalLight>(client_data)->getEulerAngles()[1];
+}
+void AntWrapper::setDLEulerZ(const void * value, void * client_data)
+{
+  auto euler_angles = cast<fly::DirectionalLight>(client_data)->getEulerAngles();
+  euler_angles[2] = *cast<float>(value);
+  cast<fly::DirectionalLight>(client_data)->setEulerAngles(euler_angles);
+}
+
+void AntWrapper::getDLEulerZ(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::DirectionalLight>(client_data)->getEulerAngles()[2];
 }

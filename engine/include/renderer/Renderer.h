@@ -447,7 +447,7 @@ namespace fly
     void renderShadowMap()
     {
       auto vp_shadow_volume = _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
-        inverse(_gsp._viewMatrix), _directionalLight->getViewMatrix(), static_cast<float>(_gs->getShadowMapSize()), _gs->getFrustumSplits(), _gsp._worldToLight, _api.getZNearMapping());
+        inverse(_gsp._viewMatrix), static_cast<float>(_gs->getShadowMapSize()), _gs->getFrustumSplits(), _gsp._worldToLight, _api.getZNearMapping());
 #if RENDERER_STATS
       Timing timing;
 #endif

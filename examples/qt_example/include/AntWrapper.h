@@ -11,6 +11,7 @@ namespace fly
   class CameraController;
   class Entity;
   class GameTimer;
+  class DirectionalLight;
 }
 
 class QWidget;
@@ -18,7 +19,8 @@ class QWidget;
 class AntWrapper
 {
 public:
-  AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, fly::Camera* camera, fly::CameraController* camera_controller, fly::Entity* skydome, fly::GameTimer* game_timer, QWidget* widget);
+  AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, fly::Camera* camera, 
+    fly::CameraController* camera_controller, fly::Entity* skydome, fly::GameTimer* game_timer, QWidget* widget, fly::DirectionalLight* dl);
 private:
   static void cbSetShadows(const void* value, void* client_data);
   static void cbGetShadows(void* value, void* client_data);
@@ -95,6 +97,13 @@ private:
   static void setSMPOUnits(const void* value, void* client_data);
   static void getSMPOFactor(void* value, void* client_data);
   static void getSMPOUnits(void* value, void* client_data);
+  static void setDLEulerX(const void* value, void* client_data);
+  static void getDLEulerX(void* value, void* client_data);
+  static void setDLEulerY(const void* value, void* client_data);
+  static void getDLEulerY(void* value, void* client_data);
+  static void setDLEulerZ(const void* value, void* client_data);
+  static void getDLEulerZ(void* value, void* client_data);
+
   template<typename T> static T* cast(void* data){return reinterpret_cast<T*>(data);}
   template<typename T> static const T* cast(const void* data) { return reinterpret_cast<const T*>(data); }
 };
