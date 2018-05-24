@@ -317,7 +317,6 @@ namespace fly
     }
   private:
     std::unique_ptr<Node> _root;
-    static const unsigned _initSize = 25000;
   };
 }
 

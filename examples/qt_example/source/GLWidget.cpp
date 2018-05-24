@@ -317,15 +317,19 @@ void GLWidget::initGame()
   }
 #endif
 
+#if SPONZA
+  unsigned num_renderables = sponza_model->getMeshes().size();
 #if SPONZA_MANY
-  unsigned num_renderables = NUM_OBJECTS * NUM_OBJECTS * sponza_model->getMeshes().size();
+  num_renderables *= NUM_OBJECTS * NUM_OBJECTS;
+#endif
   std::vector<std::shared_ptr<fly::Entity>> entities;
   std::vector<std::shared_ptr<fly::StaticMeshRenderable>> smrs;
   entities.reserve(num_renderables);
   smrs.reserve(num_renderables);
-  /*for (unsigned i = 0; i < NUM_OBJECTS * NUM_OBJECTS * sponza_model->getMeshes().size(); i++) {
-    entities.push_back(_engine->getEntityManager()->createEntity());
-  }*/
+
+#endif
+
+#if SPONZA_MANY
   unsigned ent_index = 0;
   for (int x = 0; x < NUM_OBJECTS; x++) {
     for (int y = 0; y < NUM_OBJECTS; y++) {
@@ -372,7 +376,6 @@ void GLWidget::initGame()
 #else
         mesh->getMaterial(), model_matrix, has_wind, aabb_offset));
 #endif
-      ent_index++;
 #if PHYSICS
       const auto& model_matrix = entity->getComponent<fly::StaticMeshRenderable>()->getModelMatrix();
       entity->addComponent(std::make_shared<fly::RigidBody>(model_matrix[3].xyz(), 0.f, _sponzaShapes[index], 0.1f));
@@ -386,10 +389,10 @@ void GLWidget::initGame()
 #if SPONZA_MANY
     }
   }
+#endif
   for (unsigned i = 0; i < entities.size(); i++) {
     entities[i]->addComponent(smrs[i]);
   }
-#endif
 #endif
 #if PHYSICS || SKYDOME
   auto sphere_model = importer->loadModel("assets/sphere.obj");

@@ -35,6 +35,18 @@ namespace fly
       else func = glm::orthoRH_ZO;
       return func(bb_min[0], bb_max[0], bb_min[1], bb_max[1], bb_min[2], bb_max[2]);
     }
+    /**
+    * Translates the camera to the origin, then rotates the coordinate system,
+    * such that right, up and -direction make up the new coordinate axes x, y and z.
+    * The resulting matrix is used to transform vertices from world space to view space.
+    */
+    static inline Mat4f getViewMatrixRightHanded(const Vec3f& pos, const Vec3f& right, const Vec3f& up, const Vec3f& direction)
+    {
+      return Mat4f({ Vec4f(right[0], up[0], -direction[0], 0.f),
+        Vec4f(right[1], up[1], -direction[1], 0.f),
+        Vec4f(right[2], up[2], -direction[2], 0.f),
+        Vec4f(-dot(right, pos), -dot(up, pos), dot(direction, pos), 1.f) });
+    }
   };
 }
 

@@ -1,6 +1,6 @@
 #include "Camera.h"
-#include <glm/gtc/matrix_transform.hpp>
 #include <AABB.h>
+#include <math/MathHelpers.h>
 
 namespace fly
 {
@@ -18,9 +18,7 @@ namespace fly
     _right = Vec3f(sin(euler_angles[0] - glm::half_pi<float>()), sin(euler_angles[2]), cos(euler_angles[0] - glm::half_pi<float>()));
     _up = cross(glm::vec3(_right), glm::vec3(_direction));
 
-    Vec3f target = pos + _direction;
-
-    return glm::lookAt(glm::vec3(pos), glm::vec3(target), glm::vec3(_up));
+    return MathHelpers::getViewMatrixRightHanded(pos, _right, _up, _direction);
   }
   const Vec3f & Camera::getPosition() const
   {

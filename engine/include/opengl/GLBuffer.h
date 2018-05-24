@@ -9,6 +9,7 @@ namespace fly
   class GLBuffer
   {
   public:
+    GLBuffer();
     GLBuffer(GLenum target);
     ~GLBuffer();
     GLBuffer(const GLBuffer& other) = delete;
@@ -33,7 +34,7 @@ namespace fly
     }
     void unmap() const;
   private:
-    GLuint _id;
+    GLuint _id = 0;
     GLenum _target;
   };
 }

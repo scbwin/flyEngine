@@ -123,8 +123,10 @@ namespace fly
 
   Mat4f DirectionalLight::getViewMatrix()
   {
-    auto dir = normalize(_target - _pos);
-    return glm::lookAt(glm::vec3(_pos), glm::vec3(_target), normalize(glm::vec3(-dir[1], dir[0], 0.f)));
+    auto direction = normalize(_target - _pos);
+    auto up = normalize(Vec3f(-direction[1], direction[0], 0.f));
+    auto right = Vec3f(cross(glm::vec3(direction), glm::vec3(up)));
+    return MathHelpers::getViewMatrixRightHanded(_pos, right, up, direction);
   }
 
   PointLight::PointLight(const Vec3f& color, const Vec3f& pos, const Vec3f& target, float near, float far) : Light(color, pos, target), _zNear(near), _zFar(far)

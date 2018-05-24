@@ -3,6 +3,9 @@
 
 namespace fly
 {
+  GLBuffer::GLBuffer()
+  {
+  }
   GLBuffer::GLBuffer(GLenum target) : _target(target)
   {
     GL_CHECK(glGenBuffers(1, &_id));

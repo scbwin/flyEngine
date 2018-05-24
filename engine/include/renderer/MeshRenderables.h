@@ -195,7 +195,7 @@ namespace fly
       }
       else {
         _renderFunc = [this]() {
-          StaticMeshRenderableWrapper::render();
+          StaticMeshRenderableWrapper<API>::render();
         };
       }
       fetchShaderDescs();
@@ -241,10 +241,10 @@ namespace fly
       }
       else {
         _renderFunc = [this]() {
-          StaticMeshRenderableWrapper::render();
+          StaticMeshRenderableWrapper<API>::render();
         };
         _renderFuncDepth = [this]() {
-          StaticMeshRenderableWrapper::renderDepth();
+          StaticMeshRenderableWrapper<API>::renderDepth();
         };
       }
       fetchShaderDescs();
@@ -269,7 +269,6 @@ namespace fly
       _simr(simr.get()),
       _camera(camera),
       _visibleInstances(api.createStorageBuffer<unsigned>(nullptr, simr->getInstanceData().size() * mesh_data.size())),
-      _aabbBuffer(api.createStorageBuffer<Vec4f>(nullptr, 1)),
       _instanceData(api.createStorageBuffer<StaticInstancedMeshRenderable::InstanceData>(simr->getInstanceData().data(), simr->getInstanceData().size())),
       _indirectInfo(api.indirectFromMeshData(mesh_data)),
       _indirectBuffer(api.createIndirectBuffer(_indirectInfo)),

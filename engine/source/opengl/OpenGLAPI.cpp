@@ -157,7 +157,7 @@ namespace fly
     for (auto& i : info) {
       i._primCount = 0;
     }
-    indirect_draw_buffer.setData(info.data(), info.size());
+    indirect_draw_buffer.setData(info.data(), info.size(), GL_DYNAMIC_DRAW);
 
     unsigned group_size = 1024;
     unsigned num_groups = std::ceil(static_cast<float>(num_instances) / static_cast<float>(group_size));
