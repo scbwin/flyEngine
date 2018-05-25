@@ -38,7 +38,7 @@ namespace fly
       {
         AABB const * aabb_element = element->getAABBWorld();
         _aabbWorld = _aabbWorld.getUnion(*aabb_element);
-        _largestElementAABBWorldSize = std::max(_largestElementAABBWorldSize, aabb_element->size2());
+        _largestElementAABBWorldSize = std::max(_largestElementAABBWorldSize, element->getLargestElementAABBSize());
         for (unsigned char i = 0; i < 4; i++) {
           Vec2f child_min, child_max;
           getChildBounds(child_min, child_max, i);
@@ -103,7 +103,7 @@ namespace fly
       {
         if (!_aabbWorld.isDetail(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
           for (const auto& e : _elements) {
-            if (!e->getAABBWorld()->isDetail(camera.getPosition(), camera.getDetailCullingThreshold())) {
+            if (!e->isDetail(camera)) {
               all_elements.push_back(e);
             }
           }
@@ -121,7 +121,7 @@ namespace fly
           auto result = camera.intersectFrustumAABB(_aabbWorld);
           if (result == IntersectionResult::INSIDE) {
             for (const auto& e : _elements) {
-              if (!e->getAABBWorld()->isDetail(camera.getPosition(), camera.getDetailCullingThreshold())) {
+              if (!e->isDetail(camera)) {
                 visible_elements.push_back(e);
               }
             }
@@ -133,7 +133,7 @@ namespace fly
           }
           else if (result == IntersectionResult::INTERSECTING) {
             for (const auto& e : _elements) {
-              if (!e->getAABBWorld()->isDetail(camera.getPosition(), camera.getDetailCullingThreshold()) && camera.intersectFrustumAABB(*e->getAABBWorld()) != IntersectionResult::OUTSIDE) {
+              if (!e->isDetail(camera) && camera.intersectFrustumAABB(*e->getAABBWorld()) != IntersectionResult::OUTSIDE) {
                 visible_elements.push_back(e);
               }
             }

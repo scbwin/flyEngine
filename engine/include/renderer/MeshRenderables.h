@@ -60,6 +60,14 @@ namespace fly
     {
       fetchShaderDescs();
     };
+    virtual float getLargestElementAABBSize() const
+    {
+      return getAABBWorld()->size2();
+    }
+    virtual bool isDetail(const Camera& camera) const
+    {
+      return getAABBWorld()->isDetail(camera.getPosition(), camera.getDetailCullingThreshold());
+    }
   };
   template<typename API>
   struct SkydomeRenderableWrapper : public MeshRenderable<API>
@@ -303,6 +311,14 @@ namespace fly
     {
       _shaderDesc = _materialDesc->getMeshShaderDescInstanced().get();
       _shaderDescDepth = _materialDesc->getMeshShaderDescDepthInstanced().get();
+    }
+    virtual float getLargestElementAABBSize() const override
+    {
+      return _largestAABBSize;
+    }
+    virtual bool isDetail(const Camera& camera) const override final
+    {
+      return _aabb.isDetail(camera.getPosition(), camera.getDetailCullingThreshold(), _largestAABBSize);
     }
   };
 }

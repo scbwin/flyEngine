@@ -390,9 +390,11 @@ void GLWidget::initGame()
     }
   }
 #endif
+#if SPONZA
   for (unsigned i = 0; i < entities.size(); i++) {
     entities[i]->addComponent(smrs[i]);
   }
+#endif
 #endif
 #if PHYSICS || SKYDOME
   auto sphere_model = importer->loadModel("assets/sphere.obj");
@@ -463,16 +465,16 @@ void GLWidget::initGame()
     std::vector<fly::Vertex> vertices_new;
     for (const auto& v : m->getVertices()) {
       fly::Vertex v_new = v;
-      v_new._uv *= (_renderer->getSceneMax().xz() - _renderer->getSceneMin().xz()) * 0.65f;
+      v_new._uv *= (_renderer->getAABBStatic().getMax().xz() - _renderer->getAABBStatic().getMax().xz()) * 0.65f;
       vertices_new.push_back(v_new);
     }
     m->setVertices(vertices_new);
   }
   for (const auto& m : plane_model->getMeshes()) {
     auto entity = _engine->getEntityManager()->createEntity();
-    auto scale = _renderer->getSceneMax() - _renderer->getSceneMin();
+    auto scale = _renderer->getAABBStatic().getMax() - _renderer->getAABBStatic().getMin();
     scale[1] = 1.f;
-    auto translation = _renderer->getSceneMin();
+    auto translation = _renderer->getAABBStatic().getMin();
     entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(m,
       plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(translation, scale).getModelMatrix(), false));
   }

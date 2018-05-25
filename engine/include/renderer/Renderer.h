@@ -173,7 +173,7 @@ namespace fly
           _staticMeshRenderables[entity] = std::make_shared<StaticMeshRenderableWrapper<API>>(smr, _matDescCache.getOrCreate(smr->getMaterial(), smr->getMaterial(), *_gs), _meshGeometryStorage.addMesh(smr->getMesh()), _api);
           mr = _staticMeshRenderables[entity];
         }
-        _sceneAABB = _sceneAABB.getUnion(*smr->getAABBWorld());
+        _aabbStatic = _aabbStatic.getUnion(*smr->getAABBWorld());
       }
       else if (entity->getComponent<fly::StaticInstancedMeshRenderable>() == component) {
         auto simr = entity->getComponent<fly::StaticInstancedMeshRenderable>();
@@ -183,6 +183,7 @@ namespace fly
         }
         _staticInstancedMeshRenderables[entity] = std::make_shared<StaticInstancedMeshRenderableWrapper<API>>(simr, _matDescCache.getOrCreate(simr->getMaterial(), simr->getMaterial(), *_gs), mesh_data, _api, _camera);
         mr = _staticInstancedMeshRenderables[entity];
+        _aabbStaticInstanced = _aabbStaticInstanced.getUnion(*_staticInstancedMeshRenderables[entity]->getAABBWorld());
       }
       else if (entity->getComponent<fly::DynamicMeshRenderable>() == component) {
         auto dmr = entity->getComponent<fly::DynamicMeshRenderable>();
@@ -215,7 +216,7 @@ namespace fly
     virtual void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component) override
     {
       if (entity->getComponent<fly::StaticMeshRenderable>() == component) {
-        _bvh->removeElement(_staticMeshRenderables[entity].get());
+        _bvhStatic->removeElement(_staticMeshRenderables[entity].get());
         _staticMeshRenderables.erase(entity);
       }
       else if (entity->getComponent<fly::DynamicMeshRenderable>() == component) {
@@ -238,7 +239,7 @@ namespace fly
       Timing timing_total;
 #endif
       if (_camera && _directionalLight) {
-        if (!_bvh) {
+        if (!_bvhStatic) {
           buildBVH();
         }
         _api.beginFrame();
@@ -351,8 +352,8 @@ namespace fly
     }
     inline void setDefaultRendertarget(unsigned rt) { _defaultRenderTarget = rt; }
     API* getApi() { return &_api; }
-    const Vec3f& getSceneMin() const { return _sceneAABB.getMin(); }
-    const Vec3f& getSceneMax() const { return _sceneAABB.getMax(); }
+    const AABB& getAABBStatic() const { return _aabbStatic; }
+    const AABB& getAABBStaticInstanced() const { return _aabbStaticInstanced; }
     std::vector<std::shared_ptr<Material>> getAllMaterials() { return _api.getAllMaterials(); }
     const Mat4f& getViewProjectionMatrix() const
     {
@@ -366,7 +367,8 @@ namespace fly
     Vec3f _camEulerAngles = Vec3f(0.f);
     std::shared_ptr<Camera> _camera;
     std::shared_ptr<DirectionalLight> _directionalLight;
-    AABB _sceneAABB;
+    AABB _aabbStatic;
+    AABB _aabbStaticInstanced;
     GraphicsSettings * const _gs;
     std::unique_ptr<typename API::RTT> _lightingBuffer;
     std::unique_ptr<typename API::RTT> _lightingBufferCopy;
@@ -393,23 +395,32 @@ namespace fly
     std::map<Entity*, std::shared_ptr<StaticInstancedMeshRenderableWrapper<API>>> _staticInstancedMeshRenderables;
     std::shared_ptr<SkydomeRenderableWrapper<API>> _skydomeRenderable;
     StackPOD<MeshRenderable<API>*> _visibleMeshes;
+    StackPOD<StaticInstancedMeshRenderableWrapper<API>*> _visibleMeshesInstanced;
     std::map<ShaderDesc<API> const *, std::map<MaterialDesc<API> const *, StackPOD<MeshRenderable<API>*, 64>>> _displayList;
     using BVH = Quadtree<MeshRenderable<API>>;
-    std::unique_ptr<BVH> _bvh;
+    std::unique_ptr<BVH> _bvhStatic;
+    std::unique_ptr<Quadtree<StaticInstancedMeshRenderableWrapper<API>>> _bvhStaticInstanced;
     SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
     SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&> _shaderDescCache;
     SoftwareCache<std::string, std::shared_ptr<typename API::Shader>, typename API::ShaderSource&, typename API::ShaderSource&, typename API::ShaderSource&> _shaderCache;
     SoftwareCache<std::string, std::shared_ptr<typename API::Texture>, const std::string&> _textureCache;
     void renderQuadtreeAABBs()
     {
-      auto visible_nodes = _gs->getDetailCulling()
-        ? _bvh->getVisibleNodesWithDetailCulling(*_camera)
-        : _bvh->getVisibleNodes(*_camera);
-      if (visible_nodes.size()) {
+      auto visible_nodes_static = _gs->getDetailCulling()
+        ? _bvhStatic->getVisibleNodesWithDetailCulling(*_camera)
+        : _bvhStatic->getVisibleNodes(*_camera);
+      auto visible_nodes_static_instanced = _gs->getDetailCulling()
+        ? _bvhStaticInstanced->getVisibleNodesWithDetailCulling(*_camera)
+        : _bvhStaticInstanced->getVisibleNodes(*_camera);
+      if (visible_nodes_static.size() || visible_nodes_static_instanced.size()) {
         _api.setDepthWriteEnabled<true>();
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
         std::vector<AABB const *> aabbs;
-        for (const auto& n : visible_nodes) {
+        aabbs.reserve(visible_nodes_static.size() + visible_nodes_static_instanced.size());
+        for (const auto& n : visible_nodes_static) {
+          aabbs.push_back(n->getAABBWorld());
+        }
+        for (const auto& n : visible_nodes_static_instanced) {
           aabbs.push_back(n->getAABBWorld());
         }
         _api.renderAABBs(aabbs, _vpScene, Vec3f(1.f, 0.f, 0.f));
@@ -490,11 +501,16 @@ namespace fly
     void buildBVH()
     {
       _visibleMeshes.reserve(_staticMeshRenderables.size() + _dynamicMeshRenderables.size() + _staticInstancedMeshRenderables.size());
-      _bvh = std::make_unique<BVH>(_sceneAABB);
+      _visibleMeshesInstanced.reserve(_staticInstancedMeshRenderables.size());
+      _bvhStatic = std::make_unique<BVH>(_aabbStatic);
+      _bvhStaticInstanced = std::make_unique<Quadtree<StaticInstancedMeshRenderableWrapper<API>>>(_aabbStaticInstanced);
       std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
       Timing timing;
       for (const auto& e : _staticMeshRenderables) {
-        _bvh->insert(e.second.get());
+        _bvhStatic->insert(e.second.get());
+      }
+      for (const auto& e : _staticInstancedMeshRenderables) {
+        _bvhStaticInstanced->insert(e.second.get());
       }
       std::cout << "BVH construction took " << timing.duration<std::chrono::milliseconds>() << " milliseconds." << std::endl;
     }
@@ -514,7 +530,7 @@ namespace fly
       _visibleMeshes.clear();
 
       // Static meshes
-      _gs->getDetailCulling() ? _bvh->getVisibleElementsWithDetailCulling(*_camera, _visibleMeshes) : _bvh->getVisibleElements(*_camera, _visibleMeshes);
+      _gs->getDetailCulling() ? _bvhStatic->getVisibleElementsWithDetailCulling(*_camera, _visibleMeshes) : _bvhStatic->getVisibleElements(*_camera, _visibleMeshes);
 
       // Dynamic meshes
       for (const auto& e : _dynamicMeshRenderables) {
@@ -527,12 +543,18 @@ namespace fly
       // Static instanced meshes
       if (_staticInstancedMeshRenderables.size()) {
         _api.prepareCulling(_camera->getFrustumPlanes(), _camera->getPosition());
-        for (const auto& e : _staticInstancedMeshRenderables) {
+       /* for (const auto& e : _staticInstancedMeshRenderables) {
           if (!e.second->getAABBWorld()->isDetail(_camera->getPosition(), _camera->getDetailCullingThreshold(), e.second->_largestAABBSize)
             && _camera->intersectFrustumAABB(*e.second->getAABBWorld()) != IntersectionResult::OUTSIDE) {
             e.second->cullInstances();
             _visibleMeshes.push_back(e.second.get());
           }
+        }*/
+        _visibleMeshesInstanced.clear();
+        _gs->getDetailCulling() ? _bvhStaticInstanced->getVisibleElementsWithDetailCulling(*_camera, _visibleMeshesInstanced) : _bvhStaticInstanced->getVisibleElements(*_camera, _visibleMeshesInstanced);
+        for (auto m : _visibleMeshesInstanced) {
+          m->cullInstances();
+          _visibleMeshes.push_back(m);
         }
         _api.endCulling();
       }
