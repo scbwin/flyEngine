@@ -184,7 +184,7 @@ namespace fly
         }
         _staticInstancedMeshRenderables[entity] = std::make_shared<StaticInstancedMeshRenderableWrapper<API>>(simr, _matDescCache.getOrCreate(simr->getMaterial(), simr->getMaterial(), *_gs), mesh_data, _api, _camera);
         mr = _staticInstancedMeshRenderables[entity];
-        _aabbStaticInstanced = _aabbStaticInstanced.getUnion(*_staticInstancedMeshRenderables[entity]->getAABBWorld());
+        _aabbStatic = _aabbStatic.getUnion(*_staticInstancedMeshRenderables[entity]->getAABBWorld());
       }
       else if (entity->getComponent<fly::DynamicMeshRenderable>() == component) {
         auto dmr = entity->getComponent<fly::DynamicMeshRenderable>();
@@ -354,21 +354,15 @@ namespace fly
     inline void setDefaultRendertarget(unsigned rt) { _defaultRenderTarget = rt; }
     API* getApi() { return &_api; }
     const AABB& getAABBStatic() const { return _aabbStatic; }
-    const AABB& getAABBStaticInstanced() const { return _aabbStaticInstanced; }
     std::vector<std::shared_ptr<Material>> getAllMaterials() { return _api.getAllMaterials(); }
     const Mat4f& getViewProjectionMatrix() const
     {
       return _vpScene;
     }
     using BVH = Quadtree<MeshRenderable<API>>;
-    using BVHInstanced = Quadtree<StaticInstancedMeshRenderableWrapper<API>>;
     const std::unique_ptr<BVH>& getStaticBVH() const
     {
       return _bvhStatic;
-    }
-    const std::unique_ptr<BVHInstanced>& getStaticInstancedBVH() const
-    {
-      return _bvhStaticInstanced;
     }
   private:
     API _api;
@@ -379,7 +373,6 @@ namespace fly
     std::shared_ptr<Camera> _camera;
     std::shared_ptr<DirectionalLight> _directionalLight;
     AABB _aabbStatic;
-    AABB _aabbStaticInstanced;
     GraphicsSettings * const _gs;
     std::unique_ptr<typename API::RTT> _lightingBuffer;
     std::unique_ptr<typename API::RTT> _lightingBufferCopy;
@@ -405,31 +398,22 @@ namespace fly
     std::map<Entity*, std::shared_ptr<StaticInstancedMeshRenderableWrapper<API>>> _staticInstancedMeshRenderables;
     std::shared_ptr<SkydomeRenderableWrapper<API>> _skydomeRenderable;
     StackPOD<MeshRenderable<API>*> _visibleMeshes;
-    StackPOD<StaticInstancedMeshRenderableWrapper<API>*> _visibleMeshesInstanced;
     std::map<ShaderDesc<API> const *, std::map<MaterialDesc<API> const *, StackPOD<MeshRenderable<API>*, 64>>> _displayList;
     std::unique_ptr<BVH> _bvhStatic;
-    std::unique_ptr<BVHInstanced> _bvhStaticInstanced;
     SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
     SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&> _shaderDescCache;
     SoftwareCache<std::string, std::shared_ptr<typename API::Shader>, typename API::ShaderSource&, typename API::ShaderSource&, typename API::ShaderSource&> _shaderCache;
     SoftwareCache<std::string, std::shared_ptr<typename API::Texture>, const std::string&> _textureCache;
     void renderQuadtreeAABBs()
     {
-      auto visible_nodes_static = _gs->getDetailCulling()
-        ? _bvhStatic->getVisibleNodesWithDetailCulling(*_camera)
-        : _bvhStatic->getVisibleNodes(*_camera);
-      auto visible_nodes_static_instanced = _gs->getDetailCulling()
-        ? _bvhStaticInstanced->getVisibleNodesWithDetailCulling(*_camera)
-        : _bvhStaticInstanced->getVisibleNodes(*_camera);
-      if (visible_nodes_static.size() || visible_nodes_static_instanced.size()) {
+      StackPOD<typename BVH::Node*> visible_nodes;
+      _bvhStatic->cullVisibleNodes(visible_nodes, *_camera);
+      if (visible_nodes.size()) {
         _api.setDepthWriteEnabled<true>();
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
         std::vector<AABB const *> aabbs;
-        aabbs.reserve(visible_nodes_static.size() + visible_nodes_static_instanced.size());
-        for (const auto& n : visible_nodes_static) {
-          aabbs.push_back(n->getAABBWorld());
-        }
-        for (const auto& n : visible_nodes_static_instanced) {
+        aabbs.reserve(visible_nodes.size());
+        for (const auto& n : visible_nodes) {
           aabbs.push_back(n->getAABBWorld());
         }
         _api.renderAABBs(aabbs, _vpScene, Vec3f(1.f, 0.f, 0.f));
@@ -510,9 +494,7 @@ namespace fly
     void buildBVH()
     {
       _visibleMeshes.reserve(_staticMeshRenderables.size() + _dynamicMeshRenderables.size() + _staticInstancedMeshRenderables.size());
-      _visibleMeshesInstanced.reserve(_staticInstancedMeshRenderables.size());
       _bvhStatic = std::make_unique<BVH>(_aabbStatic);
-      _bvhStaticInstanced = std::make_unique<Quadtree<StaticInstancedMeshRenderableWrapper<API>>>(_aabbStaticInstanced);
       std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
       std::cout << "Static instancd mesh renderables: " << _staticInstancedMeshRenderables.size() << std::endl;
       Timing timing;
@@ -520,7 +502,7 @@ namespace fly
         _bvhStatic->insert(e.second.get());
       }
       for (const auto& e : _staticInstancedMeshRenderables) {
-        _bvhStaticInstanced->insert(e.second.get());
+        _bvhStatic->insert(e.second.get());
       }
       std::cout << "BVH construction took " << timing.duration<std::chrono::milliseconds>() << " milliseconds." << std::endl;
     }
@@ -538,35 +520,21 @@ namespace fly
       _camera->extractFrustumPlanes(view_projection_matrix);
 
       _visibleMeshes.clear();
-
+      if (_staticInstancedMeshRenderables.size()) {
+        _api.prepareCulling(_camera->getFrustumPlanes(), _camera->getPosition());
+      }
       // Static meshes
-      _gs->getDetailCulling() ? _bvhStatic->getVisibleElementsWithDetailCulling(*_camera, _visibleMeshes) : _bvhStatic->getVisibleElements(*_camera, _visibleMeshes);
+      _bvhStatic->cullVisibleElements(*_camera, _visibleMeshes);
+      if (_staticInstancedMeshRenderables.size()) {
+        _api.endCulling();
+      }
 
       // Dynamic meshes
       for (const auto& e : _dynamicMeshRenderables) {
-        if (!e.second->getAABBWorld()->isDetail(_camera->getPosition(), _camera->getDetailCullingThreshold())
+        if (e.second->getAABBWorld()->isLargeEnough(_camera->getPosition(), _camera->getDetailCullingThreshold())
           && _camera->intersectFrustumAABB(*e.second->getAABBWorld()) != IntersectionResult::OUTSIDE) {
           _visibleMeshes.push_back(e.second.get());
         }
-      }
-
-      // Static instanced meshes
-      if (_staticInstancedMeshRenderables.size()) {
-        _api.prepareCulling(_camera->getFrustumPlanes(), _camera->getPosition());
-       /* for (const auto& e : _staticInstancedMeshRenderables) {
-          if (!e.second->getAABBWorld()->isDetail(_camera->getPosition(), _camera->getDetailCullingThreshold(), e.second->_largestAABBSize)
-            && _camera->intersectFrustumAABB(*e.second->getAABBWorld()) != IntersectionResult::OUTSIDE) {
-            e.second->cullInstances();
-            _visibleMeshes.push_back(e.second.get());
-          }
-        }*/
-        _visibleMeshesInstanced.clear();
-        _gs->getDetailCulling() ? _bvhStaticInstanced->getVisibleElementsWithDetailCulling(*_camera, _visibleMeshesInstanced) : _bvhStaticInstanced->getVisibleElements(*_camera, _visibleMeshesInstanced);
-        for (auto m : _visibleMeshesInstanced) {
-          m->cullInstances();
-          _visibleMeshes.push_back(m);
-        }
-        _api.endCulling();
       }
     }
     template<bool depth = false>

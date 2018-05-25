@@ -72,75 +72,48 @@ namespace fly
           }
         }
       }
-      void getVisibleElements(Stack& visible_elements, const Camera& camera) const
-      {
-        auto result = camera.intersectFrustumAABB(_aabbWorld);
-        if (result == IntersectionResult::INSIDE) {
-        //  visible_elements.insert(visible_elements.end(), _elements.begin(), _elements.end());
-          for (const auto& e : _elements) {
-            visible_elements.push_back(e);
-          }
-          for (const auto& c : _children) {
-            if (c) {
-              c->getAllElements(visible_elements);
-            }
-          }
-        }
-        else if (result == IntersectionResult::INTERSECTING) {
-          for (const auto& e : _elements) {
-            if (camera.intersectFrustumAABB(*e->getAABBWorld()) != IntersectionResult::OUTSIDE) {
-              visible_elements.push_back(e);
-            }
-          }
-          for (const auto& c : _children) {
-            if (c) {
-              c->getVisibleElements(visible_elements, camera);
-            }
-          }
-        }
-      }
 
-      void getAllElementsWithDetailCulling(Stack& all_elements, const Camera& camera)
+      void cullAllElements(Stack& all_elements, const Camera& camera)
       {
-        if (!_aabbWorld.isDetail(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
+        if (_aabbWorld.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
           for (const auto& e : _elements) {
-            if (!e->isDetail(camera)) {
+            if (e->cull(camera)) {
               all_elements.push_back(e);
             }
           }
           for (const auto& c : _children) {
             if (c) {
-              c->getAllElementsWithDetailCulling(all_elements, camera);
+              c->cullAllElements(all_elements, camera);
             }
           }
         }
       }
 
-      void getVisibleElementsWithDetailCulling(Stack& visible_elements, const Camera& camera) const
+      void cullVisibleElements(Stack& visible_elements, const Camera& camera) const
       {
-        if (!_aabbWorld.isDetail(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
+        if (_aabbWorld.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
           auto result = camera.intersectFrustumAABB(_aabbWorld);
           if (result == IntersectionResult::INSIDE) {
             for (const auto& e : _elements) {
-              if (!e->isDetail(camera)) {
+              if (e->cull(camera)) {
                 visible_elements.push_back(e);
               }
             }
             for (const auto& c : _children) {
               if (c) {
-                c->getAllElementsWithDetailCulling(visible_elements, camera);
+                c->cullAllElements(visible_elements, camera);
               }
             }
           }
           else if (result == IntersectionResult::INTERSECTING) {
             for (const auto& e : _elements) {
-              if (!e->isDetail(camera) && camera.intersectFrustumAABB(*e->getAABBWorld()) != IntersectionResult::OUTSIDE) {
+              if (e->cullAndIntersect(camera)) {
                 visible_elements.push_back(e);
               }
             }
             for (const auto& c : _children) {
               if (c) {
-                c->getVisibleElementsWithDetailCulling(visible_elements, camera);
+                c->cullVisibleElements(visible_elements, camera);
               }
             }
           }
@@ -148,7 +121,6 @@ namespace fly
       }
       void getAllElements(Stack& all_elements) const
       {
-      //  all_elements.insert(all_elements.end(), _elements.begin(), _elements.end());
         for (const auto& e : _elements) {
           all_elements.push_back_secure(e);
         }
@@ -158,64 +130,44 @@ namespace fly
           }
         }
       }
-      void getAllNodes(std::vector<Node*>& all_nodes)
+      void getAllNodes(StackPOD<Node*>& all_nodes)
       {
-        all_nodes.push_back(this);
+        all_nodes.push_back_secure(this);
         for (const auto& c : _children) {
           if (c) {
             c->getAllNodes(all_nodes);
           }
         }
       }
-      void getAllNodesWithDetailCulling(std::vector<Node*>& nodes, const Camera& camera)
+      void cullAllNodes(StackPOD<Node*>& nodes, const Camera& camera)
       {
-        if (!_aabbWorld.isDetail(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
-          nodes.push_back(this);
+        if (_aabbWorld.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
+          nodes.push_back_secure(this);
           for (const auto& c : _children) {
             if (c) {
-              c->getAllNodesWithDetailCulling(nodes, camera);
+              c->cullAllNodes(nodes, camera);
             }
           }
         }
       }
-      void getVisibleNodesWithDetailCulling(std::vector<Node*>& visible_nodes, const Camera& camera)
+      void cullVisibleNodes(StackPOD<Node*>& visible_nodes, const Camera& camera)
       {
-        if (!_aabbWorld.isDetail(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
+        if (_aabbWorld.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
           auto result = camera.intersectFrustumAABB(_aabbWorld);
           if (result == IntersectionResult::INSIDE) {
-            visible_nodes.push_back(this);
+            visible_nodes.push_back_secure(this);
             for (const auto& c : _children) {
               if (c) {
-                c->getAllNodesWithDetailCulling(visible_nodes, camera);
+                c->cullAllNodes(visible_nodes, camera);
               }
             }
           }
           else if (result == IntersectionResult::INTERSECTING) {
-            visible_nodes.push_back(this);
+            visible_nodes.push_back_secure(this);
             for (const auto& c : _children) {
               if (c) {
-                c->getVisibleNodesWithDetailCulling(visible_nodes, camera);
+                c->cullVisibleNodes(visible_nodes, camera);
               }
-            }
-          }
-        }
-      }
-      void getVisibleNodes(std::vector<Node*>& visible_nodes, const Camera& camera)
-      {
-        auto result = camera.intersectFrustumAABB(_aabbWorld);
-        if (result == IntersectionResult::INSIDE) {
-          visible_nodes.push_back(this);
-          for (const auto& c : _children) {
-            if (c) {
-              c->getAllNodes(visible_nodes);
-            }
-          }
-        }
-        else if (result == IntersectionResult::INTERSECTING) {
-          visible_nodes.push_back(this);
-          for (const auto& c : _children) {
-            if (c) {
-              c->getVisibleNodes(visible_nodes, camera);
             }
           }
         }
@@ -250,7 +202,7 @@ namespace fly
         }
         else if (aabb.intersects(_aabbWorld)) {
           for (const auto& e : _elements) {
-            if (e->getAABBWorld()->intersects(aabb)) {
+            if (aabb.intersects(*e->getAABBWorld())) {
               stack.push_back_secure(e);
             }
           }
@@ -309,37 +261,21 @@ namespace fly
     {
       _root->print(0);
     }
-    void getVisibleElements(const Camera& camera, Stack& stack) const
+    void cullVisibleElements(const Camera& camera, Stack& stack) const
     {
-      _root->getVisibleElements(stack, camera);
-    }
-    void getVisibleElementsWithDetailCulling(const Camera& camera, Stack& stack) const
-    {
-      _root->getVisibleElementsWithDetailCulling(stack, camera);
+      _root->cullVisibleElements(stack, camera);
     }
     void getAllElements(Stack& stack) const
     {
       _root->getAllElements(stack);
     }
-    std::vector<Node*> getAllNodes()
+    void cullVisibleNodes(StackPOD<Node*>& stack, const Camera& camera) const
     {
-      std::vector<Node*> all_nodes;
-      _root->getAllNodes(all_nodes);
-      return std::move(all_nodes);
+      _root->cullVisibleNodes(stack, camera);
     }
-
-    std::vector<Node*> getVisibleNodesWithDetailCulling(const Camera& camera) const
+    void getAllNodes(StackPOD<Node*>& stack)
     {
-      std::vector<Node*> visible_nodes;
-      _root->getVisibleNodesWithDetailCulling(visible_nodes, camera);
-      return std::move(visible_nodes);
-    }
-
-    std::vector<Node*> getVisibleNodes(const Camera& camera)
-    {
-      std::vector<Node*> visible_nodes;
-      _root->getVisibleNodes(visible_nodes, camera);
-      return std::move(visible_nodes);
+      _root->getAllNodes(stack);
     }
     bool removeElement(const TPtr& element)
     {

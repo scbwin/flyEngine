@@ -43,13 +43,13 @@ namespace fly
     AABB getIntersection(const AABB& other) const;
     std::array<Vec3f, 8> getVertices() const;
     void expand(const Vec3f& amount);
-    inline bool isDetail(const Vec3f& cam_pos, float error_tresh, float size) const
+    inline bool isLargeEnough(const Vec3f& cam_pos, float tresh, float size) const
     {
-      return (size / distance2(closestPoint(cam_pos), cam_pos)) < error_tresh;
+      return (size / distance2(closestPoint(cam_pos), cam_pos)) > tresh;
     }
-    inline bool isDetail(const Vec3f& cam_pos, float error_tresh) const
+    inline bool isLargeEnough(const Vec3f& cam_pos, float error_tresh) const
     {
-      return isDetail(cam_pos, error_tresh, size2());
+      return isLargeEnough(cam_pos, error_tresh, size2());
     }
     inline Vec3f closestPoint(const Vec3f& point) const
     {

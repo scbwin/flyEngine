@@ -68,8 +68,6 @@ namespace fly
     float getCameraLerpAlpha() const;
     void setCameraLerping(bool enable);
     void setCameraLerping(float alpha);
-    bool getDetailCulling() const;
-    void setDetailCulling(bool enabled);
     void setShadowDarkenFactor(float factor);
     float getShadowDarkenFactor() const;
     bool getDepthOfField() const;
@@ -127,7 +125,6 @@ namespace fly
     bool _debugObjectAABBs = false;
     bool _cameraLerping = true;
     float _cameraLerpAlpha = 0.8f;
-    bool _detailCulling = true;
     float _blurSigma = 2.5f;
     unsigned _blurRadius = 3u;
     std::vector<float> _blurWeights;

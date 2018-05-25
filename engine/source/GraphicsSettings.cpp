@@ -193,14 +193,6 @@ namespace fly
       l->cameraLerpingChanged(this);
     });
   }
-  bool GraphicsSettings::getDetailCulling() const
-  {
-    return _detailCulling;
-  }
-  void GraphicsSettings::setDetailCulling(bool enabled)
-  {
-    _detailCulling = enabled;
-  }
   void GraphicsSettings::setShadowDarkenFactor(float factor)
   {
     _shadowDarkenFactor = glm::clamp(factor, 0.f, 1.f);

@@ -30,6 +30,15 @@ namespace fly
     virtual AABB const * getAABBWorld() const = 0;
     virtual void renderDepth() = 0;
     virtual void render() = 0;
+    // Returns true if the renderable is visible and therefore should be rendered
+    virtual bool cull(const Camera& camera)
+    {
+      return isLargeEnough(camera);
+    }
+    virtual bool cullAndIntersect(const Camera& camera)
+    {
+      return cull(camera) && camera.intersectFrustumAABB(*getAABBWorld()) != IntersectionResult::OUTSIDE;
+    }
     virtual void fetchShaderDescs()
     {
       _shaderDesc = _materialDesc->getMeshShaderDesc().get();
@@ -64,9 +73,9 @@ namespace fly
     {
       return getAABBWorld()->size2();
     }
-    virtual bool isDetail(const Camera& camera) const
+    virtual bool isLargeEnough(const Camera& camera) const
     {
-      return getAABBWorld()->isDetail(camera.getPosition(), camera.getDetailCullingThreshold());
+      return getAABBWorld()->isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold());
     }
   };
   template<typename API>
@@ -293,11 +302,11 @@ namespace fly
       _aabbBuffer = std::move(api.createStorageBuffer<Vec4f>(bounds.begin(), bounds.size()));
     }
     virtual ~StaticInstancedMeshRenderableWrapper() = default;
-    void cullInstances()
+   /* void cullInstances()
     {
       _api.cullInstances(_aabbBuffer, _numInstances, _visibleInstances, _indirectBuffer,
         _indirectInfo, _simr->getLodMultiplier(), _camera->getDetailCullingThreshold());
-    }
+    }*/
     virtual void render() override
     {
       _api.renderInstances(_visibleInstances, _indirectBuffer, _instanceData, _indirectInfo, _numInstances);
@@ -316,9 +325,22 @@ namespace fly
     {
       return _largestAABBSize;
     }
-    virtual bool isDetail(const Camera& camera) const override final
+    virtual bool isLargeEnough(const Camera& camera) const override final
     {
-      return _aabb.isDetail(camera.getPosition(), camera.getDetailCullingThreshold(), _largestAABBSize);
+      return _aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestAABBSize);
+    }
+    virtual bool cull(const Camera& camera)
+    {
+      if (isLargeEnough(camera)) {
+        _api.cullInstances(_aabbBuffer, _numInstances, _visibleInstances, _indirectBuffer,
+          _indirectInfo, _simr->getLodMultiplier(), _camera->getDetailCullingThreshold());
+        return true;
+      }
+      return false;
+    }
+    virtual bool cullAndIntersect(const Camera& camera)
+    {
+      return camera.intersectFrustumAABB(_aabb) != IntersectionResult::OUTSIDE && cull(camera);
     }
   };
 }

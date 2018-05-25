@@ -51,8 +51,6 @@ private:
   static void getCameraLerping(void* value, void* client_data);
   static void setCameraLerpAmount(const void* value, void* client_data);
   static void getCameraLerpAmount(void* value, void* client_data);
-  static void setDetailCulling(const void* value, void* client_data);
-  static void getDetailCulling(void* value, void* client_data);
   static void setDetailCullingThreshold(const void* value, void* client_data);
   static void getDetailCullingThreshold(void* value, void* client_data);
   static void setCamSpeed(const void* value, void* client_data);
