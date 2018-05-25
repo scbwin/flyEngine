@@ -5,32 +5,32 @@
 
 namespace fly
 {
-  CameraController::CameraController(const std::shared_ptr<Camera>& camera, float speed) : _camera(camera), _speed(speed)
+  CameraController::CameraController(const std::shared_ptr<Camera>& camera, float speed) : _camera(camera), _baseSpeed(speed)
   {
   }
   void CameraController::stepForward(float delta_time) const
   {
-    _camera->setPosition(_camera->getPosition() + _camera->getDirection() * delta_time * _speed * _accelerate);
+    updatePos(_camera->getDirection(), delta_time);
   }
   void CameraController::stepBackward(float delta_time) const
   {
-    _camera->setPosition(_camera->getPosition() - _camera->getDirection() * delta_time * _speed *_accelerate);
+    updatePos(_camera->getDirection() * -1.f, delta_time);
   }
   void CameraController::stepLeft(float delta_time) const
   {
-    _camera->setPosition(_camera->getPosition() - _camera->getRight() * delta_time * _speed * _accelerate);
+    updatePos(_camera->getRight() * -1.f, delta_time);
   }
   void CameraController::stepRight(float delta_time) const
   {
-    _camera->setPosition(_camera->getPosition() + _camera->getRight() * delta_time * _speed * _accelerate);
+    updatePos(_camera->getRight(), delta_time);
   }
   void CameraController::stepUp(float delta_time) const
   {
-    _camera->setPosition(_camera->getPosition() + _camera->getUp() * delta_time * _speed * _accelerate);
+    updatePos(_camera->getUp(), delta_time);
   }
   void CameraController::stepDown(float delta_time) const
   {
-    _camera->setPosition(_camera->getPosition() - _camera->getUp() * delta_time * _speed * _accelerate);
+    updatePos(_camera->getUp() * -1.f, delta_time);
   }
   void CameraController::acceleratePressed()
   {
@@ -71,11 +71,11 @@ namespace fly
   }
   void CameraController::setSpeed(float speed)
   {
-    _speed = speed;
+    _baseSpeed = speed;
   }
   float CameraController::getSpeed() const
   {
-    return _speed;
+    return _baseSpeed;
   }
   bool CameraController::isPressed() const
   {
@@ -92,5 +92,17 @@ namespace fly
   const std::shared_ptr<Camera>& CameraController::getCamera() const
   {
     return _camera;
+  }
+  void CameraController::setSpeedFactor(float speed_factor)
+  {
+    _speedFactor = speed_factor;
+  }
+  float CameraController::getSpeedFactor() const
+  {
+    return _speedFactor;
+  }
+  void CameraController::updatePos(const Vec3f & dir, float delta_time) const
+  {
+    _camera->setPosition(_camera->getPosition() + dir * delta_time * _baseSpeed * _accelerate * _speedFactor);
   }
 }

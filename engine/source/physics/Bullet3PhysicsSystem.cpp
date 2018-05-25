@@ -2,6 +2,7 @@
 #include <btBulletDynamicsCommon.h>
 #include <Entity.h>
 #include <physics/RigidBody.h>
+#include <GameTimer.h>
 
 namespace fly
 {
@@ -38,8 +39,8 @@ namespace fly
       _world->removeRigidBody(c->getBtRigidBody().get());
     }
   }
-  void Bullet3PhysicsSystem::update(float time, float delta_time)
+  void Bullet3PhysicsSystem::update()
   {
-    _world->stepSimulation(delta_time, _simulationSubSteps);
+    _world->stepSimulation(_gameTimer->getDeltaTimeSeconds(), _simulationSubSteps);
   }
 }

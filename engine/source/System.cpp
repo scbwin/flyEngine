@@ -8,4 +8,8 @@ namespace fly
   System::~System()
   {
   }
+  void System::setGameTimer(GameTimer const * game_timer)
+  {
+    _gameTimer = game_timer;
+  }
 }

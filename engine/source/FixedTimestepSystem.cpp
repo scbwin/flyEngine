@@ -1,12 +1,13 @@
 #include <FixedTimestepSystem.h>
+#include <GameTimer.h>
 
 namespace fly
 {
-  void FixedTimestepSystem::update(float time, float delta_time)
+  void FixedTimestepSystem::update()
   {
-    _acc += delta_time;
+    _acc += _gameTimer->getDeltaTimeSeconds();
     while (_acc >= _dt) {
-      updateSystem(time, _dt);
+      updateSystem();
       _acc -= _dt;
     }
   }

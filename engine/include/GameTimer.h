@@ -12,10 +12,10 @@ namespace fly
     void tick();
     void stop();
     void start();
-    float getTimeSeconds();
-    float getDeltaTimeSeconds();
-    float getTotalTimeSeconds();
-    bool isStopped();
+    float getTimeSeconds() const;
+    float getDeltaTimeSeconds() const;
+    float getTotalTimeSeconds() const;
+    bool isStopped() const;
   private:
     std::chrono::high_resolution_clock::time_point _baseTime;
     std::chrono::high_resolution_clock::time_point _currTime;

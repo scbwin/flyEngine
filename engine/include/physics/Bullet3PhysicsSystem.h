@@ -25,7 +25,7 @@ namespace fly
   private:
     virtual void onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component) override;
     virtual void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component) override;
-    virtual void update(float time, float delta_time) override;
+    virtual void update() override;
 
     std::unique_ptr<btBroadphaseInterface> _iBroadphase;
     std::unique_ptr<btDefaultCollisionConfiguration> _collisionConfig;

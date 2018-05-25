@@ -1,5 +1,6 @@
 #include <physics/PhysicsSystem.h>
 #include <Entity.h>
+#include <GameTimer.h>
 
 namespace fly
 {
@@ -15,10 +16,10 @@ namespace fly
       _particleSystems.erase(entity);
     }
   }
-  void PhysicsSystem::updateSystem(float time, float delta_time)
+  void PhysicsSystem::updateSystem()
   {
     for (auto& ps : _particleSystems) {
-      ps.second->update(time, delta_time);
+      ps.second->update(_gameTimer->getTimeSeconds(), _gameTimer->getDeltaTimeSeconds());
     }
     /*  float max_delta = 1.f / 300.f;
       float delta = delta_time;

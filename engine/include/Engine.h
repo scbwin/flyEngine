@@ -3,8 +3,9 @@
 
 #include <Leakcheck.h>
 #include <memory>
-#include <set>
+#include <vector>
 #include <EntityManager.h>
+#include <GameTimer.h>
 
 namespace fly
 {
@@ -15,11 +16,13 @@ namespace fly
   public:
     Engine();
     void addSystem(const std::shared_ptr<System>& system);
-    void update(float time, float delta_time);
+    void update();
     EntityManager* getEntityManager();
+    GameTimer * getGameTimer();
   private:
     EntityManager _em;
-    std::set<std::shared_ptr<System>> _systems;
+    std::vector<std::shared_ptr<System>> _systems;
+    GameTimer _gameTimer;
   };
 }
 

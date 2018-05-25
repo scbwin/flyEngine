@@ -29,7 +29,7 @@ namespace fly
       _stopped = false;
     }
   }
-  float GameTimer::getTimeSeconds()
+  float GameTimer::getTimeSeconds() const
   {
     if (_stopped) {
       return (_stopTime - _baseTime - _pausedTime).count() / 1000000000.f;
@@ -38,15 +38,15 @@ namespace fly
       return (_currTime - _baseTime - _pausedTime).count() / 1000000000.f;
     }
   }
-  float GameTimer::getDeltaTimeSeconds()
+  float GameTimer::getDeltaTimeSeconds() const
   {
     return _stopped ? 0.f : _deltaTime.count() / 1000000000.f;
   }
-  float GameTimer::getTotalTimeSeconds()
+  float GameTimer::getTotalTimeSeconds() const
   {
     return (_currTime - _baseTime).count() / 1000000000.f;
   }
-  bool GameTimer::isStopped()
+  bool GameTimer::isStopped() const
   {
     return _stopped;
   }

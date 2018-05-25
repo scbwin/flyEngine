@@ -34,6 +34,7 @@ namespace fly
       inline Vec2f getSize() const { return _max - _min; }
       inline void setAABBWorld(const AABB& aabb) { _aabbWorld = aabb; }
       inline AABB* getAABBWorld() { return &_aabbWorld; }
+      inline const std::vector<TPtr> & getElements() { return _elements; }
       void insert(const TPtr& element)
       {
         AABB const * aabb_element = element->getAABBWorld();
@@ -149,7 +150,7 @@ namespace fly
       {
       //  all_elements.insert(all_elements.end(), _elements.begin(), _elements.end());
         for (const auto& e : _elements) {
-          all_elements.push_back(e);
+          all_elements.push_back_secure(e);
         }
         for (const auto& c : _children) {
           if (c) {
@@ -235,6 +236,31 @@ namespace fly
         std::cout << "Attempting to remove element from the quadtree that wasn't added. This should never happen." << std::endl;
         return false;
       }
+      void intersectElements(const AABB& aabb, Stack& stack)
+      {
+        if (aabb.contains(_aabbWorld)) {
+          for (const auto& e : _elements) {
+            stack.push_back_secure(e);
+          }
+          for (const auto& c : _children) {
+            if (c) {
+              c->getAllElements(stack);
+            }
+          }
+        }
+        else if (aabb.intersects(_aabbWorld)) {
+          for (const auto& e : _elements) {
+            if (e->getAABBWorld()->intersects(aabb)) {
+              stack.push_back_secure(e);
+            }
+          }
+          for (const auto& c : _children) {
+            if (c) {
+              c->intersectElements(aabb, stack);
+            }
+          }
+        }
+      }
     private:
       std::unique_ptr<Node> _children[4];
       // Axis aligned bounding box for the enclosed elements (union)
@@ -274,6 +300,10 @@ namespace fly
         }*/
         std::cout << "error" << std::endl;
       }
+    }
+    void intersectElements(const AABB& aabb, Stack& stack)
+    {
+      _root->intersectElements(aabb, stack);
     }
     void print() const
     {

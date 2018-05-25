@@ -6,8 +6,9 @@
 #include <set>
 #include <GraphicsSettings.h>
 #include <math/FlyMath.h>
+#include <Engine.h>
 
-#define SPONZA 0
+#define SPONZA 1
 #define SPONZA_MANY 0
 #define TOWERS 0
 #define TREE_SCENE 0
@@ -16,7 +17,7 @@
 #define NUM_OBJECTS 100
 #define NUM_TOWERS 15
 #define DELETE_CURTAIN 1
-#define INSTANCED_MESHES 1
+#define INSTANCED_MESHES 0
 //#define NUM_INSTANCED_MESHES_PER_DIR 1000
 #define NUM_CELLS 64
 #define ITEMS_PER_CELL 64
@@ -28,7 +29,6 @@ namespace fly
   class OpenGLAPI;
   template<class T>
   class Renderer;
-  class Engine;
   class GameTimer;
   class CameraController;
   class DirectionalLight;
@@ -64,10 +64,9 @@ protected:
     return set.find(t) != set.end();
   }
 private:
-  std::unique_ptr<fly::Engine> _engine;
+  fly::Engine _engine;
   fly::GraphicsSettings _graphicsSettings;
   std::shared_ptr<fly::Renderer<fly::OpenGLAPI>> _renderer;
-  std::unique_ptr<fly::GameTimer> _gameTimer;
   std::unique_ptr<fly::CameraController> _camController;
   std::shared_ptr<fly::DirectionalLight> _dl;
   std::shared_ptr<fly::Entity> _skydome;

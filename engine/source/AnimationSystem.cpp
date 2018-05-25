@@ -3,6 +3,7 @@
 #include "Animation.h"
 #include <vector>
 #include <iostream>
+#include <GameTimer.h>
 
 namespace fly
 {
@@ -20,18 +21,18 @@ namespace fly
   {
     deleteIfInterested(entity, component, _animations);
   }
-  void AnimationSystem::update(float time, float delta_time)
+  void AnimationSystem::update()
   {
     std::vector<Entity*> to_delete;
     for (const auto& e : _animations) {
       const auto& a = e.second;
       float progress;
-      if (time >= a->getTimeEnd()) {
+      if (_gameTimer->getTimeSeconds() >= a->getTimeEnd()) {
         progress = 1.f;
         to_delete.push_back(e.first);
       }
       else {
-        progress = a->getInterpolator()->getInterpolation((time - a->getTimeStart()) / (a->getTimeEnd() - a->getTimeStart()));
+        progress = a->getInterpolator()->getInterpolation((_gameTimer->getTimeSeconds() - a->getTimeStart()) / (a->getTimeEnd() - a->getTimeStart()));
       }
       a->getUpdateFunction()(progress);
     }

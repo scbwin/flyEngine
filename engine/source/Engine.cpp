@@ -8,17 +8,23 @@ namespace fly
   }
   void Engine::addSystem(const std::shared_ptr<System>& system)
   {
-    _systems.insert(system);
+    system->setGameTimer(&_gameTimer);
+    _systems.push_back(system);
     _em.addListener(system);
   }
-  void Engine::update(float time, float delta_time)
+  void Engine::update()
   {
-    for (auto& s : _systems) {
-      s->update(time, delta_time);
+    _gameTimer.tick();
+    for (const auto& s : _systems) {
+      s->update();
     }
   }
   EntityManager* Engine::getEntityManager()
   {
     return &_em;
+  }
+  GameTimer * Engine::getGameTimer()
+  {
+    return &_gameTimer;
   }
 }

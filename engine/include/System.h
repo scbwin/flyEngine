@@ -8,17 +8,20 @@ namespace fly
 {
   class Entity;
   class Component;
+  class GameTimer;
 
   class System
   {
   public:
     System();
     virtual ~System();
+    void setGameTimer(GameTimer const * game_timer);
 
     virtual void onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component) = 0;
     virtual void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component) = 0;
-    virtual void update(float time, float delta_time) = 0;
+    virtual void update() = 0;
   protected:
+    GameTimer const * _gameTimer;
     template<typename ComponentType>
     std::shared_ptr<ComponentType> addIfInterested(Entity* e, const std::shared_ptr<Component>& component, std::map<Entity*, std::shared_ptr<ComponentType>>& map)
     {

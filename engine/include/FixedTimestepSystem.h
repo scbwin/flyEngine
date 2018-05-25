@@ -13,8 +13,8 @@ namespace fly
   public:
     FixedTimestepSystem() = default;
     virtual ~FixedTimestepSystem() = default;
-    virtual void update(float time, float delta_time) override;
-    virtual void updateSystem(float time, float delta_time) = 0;
+    virtual void update() override;
+    virtual void updateSystem() = 0;
   private:
     float _acc = 0.f;
     float _dt = 1.f / 60.f;

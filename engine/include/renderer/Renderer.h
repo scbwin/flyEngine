@@ -28,6 +28,7 @@
 #include <SoftwareCache.h>
 #include <renderer/MeshRenderables.h>
 #include <set>
+#include <GameTimer.h>
 
 #define RENDERER_STATS 1
 
@@ -232,7 +233,7 @@ namespace fly
         _skydomeRenderable = nullptr;
       }
     }
-    virtual void update(float time, float delta_time) override
+    virtual void update() override
     {
 #if RENDERER_STATS
       _stats = {};
@@ -244,7 +245,7 @@ namespace fly
         }
         _api.beginFrame();
         if (_gs->getCameraLerping()) {
-          _acc += delta_time;
+          _acc += _gameTimer->getDeltaTimeSeconds();
           while (_acc >= _dt) {
             _gsp._camPosworld = glm::mix(glm::vec3(_camera->getPosition()), glm::vec3(_gsp._camPosworld), _cameraLerpAlpha);
             _camEulerAngles = glm::eulerAngles(glm::slerp(glm::quat(_camera->getEulerAngles()), glm::quat(_camEulerAngles), _cameraLerpAlpha));
@@ -265,7 +266,7 @@ namespace fly
         _api.setDepthWriteEnabled<true>();
         _gsp._lightPosWorld = &_directionalLight->getPosition();
         _gsp._lightIntensity = &_directionalLight->getIntensity();
-        _gsp._time = time;
+        _gsp._time = _gameTimer->getTimeSeconds();
         _gsp._exposure = _gs->getExposure();
         _gsp._gamma = _gs->getGamma();
         _meshGeometryStorage.bind();
@@ -359,6 +360,16 @@ namespace fly
     {
       return _vpScene;
     }
+    using BVH = Quadtree<MeshRenderable<API>>;
+    using BVHInstanced = Quadtree<StaticInstancedMeshRenderableWrapper<API>>;
+    const std::unique_ptr<BVH>& getStaticBVH() const
+    {
+      return _bvhStatic;
+    }
+    const std::unique_ptr<BVHInstanced>& getStaticInstancedBVH() const
+    {
+      return _bvhStaticInstanced;
+    }
   private:
     API _api;
     ProjectionParams _pp;
@@ -385,7 +396,6 @@ namespace fly
     float _cameraLerpAlpha;
     float _acc = 0.f;
     float _dt = 1.f / 30.f;
-
 #if RENDERER_STATS
     RendererStats _stats;
 #endif
@@ -397,9 +407,8 @@ namespace fly
     StackPOD<MeshRenderable<API>*> _visibleMeshes;
     StackPOD<StaticInstancedMeshRenderableWrapper<API>*> _visibleMeshesInstanced;
     std::map<ShaderDesc<API> const *, std::map<MaterialDesc<API> const *, StackPOD<MeshRenderable<API>*, 64>>> _displayList;
-    using BVH = Quadtree<MeshRenderable<API>>;
     std::unique_ptr<BVH> _bvhStatic;
-    std::unique_ptr<Quadtree<StaticInstancedMeshRenderableWrapper<API>>> _bvhStaticInstanced;
+    std::unique_ptr<BVHInstanced> _bvhStaticInstanced;
     SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
     SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&> _shaderDescCache;
     SoftwareCache<std::string, std::shared_ptr<typename API::Shader>, typename API::ShaderSource&, typename API::ShaderSource&, typename API::ShaderSource&> _shaderCache;
@@ -505,6 +514,7 @@ namespace fly
       _bvhStatic = std::make_unique<BVH>(_aabbStatic);
       _bvhStaticInstanced = std::make_unique<Quadtree<StaticInstancedMeshRenderableWrapper<API>>>(_aabbStaticInstanced);
       std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
+      std::cout << "Static instancd mesh renderables: " << _staticInstancedMeshRenderables.size() << std::endl;
       Timing timing;
       for (const auto& e : _staticMeshRenderables) {
         _bvhStatic->insert(e.second.get());

@@ -15,7 +15,7 @@ namespace fly
 
     virtual void onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component) override;
     virtual void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component) override;
-    virtual void updateSystem(float time, float delta_time) override;
+    virtual void updateSystem() override;
 
   private:
     std::map<Entity*, std::shared_ptr<ParticleSystem>> _particleSystems;

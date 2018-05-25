@@ -32,13 +32,17 @@ namespace fly
     float getMouseSpeed() const;
     void setMouseSpeed(float speed);
     const std::shared_ptr<Camera>& getCamera() const;
+    void setSpeedFactor(float speed_factor);
+    float getSpeedFactor() const;
   private:
     std::shared_ptr<Camera> _camera;
     bool _pressed = false;
-    float _speed;
+    float _baseSpeed;
     float _mouseSpeed = 0.01f;
     float _accelerate = 1.f;
+    float _speedFactor = 1.f;
     Vec3f _mousePos = Vec3f(0.f);
+    void updatePos(const Vec3f& dir, float delta_time) const;
   };
 }
 

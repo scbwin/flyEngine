@@ -17,7 +17,7 @@ namespace fly
     virtual ~AnimationSystem();
     virtual void onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component) override;
     virtual void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component) override;
-    virtual void update(float time, float delta_time) override;
+    virtual void update() override;
   private:
     std::map<Entity*, std::shared_ptr<Animation>> _animations;
   };

@@ -20,11 +20,12 @@
 #include <physics/RigidBody.h>
 #include <random>
 #include <StaticInstancedMeshRenderable.h>
+#include <CamSpeedSystem.h>
+
+using API = fly::OpenGLAPI;
 
 GLWidget::GLWidget()
 {
-  _engine = std::make_unique<fly::Engine>();
-  _gameTimer = std::make_unique<fly::GameTimer>();
   setMouseTracking(true);
 }
 
@@ -35,12 +36,15 @@ GLWidget::~GLWidget()
 
 void GLWidget::initializeGL()
 {
-  _renderer = std::make_shared<fly::Renderer<fly::OpenGLAPI>>(&_graphicsSettings);
+  _renderer = std::make_shared<fly::Renderer<API>>(&_graphicsSettings);
   _graphicsSettings.addListener(_renderer);
-  _engine->addSystem(_renderer);
+  _engine.addSystem(_renderer);
+  auto cam_speed_system = std::make_shared<fly::CamSpeedSystem<API>>(*_renderer, _camController);
+  _engine.addSystem(cam_speed_system);
+
 #if PHYSICS
   _physicsSystem = std::make_shared<fly::Bullet3PhysicsSystem>();
-  _engine->addSystem(_physicsSystem);
+  _engine.addSystem(_physicsSystem);
 #endif
   initGame();
   auto timer = new QTimer(this);
@@ -63,7 +67,7 @@ void GLWidget::initializeGL()
   TwAddButton(_bar, _shadowMapGroupingUName, nullptr, nullptr, nullptr);
 #endif
   auto settings_bar = TwNewBar("Settings");
-  AntWrapper(settings_bar, &_graphicsSettings, _renderer->getApi(), _camController->getCamera().get(), _camController.get(), _skydome.get(), _gameTimer.get(), this);
+  AntWrapper(settings_bar, &_graphicsSettings, _renderer->getApi(), _camController->getCamera().get(), _camController.get(), _skydome.get(), _engine.getGameTimer(), this);
   TwSetTopBar(_bar);
 }
 
@@ -78,7 +82,6 @@ void GLWidget::resizeGL(int width, int height)
 
 void GLWidget::paintGL()
 {
-  _gameTimer->tick();
   _renderer->setDefaultRendertarget(defaultFramebufferObject());
 #if PHYSICS
   if (_selectedRigidBody) {
@@ -99,27 +102,27 @@ void GLWidget::paintGL()
   }
 #endif
   if (contains<int>(_keysPressed, 'W')) {
-    _camController->stepForward(_gameTimer->getDeltaTimeSeconds());
+    _camController->stepForward(_engine.getGameTimer()->getDeltaTimeSeconds());
   }
   if (contains<int>(_keysPressed, 'A')) {
-    _camController->stepLeft(_gameTimer->getDeltaTimeSeconds());
+    _camController->stepLeft(_engine.getGameTimer()->getDeltaTimeSeconds());
   }
   if (contains<int>(_keysPressed, 'S')) {
-    _camController->stepBackward(_gameTimer->getDeltaTimeSeconds());
+    _camController->stepBackward(_engine.getGameTimer()->getDeltaTimeSeconds());
   }
   if (contains<int>(_keysPressed, 'D')) {
-    _camController->stepRight(_gameTimer->getDeltaTimeSeconds());
+    _camController->stepRight(_engine.getGameTimer()->getDeltaTimeSeconds());
   }
   if (contains<int>(_keysPressed, 'C')) {
-    _camController->stepDown(_gameTimer->getDeltaTimeSeconds());
+    _camController->stepDown(_engine.getGameTimer()->getDeltaTimeSeconds());
   }
   if (contains<int>(_keysPressed, Qt::Key::Key_Space)) {
-    _camController->stepUp(_gameTimer->getDeltaTimeSeconds());
+    _camController->stepUp(_engine.getGameTimer()->getDeltaTimeSeconds());
   }
-  _engine->update(_gameTimer->getTimeSeconds(), _gameTimer->getDeltaTimeSeconds());
+  _engine.update();
   _fps++;
-  if (_gameTimer->getTotalTimeSeconds() >= _measure) {
-    _measure = _gameTimer->getTotalTimeSeconds() + 1.f;
+  if (_engine.getGameTimer()->getTotalTimeSeconds() >= _measure) {
+    _measure = _engine.getGameTimer()->getTotalTimeSeconds() + 1.f;
     std::string fps_label_str = std::to_string(_fps) + " FPS";
     TwSetParam(_bar, _fpsButtonName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, fps_label_str.c_str());
 #if RENDERER_STATS
@@ -258,7 +261,7 @@ void GLWidget::initGame()
   for (unsigned i = 0; i < 100; i++) {
     for (unsigned j = 0; j < 100; j++) {
       for (const auto& m : tree_model->getMeshes()) {
-        auto entity = _engine->getEntityManager()->createEntity();
+        auto entity = _engine.getEntityManager()->createEntity();
         entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(m, tree_model->getMaterials()[m->getMaterialIndex()], fly::Transform(fly::Vec3f(i * 5.f, 0.f, j * 5.f), fly::Vec3f(0.01f)).getModelMatrix(), false));
       }
     }
@@ -309,7 +312,7 @@ void GLWidget::initGame()
   auto tower_model = importer->loadModel("assets/cube.obj");
   for (int x = 0; x < NUM_TOWERS; x++) {
     for (int y = 0; y < NUM_TOWERS; y++) {
-      auto tower = _engine->getEntityManager()->createEntity();
+      auto tower = _engine.getEntityManager()->createEntity();
       float scale = scale_dist(gen);
       tower->addComponent(std::make_shared<fly::StaticMeshRenderable>(tower_model->getMeshes().front(), tower_model->getMeshes().front()->getMaterial(), fly::Transform(fly::Vec3f(x * 350.f, scale, y * 350.f), fly::Vec3f(scale / 3.f, scale, scale / 3.f)).getModelMatrix(), false));
       towers.push_back(tower->getComponent<fly::StaticMeshRenderable>());
@@ -352,7 +355,7 @@ void GLWidget::initGame()
     unsigned index = 0;
 #if SPONZA
     for (const auto& mesh : sponza_model->getMeshes()) {
-      //auto entity = _engine->getEntityManager()->createEntity();
+      //auto entity = _engine.getEntityManager()->createEntity();
       bool has_wind = index >= 44 && index <= 61;
       if (has_wind) {
        // std::cout << mesh->getMaterial()->getDiffusePath() << " " << index << std::endl;
@@ -369,7 +372,7 @@ void GLWidget::initGame()
 #endif
       fly::AABB aabb_world(*mesh->getAABB(), model_matrix);
       aabb_world.expand(aabb_offset);
-      entities.push_back(_engine->getEntityManager()->createEntity());
+      entities.push_back(_engine.getEntityManager()->createEntity());
       smrs.push_back(std::make_shared<fly::StaticMeshRenderable>(mesh,
 #if SPONZA_MANY
         mesh->getMaterial(), model_matrix, has_wind, aabb_world));
@@ -404,7 +407,7 @@ void GLWidget::initGame()
   }
 #endif
 #if SKYDOME
-  _skydome = _engine->getEntityManager()->createEntity();
+  _skydome = _engine.getEntityManager()->createEntity();
   _skydome->addComponent(sphere_model);
   _skydome->addComponent(std::make_shared<fly::SkydomeRenderable>(sphere_model->getMeshes().front()));
 #endif
@@ -426,7 +429,7 @@ void GLWidget::initGame()
       mat->setIsReflective(true);
       mat->setNormalPath("assets/ground_normals.png");
       mat->setDiffuseColor(fly::Vec3f(col_dist(gen), col_dist(gen), col_dist(gen)));
-      auto ent = _engine->getEntityManager()->createEntity();
+      auto ent = _engine.getEntityManager()->createEntity();
       ent->addComponent(std::make_shared<fly::RigidBody>(fly::Vec3f(0.f, 30.f + i * 2.f, 0.f), mass, col_shape, restitution));
       ent->addComponent(std::make_shared<fly::DynamicMeshRenderable>(m, mat, ent->getComponent<fly::RigidBody>()));
       _rigidBodys.push_back(ent->getComponent<fly::RigidBody>());
@@ -442,7 +445,7 @@ void GLWidget::initGame()
       cube_shape->setLocalScaling(btVector3(scale, scale, scale));
       float mass = 0.02f;
       float restitution = 1.f;
-      auto ent = _engine->getEntityManager()->createEntity();
+      auto ent = _engine.getEntityManager()->createEntity();
       ent->addComponent(std::make_shared<fly::RigidBody>(fly::Vec3f(3.f, 25 + i * 2.f, 0.f), mass, cube_shape, restitution));
       auto material = std::make_shared<fly::Material>();
       material->setDiffuseColor(fly::Vec3f(col_dist(gen), col_dist(gen), col_dist(gen)));
@@ -471,7 +474,7 @@ void GLWidget::initGame()
     m->setVertices(vertices_new);
   }
   for (const auto& m : plane_model->getMeshes()) {
-    auto entity = _engine->getEntityManager()->createEntity();
+    auto entity = _engine.getEntityManager()->createEntity();
     auto scale = _renderer->getAABBStatic().getMax() - _renderer->getAABBStatic().getMin();
     scale[1] = 1.f;
     auto translation = _renderer->getAABBStatic().getMin();
@@ -480,9 +483,9 @@ void GLWidget::initGame()
   }
 #endif
 
-  auto cam_entity = _engine->getEntityManager()->createEntity();
+  auto cam_entity = _engine.getEntityManager()->createEntity();
   cam_entity->addComponent(std::make_shared<fly::Camera>(glm::vec3(4.f, 2.f, 0.f), glm::vec3(glm::radians(270.f), 0.f, 0.f)));
-  auto dl_entity = _engine->getEntityManager()->createEntity();
+  auto dl_entity = _engine.getEntityManager()->createEntity();
   _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(-1000.f, 2000.f, -1000.f), glm::vec3(-500.f, 0.f, -500.f));
   dl_entity->addComponent(_dl);
 
@@ -518,7 +521,7 @@ void GLWidget::initGame()
   std::uniform_int_distribution<unsigned> dist_uint(0, static_cast<unsigned>(diffuse_colors.size() - 1));
   for (int cell_x = 0; cell_x < num_cells[0]; cell_x++) {
     for (int cell_z = 0; cell_z < num_cells[1]; cell_z++) {
-      auto instanced_entity = _engine->getEntityManager()->createEntity();
+      auto instanced_entity = _engine.getEntityManager()->createEntity();
       std::vector<fly::Mat4f> model_matrices;
       std::vector<unsigned> indices;
       for (int x = 0; x < num_meshes[0]; x++) {
@@ -538,10 +541,7 @@ void GLWidget::initGame()
   std::cout << "Num instances:" << total_meshes << std::endl;
 #endif
 
-  _camController = std::make_unique<fly::CameraController>(cam_entity->getComponent<fly::Camera>(), 20.f);
-#if SPONZA_MANY || INSTANCED_MESHES
-  _camController->setSpeed(100.f);
-#endif
+  _camController = std::make_unique<fly::CameraController>(cam_entity->getComponent<fly::Camera>(), 100.f);
   std::cout << "Init game took " << init_game_timing.duration<std::chrono::milliseconds>() << " milliseconds." << std::endl;
 }
 
