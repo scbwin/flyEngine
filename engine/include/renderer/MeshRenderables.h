@@ -19,13 +19,13 @@ namespace fly
   template<typename API>
   struct MeshRenderable : public GraphicsSettings::Listener
   {
-    std::shared_ptr<MaterialDesc<API>> const _materialDesc;
+    MaterialDesc<API> const * const _materialDesc;
     typename API::MeshGeometryStorage::MeshData const _meshData;
     ShaderDesc<API> const * _shaderDesc;
     ShaderDesc<API> const * _shaderDescDepth;
     API const & _api;
     MeshRenderable(const std::shared_ptr<MaterialDesc<API>>& material_desc, const typename API::MeshGeometryStorage::MeshData& mesh_data, API const & api) :
-      _materialDesc(material_desc), _meshData(mesh_data), _api(api)
+      _materialDesc(material_desc.get()), _meshData(mesh_data), _api(api)
     {}
     virtual AABB const * getAABBWorld() const = 0;
     virtual void renderDepth() = 0;

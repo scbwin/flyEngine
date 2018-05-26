@@ -57,8 +57,10 @@ namespace fly
 #endif
     Renderer(GraphicsSettings * gs) : _api(Vec4f(0.149f, 0.509f, 0.929f, 1.f)), _gs(gs),
       _matDescCache(SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&>(
-        [this](const std::shared_ptr<Material>& material, const GraphicsSettings&  settings) {
-      return std::make_shared<MaterialDesc<API>>(material, _api, settings, _textureCache, _shaderDescCache, _shaderCache);
+        [this, gs](const std::shared_ptr<Material>& material, const GraphicsSettings&  settings) {
+      auto desc = std::make_shared<MaterialDesc<API>>(material, _api, settings, _textureCache, _shaderDescCache, _shaderCache);
+      gs->addListener(desc);
+      return desc;
     })),
       _shaderDescCache(SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&>(
         [this](const std::shared_ptr<typename API::Shader>& shader, unsigned flags, API& api) {
@@ -521,9 +523,6 @@ namespace fly
     {
       _shaderCache.clear();
       _shaderDescCache.clear();
-      for (const auto& e : _matDescCache.getElements()) {
-        e->create(_api, *_gs);
-      }
       _api.createCompositeShader(*_gs);
     }
     inline void cullMeshes(const Mat4f& view_projection_matrix)
@@ -553,7 +552,7 @@ namespace fly
     {
       _displayList.clear();
       for (auto m : _visibleMeshes) {
-        _displayList[depth ? m->_shaderDescDepth : m->_shaderDesc][m->_materialDesc.get()].push_back_secure(m);
+        _displayList[depth ? m->_shaderDescDepth : m->_shaderDesc][m->_materialDesc].push_back_secure(m);
       }
     }
     struct MeshRenderStats
