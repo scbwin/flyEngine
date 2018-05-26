@@ -471,15 +471,26 @@ namespace fly
       _api.enablePolygonOffset(_gs->getShadowPolygonOffsetFactor(), _gs->getShadowPolygonOffsetUnits());
       _api.setViewport(Vec2u(_gs->getShadowMapSize()));
       _renderTargets.clear();
-      for (unsigned i = 0; i < _gs->getFrustumSplits().size(); i++) {
-        _api.setRendertargets(_renderTargets, _shadowMap.get(), i);
+      if (_gs->getSinglePassShadows()) {
+        _api.setRendertargets(_renderTargets, _shadowMap.get());
         _api.clearRendertarget(false, true, false);
-        _gsp._VP = &_gsp._worldToLight[i];
         auto stats = renderMeshes<true>();
 #if RENDERER_STATS
-        _stats._renderedMeshesShadow += stats._renderedMeshes;
-        _stats._renderedTrianglesShadow += stats._renderedTriangles;
+        _stats._renderedMeshesShadow += stats._renderedMeshes * static_cast<unsigned>(_gs->getFrustumSplits().size());
+        _stats._renderedTrianglesShadow += stats._renderedTriangles * static_cast<unsigned>(_gs->getFrustumSplits().size());
 #endif
+      }
+      else {
+        for (unsigned i = 0; i < _gs->getFrustumSplits().size(); i++) {
+          _api.setRendertargets(_renderTargets, _shadowMap.get(), i);
+          _api.clearRendertarget(false, true, false);
+          _gsp._VP = &_gsp._worldToLight[i];
+          auto stats = renderMeshes<true>();
+#if RENDERER_STATS
+          _stats._renderedMeshesShadow += stats._renderedMeshes;
+          _stats._renderedTrianglesShadow += stats._renderedTriangles;
+#endif
+        }
       }
       _api.disablePolygonOffset();
 

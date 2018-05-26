@@ -50,10 +50,14 @@ namespace fly
   {
     return _reliefMapping;
   }
-  void GraphicsSettings::setShadows(bool shadows)
+  void GraphicsSettings::setShadows(bool enabled)
   {
-    _shadows = shadows || _shadowsPCF;
-    notifyShadowsChanged();
+    bool shadows = shadows || _shadowsPCF;
+    bool notifiy = shadows != _shadows;
+    _shadows = shadows;
+    if (notifiy) {
+      notifyShadowsChanged();
+    }
   }
   void GraphicsSettings::setShadowsPCF(bool pcf)
   {
@@ -365,6 +369,18 @@ namespace fly
   float GraphicsSettings::getShadowPolygonOffsetUnits() const
   {
     return _shadowPolygonOffsetUnits;
+  }
+  void GraphicsSettings::setSinglePassShadows(bool enabled)
+  {
+    bool notify = _singlePassShadows != enabled;
+    _singlePassShadows = enabled;
+    if (notify) {
+      notifyShadowsChanged();
+    }
+  }
+  bool GraphicsSettings::getSinglePassShadows() const
+  {
+    return _singlePassShadows;
   }
   void GraphicsSettings::setCameraLerping(bool enable)
   {

@@ -174,7 +174,7 @@ namespace fly
     static constexpr const int miscTexUnit2() { return 6; }
     static constexpr const int miscTexUnit3() { return 7; }
     void beginFrame() const;
-    void bindShader(GLShaderProgram* shader);
+    void bindShader(GLShaderProgram const * shader);
     void bindShadowmap(const Shadowmap& shadowmap) const;
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data) const;
     void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix) const;

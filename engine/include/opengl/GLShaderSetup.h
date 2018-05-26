@@ -11,6 +11,7 @@ namespace fly
   public:
     GLShaderSetup() = delete;
     static void setupVP(const GlobalShaderParams& params, GLShaderProgram const * shader);
+    static void setupWorldToLight(const GlobalShaderParams& params, GLShaderProgram const * shader);
     static void setupLighting(const GlobalShaderParams& params, GLShaderProgram const * shader);
     static void setupShadows(const GlobalShaderParams& params, GLShaderProgram const * shader);
     static void setupTime(const GlobalShaderParams& params, GLShaderProgram const * shader);

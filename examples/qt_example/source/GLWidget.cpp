@@ -1,7 +1,5 @@
 #include <opengl/OpenGLAPI.h>
 #include <GLWidget.h>
-#include <AssimpImporter.h>
-#include <btBulletDynamicsCommon.h>
 #include <Leakcheck.h>
 #include <renderer/Renderer.h>
 #include <iostream>
@@ -16,8 +14,6 @@
 #include <DynamicMeshRenderable.h>
 #include <SkydomeRenderable.h>
 #include <AntWrapper.h>
-#include <physics/Bullet3PhysicsSystem.h>
-#include <physics/RigidBody.h>
 #include <random>
 #include <StaticInstancedMeshRenderable.h>
 #include <CamSpeedSystem.h>
@@ -321,7 +317,7 @@ void GLWidget::initGame()
 #endif
 
 #if SPONZA
-  unsigned num_renderables = sponza_model->getMeshes().size();
+  size_t num_renderables = sponza_model->getMeshes().size();
 #if SPONZA_MANY
   num_renderables *= NUM_OBJECTS * NUM_OBJECTS;
 #endif

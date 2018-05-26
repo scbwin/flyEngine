@@ -77,7 +77,7 @@ namespace fly
         _samplerAnisotropic.bind(i);
       }
   }
-  void OpenGLAPI::bindShader(GLShaderProgram * shader)
+  void OpenGLAPI::bindShader(GLShaderProgram const * shader)
   {
     _activeShader = shader;
     _activeShader->bind();
@@ -123,7 +123,7 @@ namespace fly
   void OpenGLAPI::renderMeshMVP(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & mvp) const
   {
     setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::modelViewProjectionMatrix()), mvp);
-    GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, mesh_data._type, mesh_data._indices, mesh_data._baseVertex));
+    renderMesh(mesh_data);
   }
   void OpenGLAPI::renderAABBs(const std::vector<AABB const *>& aabbs, const Mat4f& transform, const Vec3f& col)
   {
@@ -159,7 +159,7 @@ namespace fly
     }
     indirect_draw_buffer.setData(info.data(), info.size(), GL_DYNAMIC_DRAW);
 
-    unsigned group_size = 1024;
+    unsigned group_size = 1024; // TODO: remove hard-coded value
     unsigned num_groups = std::ceil(static_cast<float>(num_instances) / static_cast<float>(group_size));
 
     aabb_buffer.bindBase(GLSLShaderGenerator::bufferBindingAABB());

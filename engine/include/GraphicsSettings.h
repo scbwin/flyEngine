@@ -101,6 +101,8 @@ namespace fly
     void setShadowPolygonOffsetUnits(float units);
     float getShadowPolygonOffsetFactor() const;
     float getShadowPolygonOffsetUnits() const;
+    void setSinglePassShadows(bool enabled);
+    bool getSinglePassShadows() const;
 
   private:
     std::list<std::weak_ptr<Listener>> _listeners;
@@ -119,6 +121,7 @@ namespace fly
     float _shadowDarkenFactor = 0.8f;
     unsigned _shadowMapSize = 1024;
     std::vector<float> _smFrustumSplits = { 7.5f, 50.f, 500.f };
+    bool _singlePassShadows = false;
     unsigned _anisotropy = 4u;
     bool _postProcessing = true;
     bool _debugQuadtreeNodeAABBs = false;

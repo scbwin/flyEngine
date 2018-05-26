@@ -37,6 +37,9 @@ namespace fly
       if (flags & ShaderSetupFlags::SS_P_INVERSE) {
         _setupFuncs.push_back_secure(typename API::ShaderSetup::setupPInverse);
       }
+      if (flags & ShaderSetupFlags::SS_WORLD_TO_LIGHT) {
+        _setupFuncs.push_back_secure(typename API::ShaderSetup::setupWorldToLight);
+      }
     }
     inline void setup(const GlobalShaderParams& params) const
     {

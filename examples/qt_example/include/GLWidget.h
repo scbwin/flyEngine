@@ -1,12 +1,16 @@
 #ifndef GLWIDGET_H
 #define GLWIDGET_H
 
+#include <AssimpImporter.h>
+#include <btBulletDynamicsCommon.h>
 #include <QtOpenGL>
+#include <Engine.h>
+#include <physics/RigidBody.h>
+#include <physics/Bullet3PhysicsSystem.h>
 #include <memory>
 #include <set>
 #include <GraphicsSettings.h>
 #include <math/FlyMath.h>
-#include <Engine.h>
 
 #define SPONZA 1
 #define SPONZA_MANY 0

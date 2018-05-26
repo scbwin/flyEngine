@@ -174,7 +174,7 @@ namespace fly
       }
       bool removeElement(const TPtr& element)
       {
-        for (unsigned i = 0; i < _elements.size(); i++) {
+        /*for (unsigned i = 0; i < _elements.size(); i++) {
           if (_elements[i] == element) {
             _elements.erase(_elements.begin() + i);
             return true;
@@ -183,6 +183,21 @@ namespace fly
         for (const auto& c : _children) {
           if (c && c->removeElement(element)) {
             return true;
+          }
+        }
+        std::cout << "Attempting to remove element from the quadtree that wasn't added. This should never happen." << std::endl;
+        return false;*/
+        if (element->getAABBWorld()->intersects(_aabbWorld)) {
+          for (unsigned i = 0; i < _elements.size(); i++) {
+            if (_elements[i] == element) {
+              _elements.erase(_elements.begin() + i);
+              return true;
+            }
+          }
+          for (const auto& c : _children) {
+            if (c && c->removeElement(element)) {
+              return true;
+            }
           }
         }
         std::cout << "Attempting to remove element from the quadtree that wasn't added. This should never happen." << std::endl;

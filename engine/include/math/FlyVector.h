@@ -151,7 +151,7 @@ namespace fly
     inline bool operator < (const Vector& b) const
     {
       for (unsigned i = 0; i < Dim; i++) {
-        if (!(_data[i] < b[i])) {
+        if (_data[i] >= b[i]) {
           return false;
         }
       }
@@ -160,7 +160,7 @@ namespace fly
     inline bool operator > (const Vector& b) const
     {
       for (unsigned i = 0; i < Dim; i++) {
-        if (!(_data[i] > b[i])) {
+        if (_data[i] <= b[i]) {
           return false;
         }
       }
@@ -169,7 +169,7 @@ namespace fly
     inline bool operator <= (const Vector& b) const
     {
       for (unsigned i = 0; i < Dim; i++) {
-        if (!(_data[i] <= b[i])) {
+        if (_data[i] > b[i]) {
           return false;
         }
       }
@@ -178,7 +178,7 @@ namespace fly
     inline bool operator >= (const Vector& b) const
     {
       for (unsigned i = 0; i < Dim; i++) {
-        if (!(_data[i] >= b[i])) {
+        if (_data[i] < b[i]) {
           return false;
         }
       }

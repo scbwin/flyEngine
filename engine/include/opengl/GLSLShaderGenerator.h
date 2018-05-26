@@ -17,6 +17,7 @@ namespace fly
     GLShaderSource createMeshVertexShaderSource(unsigned flags, const GraphicsSettings& settings, bool instanced = false) const;
     GLShaderSource createMeshFragmentShaderSource(unsigned flags, const GraphicsSettings& settings, bool instanced = false) const;
     GLShaderSource createMeshVertexShaderDepthSource(unsigned flags, const GraphicsSettings& settings, bool instanced = false) const;
+    GLShaderSource createMeshGeometryShaderDepthSource(unsigned flags, const GraphicsSettings& settings, bool instanced = false) const;
     GLShaderSource createMeshFragmentShaderDepthSource(unsigned flags, const GraphicsSettings& settings) const;
     void createCompositeShaderSource(const GraphicsSettings& gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src) const;
     void createBlurShaderSource(unsigned flags, const GraphicsSettings& gs, GLShaderSource& vertex_src, GLShaderSource& fragment_src) const;
@@ -92,6 +93,7 @@ float noise(vec2 p)\n\
   private:
     std::string createMeshVertexSource(unsigned flags, const GraphicsSettings& settings, bool instanced) const;
     std::string createMeshVertexDepthSource(unsigned flags, const GraphicsSettings& settings, bool instanced) const;
+    std::string createMeshGeometryDepthSource(unsigned flags, const GraphicsSettings& settings, bool instanced) const;
     std::string createMeshFragmentSource(unsigned flags, const GraphicsSettings& settings, bool instanced) const;
     std::string createMeshFragmentDepthSource(unsigned flags, const GraphicsSettings& settings) const;
     std::string createCompositeShaderSource(const GraphicsSettings& gs) const;

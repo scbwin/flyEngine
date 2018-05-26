@@ -101,6 +101,22 @@ uniform vec3 " + std::string(bbMax()) + "; // AABB max xz\n" + std::string(noise
     src._type = GL_VERTEX_SHADER;
     return src;
   }
+  GLShaderSource GLSLShaderGenerator::createMeshGeometryShaderDepthSource(unsigned flags, const GraphicsSettings & settings, bool instanced) const
+  {
+    std::string key = "gs_depth";
+    if (flags & MeshRenderFlag::MR_WIND) {
+      key += "_wind";
+    }
+    if (instanced) {
+      key += "_instanced";
+    }
+    key += ".glsl";
+    GLShaderSource src;
+    src._key = key;
+    src._source = createMeshGeometryDepthSource(flags, settings, instanced);
+    src._type = GL_GEOMETRY_SHADER;
+    return src;
+  }
   GLShaderSource GLSLShaderGenerator::createMeshFragmentShaderDepthSource(unsigned flags, const GraphicsSettings & settings)const
   {
     std::string key = "fs_depth";
@@ -278,10 +294,13 @@ layout(location = 2) in vec2 uv;\n";
     if (settings.depthPrepassEnabled()) {
       shader_src += "invariant gl_Position; \n";
     }
-    shader_src += "uniform mat4 " + std::string(modelMatrix()) + ";\n\
-uniform mat4 " + std::string(viewProjectionMatrix()) + ";\n";
+    shader_src += "uniform mat4 " + std::string(modelMatrix()) + ";\n";
+    if (!settings.getSinglePassShadows()) {
+     shader_src += "uniform mat4 " + std::string(viewProjectionMatrix()) + "; \n";
+    }
     shader_src += _windParamString;
-    shader_src += "out vec2 uv_out;\n";
+    std::string uv_str = settings.getSinglePassShadows() ? std::string("uv_vs") : std::string("uv_out");
+    shader_src += "out vec2 " + uv_str + ";\n";
     if (instanced) {
       shader_src += _instanceDataStr + "layout (std430, binding = " + std::to_string(bufferBindingInstanceData()) + ") readonly buffer instance_data_buffer \n\
 {\n\
@@ -300,8 +319,31 @@ out mat3 " + std::string(modelMatrixInverse()) + ";\n";
     if (flags & MeshRenderFlag::MR_WIND) {
       shader_src += _windCodeString;
     }
-    shader_src += "  gl_Position = VP * pos_world;\n";
-    shader_src += "  uv_out = uv;\n\
+    shader_src += "  gl_Position = " + (settings.getSinglePassShadows() ? std::string("") : std::string(" VP *")) + " pos_world;\n";
+    shader_src += "  " + uv_str + " = uv;\n\
+}\n";
+    return shader_src;
+  }
+  std::string GLSLShaderGenerator::createMeshGeometryDepthSource(unsigned flags, const GraphicsSettings & gs, bool instanced) const
+  {
+    std::string version = instanced ? "450" : "330";
+    std::string shader_src = "#version " + version + "\n\
+layout (triangles) in;\n\
+layout (triangle_strip, max_vertices = " + std::to_string(gs.getFrustumSplits().size() * 3u) + ") out;\n\
+uniform mat4 " + std::string(worldToLightMatrices()) + " [" + std::to_string(gs.getFrustumSplits().size()) + "];\n\
+in vec2 uv_vs [];\n\
+out vec2 uv_out;\n\
+void main() \n\
+{\n\
+  for (int i = 0; i < " + std::to_string(gs.getFrustumSplits().size()) + "; i++) {\n\
+    gl_Layer = i;\n\
+    for (int j = 0; j < 3; j++) {\n\
+      uv_out = uv_vs[j];\n\
+      gl_Position = " + std::string(worldToLightMatrices()) + "[i] * gl_in[j].gl_Position;\n\
+      EmitVertex();\n\
+    }\n\
+    EndPrimitive();\n\
+  } \n\
 }\n";
     return shader_src;
   }
