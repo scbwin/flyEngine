@@ -5,13 +5,11 @@
 #include <functional>
 #include <GraphicsSettings.h>
 #include <MaterialDesc.h>
-#include <StaticMeshRenderable.h>
-#include <DynamicMeshRenderable.h>
 #include <Material.h>
 #include <AABB.h>
-#include <StaticInstancedMeshRenderable.h>
 #include <Camera.h>
 #include <Component.h>
+#include <WindParamsLocal.h>
 
 namespace fly
 {
@@ -69,10 +67,10 @@ namespace fly
     }
   };
   template<typename API>
-  class StaticMeshRenderableWrapper : public IMeshRenderable<API>
+  class StaticMeshRenderable : public IMeshRenderable<API>
   {
   public:
-    StaticMeshRenderableWrapper(Renderer<API>& renderer, const std::shared_ptr<Mesh>& mesh,
+    StaticMeshRenderable(Renderer<API>& renderer, const std::shared_ptr<Mesh>& mesh,
       const std::shared_ptr<Material>& material, const Mat4f& model_matrix) :
       _meshData(renderer.addMesh(mesh)),
       _aabb(AABB(*mesh->getAABB(), model_matrix)),
@@ -83,7 +81,7 @@ namespace fly
       _shaderDesc = material->isReflective() ? &_materialDesc->getMeshShaderDescReflective() : &_materialDesc->getMeshShaderDesc();
       _shaderDescDepth = &_materialDesc->getMeshShaderDescDepth();
     }
-    virtual ~StaticMeshRenderableWrapper() = default;
+    virtual ~StaticMeshRenderable() = default;
     virtual void render(API const & api) override
     {
       api.renderMesh(_meshData, _modelMatrix, _modelMatrixInverse);
@@ -104,12 +102,12 @@ namespace fly
     Mat3f _modelMatrixInverse;
   };
   template<typename API>
-  class StaticMeshRenderableWind : public StaticMeshRenderableWrapper<API>
+  class StaticMeshRenderableWind : public StaticMeshRenderable<API>
   {
   public:
     StaticMeshRenderableWind(Renderer<API>& renderer, const std::shared_ptr<Mesh>& mesh,
       const std::shared_ptr<Material>& material, const Mat4f& model_matrix) :
-      StaticMeshRenderableWrapper<API>(renderer, mesh, material, model_matrix)
+      StaticMeshRenderable<API>(renderer, mesh, material, model_matrix)
     {
       _materialDesc = renderer.createMaterialDesc(material).get();
       _shaderDesc = &_materialDesc->getMeshShaderDescWind();
@@ -136,183 +134,99 @@ namespace fly
   protected:
     WindParamsLocal _windParams;
   };
-  /* template<typename API>
-   class DynamicMeshRenderableWrapper : public virtual IMeshRenderable<API>, public virtual GraphicsSettings::Listener
-   {
-   public:
-     API const & _api;
-     DynamicMeshRenderable * _dmr;
-     typename API::MeshData _meshData;
-     void(*_renderFunc)(DynamicMeshRenderableWrapper*, DynamicMeshRenderable*);
-     void(*_renderFuncDepth)(DynamicMeshRenderableWrapper*, DynamicMeshRenderable*);
-     Mat3f const & _viewMatrixInverse;
-     DynamicMeshRenderableWrapper(const std::shared_ptr<DynamicMeshRenderable>& dmr,
-       const std::shared_ptr<MaterialDesc<API>>& material_desc, const typename API::MeshData& mesh_data,
-       API const & api, Mat3f const & view_matrix_inverse, GraphicsSettings const & gs) :
-       _api(api),
-       _meshData(mesh_data),
-       IMeshRenderable<API>(chooseShaderDesc(dmr, material_desc), chooseShaderDescDepth(dmr, material_desc), material_desc.get()),
-       _dmr(dmr.get()),
-       _viewMatrixInverse(view_matrix_inverse)
-     {
-       chooseRenderFuncs(gs);
-     }
-     virtual ~DynamicMeshRenderableWrapper() = default;
-     static void renderDefault(DynamicMeshRenderableWrapper* dmrw, DynamicMeshRenderable* dmr)
-     {
-       const auto& model_matrix = dmr->getModelMatrix();
-       const auto& model_matrix_inverse = dmr->getModelMatrixInverse();
-       dmrw->_api.renderMesh(dmrw->_meshData, model_matrix, model_matrix_inverse);
-     }
-     static void renderReflective(DynamicMeshRenderableWrapper* dmrw, DynamicMeshRenderable* dmr)
-     {
-       const auto& model_matrix = dmr->getModelMatrix();
-       const auto& model_matrix_inverse = dmr->getModelMatrixInverse();
-       dmrw->_api.renderMesh(dmrw->_meshData, model_matrix, model_matrix_inverse, model_matrix_inverse * dmrw->_viewMatrixInverse);
-     }
-     static void renderDepthDefault(DynamicMeshRenderableWrapper* dmrw, DynamicMeshRenderable* dmr)
-     {
-       dmrw->_api.renderMesh(dmrw->_meshData, dmr->getModelMatrix());
-     }
-     virtual void render() override
-     {
-       _renderFunc(this, _dmr);
-     }
-     virtual void renderDepth() override
-     {
-       _renderFuncDepth(this, _dmr);
-     }
-     virtual AABB const * getAABBWorld() const override final { return _dmr->getAABBWorld(); }
-     std::shared_ptr<ShaderDesc<API>> const * chooseShaderDesc(const std::shared_ptr<DynamicMeshRenderable>& dmr, const std::shared_ptr<MaterialDesc<API>>& material_desc) const
-     {
-       if (material_desc->getMaterial()->isReflective()) {
-         return &material_desc->getMeshShaderDescReflective();
-       }
-       else {
-         return &material_desc->getMeshShaderDesc();
-       }
-     }
-     std::shared_ptr<ShaderDesc<API>> const * chooseShaderDescDepth(const std::shared_ptr<DynamicMeshRenderable>& dmr, const std::shared_ptr<MaterialDesc<API>>& material_desc) const
-     {
-       return &material_desc->getMeshShaderDescDepth();
-     }
-     void chooseRenderFuncs(GraphicsSettings const & gs)
-     {
-       if (_materialDesc->getMaterial()->isReflective() && gs.getScreenSpaceReflections()) {
-         _renderFunc = renderReflective;
-       }
-       else {
-         _renderFunc = renderDefault;
-       }
-       _renderFuncDepth = renderDepthDefault;
-     }
-     virtual void normalMappingChanged(GraphicsSettings const * gs) override {}
-     virtual void shadowsChanged(GraphicsSettings const * gs) override {}
-     virtual void shadowMapSizeChanged(GraphicsSettings const * gs) override {}
-     virtual void depthOfFieldChanged(GraphicsSettings const * gs) override {}
-     virtual void compositingChanged(GraphicsSettings const * gs) override {}
-     virtual void windAnimationsChanged(GraphicsSettings const * gs) override { chooseRenderFuncs(*gs); }
-     virtual void anisotropyChanged(GraphicsSettings const * gs) override {}
-     virtual void cameraLerpingChanged(GraphicsSettings const * gs) override {}
-     virtual void gammaChanged(GraphicsSettings const * gs) override {}
-     virtual void screenSpaceReflectionsChanged(GraphicsSettings const * gs) override { chooseRenderFuncs(*gs); }
-     virtual unsigned numTriangles() const override
-     {
-       return _meshData.numTriangles();
-     }
-   };*/
-   template<typename API>
-   class StaticInstancedMeshRenderableWrapper : public IMeshRenderable<API>
-   {
-   public:
-     struct InstanceData
-     {
-       Mat4f _modelMatrix;
-       Mat4f _modelMatrixInverse;
-       unsigned _index; // Can be an index into a color array or an index into a texture array
-       unsigned _padding[3];
-     };
-     std::vector<typename API::IndirectInfo> _indirectInfo;
-     AABB _aabb;
-     float _largestAABBSize = 0.f;
-     typename API::StorageBuffer _aabbBuffer;
-     typename API::StorageBuffer _visibleInstances;
-     typename API::StorageBuffer _instanceData;
-     typename API::IndirectBuffer _indirectBuffer;
-     unsigned _numInstances;
-     API const & _api;
-     float _lodMultiplier = 0.1f;
-     StaticInstancedMeshRenderableWrapper(Renderer<API>& renderer, const std::vector<std::shared_ptr<Mesh>>& lods,
-       const std::shared_ptr<Material>& material, const std::vector<InstanceData>& instance_data) :
-       _visibleInstances(renderer.getApi()->createStorageBuffer<unsigned>(nullptr, instance_data.size() * lods.size())),
-       _instanceData(renderer.getApi()->createStorageBuffer<InstanceData>(instance_data.data(), instance_data.size())),
-       _numInstances(static_cast<unsigned>(instance_data.size())),
-       _api(*renderer.getApi())
-     {
-       _materialDesc = renderer.createMaterialDesc(material).get();
-       _shaderDesc = &_materialDesc->getMeshShaderDescInstanced();
-       _shaderDescDepth = &_materialDesc->getMeshShaderDescDepthInstanced();
-       std::vector<typename API::MeshData> mesh_data;
-       for (const auto& m : lods) {
-         mesh_data.push_back(renderer.addMesh(m));
-       }
-       _indirectInfo = renderer.getApi()->indirectFromMeshData(mesh_data);
-       _indirectBuffer = renderer.getApi()->createIndirectBuffer(_indirectInfo);
+  template<typename API>
+  class StaticInstancedMeshRenderable : public IMeshRenderable<API>
+  {
+  public:
+    struct InstanceData
+    {
+      Mat4f _modelMatrix;
+      Mat4f _modelMatrixInverse;
+      unsigned _index; // Can be an index into a color array or an index into a texture array
+      unsigned _padding[3];
+    };
+    StaticInstancedMeshRenderable(Renderer<API>& renderer, const std::vector<std::shared_ptr<Mesh>>& lods,
+      const std::shared_ptr<Material>& material, const std::vector<InstanceData>& instance_data) :
+      _visibleInstances(renderer.getApi()->createStorageBuffer<unsigned>(nullptr, instance_data.size() * lods.size())),
+      _instanceData(renderer.getApi()->createStorageBuffer<InstanceData>(instance_data.data(), instance_data.size())),
+      _numInstances(static_cast<unsigned>(instance_data.size())),
+      _api(*renderer.getApi())
+    {
+      _materialDesc = renderer.createMaterialDesc(material).get();
+      _shaderDesc = &_materialDesc->getMeshShaderDescInstanced();
+      _shaderDescDepth = &_materialDesc->getMeshShaderDescDepthInstanced();
+      std::vector<typename API::MeshData> mesh_data;
+      for (const auto& m : lods) {
+        mesh_data.push_back(renderer.addMesh(m));
+      }
+      _indirectInfo = renderer.getApi()->indirectFromMeshData(mesh_data);
+      _indirectBuffer = renderer.getApi()->createIndirectBuffer(_indirectInfo);
 
-       AABB aabb_local;
-       for (const auto& m : lods) {
-         aabb_local = aabb_local.getUnion(*m->getAABB());
-       }
-       
-       StackPOD<Vec4f> aabbs_min_max;
-       aabbs_min_max.reserve(instance_data.size() * 2u);
-       for (unsigned i = 0; i < instance_data.size(); i++) {
-         AABB aabb_world(aabb_local, instance_data[i]._modelMatrix);
-         aabbs_min_max.push_back(Vec4f(aabb_world.getMin(), 1.f));
-         aabbs_min_max.push_back(Vec4f(aabb_world.getMax(), 1.f));
-         _aabb = _aabb.getUnion(aabb_world);
-         _largestAABBSize = std::max(_largestAABBSize, aabb_world.size2());
-       }
-       _aabbBuffer = std::move(renderer.getApi()->createStorageBuffer<Vec4f>(aabbs_min_max.begin(), aabbs_min_max.size()));
-     }
-     virtual ~StaticInstancedMeshRenderableWrapper() = default;
+      AABB aabb_local;
+      for (const auto& m : lods) {
+        aabb_local = aabb_local.getUnion(*m->getAABB());
+      }
 
-     virtual void render(API const & api) override
-     {
-       api.renderInstances(_visibleInstances, _indirectBuffer, _instanceData, _indirectInfo, _numInstances);
-     }
-     virtual void renderDepth(API const & api) override
-     {
-       api.renderInstances(_visibleInstances, _indirectBuffer, _instanceData, _indirectInfo, _numInstances);
-     }
-     virtual AABB const * getAABB() const override final { return &_aabb; }
-     virtual float getLargestObjectAABBSize() const override
-     {
-       return _largestAABBSize;
-     }
-     virtual bool cull(const Camera& camera) override
-     {
-       if (isLargeEnough(camera)) {
-         _api.cullInstances(_aabbBuffer, _numInstances, _visibleInstances, _indirectBuffer,
-           _indirectInfo, _lodMultiplier, camera.getDetailCullingThreshold());
-         return true;
-       }
-       return false;
-     }
-     virtual bool cullAndIntersect(const Camera& camera) override
-     {
-       return camera.frustumIntersectsAABB(_aabb) != IntersectionResult::OUTSIDE && cull(camera);
-     }
-     virtual bool isLargeEnough(const Camera& camera) const
-     {
-       return _aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestAABBSize);
-     }
-     virtual unsigned numTriangles() const override
-     {
-       // TODO calculate correct triangle count here
-       return _numInstances;
-     }
-   };
+      StackPOD<Vec4f> aabbs_min_max;
+      aabbs_min_max.reserve(instance_data.size() * 2u);
+      for (unsigned i = 0; i < instance_data.size(); i++) {
+        AABB aabb_world(aabb_local, instance_data[i]._modelMatrix);
+        aabbs_min_max.push_back(Vec4f(aabb_world.getMin(), 1.f));
+        aabbs_min_max.push_back(Vec4f(aabb_world.getMax(), 1.f));
+        _aabb = _aabb.getUnion(aabb_world);
+        _largestAABBSize = std::max(_largestAABBSize, aabb_world.size2());
+      }
+      _aabbBuffer = std::move(renderer.getApi()->createStorageBuffer<Vec4f>(aabbs_min_max.begin(), aabbs_min_max.size()));
+    }
+    virtual ~StaticInstancedMeshRenderable() = default;
+
+    virtual void render(API const & api) override
+    {
+      api.renderInstances(_visibleInstances, _indirectBuffer, _instanceData, _indirectInfo, _numInstances);
+    }
+    virtual void renderDepth(API const & api) override
+    {
+      api.renderInstances(_visibleInstances, _indirectBuffer, _instanceData, _indirectInfo, _numInstances);
+    }
+    virtual AABB const * getAABB() const override final { return &_aabb; }
+    virtual float getLargestObjectAABBSize() const override
+    {
+      return _largestAABBSize;
+    }
+    virtual bool cull(const Camera& camera) override
+    {
+      if (isLargeEnough(camera)) {
+        _api.cullInstances(_aabbBuffer, _numInstances, _visibleInstances, _indirectBuffer,
+          _indirectInfo, _lodMultiplier, camera.getDetailCullingThreshold());
+        return true;
+      }
+      return false;
+    }
+    virtual bool cullAndIntersect(const Camera& camera) override
+    {
+      return camera.frustumIntersectsAABB(_aabb) != IntersectionResult::OUTSIDE && cull(camera);
+    }
+    virtual bool isLargeEnough(const Camera& camera) const
+    {
+      return _aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestAABBSize);
+    }
+    virtual unsigned numTriangles() const override
+    {
+      // TODO calculate correct triangle count here
+      return _numInstances;
+    }
+  protected:
+    std::vector<typename API::IndirectInfo> _indirectInfo;
+    AABB _aabb;
+    float _largestAABBSize = 0.f;
+    typename API::StorageBuffer _aabbBuffer;
+    typename API::StorageBuffer _visibleInstances;
+    typename API::StorageBuffer _instanceData;
+    typename API::IndirectBuffer _indirectBuffer;
+    unsigned _numInstances;
+    API const & _api;
+    float _lodMultiplier = 0.1f;
+  };
 }
 
 #endif // !MESHRENDERABLES_H

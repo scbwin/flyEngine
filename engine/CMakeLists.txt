@@ -17,14 +17,14 @@ set (HEADER_FILES
 	${IDIR}/opengl/GLVertexArray.h ${IDIR}/opengl/GLBuffer.h ${IDIR}/opengl/GLTexture.h ${IDIR}/opengl/GLByteBufferStack.h
 	${IDIR}/opengl/GLWrappers.h ${IDIR}/opengl/OpenGLUtils.h ${IDIR}/opengl/RenderingSystemOpenGL.h ${IDIR}/opengl/OpenGLAPI.h ${IDIR}/renderer/ProjectionParams.h ${IDIR}/renderer/RenderParams.h
 	${IDIR}/physics/ParticleSystem.h ${IDIR}/physics/PhysicsSystem.h ${IDIR}/Quadtree.h ${IDIR}/Octree.h ${IDIR}/Settings.h ${IDIR}/GraphicsSettings.h ${IDIR}/LevelOfDetail.h ${IDIR}/Timing.h ${IDIR}/renderer/Renderer.h
-	${IDIR}/StaticModelRenderable.h ${IDIR}/CameraController.h ${IDIR}/StaticMeshRenderable.h ${IDIR}/opengl/GLShaderInterface.h ${IDIR}/opengl/GLFramebuffer.h
+	${IDIR}/CameraController.h ${IDIR}/opengl/GLShaderInterface.h ${IDIR}/opengl/GLFramebuffer.h
 	${IDIR}/opengl/GLSLShaderGenerator.h ${IDIR}/SoftwareCache.h ${IDIR}/opengl/GLSampler.h ${IDIR}/WindParams.h ${IDIR}/WindParamsLocal.h
 	${IDIR}/SkydomeRenderable.h ${IDIR}/opengl/GLMaterialSetup.h ${IDIR}/opengl/GLShaderSetup.h ${IDIR}/opengl/GLShaderProgram.h ${IDIR}/opengl/GLShaderSource.h ${IDIR}/StackPOD.h
 	${IDIR}/Flags.h ${IDIR}/MaterialDesc.h ${IDIR}/renderer/MeshRenderables.h ${IDIR}/ShaderDesc.h ${IDIR}/CamSpeedSystem.h
 )
 
 if(${BUILD_PHYSICS})
-	set(HEADER_FILES ${HEADER_FILES} ${IDIR}/physics/Bullet3PhysicsSystem.h ${IDIR}/physics/RigidBody.h ${IDIR}/DynamicMeshRenderable.h )
+	set(HEADER_FILES ${HEADER_FILES} ${IDIR}/physics/Bullet3PhysicsSystem.h ${IDIR}/physics/RigidBody.h )
 endif()
 if(${BUILD_DX11})
 	set(HEADER_FILES ${HEADER_FILES} ${IDIR}/dx11/DX11States.h ${IDIR}/dx11/DXUtils.h ${IDIR}/dx11/Effects.h ${IDIR}/dx11/RenderingSystemDX11.h)
@@ -36,14 +36,13 @@ set (SOURCE_FILES
 	${SDIR}/System.cpp ${SDIR}/Terrain.cpp ${SDIR}/TerrainNew.cpp ${SDIR}/Transform.cpp 
 	${SDIR}/opengl/GLWrappers.cpp ${SDIR}/opengl/OpenGLUtils.cpp ${SDIR}/opengl/RenderingSystemOpenGL.cpp ${SDIR}/opengl/GLTexture.cpp
 	${SDIR}/physics/ParticleSystem.cpp ${SDIR}/physics/PhysicsSystem.cpp ${SDIR}/LevelOfDetail.cpp ${SDIR}/Timing.cpp ${SDIR}/opengl/OpenGLAPI.cpp
-	${SDIR}/opengl/GLVertexArray.cpp ${SDIR}/opengl/GLBuffer.cpp
-	${SDIR}/StaticModelRenderable.cpp ${SDIR}/CameraController.cpp ${SDIR}/StaticMeshRenderable.cpp ${SDIR}/opengl/GLFramebuffer.cpp
+	${SDIR}/opengl/GLVertexArray.cpp ${SDIR}/opengl/GLBuffer.cpp ${SDIR}/CameraController.cpp ${SDIR}/opengl/GLFramebuffer.cpp
 	${SDIR}/opengl/GLSLShaderGenerator.cpp ${SDIR}/opengl/GLSampler.cpp ${SDIR}/GraphicsSettings.cpp
 	${SDIR}/SkydomeRenderable.cpp ${SDIR}/opengl/GLMaterialSetup.cpp ${SDIR}/opengl/GLShaderSetup.cpp ${SDIR}/opengl/GLShaderProgram.cpp ${SDIR}/opengl/GLShaderSource.cpp
 )
 
 if(${BUILD_PHYSICS})
-	set(SOURCE_FILES ${SOURCE_FILES} ${SDIR}/physics/Bullet3PhysicsSystem.cpp ${SDIR}/physics/RigidBody.cpp ${SDIR}/DynamicMeshRenderable.cpp)
+	set(SOURCE_FILES ${SOURCE_FILES} ${SDIR}/physics/Bullet3PhysicsSystem.cpp ${SDIR}/physics/RigidBody.cpp)
 endif()
 if(${BUILD_DX11})
 	set(SOURCE_FILES ${SOURCE_FILES} ${SDIR}/dx11/DX11States.cpp ${SDIR}/dx11/Effects.cpp ${SDIR}/dx11/RenderingSystemDX11.cpp)

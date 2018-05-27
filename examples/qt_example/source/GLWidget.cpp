@@ -10,12 +10,9 @@
 #include <CameraController.h>
 #include <AntTweakBar.h>
 #include <LevelOfDetail.h>
-#include <StaticMeshRenderable.h>
-#include <DynamicMeshRenderable.h>
 #include <SkydomeRenderable.h>
 #include <AntWrapper.h>
 #include <random>
-#include <StaticInstancedMeshRenderable.h>
 #include <CamSpeedSystem.h>
 #include <renderer/MeshRenderables.h>
 
@@ -323,7 +320,7 @@ void GLWidget::initGame()
   num_renderables *= NUM_OBJECTS * NUM_OBJECTS;
 #endif
   std::vector<std::shared_ptr<fly::Entity>> entities;
-  std::vector<std::shared_ptr<fly::StaticMeshRenderableWrapper<fly::OpenGLAPI>>> smrs;
+  std::vector<std::shared_ptr<fly::StaticMeshRenderable<fly::OpenGLAPI>>> smrs;
   entities.reserve(num_renderables);
   smrs.reserve(num_renderables);
 
@@ -381,7 +378,7 @@ void GLWidget::initGame()
         smrs.push_back(smr);
       }
       else {
-        smrs.push_back(std::make_shared<fly::StaticMeshRenderableWrapper<fly::OpenGLAPI>>(*_renderer, mesh,
+        smrs.push_back(std::make_shared<fly::StaticMeshRenderable<fly::OpenGLAPI>>(*_renderer, mesh,
 #if SPONZA_MANY
           mesh->getMaterial(), model_matrix));
 #else
@@ -487,8 +484,8 @@ void GLWidget::initGame()
     auto scale = _renderer->getAABBStatic().getMax() - _renderer->getAABBStatic().getMin();
     scale[1] = 1.f;
     auto translation = _renderer->getAABBStatic().getMin();
-    entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(m,
-      plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(translation, scale).getModelMatrix(), false));
+ //   entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(m,
+  //    plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(translation, scale).getModelMatrix(), false));
   }
 #endif
 
@@ -530,11 +527,11 @@ void GLWidget::initGame()
   for (int cell_x = 0; cell_x < num_cells[0]; cell_x++) {
     for (int cell_z = 0; cell_z < num_cells[1]; cell_z++) {
       auto instanced_entity = _engine.getEntityManager()->createEntity();
-      std::vector<fly::StaticInstancedMeshRenderableWrapper<fly::OpenGLAPI>::InstanceData> instance_data;
+      std::vector<fly::StaticInstancedMeshRenderable<fly::OpenGLAPI>::InstanceData> instance_data;
       //std::vector<unsigned> indices;
       for (int x = 0; x < num_meshes[0]; x++) {
         for (int z = 0; z < num_meshes[1]; z++) {
-          fly::StaticInstancedMeshRenderableWrapper<fly::OpenGLAPI>::InstanceData data;
+          fly::StaticInstancedMeshRenderable<fly::OpenGLAPI>::InstanceData data;
           data._modelMatrix = fly::Transform(fly::Vec3f(static_cast<float>(x) * sphere_lods[0]->getAABB()->size() + dist(gen) + cell_x * cell_size - total_size[0] * 0.5f,
             1.2f + dist(gen) * 5.f, 
             static_cast<float>(z) * sphere_lods[0]->getAABB()->size() + dist(gen) + cell_z * cell_size - total_size[1] * 0.5f)).getModelMatrix();
@@ -543,7 +540,7 @@ void GLWidget::initGame()
           instance_data.push_back(data);
         }
       }
-      auto instanced_renderable = std::make_shared<fly::StaticInstancedMeshRenderableWrapper<fly::OpenGLAPI>>(*_renderer, sphere_lods, material, instance_data);
+      auto instanced_renderable = std::make_shared<fly::StaticInstancedMeshRenderable<fly::OpenGLAPI>>(*_renderer, sphere_lods, material, instance_data);
       instanced_entity->addComponent(instanced_renderable);
     //  instanced_renderable->clear();
       total_meshes += instance_data.size();

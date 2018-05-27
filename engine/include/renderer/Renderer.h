@@ -153,13 +153,13 @@ namespace fly
     }
     virtual void onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component) override
     {
-      if (entity->getComponent<StaticMeshRenderableWrapper<API>>() == component) {
-        auto smr = entity->getComponent<StaticMeshRenderableWrapper<API>>();
+      if (entity->getComponent<StaticMeshRenderable<API>>() == component) {
+        auto smr = entity->getComponent<StaticMeshRenderable<API>>();
         _staticMeshRenderables[entity] = smr;
         _aabbStatic = _aabbStatic.getUnion(*smr->getAABB());
       }
-      else if (entity->getComponent<StaticInstancedMeshRenderableWrapper<API>>() == component) {
-        auto simr = entity->getComponent<StaticInstancedMeshRenderableWrapper<API>>();
+      else if (entity->getComponent<StaticInstancedMeshRenderable<API>>() == component) {
+        auto simr = entity->getComponent<StaticInstancedMeshRenderable<API>>();
         _staticInstancedMeshRenderables[entity] = simr;
         _aabbStatic = _aabbStatic.getUnion(*simr->getAABB());
       }
@@ -195,13 +195,13 @@ namespace fly
     }
     virtual void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component) override
     {
-      if (entity->getComponent<fly::StaticMeshRenderableWrapper<API>>() == component
+      if (entity->getComponent<fly::StaticMeshRenderable<API>>() == component
          || entity->getComponent<fly::StaticMeshRenderableWind<API>>() == component) {
         _bvhStatic->removeObject(_staticMeshRenderables[entity].get());
         _aabbStatic = _aabbStatic.getIntersection(*_staticMeshRenderables[entity]->getAABB());
         _staticMeshRenderables.erase(entity);
       }
-      if (entity->getComponent<fly::StaticInstancedMeshRenderableWrapper<API>>() == component) {
+      if (entity->getComponent<fly::StaticInstancedMeshRenderable<API>>() == component) {
         _bvhStatic->removeObject(_staticInstancedMeshRenderables[entity].get());
         _aabbStatic = _aabbStatic.getIntersection(*_staticInstancedMeshRenderables[entity]->getAABB());
         _staticInstancedMeshRenderables.erase(entity);
@@ -386,9 +386,9 @@ namespace fly
     RendererStats _stats;
 #endif
     typename API::MeshGeometryStorage _meshGeometryStorage;
-    std::map<Entity*, std::shared_ptr<StaticMeshRenderableWrapper<API>>> _staticMeshRenderables;
+    std::map<Entity*, std::shared_ptr<StaticMeshRenderable<API>>> _staticMeshRenderables;
   //  std::map<Entity*, std::shared_ptr<DynamicMeshRenderableWrapper<API>>> _dynamicMeshRenderables;
-    std::map<Entity*, std::shared_ptr<StaticInstancedMeshRenderableWrapper<API>>> _staticInstancedMeshRenderables;
+    std::map<Entity*, std::shared_ptr<StaticInstancedMeshRenderable<API>>> _staticInstancedMeshRenderables;
     std::shared_ptr<SkydomeRenderableWrapper<API>> _skydomeRenderable;
     StackPOD<IMeshRenderable<API>*> _visibleMeshes;
     std::map<ShaderDesc<API> const *, std::map<MaterialDesc<API> const *, StackPOD<IMeshRenderable<API>*, 64>>> _displayList;

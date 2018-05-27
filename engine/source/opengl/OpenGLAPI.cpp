@@ -7,7 +7,6 @@
 #include <Mesh.h>
 #include <opengl/GLWrappers.h>
 #include <Timing.h>
-#include <StaticModelRenderable.h>
 #include <SOIL/SOIL.h>
 #include <Material.h>
 #include <opengl/GLShaderInterface.h>
