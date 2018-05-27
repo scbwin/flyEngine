@@ -2,7 +2,6 @@
 flyEngine is an Open Source 3D engine based on the OpenGL and Direct3D graphics APIs. The CPU-part is entirely written in C++, whereas on the GPU GLSL and HLSL are used. Features include Normal Mapping, Terrain Rendering, Procedural Terrain, Procedural Grass, Post Processing (Depth Of Field, Bloom, Lens Flare, Screen Space Reflections, Volumetric Light), Hierarchical View Frustum Culling, wind animations, parallax and relief mapping.
 
 ![](https://github.com/fleissna/flyEngine/blob/master/screenshots/screenshot0.png)
-![](https://github.com/fleissna/flyEngine/blob/master/screenshots/screenshot1.png)
 ![](https://github.com/fleissna/flyEngine/blob/master/screenshots/screenshot2.png)
 
 ## Installation
@@ -43,7 +42,7 @@ Possible improvements are:
 * Tessellation for arbitrary objects, not only terrain
 * Level of detail system
 ## Guidelines
-* Development goes into "Renderer" and "OpenGLAPI", the classes "RenderingSystemOpenGL" and "RenderingSystemDX11" are considered deprecated, but are further maintained for compatibility. 
+* Development goes into [Renderer](https://github.com/fleissna/flyEngine/blob/master/engine/include/renderer/Renderer.h) and [OpenGLAPI](https://github.com/fleissna/flyEngine/blob/master/engine/include/opengl/OpenGLAPI.h) and [IMeshRenderable](https://github.com/fleissna/flyEngine/blob/master/engine/include/renderer/MeshRenderables.h), the classes "RenderingSystemOpenGL" and "RenderingSystemDX11" are considered deprecated, but are further maintained for compatibility. 
 * Stick to the ECS design pattern.
 * Do not add any member variables of third-party datatypes to core engine components. E.g. the Material class shouldn't store pointers to DirectX Shader resource views, just store a std::string that contains the path to the texture instead.
 * Avoid dynamic memory allocations in the rendering loop if possible.

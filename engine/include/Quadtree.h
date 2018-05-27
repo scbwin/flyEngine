@@ -13,7 +13,7 @@
 namespace fly
 {
   /**
-  * Quadtree implemetation that is used for intersection tests and view frustum culling.
+  * Quadtree implementation that is used for intersection tests and view frustum culling.
   * In order to insert and remove an object, objects of type T must provide the methods getAABB() and getLargestObjectAABBSize() (for instanced geometry).
   * In order to perform visibility tests, objects of type T must provide the methods cull() and cullAndIntersect()
   * that are used for fine-grained view frustum and detail culling.
