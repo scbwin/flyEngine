@@ -41,7 +41,7 @@ namespace fly
     GL_CHECK(glVertexAttribPointer(0, 3, GL_FLOAT, false, 2 * sizeof(Vec3f), 0));
     GL_CHECK(glVertexAttribPointer(1, 3, GL_FLOAT, false, 2 * sizeof(Vec3f), reinterpret_cast<const void*>(sizeof(Vec3f))));
 
-    _skydomeShaderDesc = std::make_unique<ShaderDesc<OpenGLAPI>>(createShader(GLShaderSource("assets/opengl/vs_skybox.glsl", GL_VERTEX_SHADER), GLShaderSource("assets/opengl/fs_skydome_new.glsl", GL_FRAGMENT_SHADER)), ShaderSetupFlags::SS_VP, *this);
+    _skydomeShaderDesc = std::make_shared<ShaderDesc<OpenGLAPI>>(createShader(GLShaderSource("assets/opengl/vs_skybox.glsl", GL_VERTEX_SHADER), GLShaderSource("assets/opengl/fs_skydome_new.glsl", GL_FRAGMENT_SHADER)), ShaderSetupFlags::SS_VP, *this);
 
     GL_CHECK(glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]));
   }
@@ -63,7 +63,7 @@ namespace fly
    // }
     // _skydomeShader->reload();
   }
-  std::vector<OpenGLAPI::IndirectInfo> OpenGLAPI::indirectFromMeshData(const std::vector<MeshGeometryStorage::MeshData>& mesh_data) const
+  std::vector<OpenGLAPI::IndirectInfo> OpenGLAPI::indirectFromMeshData(const std::vector<MeshData>& mesh_data) const
   {
     std::vector<IndirectInfo> infos;
     for (const auto& d : mesh_data) {
@@ -87,26 +87,21 @@ namespace fly
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit0()));
     shadowmap.bind();
   }
-  void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data) const
+  void OpenGLAPI::renderMesh(const MeshData & mesh_data) const
   {
     GL_CHECK(glDrawElementsBaseVertex(GL_TRIANGLES, mesh_data._count, mesh_data._type, mesh_data._indices, mesh_data._baseVertex));
   }
-  void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & model_matrix) const
+  void OpenGLAPI::renderMesh(const MeshData & mesh_data, const Mat4f & model_matrix) const
   {
     setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::modelMatrix()), model_matrix);
     renderMesh(mesh_data);
   }
-  void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse) const
+  void OpenGLAPI::renderMesh(const MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse) const
   {
     setMatrixTranspose(_activeShader->uniformLocation(GLSLShaderGenerator::modelMatrixInverse()), model_matrix_inverse);
     renderMesh(mesh_data, model_matrix);
   }
-  void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & model_matrix, const Mat3f & model_matrix_inverse, const Mat3f & model_view_inverse) const
-  {
-    setMatrixTranspose(_activeShader->uniformLocation(GLSLShaderGenerator::modelViewInverse()), model_view_inverse);
-    renderMesh(mesh_data, model_matrix, model_matrix_inverse);
-  }
-  void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & model_matrix, const WindParamsLocal & params, const AABB & aabb) const
+  void OpenGLAPI::renderMesh(const MeshData & mesh_data, const Mat4f & model_matrix, const WindParamsLocal & params, const AABB & aabb) const
   {
     setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::windPivot()), params._pivotWorld);
     setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::windExponent()), params._bendFactorExponent);
@@ -114,13 +109,12 @@ namespace fly
     setVector(_activeShader->uniformLocation(GLSLShaderGenerator::bbMax()), aabb.getMax());
     renderMesh(mesh_data, model_matrix);
   }
-  void OpenGLAPI::renderMesh(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & model_matrix, const Mat3f & model_matrix_inverse, const WindParamsLocal& params, const AABB& aabb) const
+  void OpenGLAPI::renderMesh(const MeshData & mesh_data, const Mat4f & model_matrix, const Mat3f & model_matrix_inverse, const WindParamsLocal& params, const AABB& aabb) const
   {
     setMatrixTranspose(_activeShader->uniformLocation(GLSLShaderGenerator::modelMatrixInverse()), model_matrix_inverse);
     renderMesh(mesh_data, model_matrix, params, aabb);
   }
-
-  void OpenGLAPI::renderMeshMVP(const MeshGeometryStorage::MeshData & mesh_data, const Mat4f & mvp) const
+  void OpenGLAPI::renderMeshMVP(const MeshData & mesh_data, const Mat4f & mvp) const
   {
     setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::modelViewProjectionMatrix()), mvp);
     renderMesh(mesh_data);
@@ -311,7 +305,7 @@ namespace fly
     auto tex = SOIL_load_OGL_texture(path.c_str(), SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_TEXTURE_REPEATS | SOIL_FLAG_COMPRESS_TO_DXT);
     return tex != 0 ? std::make_shared<OpenGLAPI::Texture>(tex, GL_TEXTURE_2D) : nullptr;
   }
-  std::shared_ptr<GLShaderProgram> OpenGLAPI::createShader(GLShaderSource& vs, GLShaderSource& fs, GLShaderSource& gs)
+  std::shared_ptr<OpenGLAPI::Shader> OpenGLAPI::createShader(OpenGLAPI::ShaderSource& vs, OpenGLAPI::ShaderSource& fs, OpenGLAPI::ShaderSource& gs)
   {
     auto ret = std::make_shared<GLShaderProgram>();
     ret->add(vs);
@@ -320,9 +314,9 @@ namespace fly
     ret->link();
     return ret;
   }
-  GLShaderProgram OpenGLAPI::createComputeShader(GLShaderSource & source)
+  OpenGLAPI::Shader OpenGLAPI::createComputeShader(OpenGLAPI::ShaderSource & source)
   {
-    GLShaderProgram program;
+    OpenGLAPI::Shader program;
     program.add(source);
     program.link();
     return program;
@@ -418,7 +412,7 @@ namespace fly
     shader.link();
     _ssrShader = std::move(shader);
   }
-  const std::unique_ptr<ShaderDesc<OpenGLAPI>>& OpenGLAPI::getSkyboxShaderDesc() const
+  const std::shared_ptr<ShaderDesc<OpenGLAPI>>& OpenGLAPI::getSkydomeShaderDesc() const
   {
     return _skydomeShaderDesc;
   }
@@ -488,7 +482,6 @@ namespace fly
     GL_CHECK(glVertexAttribPointer(2, 2, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _uv))));
     GL_CHECK(glVertexAttribPointer(3, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _tangent))));
     GL_CHECK(glVertexAttribPointer(4, 3, GL_FLOAT, false, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, _bitangent))));
-    GL_CHECK(glBindVertexArray(0));
     return mesh_data;
   }))
   {
@@ -500,7 +493,7 @@ namespace fly
   {
     _vao.bind();
   }
-  OpenGLAPI::MeshGeometryStorage::MeshData OpenGLAPI::MeshGeometryStorage::addMesh(const std::shared_ptr<Mesh>& mesh)
+  OpenGLAPI::MeshData OpenGLAPI::MeshGeometryStorage::addMesh(const std::shared_ptr<Mesh>& mesh)
   {
     return _meshDataCache.getOrCreate(mesh, mesh);
   }

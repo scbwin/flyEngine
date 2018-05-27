@@ -12,6 +12,7 @@ namespace fly
   class Transform;
   class AABB;
 
+  // Deprecated
   class StaticModelRenderable : public Component
   {
   public:

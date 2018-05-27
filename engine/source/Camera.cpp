@@ -12,13 +12,17 @@ namespace fly
   {
   }
 
-  Mat4f Camera::getViewMatrix(const Vec3f& pos, const Vec3f& euler_angles)
+  Mat4f Camera::updateViewMatrix(const Vec3f& pos, const Vec3f& euler_angles)
   {
     _direction = Vec3f(cos(euler_angles[1]) * sin(euler_angles[0]), sin(euler_angles[1]), cos(euler_angles[1]) * cos(euler_angles[0]));
     _right = Vec3f(sin(euler_angles[0] - glm::half_pi<float>()), sin(euler_angles[2]), cos(euler_angles[0] - glm::half_pi<float>()));
     _up = cross(glm::vec3(_right), glm::vec3(_direction));
 
     return MathHelpers::getViewMatrixRightHanded(pos, _right, _up, _direction);
+  }
+  Mat3f Camera::getViewMatrixInverse() const
+  {
+    return Mat3f({_right, _up, _direction * -1.f});
   }
   const Vec3f & Camera::getPosition() const
   {
@@ -69,7 +73,7 @@ namespace fly
   {
     return _frustumPlanes;
   }
-  IntersectionResult Camera::intersectPlaneAABB(const Vec4f & plane, const Vec3f& h, const Vec4f& center) const
+  IntersectionResult Camera::planeIntersectsAABB(const Vec4f & plane, const Vec3f& h, const Vec4f& center) const
   {
  //   auto h = (aabb.getMax() - aabb.getMin()) * 0.5f;
     auto e = dot(h, abs(plane.xyz()));
@@ -79,13 +83,13 @@ namespace fly
     }
     return s + e < 0.f ? IntersectionResult::INSIDE : IntersectionResult::INTERSECTING;
   }
-  IntersectionResult Camera::intersectFrustumAABB(const AABB & aabb) const
+  IntersectionResult Camera::frustumIntersectsAABB(const AABB & aabb) const
   {
     bool intersecting = false;
     auto h = (aabb.getMax() - aabb.getMin()) * 0.5f;
     Vec4f center(aabb.center(), 1.f);
     for (const auto& p : _frustumPlanes) {
-      auto result = intersectPlaneAABB(p, h, center);
+      auto result = planeIntersectsAABB(p, h, center);
       if (result == IntersectionResult::OUTSIDE) {
         return IntersectionResult::OUTSIDE;
       }

@@ -34,8 +34,6 @@ private:
   static void cbGetReliefMapping(void* value, void* client_data);
   static void cbSetDepthPrepass(const void* value, void* client_data);
   static void cbGetDepthPrepass(void* value, void* client_data);
-  static void cbSetWindAnimations(const void* value, void* client_data);
-  static void cbGetWindAnimations(void* value, void* client_data);
   static void cbSetShadowmapsize(const void* value, void* client_data);
   static void cbGetShadowmapsize(void* value, void* client_data);
   static void cbSetExposure(const void* value, void* client_data);

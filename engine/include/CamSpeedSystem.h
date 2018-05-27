@@ -8,7 +8,9 @@
 namespace fly
 {
   /**
-  * Controlls the speed of the camera, depending if the camera intersects any of the scenes static geometry.
+  * Controls the speed of the camera, depending if the camera intersects any of the scenes static geometry.
+  * This class is only used for demonstration purposes on how to perform intersection tests with a 
+  * Bounding Volume Hierarchy (BVH)
   */
   template<typename API>
   class CamSpeedSystem : public System
@@ -30,13 +32,13 @@ namespace fly
     virtual void update() override
     {
       AABB aabb(_camController->getCamera()->getPosition() - _range, _camController->getCamera()->getPosition() + _range);
-      _intersectedElements.clear();
-      _bvhStatic->intersectElements(aabb, _intersectedElements);
-      _camController->setSpeedFactor(_intersectedElements.size() ? _speedFactorLow : _speedFactorHigh);
+      _intersectedObjects.clear();
+      _bvhStatic->intersectObjects(aabb, _intersectedObjects);
+      _camController->setSpeedFactor(_intersectedObjects.size() ? _speedFactorLow : _speedFactorHigh);
     }
   private:
     std::unique_ptr<typename Renderer<API>::BVH> const & _bvhStatic;
-    StackPOD<MeshRenderable<API>*> _intersectedElements;
+    StackPOD<IMeshRenderable<API>*> _intersectedObjects;
     std::unique_ptr<CameraController> const & _camController;
     float _speedFactorLow = 0.2f;
     float _speedFactorHigh = 1.f;

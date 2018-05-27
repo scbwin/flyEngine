@@ -24,12 +24,6 @@ namespace fly
     void setNormalPath(const std::string& normal_path);
     void setOpacityPath(const std::string& opacity_path);
     void setHeightPath(const std::string& height_path);
-    bool hasWindX() const;
-    void setHasWindX(bool has_wind, float strength, float frequ);
-    bool hasWindZ() const;
-    void setHasWindZ(bool has_wind, float strength, float frequ);
-    float getWindStrength() const;
-    float getWindFrequency() const;
     void setIsReflective(bool reflective);
     bool isReflective() const;
     float getKa() const;
@@ -48,6 +42,14 @@ namespace fly
     void setParallaxBinarySearchSteps(float steps);
     void setDiffuseColors(const std::vector<Vec4f>& colors);
     const std::vector<Vec4f>& getDiffuseColors() const;
+
+    // Deprecated
+    bool hasWindX() const;
+    void setHasWindX(bool has_wind, float strength, float frequ);
+    bool hasWindZ() const;
+    void setHasWindZ(bool has_wind, float strength, float frequ);
+    float getWindStrength() const;
+    float getWindFrequency() const;
 
   private:
     float _ka = 0.025f;

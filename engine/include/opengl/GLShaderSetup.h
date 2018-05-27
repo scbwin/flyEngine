@@ -18,6 +18,7 @@ namespace fly
     static void setupWind(const GlobalShaderParams& params, GLShaderProgram const * shader);
     static void setupGamma(const GlobalShaderParams& params, GLShaderProgram const * shader);
     static void setupPInverse(const GlobalShaderParams& params, GLShaderProgram const * shader);
+    static void setupVInverse(const GlobalShaderParams& params, GLShaderProgram const * shader);
   };
 }
 

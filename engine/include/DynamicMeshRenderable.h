@@ -13,7 +13,7 @@ namespace fly
   class Mesh;
   class Material;
 
-
+  // Deprecated
   class DynamicMeshRenderable : public Component
   {
   public:

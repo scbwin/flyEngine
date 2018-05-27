@@ -17,7 +17,6 @@ namespace fly
     listener->shadowMapSizeChanged(this);
     listener->depthOfFieldChanged(this);
     listener->compositingChanged(this);
-    listener->windAnimationsChanged(this);
     listener->anisotropyChanged(this);
     listener->cameraLerpingChanged(this);
     listener->gammaChanged(this);
@@ -143,17 +142,6 @@ namespace fly
   {
     _gamma = std::max(gamma, 0.f);
     notifyCompositingChanged();
-  }
-  bool GraphicsSettings::getWindAnimations() const
-  {
-    return _windAnimations;
-  }
-  void GraphicsSettings::setWindAnimations(bool enabled)
-  {
-    _windAnimations = enabled;
-    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
-      l->windAnimationsChanged(this);
-    });
   }
   bool GraphicsSettings::getDebugQuadtreeNodeAABBs() const
   {

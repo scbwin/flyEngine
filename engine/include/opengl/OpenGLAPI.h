@@ -62,7 +62,6 @@ namespace fly
       }
       GL_CHECK(glClear(flag));
     }
-    static inline constexpr bool isDirectX() { return false; }
     static const size_t _maxRendertargets = 8;
     template<bool enable> inline void setDepthTestEnabled() const { GL_CHECK(enable ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST)); }
     template<bool enable> inline void setFaceCullingEnabled() const { GL_CHECK(enable ? glEnable(GL_CULL_FACE) : glDisable(GL_CULL_FACE)); }
@@ -116,23 +115,24 @@ namespace fly
     using ShaderSource = GLShaderSource;
     using StorageBuffer = GLBuffer;
     using IndirectBuffer = GLBuffer;
+    struct MeshData // For each mesh
+    {
+      GLsizei _count; // Number of indices (i.e. num triangles * 3)
+      GLvoid* _indices; // Byte offset into the index buffer
+      GLint _baseVertex; // Offset into the vertex buffer
+      GLenum _type; // Either GL_UNSIGNED_SHORT or GL_UNSIGNED_INT, depending on the number of vertices of this mesh.
+      inline unsigned numTriangles() const { return static_cast<unsigned>(_count / 3); }
+    };
     /**
     * Geometry data for every single mesh that is added is stored in this structure.
-    * There is one vertex array, one big vertex buffer and one big index buffer for the whole scene.
+    * There is one vertex array, one vertex buffer and one index buffer for the whole scene.
     * When rendering, only the vertex array has to be bound once at the beginning of the frame, 
     * this helps to keep state changes at a minimum.
+    * TODO: remove data if a mesh gets destroyed.
     */
     class MeshGeometryStorage
     {
     public:
-      struct MeshData // For each mesh
-      {
-        GLsizei _count; // Number of indices (i.e. num triangles * 3)
-        GLvoid* _indices; // Byte offset into the index buffer
-        GLint _baseVertex; // Offset into the vertex buffer
-        inline unsigned numTriangles() const {return static_cast<unsigned>(_count / 3);}
-        GLenum _type;
-      };
       MeshGeometryStorage();
       ~MeshGeometryStorage();
       void bind() const;
@@ -147,13 +147,13 @@ namespace fly
     };
     struct IndirectInfo
     {
-      unsigned _count;
-      unsigned _primCount; // Number of instances, typically updated dynamically by a compute shader
-      unsigned _firstIndex;
-      unsigned _baseVertex;
-      unsigned _baseInstance;
-      GLenum _type;
-      IndirectInfo(const MeshGeometryStorage::MeshData& mesh_data)
+      unsigned _count; // Same as MeshData::_count
+      unsigned _primCount; // Number of instances, typically reset each frame an then atomically incremented by a compute shader
+      unsigned _firstIndex; // Corresponds to MeshData::_indices, but this is an index instead of a byte offset.
+      unsigned _baseVertex; // Same as MeshData::_baseVertex
+      unsigned _baseInstance; // Currently not used
+      GLenum _type; // Same as MeshData::_type
+      IndirectInfo(const MeshData& mesh_data)
       {
         _count = mesh_data._count;
         auto index = reinterpret_cast<std::uintptr_t>(mesh_data._indices) / (mesh_data._type == GL_UNSIGNED_SHORT ? sizeof(unsigned short) : sizeof(unsigned int));
@@ -163,7 +163,7 @@ namespace fly
         _type = mesh_data._type;
       }
     };
-    std::vector<IndirectInfo> indirectFromMeshData(const std::vector<MeshGeometryStorage::MeshData>& mesh_data) const;
+    std::vector<IndirectInfo> indirectFromMeshData(const std::vector<MeshData>& mesh_data) const;
     // Texture unit bindings
     static constexpr const int diffuseTexUnit() { return 0; }
     static constexpr const int alphaTexUnit() { return 1; }
@@ -176,13 +176,12 @@ namespace fly
     void beginFrame() const;
     void bindShader(GLShaderProgram const * shader);
     void bindShadowmap(const Shadowmap& shadowmap) const;
-    void renderMesh(const MeshGeometryStorage::MeshData& mesh_data) const;
-    void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix) const;
-    void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse) const;
-    void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse, const Mat3f& model_view_inverse) const;
-    void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const WindParamsLocal& wind_params, const AABB& aabb) const;
-    void renderMesh(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse, const WindParamsLocal& wind_params, const AABB& aabb) const;
-    void renderMeshMVP(const MeshGeometryStorage::MeshData& mesh_data, const Mat4f& mvp) const;
+    void renderMesh(const MeshData& mesh_data) const;
+    void renderMesh(const MeshData& mesh_data, const Mat4f& model_matrix) const;
+    void renderMesh(const MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse) const;
+    void renderMesh(const MeshData& mesh_data, const Mat4f& model_matrix, const WindParamsLocal& wind_params, const AABB& aabb) const;
+    void renderMesh(const MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse, const WindParamsLocal& wind_params, const AABB& aabb) const;
+    void renderMeshMVP(const MeshData& mesh_data, const Mat4f& mvp) const;
     void renderAABBs(const std::vector<AABB const *>& aabbs, const Mat4f& transform, const Vec3f& col);
     void prepareCulling(const std::array<Vec4f, 6>& frustum_planes, const Vec3f& cam_pos_world);
     void endCulling() const;
@@ -201,9 +200,9 @@ namespace fly
     void setAnisotropy(unsigned anisotropy);
     void enablePolygonOffset(float factor, float units) const;
     void disablePolygonOffset() const;
-    std::shared_ptr<OpenGLAPI::Texture> createTexture(const std::string& path);
-    std::shared_ptr<GLShaderProgram> createShader(GLShaderSource& vs, GLShaderSource& fs, GLShaderSource& gs = GLShaderSource());
-    GLShaderProgram createComputeShader(GLShaderSource& source);
+    std::shared_ptr<Texture> createTexture(const std::string& path);
+    std::shared_ptr<Shader> createShader(ShaderSource& vs, ShaderSource& fs, ShaderSource& gs = ShaderSource());
+    Shader createComputeShader(ShaderSource& source);
     std::unique_ptr<RTT> createRenderToTexture(const Vec2u& size, TexFilter filter);
     std::unique_ptr<Depthbuffer> createDepthbuffer(const Vec2u& size);
     std::unique_ptr<Shadowmap> createShadowmap(const GraphicsSettings& settings);
@@ -220,7 +219,7 @@ namespace fly
     void createBlurShader(const GraphicsSettings& gs);
     void createCompositeShader(const GraphicsSettings& gs);
     void createScreenSpaceReflectionsShader(const GraphicsSettings& gs);
-    const std::unique_ptr<ShaderDesc<OpenGLAPI>>& getSkyboxShaderDesc() const;
+    const std::shared_ptr<ShaderDesc<OpenGLAPI>>& getSkydomeShaderDesc() const;
     const ShaderGenerator& getShaderGenerator() const;
     Shader const *& getActiveShader();
   private:
@@ -235,7 +234,7 @@ namespace fly
     GLFramebuffer _offScreenFramebuffer;
     StackPOD<GLenum> _drawBuffers;
     std::unique_ptr<ShaderDesc<OpenGLAPI>> _compositeShaderDesc;
-    std::unique_ptr<ShaderDesc<OpenGLAPI>> _skydomeShaderDesc;
+    std::shared_ptr<ShaderDesc<OpenGLAPI>> _skydomeShaderDesc;
     GLShaderProgram _ssrShader;
     GLShaderProgram _blurShader;
     GLShaderProgram _aabbShader;

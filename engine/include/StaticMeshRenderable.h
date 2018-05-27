@@ -13,7 +13,7 @@ namespace fly
   class Transform;
   class Mesh;
   class Material;
-
+  // Deprecated
   class StaticMeshRenderable : public Component
   {
   public:

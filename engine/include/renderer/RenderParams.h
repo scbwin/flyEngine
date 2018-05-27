@@ -18,6 +18,7 @@ namespace fly
   {
     Mat4f _projectionMatrix;
     Mat4f _viewMatrix;
+    Mat3f _viewMatrixInverse;
     Mat4f const * _VP;
     StackPOD<Mat4f> _worldToLight;
     std::vector<float> const * _smFrustumSplits;

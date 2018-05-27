@@ -384,7 +384,7 @@ uniform float " + std::string(specularConstant()) + ";\n\
 uniform float " + std::string(specularExponent()) + ";\n\
 uniform float " + std::string(gamma()) + ";\n" +
 (instanced ? std::string("in") : std::string("uniform")) + " mat3 " + std::string(modelMatrixInverse()) + ";\n\
-uniform mat3 " + std::string(modelViewInverse()) + ";\n\
+uniform mat3 " + std::string(viewInverse()) + ";\n\
 uniform vec4 " + std::string(viewMatrixThirdRow()) + ";\n\
 in vec3 normal_local;\n\
 in vec3 tangent_local;\n\
@@ -470,12 +470,13 @@ in vec3 bitangent_local;\n";
     }
     if (settings.getScreenSpaceReflections()) {
       if (flags & MR_REFLECTIVE) {
+        shader_src += "  mat3 mv_inverse = " + std::string(viewInverse()) + " * " + std::string(modelMatrixInverse()) + ";\n";
         if (tangent_space) {
-          shader_src += "  mat3 tangent_to_view = mat3(normalize(" + std::string(modelViewInverse()) + " * tangent_local), normalize(" + std::string(modelViewInverse()) + " * bitangent_local), normalize(" + std::string(modelViewInverse()) + " * normal_local));\n\
+          shader_src += "  mat3 tangent_to_view = mat3(normalize(mv_inverse * tangent_local), normalize(mv_inverse * bitangent_local), normalize(mv_inverse * normal_local));\n\
   viewSpaceNormal = normalize(tangent_to_view * normal_ts);\n";
         }
         else {
-          shader_src += "  viewSpaceNormal = normalize(" + std::string(modelViewInverse()) + " * normal_local);\n";
+          shader_src += "  viewSpaceNormal = normalize(mv_inverse * normal_local);\n";
         }
       }
       else {

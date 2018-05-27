@@ -44,7 +44,7 @@ namespace fly
     static inline constexpr const char* time() { return "t"; };
     static inline constexpr const char* modelMatrix() { return "M"; };
     static inline constexpr const char* modelMatrixInverse() { return "M_i"; };
-    static inline constexpr const char* modelViewInverse() { return "MV_i"; };
+    static inline constexpr const char* viewInverse() { return "V_i"; };
     static inline constexpr const char* viewProjectionMatrix() { return "VP"; };
     static inline constexpr const char* projectionMatrix() { return "P"; };
     static inline constexpr const char* projectionMatrixInverse() { return "P_i"; };

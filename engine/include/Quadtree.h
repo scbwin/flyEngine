@@ -12,11 +12,20 @@
 
 namespace fly
 {
+  /**
+  * Quadtree implemetation that is used for intersection tests and view frustum culling.
+  * In order to insert and remove an object, objects of type T must provide the methods getAABB() and getLargestObjectAABBSize() (for instanced geometry).
+  * In order to perform visibility tests, objects of type T must provide the methods cull() and cullAndIntersect()
+  * that are used for fine-grained view frustum and detail culling.
+  * Objects are always stored in the smallest node that encloses the object entirely. The quadtree is sparse, i.e.
+  * nodes are only created on demand as soon as objects are added.
+  * The quadtree is not responsible for memory management, it can just store raw pointers to the objects.
+  */
   template<typename T>
   class Quadtree
   {
     // using TPtr = std::shared_ptr<T>;
-    using TPtr = T * ;
+    using TPtr = T *;
     using Stack = StackPOD<TPtr>;
   public:
     class Node
@@ -25,33 +34,52 @@ namespace fly
       Node(const Vec2f& min, const Vec2f& max) :
         _min(min),
         _max(max),
-        _aabbWorld(),
-        _largestElementAABBWorldSize(0.f)
+        _aabb(),
+        _largestObjectAABBSize(0.f)
       {
       }
       inline const Vec2f& getMin() const { return _min; }
       inline const Vec2f& getMax() const { return _max; }
       inline Vec2f getSize() const { return _max - _min; }
-      inline void setAABBWorld(const AABB& aabb) { _aabbWorld = aabb; }
-      inline AABB* getAABBWorld() { return &_aabbWorld; }
-      inline const std::vector<TPtr> & getElements() { return _elements; }
-      void insert(const TPtr& element)
+      inline void setAABB(const AABB& aabb) { _aabb = aabb; }
+      inline AABB const * getAABB() { return &_aabb; }
+      inline const std::vector<TPtr> & getObjects() { return _objects; }
+      void insert(const TPtr& object)
       {
-        AABB const * aabb_element = element->getAABBWorld();
-        _aabbWorld = _aabbWorld.getUnion(*aabb_element);
-        _largestElementAABBWorldSize = std::max(_largestElementAABBWorldSize, element->getLargestElementAABBSize());
+        AABB const * aabb_object = object->getAABB();
+        _aabb = _aabb.getUnion(*aabb_object);
+        _largestObjectAABBSize = std::max(_largestObjectAABBSize, object->getLargestObjectAABBSize());
         for (unsigned char i = 0; i < 4; i++) {
           Vec2f child_min, child_max;
           getChildBounds(child_min, child_max, i);
-          if (child_min <= aabb_element->getMin().xz() && child_max >= aabb_element->getMax().xz()) { // The child node encloses the element entirely, therefore push it further down the tree.
+          if (child_min <= aabb_object->getMin().xz() && child_max >= aabb_object->getMax().xz()) { // The child node encloses the object entirely, therefore push it further down the tree.
             if (_children[i] == nullptr) { // Create the node if not yet constructed
               _children[i] = std::make_unique<Node>(child_min, child_max);
             }
-            _children[i]->insert(element);
+            _children[i]->insert(object);
             return;
           }
         }
-        _elements.push_back(element); // The element doesn't fit into any of the child nodes, therefore insert it into the current node.
+        _objects.push_back(object); // The object doesn't fit into any of the child nodes, therefore insert it into the current node.
+      }
+      bool removeObject(const TPtr& object)
+      {
+        // TODO: update node aabbs, largest object size and delete nodes if necessary.
+        if (object->getAABB()->intersects(_aabb)) {
+          for (unsigned i = 0; i < _objects.size(); i++) {
+            if (_objects[i] == object) {
+              _objects.erase(_objects.begin() + i);
+              return true;
+            }
+          }
+          for (const auto& c : _children) {
+            if (c && c->removeObject(object)) {
+              return true;
+            }
+          }
+        }
+        std::cout << "Attempting to remove object from the quadtree that wasn't added. This should never happen." << std::endl;
+        return false;
       }
       void print(unsigned level) const
       {
@@ -59,11 +87,11 @@ namespace fly
         for (unsigned i = 0; i < level; i++) {
           indent += "  ";
         }
-        std::cout << indent << "Node bounds:" << _min << " " << getMax() << " extents:" << _aabbWorld.getMin() << " " << _aabbWorld.getMax() << std::endl;
-        if (_elements.size()) {
-          std::cout << indent << "Element aabbs world:" << std::endl;
-          for (const auto& e : _elements) {
-            std::cout << indent << e->getAABBWorld()->getMin() << " " << e->getAABBWorld()->getMax() << std::endl;
+        std::cout << indent << "Node bounds:" << _min << " " << getMax() << " extents:" << _aabb.getMin() << " " << _aabb.getMax() << std::endl;
+        if (_objects.size()) {
+          std::cout << indent << "Object aabbs :" << std::endl;
+          for (const auto& e : _objects) {
+            std::cout << indent << e->getAABB()->getMin() << " " << e->getAABB()->getMax() << std::endl;
           }
         }
         for (const auto& c : _children) {
@@ -72,61 +100,61 @@ namespace fly
           }
         }
       }
-
-      void cullAllElements(Stack& all_elements, const Camera& camera)
+      void cullAllObjects(Stack& all_objects, const Camera& camera)
       {
-        if (_aabbWorld.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
-          for (const auto& e : _elements) {
-            if (e->cull(camera)) {
-              all_elements.push_back(e);
+        if (_aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestObjectAABBSize)) {
+          for (const auto& e : _objects) {
+            if (e->cull(camera)) { // The node is already large enough -> check if the object is large enough to render.
+              all_objects.push_back(e);
             }
           }
           for (const auto& c : _children) {
             if (c) {
-              c->cullAllElements(all_elements, camera);
+              c->cullAllObjects(all_objects, camera);
             }
           }
         }
       }
-
-      void cullVisibleElements(Stack& visible_elements, const Camera& camera) const
+      void cullVisibleObjects(Stack& visible_objects, const Camera& camera) const
       {
-        if (_aabbWorld.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
-          auto result = camera.intersectFrustumAABB(_aabbWorld);
+        if (_aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestObjectAABBSize)) {
+          auto result = camera.frustumIntersectsAABB(_aabb);
           if (result == IntersectionResult::INSIDE) {
-            for (const auto& e : _elements) {
-              if (e->cull(camera)) {
-                visible_elements.push_back(e);
+            for (const auto& e : _objects) {
+              if (e->cull(camera)) { // The node is already large enough -> check if the object is large enough to render.
+                visible_objects.push_back(e);
               }
             }
             for (const auto& c : _children) {
               if (c) {
-                c->cullAllElements(visible_elements, camera);
+                c->cullAllObjects(visible_objects, camera); // No further visibility tests needed, because the node is fully within the view frustum.
               }
             }
           }
           else if (result == IntersectionResult::INTERSECTING) {
-            for (const auto& e : _elements) {
-              if (e->cullAndIntersect(camera)) {
-                visible_elements.push_back(e);
+            for (const auto& e : _objects) {
+              if (e->cullAndIntersect(camera)) { // The node is already large enough and intersects the view frustum -> check if the object is large enough and intersects the view frustum.
+                visible_objects.push_back(e);
               }
             }
             for (const auto& c : _children) {
               if (c) {
-                c->cullVisibleElements(visible_elements, camera);
+                c->cullVisibleObjects(visible_objects, camera); // Proceed with visibility tests for child nodes.
               }
             }
           }
+          // No need to process child nodes if the node is outside the view frustum.
         }
+        // No need to process child nodes if the node is too small.
       }
-      void getAllElements(Stack& all_elements) const
+      void getAllObjects(Stack& all_objects) const
       {
-        for (const auto& e : _elements) {
-          all_elements.push_back_secure(e);
+        for (const auto& e : _objects) {
+          all_objects.push_back_secure(e);
         }
         for (const auto& c : _children) {
           if (c) {
-            c->getAllElements(all_elements);
+            c->getAllObjects(all_objects);
           }
         }
       }
@@ -141,7 +169,7 @@ namespace fly
       }
       void cullAllNodes(StackPOD<Node*>& nodes, const Camera& camera)
       {
-        if (_aabbWorld.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
+        if (_aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestObjectAABBSize)) {
           nodes.push_back_secure(this);
           for (const auto& c : _children) {
             if (c) {
@@ -152,8 +180,8 @@ namespace fly
       }
       void cullVisibleNodes(StackPOD<Node*>& visible_nodes, const Camera& camera)
       {
-        if (_aabbWorld.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestElementAABBWorldSize)) {
-          auto result = camera.intersectFrustumAABB(_aabbWorld);
+        if (_aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestObjectAABBSize)) {
+          auto result = camera.frustumIntersectsAABB(_aabb);
           if (result == IntersectionResult::INSIDE) {
             visible_nodes.push_back_secure(this);
             for (const auto& c : _children) {
@@ -172,70 +200,44 @@ namespace fly
           }
         }
       }
-      bool removeElement(const TPtr& element)
+      void intersectObjects(const AABB& aabb, Stack& intersected_objects)
       {
-        /*for (unsigned i = 0; i < _elements.size(); i++) {
-          if (_elements[i] == element) {
-            _elements.erase(_elements.begin() + i);
-            return true;
-          }
-        }
-        for (const auto& c : _children) {
-          if (c && c->removeElement(element)) {
-            return true;
-          }
-        }
-        std::cout << "Attempting to remove element from the quadtree that wasn't added. This should never happen." << std::endl;
-        return false;*/
-        if (element->getAABBWorld()->intersects(_aabbWorld)) {
-          for (unsigned i = 0; i < _elements.size(); i++) {
-            if (_elements[i] == element) {
-              _elements.erase(_elements.begin() + i);
-              return true;
-            }
-          }
-          for (const auto& c : _children) {
-            if (c && c->removeElement(element)) {
-              return true;
-            }
-          }
-        }
-        std::cout << "Attempting to remove element from the quadtree that wasn't added. This should never happen." << std::endl;
-        return false;
-      }
-      void intersectElements(const AABB& aabb, Stack& stack)
-      {
-        if (aabb.contains(_aabbWorld)) {
-          for (const auto& e : _elements) {
-            stack.push_back_secure(e);
+        if (aabb.contains(_aabb)) {
+          for (const auto& e : _objects) {
+            intersected_objects.push_back_secure(e);
           }
           for (const auto& c : _children) {
             if (c) {
-              c->getAllElements(stack);
+              c->getAllObjects(intersected_objects);
             }
           }
         }
-        else if (aabb.intersects(_aabbWorld)) {
-          for (const auto& e : _elements) {
-            if (aabb.intersects(*e->getAABBWorld())) {
-              stack.push_back_secure(e);
+        else if (aabb.intersects(_aabb)) {
+          for (const auto& e : _objects) {
+            if (aabb.intersects(*e->getAABB())) {
+              intersected_objects.push_back_secure(e);
             }
           }
           for (const auto& c : _children) {
             if (c) {
-              c->intersectElements(aabb, stack);
+              c->intersectObjects(aabb, intersected_objects);
             }
           }
         }
       }
     private:
+      // Pointers to child nodes, any of them may be nullptr.
       std::unique_ptr<Node> _children[4];
-      // Axis aligned bounding box for the enclosed elements (union)
-      AABB _aabbWorld;
-      // Largest element aabb size that is enclosed by this node, useful for detail culling
-      float _largestElementAABBWorldSize;
-      // Pointers to the elements
-      std::vector<TPtr> _elements;
+      // Axis aligned bounding box that the encloses the objects within this node.
+      AABB _aabb;
+      /** 
+      * Largest object aabb size that is enclosed by this node. If the largest object within
+      * a node is too small to render, then all the other objects within this node are too small as well
+      * and the node can safely be discarded from rendering.
+      */
+      float _largestObjectAABBSize;
+      // Pointers to the objects
+      std::vector<TPtr> _objects;
       // Node min max
       Vec2f _min, _max;
       void getChildBounds(Vec2f& min, Vec2f& max, unsigned char index) const
@@ -249,40 +251,32 @@ namespace fly
     Quadtree(const AABB& bounds)
     {
       _root = std::make_unique<Node>(bounds.getMin().xz(), bounds.getMax().xz());
-      _root->setAABBWorld(bounds);
+      _root->setAABB(bounds);
     }
-    void insert(const TPtr& element)
+    void insert(const TPtr& object)
     {
-      if (_root->getAABBWorld()->contains(*element->getAABBWorld())) {
-        _root->insert(element);
+      if (_root->getAABB()->contains(*object->getAABB())) {
+        _root->insert(object);
       }
       else {
-       /* auto all_elements = getAllElements();
-        AABB aabb_new = _root->getAABBWorld()->getUnion(*element->getAABBWorld());
-        _root = std::make_unique<Node>(aabb_new.getMin().xz(), aabb_new.getMax().xz());
-        _root->setAABBWorld(aabb_new);
-        _root->insert(element);
-        for (const auto& e : all_elements) {
-          _root->insert(e);
-        }*/
-        std::cout << "error" << std::endl;
+        throw std::exception("The object does not fit into the quadtree, please check the bounds of the object and the quadtree");
       }
     }
-    void intersectElements(const AABB& aabb, Stack& stack)
+    void intersectObjects(const AABB& aabb, Stack& stack)
     {
-      _root->intersectElements(aabb, stack);
+      _root->intersectObjects(aabb, stack);
     }
     void print() const
     {
       _root->print(0);
     }
-    void cullVisibleElements(const Camera& camera, Stack& stack) const
+    void cullVisibleObjects(const Camera& camera, Stack& stack) const
     {
-      _root->cullVisibleElements(stack, camera);
+      _root->cullVisibleObjects(stack, camera);
     }
-    void getAllElements(Stack& stack) const
+    void getAllObjects(Stack& stack) const
     {
-      _root->getAllElements(stack);
+      _root->getAllObjects(stack);
     }
     void cullVisibleNodes(StackPOD<Node*>& stack, const Camera& camera) const
     {
@@ -292,9 +286,9 @@ namespace fly
     {
       _root->getAllNodes(stack);
     }
-    bool removeElement(const TPtr& element)
+    bool removeObject(const TPtr& object)
     {
-      return _root->removeElement(element);
+      return _root->removeObject(object);
     }
   private:
     std::unique_ptr<Node> _root;

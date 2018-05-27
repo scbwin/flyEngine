@@ -20,7 +20,6 @@ namespace fly
       virtual void shadowMapSizeChanged(GraphicsSettings const * gs) = 0;
       virtual void depthOfFieldChanged(GraphicsSettings const * gs) = 0;
       virtual void compositingChanged(GraphicsSettings const * gs) = 0;
-      virtual void windAnimationsChanged(GraphicsSettings const * gs) = 0;
       virtual void anisotropyChanged(GraphicsSettings const * gs) = 0;
       virtual void cameraLerpingChanged(GraphicsSettings const * gs) = 0;
       virtual void gammaChanged(GraphicsSettings const * gs) = 0;
@@ -56,8 +55,6 @@ namespace fly
     void setExposure(float exposure);
     float getGamma() const;
     void setGamma(float gamma);
-    bool getWindAnimations() const;
-    void setWindAnimations(bool enabled);
     bool getDebugQuadtreeNodeAABBs() const;
     bool getDebugObjectAABBs() const;
     void setDebugQuadtreeNodeAABBs(bool enable);
@@ -113,7 +110,6 @@ namespace fly
     bool _gammaCorrectionEnabled = true;
     float _exposure = 1.f;
     float _gamma = 2.2f;
-    bool _windAnimations = true;
     bool _depthPrepass = false;
     bool _shadows = true;
     bool _shadowsPCF = true;

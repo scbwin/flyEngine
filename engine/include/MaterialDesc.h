@@ -12,6 +12,11 @@
 
 namespace fly
 {
+  /**
+  * Wraps a single material and generates shaders based on the material properties.
+  * The setup() method takes care of sending the necessary uniform data to the GPU once the material is bound.
+  * When the graphics settings change, all the shaders are recreated.
+  */
   template<typename API>
   class MaterialDesc : public GraphicsSettings::Listener
   {
@@ -82,13 +87,13 @@ namespace fly
       }
       _meshShaderDesc = createShaderDesc(createShader(vertex_source, fragment_source), ss_flags, _api);
       _meshShaderDescInstanced = createShaderDesc(createShader(vertex_source_instanced, fragment_source_instanced), ss_flags, _api);
-      _meshShaderDescReflective = settings.getScreenSpaceReflections() ? createShaderDesc(createShader(vertex_source, _api.getShaderGenerator().createMeshFragmentShaderSource(flag | FLAG::MR_REFLECTIVE, settings)), ss_flags, _api) : _meshShaderDesc;
-      _meshShaderDescWind = settings.getWindAnimations() ? createShaderDesc(createShader(_api.getShaderGenerator().createMeshVertexShaderSource(flag | FLAG::MR_WIND, settings), fragment_source), ss_flags | ShaderSetupFlags::SS_WIND | ShaderSetupFlags::SS_TIME, _api) : _meshShaderDesc;
+      _meshShaderDescReflective = settings.getScreenSpaceReflections() ? createShaderDesc(createShader(vertex_source, _api.getShaderGenerator().createMeshFragmentShaderSource(flag | FLAG::MR_REFLECTIVE, settings)), ss_flags | ShaderSetupFlags::SS_V_INVERSE, _api) : _meshShaderDesc;
+      _meshShaderDescWind = createShaderDesc(createShader(_api.getShaderGenerator().createMeshVertexShaderSource(flag | FLAG::MR_WIND, settings), fragment_source), ss_flags | ShaderSetupFlags::SS_WIND | ShaderSetupFlags::SS_TIME, _api);
       GLShaderSource depth_gs_source = settings.getSinglePassShadows() ? _api.getShaderGenerator().createMeshGeometryShaderDepthSource(flag, settings) : GLShaderSource();
       _meshShaderDescDepth = createShaderDesc(createShader(_api.getShaderGenerator().createMeshVertexShaderDepthSource(flag, settings), _api.getShaderGenerator().createMeshFragmentShaderDepthSource(flag, settings), depth_gs_source), settings.getSinglePassShadows() ? ShaderSetupFlags::SS_WORLD_TO_LIGHT : ShaderSetupFlags::SS_VP, _api);
       GLShaderSource depth_gs_source_instanced = settings.getSinglePassShadows() ? _api.getShaderGenerator().createMeshGeometryShaderDepthSource(flag, settings, true) : GLShaderSource();
       _meshShaderDescDepthInstanced = createShaderDesc(createShader(_api.getShaderGenerator().createMeshVertexShaderDepthSource(flag, settings, true), _api.getShaderGenerator().createMeshFragmentShaderDepthSource(flag, settings), depth_gs_source_instanced), settings.getSinglePassShadows() ? ShaderSetupFlags::SS_WORLD_TO_LIGHT : ShaderSetupFlags::SS_VP, _api);
-      _meshShaderDescWindDepth = settings.getWindAnimations() ? createShaderDesc(createShader(_api.getShaderGenerator().createMeshVertexShaderDepthSource(flag | FLAG::MR_WIND, settings), _api.getShaderGenerator().createMeshFragmentShaderDepthSource(flag | FLAG::MR_WIND, settings), depth_gs_source), (settings.getSinglePassShadows() ? ShaderSetupFlags::SS_WORLD_TO_LIGHT : ShaderSetupFlags::SS_VP) | ShaderSetupFlags::SS_WIND | ShaderSetupFlags::SS_TIME, _api) : _meshShaderDescDepth;
+      _meshShaderDescWindDepth = createShaderDesc(createShader(_api.getShaderGenerator().createMeshVertexShaderDepthSource(flag | FLAG::MR_WIND, settings), _api.getShaderGenerator().createMeshFragmentShaderDepthSource(flag | FLAG::MR_WIND, settings), depth_gs_source), (settings.getSinglePassShadows() ? ShaderSetupFlags::SS_WORLD_TO_LIGHT : ShaderSetupFlags::SS_VP) | ShaderSetupFlags::SS_WIND | ShaderSetupFlags::SS_TIME, _api);
     }
     template<bool depth>
     inline void setup() const
@@ -162,7 +167,6 @@ namespace fly
     virtual void shadowMapSizeChanged(GraphicsSettings const * gs) override { create(*gs); }
     virtual void depthOfFieldChanged(GraphicsSettings const * gs) override { create(*gs); }
     virtual void compositingChanged(GraphicsSettings const * gs) override { create(*gs); }
-    virtual void windAnimationsChanged(GraphicsSettings const * gs) override { create(*gs); }
     virtual void anisotropyChanged(GraphicsSettings const * gs) override { create(*gs); }
     virtual void cameraLerpingChanged(GraphicsSettings const * gs) override { create(*gs); }
     virtual void gammaChanged(GraphicsSettings const * gs) override { create(*gs); }

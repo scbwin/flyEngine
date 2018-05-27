@@ -48,4 +48,8 @@ namespace fly
   {
     setMatrix(shader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverse()), inverse(params._projectionMatrix));
   }
+  void GLShaderSetup::setupVInverse(const GlobalShaderParams & params, GLShaderProgram const * shader)
+  {
+    setMatrixTranspose(shader->uniformLocation(GLSLShaderGenerator::viewInverse()), params._viewMatrixInverse);
+  }
 }

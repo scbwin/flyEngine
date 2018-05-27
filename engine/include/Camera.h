@@ -7,7 +7,7 @@
 
 namespace fly
 {
-  enum IntersectionResult
+  enum class IntersectionResult
   {
     OUTSIDE, INSIDE, INTERSECTING
   };
@@ -19,7 +19,8 @@ namespace fly
   public:
     Camera(const Vec3f& pos, const Vec3f& euler_angles);
     virtual ~Camera();
-    Mat4f getViewMatrix(const Vec3f& pos, const Vec3f& euler_angles);
+    Mat4f updateViewMatrix(const Vec3f& pos, const Vec3f& euler_angles);
+    Mat3f getViewMatrixInverse() const;
     const Vec3f& getPosition() const;
     const Vec3f& getDirection() const;
     const Vec3f& getRight() const;
@@ -31,8 +32,8 @@ namespace fly
     void setActive(bool active);
     void extractFrustumPlanes(const Mat4f& vp, bool directx = false);
     const std::array<Vec4f, 6>& getFrustumPlanes() const;
-    IntersectionResult intersectPlaneAABB(const Vec4f& plane, const Vec3f& h, const Vec4f& center) const;
-    IntersectionResult intersectFrustumAABB(const AABB& aabb) const;
+    IntersectionResult planeIntersectsAABB(const Vec4f& plane, const Vec3f& h, const Vec4f& center) const;
+    IntersectionResult frustumIntersectsAABB(const AABB& aabb) const;
     float getDetailCullingThreshold() const;
     void setDetailCullingThreshold(float threshold);
   private:

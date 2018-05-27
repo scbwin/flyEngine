@@ -8,6 +8,9 @@
 
 namespace fly
 {
+  /**
+  * Class that wraps a single shader program and sets up the necessary uniform data once the shader is bound. 
+  */
   template<typename API>
   class ShaderDesc
   {
@@ -39,6 +42,9 @@ namespace fly
       }
       if (flags & ShaderSetupFlags::SS_WORLD_TO_LIGHT) {
         _setupFuncs.push_back_secure(typename API::ShaderSetup::setupWorldToLight);
+      }
+      if (flags & ShaderSetupFlags::SS_V_INVERSE) {
+        _setupFuncs.push_back_secure(typename API::ShaderSetup::setupVInverse);
       }
     }
     inline void setup(const GlobalShaderParams& params) const

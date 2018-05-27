@@ -21,7 +21,6 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "Parallax mapping", TwType::TW_TYPE_BOOLCPP, cbSetParallaxMapping, cbGetParallaxMapping, gs, nullptr);
   TwAddVarCB(bar, "Relief mapping", TwType::TW_TYPE_BOOLCPP, cbSetReliefMapping, cbGetReliefMapping, gs, nullptr);
   TwAddVarCB(bar, "Depth pre pass", TwType::TW_TYPE_BOOLCPP, cbSetDepthPrepass, cbGetDepthPrepass, gs, nullptr);
-  TwAddVarCB(bar, "Wind animations", TwType::TW_TYPE_BOOLCPP, cbSetWindAnimations, cbGetWindAnimations, gs, nullptr);
   TwAddVarCB(bar, "Shadow map resolution", TwType::TW_TYPE_UINT32, cbSetShadowmapsize, cbGetShadowmapsize, gs, nullptr);
   TwAddVarCB(bar, "Exposure", TwType::TW_TYPE_FLOAT, cbSetExposure, cbGetExposure, gs, "step = 0.01f");
   TwAddVarCB(bar, "Gamma", TwType::TW_TYPE_FLOAT, cbSetGamma, cbGetGamma, gs, "step = 0.01f");
@@ -119,16 +118,6 @@ void AntWrapper::cbSetDepthPrepass(const void * value, void * client_data)
 void AntWrapper::cbGetDepthPrepass(void * value, void * client_data)
 {
   *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->depthPrepassEnabled();
-}
-
-void AntWrapper::cbSetWindAnimations(const void * value, void * client_data)
-{
-  cast<fly::GraphicsSettings>(client_data)->setWindAnimations(*cast<bool>(value));
-}
-
-void AntWrapper::cbGetWindAnimations(void * value, void * client_data)
-{
-  *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getWindAnimations();
 }
 
 void AntWrapper::cbSetShadowmapsize(const void * value, void * client_data)

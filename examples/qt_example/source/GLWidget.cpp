@@ -17,6 +17,7 @@
 #include <random>
 #include <StaticInstancedMeshRenderable.h>
 #include <CamSpeedSystem.h>
+#include <renderer/MeshRenderables.h>
 
 using API = fly::OpenGLAPI;
 
@@ -322,7 +323,7 @@ void GLWidget::initGame()
   num_renderables *= NUM_OBJECTS * NUM_OBJECTS;
 #endif
   std::vector<std::shared_ptr<fly::Entity>> entities;
-  std::vector<std::shared_ptr<fly::StaticMeshRenderable>> smrs;
+  std::vector<std::shared_ptr<fly::StaticMeshRenderableWrapper<fly::OpenGLAPI>>> smrs;
   entities.reserve(num_renderables);
   smrs.reserve(num_renderables);
 
@@ -369,16 +370,24 @@ void GLWidget::initGame()
       fly::AABB aabb_world(*mesh->getAABB(), model_matrix);
       aabb_world.expand(aabb_offset);
       entities.push_back(_engine.getEntityManager()->createEntity());
-      smrs.push_back(std::make_shared<fly::StaticMeshRenderable>(mesh,
+      if (has_wind) {
+        auto smr = std::make_shared<fly::StaticMeshRenderableWind<fly::OpenGLAPI>>(*_renderer, mesh,
 #if SPONZA_MANY
-        mesh->getMaterial(), model_matrix, has_wind, aabb_world));
+          mesh->getMaterial(), model_matrix);
 #else
-        mesh->getMaterial(), model_matrix, has_wind, aabb_offset));
+          mesh->getMaterial(), model_matrix);
 #endif
-#if PHYSICS
-      const auto& model_matrix = entity->getComponent<fly::StaticMeshRenderable>()->getModelMatrix();
-      entity->addComponent(std::make_shared<fly::RigidBody>(model_matrix[3].xyz(), 0.f, _sponzaShapes[index], 0.1f));
+        smr->expandAABB(aabb_offset);
+        smrs.push_back(smr);
+      }
+      else {
+        smrs.push_back(std::make_shared<fly::StaticMeshRenderableWrapper<fly::OpenGLAPI>>(*_renderer, mesh,
+#if SPONZA_MANY
+          mesh->getMaterial(), model_matrix));
+#else
+          mesh->getMaterial(), model_matrix));
 #endif
+      }
       index++;
     }
 #endif
@@ -392,6 +401,10 @@ void GLWidget::initGame()
 #if SPONZA
   for (unsigned i = 0; i < entities.size(); i++) {
     entities[i]->addComponent(smrs[i]);
+#if PHYSICS
+    const auto& model_matrix = smrs[i]->getModelMatrix();
+    entities[i]->addComponent(std::make_shared<fly::RigidBody>(model_matrix[3].xyz(), 0.f, _sponzaShapes[i], 0.1f));
+#endif
   }
 #endif
 #endif
@@ -487,7 +500,6 @@ void GLWidget::initGame()
 
 #if INSTANCED_MESHES
   _graphicsSettings.setShadowMapSize(8192);
-  _graphicsSettings.setShadowBias(_graphicsSettings.getShadowBias() * 0.1f);
   //_graphicsSettings.setExposure(0.5f);
   _graphicsSettings.setDebugObjectAABBs(true);
   cam_entity->getComponent<fly::Camera>()->setDetailCullingThreshold(0.000005f);
@@ -518,20 +530,23 @@ void GLWidget::initGame()
   for (int cell_x = 0; cell_x < num_cells[0]; cell_x++) {
     for (int cell_z = 0; cell_z < num_cells[1]; cell_z++) {
       auto instanced_entity = _engine.getEntityManager()->createEntity();
-      std::vector<fly::Mat4f> model_matrices;
-      std::vector<unsigned> indices;
+      std::vector<fly::StaticInstancedMeshRenderableWrapper<fly::OpenGLAPI>::InstanceData> instance_data;
+      //std::vector<unsigned> indices;
       for (int x = 0; x < num_meshes[0]; x++) {
         for (int z = 0; z < num_meshes[1]; z++) {
-          model_matrices.push_back(fly::Transform(fly::Vec3f(static_cast<float>(x) * sphere_lods[0]->getAABB()->size() + dist(gen) + cell_x * cell_size - total_size[0] * 0.5f,
+          fly::StaticInstancedMeshRenderableWrapper<fly::OpenGLAPI>::InstanceData data;
+          data._modelMatrix = fly::Transform(fly::Vec3f(static_cast<float>(x) * sphere_lods[0]->getAABB()->size() + dist(gen) + cell_x * cell_size - total_size[0] * 0.5f,
             1.2f + dist(gen) * 5.f, 
-            static_cast<float>(z) * sphere_lods[0]->getAABB()->size() + dist(gen) + cell_z * cell_size - total_size[1] * 0.5f)).getModelMatrix());
-          indices.push_back(dist_uint(gen));
+            static_cast<float>(z) * sphere_lods[0]->getAABB()->size() + dist(gen) + cell_z * cell_size - total_size[1] * 0.5f)).getModelMatrix();
+          data._index = dist_uint(gen);
+          data._modelMatrixInverse = inverse(data._modelMatrix);
+          instance_data.push_back(data);
         }
       }
-      auto instanced_renderable = std::make_shared<fly::StaticInstancedMeshRenderable>(sphere_lods, material, model_matrices, indices, 0.1f);
+      auto instanced_renderable = std::make_shared<fly::StaticInstancedMeshRenderableWrapper<fly::OpenGLAPI>>(*_renderer, sphere_lods, material, instance_data);
       instanced_entity->addComponent(instanced_renderable);
-      instanced_renderable->clear();
-      total_meshes += model_matrices.size();
+    //  instanced_renderable->clear();
+      total_meshes += instance_data.size();
     }
   }
   std::cout << "Num instances:" << total_meshes << std::endl;
