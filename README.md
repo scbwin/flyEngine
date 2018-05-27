@@ -42,9 +42,9 @@ Possible improvements are:
 * Tessellation for arbitrary objects, not only terrain
 * Level of detail system
 ## Guidelines
-* Development goes into [Renderer](https://github.com/fleissna/flyEngine/blob/master/engine/include/renderer/Renderer.h) and [OpenGLAPI](https://github.com/fleissna/flyEngine/blob/master/engine/include/opengl/OpenGLAPI.h) and [IMeshRenderable](https://github.com/fleissna/flyEngine/blob/master/engine/include/renderer/MeshRenderables.h), the classes "RenderingSystemOpenGL" and "RenderingSystemDX11" are considered deprecated, but are further maintained for compatibility. 
-* Stick to the ECS design pattern.
-* Do not add any member variables of third-party datatypes to core engine components. E.g. the Material class shouldn't store pointers to DirectX Shader resource views, just store a std::string that contains the path to the texture instead.
+* Development goes into [Renderer](https://github.com/fleissna/flyEngine/blob/master/engine/include/renderer/Renderer.h), [OpenGLAPI](https://github.com/fleissna/flyEngine/blob/master/engine/include/opengl/OpenGLAPI.h) and [IMeshRenderable](https://github.com/fleissna/flyEngine/blob/master/engine/include/renderer/MeshRenderables.h), the classes "RenderingSystemOpenGL" and "RenderingSystemDX11" are considered deprecated, but are further maintained for compatibility. 
+* Stick to the ECS design pattern, or come up with something better :-)
+* Do not add any member variables of third-party datatypes to high-level engine components. E.g. the Material class shouldn't store pointers to DirectX Shader resource views, just store a std::string that contains the path to the texture instead.
 * Avoid dynamic memory allocations in the rendering loop if possible.
 * Avoid file I/O during the rendering loop. If you have to, do it asynchronously and synchronize if you need to.
 * Use Nvidia Nsight for graphics debugging.
