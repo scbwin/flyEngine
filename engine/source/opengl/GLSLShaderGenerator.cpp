@@ -200,7 +200,7 @@ void main()\n\
       vec2 uv = ray_pos_ndc * 0.5f + 0.5f;\n\
       vec4 comp_ndc = vec4(vec3(uv, texture(" + std::string(depthSampler()) + ", uv).r) * 2.f - 1.f, 1.f);\n\
       float comp_depth = dot(comp_ndc, " + std::string(projectionMatrixInverseThirdRow()) + ") / dot(comp_ndc, " + std::string(projectionMatrixInverseFourthRow()) + ");\n\
-      if (ray_pos_view.z < comp_depth) { // Intersection found, the ray traveled behind the depth buffer. \n\
+      if (ray_pos_view.z > comp_depth) { // Intersection found, the ray traveled behind the depth buffer. \n\
         float sign;\n\
         for (uint i = 0u; i < " + std::to_string(gs.getSSRBinarySteps()) + "u; i++, delta *= 0.5f, ray_pos_view += delta * sign) { // Binary search refinement\n\
           ray_pos_h = " + std::string(projectionMatrix()) + " * vec4(ray_pos_view, 1.f);\n\
@@ -208,7 +208,7 @@ void main()\n\
           uv = ray_pos_ndc * 0.5f + 0.5f;\n\
           vec4 comp_ndc = vec4(vec3(uv, texture(" + std::string(depthSampler()) + ", uv).r) * 2.f - 1.f, 1.f);\n\
           float comp_depth = dot(comp_ndc, " + std::string(projectionMatrixInverseThirdRow()) + ") / dot(comp_ndc, " + std::string(projectionMatrixInverseFourthRow()) + ");\n\
-          sign = ray_pos_view.z < comp_depth ? -1.f : 1.f;\n\
+          sign = ray_pos_view.z > comp_depth ? -1.f : 1.f;\n\
         }\n\
         fragmentColor = textureLod(" + std::string(lightingSampler()) + ", uv, 0.f).rgb;\n\
         return;\n\
@@ -454,7 +454,7 @@ in vec3 bitangent_local;\n";
     if (settings.getShadows() || settings.getShadowsPCF()) {
       shader_src += "  int index = " + std::string(numfrustumSplits()) + "-1;\n\
   for (int i = " + std::string(numfrustumSplits()) + "-2; i >= 0; i--) {\n\
-    index -= int(-dot(" + std::string(viewMatrixThirdRow()) + ", vec4(pos_world, 1.f)) < " + std::string(frustumSplits()) + "[i]);\n\
+    index -= int(dot(" + std::string(viewMatrixThirdRow()) + ", vec4(pos_world, 1.f)) < " + std::string(frustumSplits()) + "[i]);\n\
   }\n";
       shader_src += "  vec4 shadow_coord = " + std::string(worldToLightMatrices()) + "[index] * vec4(pos_world, 1.f);\n\
   shadow_coord.xyz /= shadow_coord.w;\n\
@@ -518,7 +518,7 @@ void main()\n\
     if (gs.getDepthOfField()) {
       shader_src += "  vec4 pos_ndc = vec4(vec3(uv, texture(" + std::string(depthSampler()) + ", uv).r) * 2.f - 1.f, 1.f);\n\
   vec4 pos_view_h = " + std::string(projectionMatrixInverse()) + " * pos_ndc;\n\
-  float depth_view = -(pos_view_h.z / pos_view_h.w);\n\
+  float depth_view = (pos_view_h.z / pos_view_h.w);\n\
   vec3 blur_color = texture(" + std::string(dofSampler()) + ", uv).rgb;\n\
   if (depth_view >= " + std::to_string(gs.getDofCenter()) + "){\n\
     fragmentColor = mix(fragmentColor, blur_color, smoothstep(" + std::to_string(gs.getDofCenter()) + ", " + std::to_string(gs.getDofFar()) + ", depth_view));\n\

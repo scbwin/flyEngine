@@ -28,7 +28,7 @@ You have to download/clone and build the dependencies by yourself. Use CMake to 
 DXUT, FX11, DirectXTex, and DirectXTK repositories contain solution files for Visual Studio 2017. GLM is header-only, SOIL, Assimp and OpenCV are shipped with their own CMake files. Qt offers an installer that contains pre-built binaries. For GLEW and AntTweakBar you can use the pre-build binaries too.
 
 ## Conventions
-flyEngine uses a right-handed coordinate system. X is right, Y is up and the camera points towards negative Z. Column-major matrices are used throughout the engine, regardless of the underlying rendering API. Matrix multiplication order goes from right to left, a vector being the right-most term.
+flyEngine uses a left-handed coordinate system. X is right, Y is up and the camera points towards positive Z. Column-major matrices are used throughout the engine, regardless of the underlying rendering API. Matrix multiplication order goes from right to left, a vector being the right-most term.
 
 ## Contributions
 Feel free to contribute if you have any ideas to enhance the engine.

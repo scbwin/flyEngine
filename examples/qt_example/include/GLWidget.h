@@ -12,7 +12,7 @@
 #include <GraphicsSettings.h>
 #include <math/FlyMath.h>
 
-#define SPONZA 0
+#define SPONZA 1
 #define SPONZA_MANY 0
 #define TOWERS 0
 #define TREE_SCENE 0
@@ -21,7 +21,7 @@
 #define NUM_OBJECTS 100
 #define NUM_TOWERS 15
 #define DELETE_CURTAIN 1
-#define INSTANCED_MESHES 1
+#define INSTANCED_MESHES 0
 //#define NUM_INSTANCED_MESHES_PER_DIR 1000
 #define NUM_CELLS 64
 #define ITEMS_PER_CELL 64

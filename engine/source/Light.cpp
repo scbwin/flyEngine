@@ -91,7 +91,6 @@ namespace fly
         for (const auto& v : cube_ndc) {
           auto corner_h = transform * Vec4f(v, 1.f);
           auto corner = corner_h.xyz() / corner_h[3]; // perspective division
-          corner[2] = -corner[2]; // invert z
           bb_min = minimum(bb_min, corner);
           bb_max = maximum(bb_max, corner);
         }
@@ -126,7 +125,7 @@ namespace fly
     auto direction = normalize(_target - _pos);
     auto up = normalize(Vec3f(-direction[1], direction[0], 0.f));
     auto right = Vec3f(cross(glm::vec3(direction), glm::vec3(up)));
-    return MathHelpers::getViewMatrixRightHanded(_pos, right, up, direction);
+    return MathHelpers::getViewMatrixLeftHanded(_pos, right, up, direction);
   }
 
   PointLight::PointLight(const Vec3f& color, const Vec3f& pos, const Vec3f& target, float near, float far) : Light(color, pos, target), _zNear(near), _zFar(far)

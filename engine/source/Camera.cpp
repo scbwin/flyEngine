@@ -18,11 +18,11 @@ namespace fly
     _right = Vec3f(sin(euler_angles[0] - glm::half_pi<float>()), sin(euler_angles[2]), cos(euler_angles[0] - glm::half_pi<float>()));
     _up = cross(glm::vec3(_right), glm::vec3(_direction));
 
-    return MathHelpers::getViewMatrixRightHanded(pos, _right, _up, _direction);
+    return MathHelpers::getViewMatrixLeftHanded(pos, _right, _up, _direction);
   }
   Mat3f Camera::getViewMatrixInverse() const
   {
-    return Mat3f({_right, _up, _direction * -1.f});
+    return Mat3f({_right, _up, _direction});
   }
   const Vec3f & Camera::getPosition() const
   {
