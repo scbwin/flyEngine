@@ -7,7 +7,6 @@
 #include <MaterialDesc.h>
 #include <Material.h>
 #include <AABB.h>
-#include <Camera.h>
 #include <Component.h>
 #include <WindParamsLocal.h>
 
@@ -27,28 +26,29 @@ namespace fly
     inline MaterialDesc<API> const * getMaterialDesc() { return _materialDesc; }
     virtual void renderDepth(API const & api) = 0;
     virtual void render(API const & api) = 0;
-    virtual AABB const * getAABB() const = 0;
+    inline const AABB& getAABB() { return _aabb; }
     virtual bool isLargeEnough(const Camera& camera) const
     {
-      return getAABB()->isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold());
+      return _aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold());
     }
-    virtual bool cull(const Camera& camera) // Fine-grained distance culling, called if the object is fully visible from the camera's point of view.
+    virtual bool cull(const Camera& c) // Fine-grained distance culling, called if the object is fully visible from the camera's point of view.
     {
-      return isLargeEnough(camera);
+      return isLargeEnough(c);
     }
-    virtual bool cullAndIntersect(const Camera& camera) // Fine-grained culling, only called if the bounding box of the node the object is in intersects the view frustum.
+    virtual bool cullAndIntersect(const Camera& c) // Fine-grained culling, only called if the bounding box of the node the object is in intersects the view frustum.
     {
-      return cull(camera) && camera.frustumIntersectsAABB(*getAABB()) != IntersectionResult::OUTSIDE;
+      return cull(c) && c.frustumIntersectsAABB(_aabb) != IntersectionResult::OUTSIDE;
     }
     virtual float getLargestObjectAABBSize() const
     {
-      return getAABB()->size2();
+      return _aabb.size2();
     }
     virtual unsigned numTriangles() const = 0;
   protected:
     MaterialDesc<API> const * _materialDesc;
     std::shared_ptr<ShaderDesc<API>> const * _shaderDesc;
     std::shared_ptr<ShaderDesc<API>> const * _shaderDescDepth;
+    AABB _aabb;
   };
   template<typename API>
   class SkydomeRenderableWrapper
@@ -73,13 +73,13 @@ namespace fly
     StaticMeshRenderable(Renderer<API>& renderer, const std::shared_ptr<Mesh>& mesh,
       const std::shared_ptr<Material>& material, const Mat4f& model_matrix) :
       _meshData(renderer.addMesh(mesh)),
-      _aabb(AABB(*mesh->getAABB(), model_matrix)),
       _modelMatrix(model_matrix),
       _modelMatrixInverse(inverse(glm::mat3(model_matrix)))
     {
       _materialDesc = renderer.createMaterialDesc(material).get();
       _shaderDesc = material->isReflective() ? &_materialDesc->getMeshShaderDescReflective() : &_materialDesc->getMeshShaderDesc();
       _shaderDescDepth = &_materialDesc->getMeshShaderDescDepth();
+      _aabb = AABB(mesh->getAABB(), model_matrix);
     }
     virtual ~StaticMeshRenderable() = default;
     virtual void render(API const & api) override
@@ -90,13 +90,11 @@ namespace fly
     {
       api.renderMesh(_meshData, _modelMatrix);
     }
-    virtual AABB const * getAABB() const override final { return &_aabb; }
     virtual unsigned numTriangles() const override
     {
       return _meshData.numTriangles();
     }
   protected:
-    AABB _aabb;
     typename API::MeshData _meshData;
     Mat4f _modelMatrix;
     Mat3f _modelMatrixInverse;
@@ -123,7 +121,7 @@ namespace fly
     {
       api.renderMesh(_meshData, _modelMatrix, _windParams, _aabb);
     }
-    void setWindParams(const WindParams& params)
+    void setWindParams(const WindParamsLocal& params)
     {
       _windParams = params;
     }
@@ -164,7 +162,7 @@ namespace fly
 
       AABB aabb_local;
       for (const auto& m : lods) {
-        aabb_local = aabb_local.getUnion(*m->getAABB());
+        aabb_local = aabb_local.getUnion(m->getAABB());
       }
 
       StackPOD<Vec4f> aabbs_min_max;
@@ -188,7 +186,6 @@ namespace fly
     {
       api.renderInstances(_visibleInstances, _indirectBuffer, _instanceData, _indirectInfo, _numInstances);
     }
-    virtual AABB const * getAABB() const override final { return &_aabb; }
     virtual float getLargestObjectAABBSize() const override
     {
       return _largestAABBSize;
@@ -217,7 +214,6 @@ namespace fly
     }
   protected:
     std::vector<typename API::IndirectInfo> _indirectInfo;
-    AABB _aabb;
     float _largestAABBSize = 0.f;
     typename API::StorageBuffer _aabbBuffer;
     typename API::StorageBuffer _visibleInstances;

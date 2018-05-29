@@ -24,8 +24,6 @@ private:
   static void cbGetShadows(void* value, void* client_data);
   static void cbSetPCF(const void* value, void* client_data);
   static void cbGetPCF(void* value, void* client_data);
-  static void cbSetShadowsSinglePass(const void* value, void* client_data);
-  static void cbGetShadowsSinglePass(void* value, void* client_data);
   static void cbSetNormalMapping(const void* value, void* client_data);
   static void cbGetNormalMapping(void* value, void* client_data);
   static void cbSetParallaxMapping(const void* value, void* client_data);

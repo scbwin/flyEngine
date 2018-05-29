@@ -11,7 +11,6 @@
 #include <Material.h>
 #include <opengl/GLShaderInterface.h>
 #include <Settings.h>
-#include <renderer/RenderParams.h>
 #include <WindParamsLocal.h>
 #include <GraphicsSettings.h>
 #include <opengl/GLMaterialSetup.h>
@@ -166,7 +165,7 @@ namespace fly
 
     GL_CHECK(glDispatchCompute(num_groups, 1, 1));
     
-   /* 
+   /*
    GL_CHECK(glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT));
     auto draw_indirect_ptr = indirect_draw_buffer.map<IndirectInfo>(GL_READ_ONLY);
     for (unsigned i = 0; i < info.size(); i++) {

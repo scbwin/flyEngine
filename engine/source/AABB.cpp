@@ -25,19 +25,19 @@ namespace fly
     _bbMax(bb_max)
   {
   }
-  AABB::AABB(const AABB& aabb_local, const Mat4f & world_matrix) :
+  AABB::AABB(const AABB& other, const Mat4f & transform) :
     AABB()
   {
     for (unsigned i = 0; i < 8; i++) {
-      _bbMin = minimum(_bbMin, (world_matrix * Vec4f(aabb_local.getVertex(i), 1.f)).xyz());
-      _bbMax = maximum(_bbMax, (world_matrix * Vec4f(aabb_local.getVertex(i), 1.f)).xyz());
+      _bbMin = minimum(_bbMin, (transform * Vec4f(other.getVertex(i), 1.f)).xyz());
+      _bbMax = maximum(_bbMax, (transform * Vec4f(other.getVertex(i), 1.f)).xyz());
     }
   }
   AABB::AABB(const Model & model) :
     AABB()
   {
     for (const auto& m : model.getMeshes()) {
-      *this = getUnion(*m->getAABB());
+      *this = getUnion(m->getAABB());
     }
   }
   AABB::AABB(const Mesh & mesh) : 
@@ -57,6 +57,14 @@ namespace fly
     return _bbMin;
   }
   const Vec3f& AABB::getMax() const
+  {
+    return _bbMax;
+  }
+  Vec3f & AABB::getMin()
+  {
+    return _bbMin;
+  }
+  Vec3f & AABB::getMax()
   {
     return _bbMax;
   }

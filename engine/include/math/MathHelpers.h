@@ -5,7 +5,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
 #include <array>
-#include <renderer/RenderParams.h>
+#include <ZNearMapping.h>
 
 namespace fly
 {

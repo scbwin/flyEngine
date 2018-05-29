@@ -3,6 +3,7 @@
 #include <opengl/GLShaderInterface.h>
 #include <opengl/GLShaderProgram.h>
 #include <opengl/OpenGLAPI.h>
+#include <GlobalShaderParams.h>
 
 namespace fly
 {

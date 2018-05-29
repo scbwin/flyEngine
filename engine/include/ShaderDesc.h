@@ -3,7 +3,6 @@
 
 #include <memory>
 #include <StackPOD.h>
-#include <renderer/RenderParams.h>
 #include <Flags.h>
 
 namespace fly

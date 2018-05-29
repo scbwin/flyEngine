@@ -41,9 +41,9 @@ namespace fly
   {
     return _materialIndex;
   }
-  AABB const * Mesh::getAABB() const
+  const AABB& Mesh::getAABB() const
   {
-    return &_aabb;
+    return _aabb;
   }
   void Mesh::setMaterialIndex(unsigned material_index)
   {

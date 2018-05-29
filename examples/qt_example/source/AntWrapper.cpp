@@ -13,7 +13,6 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
 {
   TwAddVarCB(bar, "Shadows", TwType::TW_TYPE_BOOLCPP, cbSetShadows, cbGetShadows, gs, nullptr);
   TwAddVarCB(bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, cbSetPCF, cbGetPCF, gs, nullptr);
-  TwAddVarCB(bar, "Shadows single pass", TwType::TW_TYPE_BOOLCPP, cbSetShadowsSinglePass, cbGetShadowsSinglePass, gs, nullptr);
   TwAddVarCB(bar, "Shadow darken factor", TwType::TW_TYPE_FLOAT, setShadowFactor, getShadowFactor, gs, "step = 0.005f");
   TwAddVarCB(bar, "Shadow polygon offset factor", TwType::TW_TYPE_FLOAT, setSMPOFactor, getSMPOFactor, gs, "step=0.01f");
   TwAddVarCB(bar, "Shadow polygon offset units", TwType::TW_TYPE_FLOAT, setSMPOUnits, getSMPOUnits, gs, "step=0.01f");
@@ -69,17 +68,6 @@ void AntWrapper::cbGetPCF(void * value, void * client_data)
 {
   *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getShadowsPCF();
 }
-
-void AntWrapper::cbSetShadowsSinglePass(const void * value, void * client_data)
-{
-  cast<fly::GraphicsSettings>(client_data)->setSinglePassShadows(*cast<bool>(value));
-}
-
-void AntWrapper::cbGetShadowsSinglePass(void * value, void * client_data)
-{
-  *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getSinglePassShadows();
-}
-
 void AntWrapper::cbSetNormalMapping(const void * value, void * client_data)
 {
   cast<fly::GraphicsSettings>(client_data)->setNormalMapping(*cast<bool>(value));

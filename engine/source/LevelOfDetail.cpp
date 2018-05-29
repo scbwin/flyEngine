@@ -8,8 +8,8 @@ namespace fly
   {
     std::vector<std::shared_ptr<Model>> ret = { model };
 
-    auto getMaxSideLength = [](AABB const * aabb) {
-      auto vec = aabb->getMax() - aabb->getMin();
+    auto getMaxSideLength = [](AABB const & aabb) {
+      auto vec = aabb.getMax() - aabb.getMin();
       return std::max(vec[0], std::max(vec[1], vec[2]));
     };
 

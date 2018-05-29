@@ -77,8 +77,8 @@ namespace fly
       _meshes.back()->setMaterial(_materials[e.first]);
     }
   }
-  AABB const * Model::getAABB() const
+  const AABB& Model::getAABB() const
   {
-    return &_aabb;
+    return _aabb;
   }
 }

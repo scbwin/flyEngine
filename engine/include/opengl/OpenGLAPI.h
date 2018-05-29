@@ -4,7 +4,7 @@
 #include <GL/glew.h>
 #include <opengl/OpenGLUtils.h>
 #include <math/FlyMath.h>
-#include <renderer/RenderParams.h>
+#include <ZNearMapping.h>
 #include <memory>
 #include <vector>
 #include <unordered_map>

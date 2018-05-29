@@ -5,6 +5,7 @@
 #include <array>
 #include <vector>
 #include <iostream>
+#include <Camera.h>
 
 namespace fly
 {
@@ -19,12 +20,14 @@ namespace fly
     AABB(const AABB& other);
     AABB& operator= (const AABB& other);
     AABB(const Vec3f& bb_min, const Vec3f& bb_max);
-    AABB(const AABB& aabb_local, const Mat4f& world_matrix);
+    AABB(const AABB& other, const Mat4f& transform);
     AABB(const Model& model);
     AABB(const Mesh& mesh);
     AABB(const std::vector<Vertex>& vertices);
     const Vec3f& getMin() const;
     const Vec3f& getMax() const;
+    Vec3f& getMin();
+    Vec3f& getMax();
     inline Vec3f center() const
     {
       return (_bbMin + _bbMax) * 0.5f;

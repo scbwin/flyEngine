@@ -358,18 +358,6 @@ namespace fly
   {
     return _shadowPolygonOffsetUnits;
   }
-  void GraphicsSettings::setSinglePassShadows(bool enabled)
-  {
-    bool notify = _singlePassShadows != enabled;
-    _singlePassShadows = enabled;
-    if (notify) {
-      notifyShadowsChanged();
-    }
-  }
-  bool GraphicsSettings::getSinglePassShadows() const
-  {
-    return _singlePassShadows;
-  }
   void GraphicsSettings::setCameraLerping(bool enable)
   {
     _cameraLerping = enable;

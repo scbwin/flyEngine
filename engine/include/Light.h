@@ -5,7 +5,7 @@
 #include "Mesh.h"
 #include <memory>
 #include "Component.h"
-#include <renderer/RenderParams.h>
+#include <ZNearMapping.h>
 #include <StackPOD.h>
 
 namespace fly
@@ -38,8 +38,8 @@ namespace fly
   public:
     DirectionalLight(const Vec3f& color, const Vec3f& pos, const Vec3f& target);
     float _ambientPower = 0.3f;
-    Mat4f getViewProjectionMatrices(float aspect_ratio, float near_plane, float fov_degrees, const Mat4f& view_matrix_inverse,
-      const Mat4f& view_matrix_light, float shadow_map_size, const std::vector<float>& frustum_splits, StackPOD<Mat4f>& vp, ZNearMapping z_near_mapping);
+    void getViewProjectionMatrices(float aspect_ratio, float near_plane, float fov_degrees, const Mat4f& view_matrix_inverse,
+      float shadow_map_size, const std::vector<float>& frustum_splits, ZNearMapping z_near_mapping, StackPOD<Mat4f>& vp, StackPOD<Mat4f>& vp_light_volume);
     Mat4f getViewMatrix();
   };
 

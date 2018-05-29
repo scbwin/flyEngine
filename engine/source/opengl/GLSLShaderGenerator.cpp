@@ -295,12 +295,9 @@ layout(location = 2) in vec2 uv;\n";
       shader_src += "invariant gl_Position; \n";
     }
     shader_src += "uniform mat4 " + std::string(modelMatrix()) + ";\n";
-    if (!settings.getSinglePassShadows()) {
      shader_src += "uniform mat4 " + std::string(viewProjectionMatrix()) + "; \n";
-    }
     shader_src += _windParamString;
-    std::string uv_str = settings.getSinglePassShadows() ? std::string("uv_vs") : std::string("uv_out");
-    shader_src += "out vec2 " + uv_str + ";\n";
+    shader_src += "out vec2 uv_out;\n";
     if (instanced) {
       shader_src += _instanceDataStr + "layout (std430, binding = " + std::to_string(bufferBindingInstanceData()) + ") readonly buffer instance_data_buffer \n\
 {\n\
@@ -319,8 +316,8 @@ out mat3 " + std::string(modelMatrixInverse()) + ";\n";
     if (flags & MeshRenderFlag::MR_WIND) {
       shader_src += _windCodeString;
     }
-    shader_src += "  gl_Position = " + (settings.getSinglePassShadows() ? std::string("") : std::string(" VP *")) + " pos_world;\n";
-    shader_src += "  " + uv_str + " = uv;\n\
+    shader_src += "  gl_Position = " + std::string(viewProjectionMatrix()) + " * pos_world;\n";
+    shader_src += "  uv_out = uv;\n\
 }\n";
     return shader_src;
   }

@@ -74,50 +74,48 @@ namespace fly
     _lensFlareRefSamplesPassed = 4000.f;
   }
 
-  Mat4f DirectionalLight::getViewProjectionMatrices(float aspect_ratio, float near_plane, float fov_degrees, const Mat4f& view_matrix_inverse,
-    const Mat4f& view_matrix_light, float shadow_map_size, const std::vector<float>& frustum_splits, StackPOD<Mat4f>& vp, ZNearMapping z_near_mapping)
+  void DirectionalLight::getViewProjectionMatrices(float aspect_ratio, float near_plane, float fov_degrees, 
+    const Mat4f& view_matrix_inverse, float shadow_map_size, const std::vector<float>& frustum_splits, 
+    ZNearMapping z_near_mapping, StackPOD<Mat4f>& vp, StackPOD<Mat4f>& vp_light_volume)
   {
     vp.clear();
-    Vec3f global_min(std::numeric_limits<float>::max());
-    Vec3f global_max(std::numeric_limits<float>::lowest());
+    vp_light_volume.clear();
+    auto view_matrix_light = getViewMatrix();
     for (unsigned int i = 0; i < frustum_splits.size(); i++) {
       auto projection_matrix = MathHelpers::getProjectionMatrixPerspective(fov_degrees, aspect_ratio, i == 0 ? near_plane : frustum_splits[i - 1], frustum_splits[i], z_near_mapping);
-      Mat4f p_inverse = inverse(projection_matrix);
-      auto vp_inverse_v_light = view_matrix_light * view_matrix_inverse * p_inverse;
       auto cube_ndc = MathHelpers::cubeNDC(z_near_mapping);
       auto computeAABB = [&cube_ndc] (const Mat4f& transform) {
         Vec3f bb_min(std::numeric_limits<float>::max());
         Vec3f bb_max(std::numeric_limits<float>::lowest());
         for (const auto& v : cube_ndc) {
           auto corner_h = transform * Vec4f(v, 1.f);
-          auto corner = corner_h.xyz() / corner_h[3]; // perspective division
+          auto corner = corner_h.xyz() / corner_h[3];
           bb_min = minimum(bb_min, corner);
           bb_max = maximum(bb_max, corner);
         }
         return AABB(bb_min, bb_max);
       };
+      Mat4f p_inverse = inverse(projection_matrix); // Transform from scene NDC into scene's homogeneous eye space, for this frustum split.
+      auto vp_inverse_v_light = view_matrix_light * view_matrix_inverse * p_inverse; // Transform from scene NDC to light source's homogeneous eye space, for this frustum split.
       auto aabb_view = computeAABB(p_inverse);
       auto aabb_light = computeAABB(vp_inverse_v_light);
       float sphere_radius = std::numeric_limits<float>::lowest();
       for (unsigned char i = 0; i < 8; i++) {
         sphere_radius = (std::max)(sphere_radius, distance(aabb_view.center(), aabb_view.getVertex(i)));
       }
-      Vec3f bb_min = aabb_light.center() - sphere_radius;
-      Vec3f bb_max = aabb_light.center() + sphere_radius;
+      Vec3f bb_min_light_space = aabb_light.center() - sphere_radius;
+      Vec3f bb_max_light_space = aabb_light.center() + sphere_radius;
 
-      // Avoids shimmering edges when the camera is moving
-      Vec2f units_per_texel = (bb_max.xy() - bb_min.xy()) / shadow_map_size;
-      Vec2f bb_min_xy = floor(bb_min.xy() / units_per_texel) * units_per_texel;
-      Vec2f bb_max_xy = ceil(bb_max.xy() / units_per_texel) * units_per_texel;
-      bb_min = Vec3f(bb_min_xy, bb_min[2]);
-      bb_max = Vec3f(bb_max_xy, bb_max[2]);
+      // Prevents shimmering edges when the camera is moving
+      Vec2f units_per_texel = (bb_max_light_space.xy() - bb_min_light_space.xy()) / shadow_map_size;
+      Vec2f bb_min_xy = floor(bb_min_light_space.xy() / units_per_texel) * units_per_texel;
+      Vec2f bb_max_xy = ceil(bb_max_light_space.xy() / units_per_texel) * units_per_texel;
+      bb_min_light_space = Vec3f(bb_min_xy, bb_min_light_space[2]);
+      bb_max_light_space = Vec3f(bb_max_xy, bb_max_light_space[2]);
 
-      vp.push_back_secure(MathHelpers::getProjectionMatrixOrtho(bb_min, bb_max, z_near_mapping) * view_matrix_light);
-
-      global_min = minimum(global_min, bb_min);
-      global_max = maximum(global_max, bb_max);
+      vp.push_back_secure(MathHelpers::getProjectionMatrixOrtho(bb_min_light_space, bb_max_light_space, z_near_mapping) * view_matrix_light); // Used for rendering
+      vp_light_volume.push_back_secure(MathHelpers::getProjectionMatrixOrtho(Vec3f(bb_min_light_space.xy(), 0.f), bb_max_light_space, z_near_mapping) * view_matrix_light); // Used for culling
     }
-    return MathHelpers::getProjectionMatrixOrtho(global_min, global_max, z_near_mapping) * view_matrix_light;
   }
 
   Mat4f DirectionalLight::getViewMatrix()

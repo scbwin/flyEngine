@@ -27,6 +27,7 @@
 #include <renderer/MeshRenderables.h>
 #include <set>
 #include <GameTimer.h>
+#include <GlobalShaderParams.h>
 
 #define RENDERER_STATS 1
 
@@ -156,30 +157,30 @@ namespace fly
       if (entity->getComponent<StaticMeshRenderable<API>>() == component) {
         auto smr = entity->getComponent<StaticMeshRenderable<API>>();
         _staticMeshRenderables[entity] = smr;
-        _aabbStatic = _aabbStatic.getUnion(*smr->getAABB());
+        _aabbStatic = _aabbStatic.getUnion(smr->getAABB());
       }
       else if (entity->getComponent<StaticInstancedMeshRenderable<API>>() == component) {
         auto simr = entity->getComponent<StaticInstancedMeshRenderable<API>>();
         _staticInstancedMeshRenderables[entity] = simr;
-        _aabbStatic = _aabbStatic.getUnion(*simr->getAABB());
+        _aabbStatic = _aabbStatic.getUnion(simr->getAABB());
       }
-     /* else if (entity->getComponent<fly::StaticInstancedMeshRenderable>() == component) {
-        auto simr = entity->getComponent<fly::StaticInstancedMeshRenderable>();
-        std::vector<typename API::MeshData> mesh_data;
-        mesh_data.reserve(simr->getMeshes().size());
-        for (const auto& m : simr->getMeshes()) {
-          mesh_data.push_back(_meshGeometryStorage.addMesh(m));
-        }
-        _staticInstancedMeshRenderables[entity] = std::make_shared<StaticInstancedMeshRenderableWrapper<API>>(simr, _matDescCache.getOrCreate(simr->getMaterial(),
-          simr->getMaterial(), *_gs), mesh_data, _api, _camera);
-        _aabbStatic = _aabbStatic.getUnion(*_staticInstancedMeshRenderables[entity]->getAABBWorld());
-      }
-      else if (entity->getComponent<fly::DynamicMeshRenderable>() == component) {
-        auto dmr = entity->getComponent<fly::DynamicMeshRenderable>();
-        _dynamicMeshRenderables[entity] = std::make_shared<DynamicMeshRenderableWrapper<API>>(dmr, _matDescCache.getOrCreate(dmr->getMaterial(), dmr->getMaterial(), *_gs), 
-          _meshGeometryStorage.addMesh(dmr->getMesh()), _api, _viewMatrixInverse, *_gs);
-        _gs->addListener(_dynamicMeshRenderables.at(entity));
-      }*/
+      /* else if (entity->getComponent<fly::StaticInstancedMeshRenderable>() == component) {
+         auto simr = entity->getComponent<fly::StaticInstancedMeshRenderable>();
+         std::vector<typename API::MeshData> mesh_data;
+         mesh_data.reserve(simr->getMeshes().size());
+         for (const auto& m : simr->getMeshes()) {
+           mesh_data.push_back(_meshGeometryStorage.addMesh(m));
+         }
+         _staticInstancedMeshRenderables[entity] = std::make_shared<StaticInstancedMeshRenderableWrapper<API>>(simr, _matDescCache.getOrCreate(simr->getMaterial(),
+           simr->getMaterial(), *_gs), mesh_data, _api, _camera);
+         _aabbStatic = _aabbStatic.getUnion(*_staticInstancedMeshRenderables[entity]->getAABBWorld());
+       }
+       else if (entity->getComponent<fly::DynamicMeshRenderable>() == component) {
+         auto dmr = entity->getComponent<fly::DynamicMeshRenderable>();
+         _dynamicMeshRenderables[entity] = std::make_shared<DynamicMeshRenderableWrapper<API>>(dmr, _matDescCache.getOrCreate(dmr->getMaterial(), dmr->getMaterial(), *_gs),
+           _meshGeometryStorage.addMesh(dmr->getMesh()), _api, _viewMatrixInverse, *_gs);
+         _gs->addListener(_dynamicMeshRenderables.at(entity));
+       }*/
       else if (entity->getComponent<Camera>() == component) {
         _camera = entity->getComponent<Camera>();
         _gsp._camPosworld = _camera->getPosition();
@@ -196,19 +197,19 @@ namespace fly
     virtual void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component) override
     {
       if (entity->getComponent<fly::StaticMeshRenderable<API>>() == component
-         || entity->getComponent<fly::StaticMeshRenderableWind<API>>() == component) {
+        || entity->getComponent<fly::StaticMeshRenderableWind<API>>() == component) {
         _bvhStatic->removeObject(_staticMeshRenderables[entity].get());
-        _aabbStatic = _aabbStatic.getIntersection(*_staticMeshRenderables[entity]->getAABB());
+      //  _aabbStatic = _aabbStatic.getIntersection(_staticMeshRenderables[entity]->getAABB());
         _staticMeshRenderables.erase(entity);
       }
       if (entity->getComponent<fly::StaticInstancedMeshRenderable<API>>() == component) {
         _bvhStatic->removeObject(_staticInstancedMeshRenderables[entity].get());
-        _aabbStatic = _aabbStatic.getIntersection(*_staticInstancedMeshRenderables[entity]->getAABB());
+       // _aabbStatic = _aabbStatic.getIntersection(_staticInstancedMeshRenderables[entity]->getAABB());
         _staticInstancedMeshRenderables.erase(entity);
       }
-   //   else if (entity->getComponent<fly::DynamicMeshRenderable>() == component) {
-    //    _dynamicMeshRenderables.erase(entity);
-    //  }
+      //   else if (entity->getComponent<fly::DynamicMeshRenderable>() == component) {
+       //    _dynamicMeshRenderables.erase(entity);
+       //  }
       else if (entity->getComponent<Camera>() == component) {
         _camera = nullptr;
       }
@@ -374,6 +375,7 @@ namespace fly
     std::unique_ptr<typename API::RTT> _viewSpaceNormals;
     std::unique_ptr<typename API::Shadowmap> _shadowMap;
     std::array<std::shared_ptr<typename API::RTT>, 2> _dofBuffer;
+    StackPOD<Mat4f> _vpLightVolume;
     typename API::RendertargetStack _renderTargets;
     unsigned _defaultRenderTarget = 0;
     Mat4f _vpScene;
@@ -387,7 +389,7 @@ namespace fly
 #endif
     typename API::MeshGeometryStorage _meshGeometryStorage;
     std::map<Entity*, std::shared_ptr<StaticMeshRenderable<API>>> _staticMeshRenderables;
-  //  std::map<Entity*, std::shared_ptr<DynamicMeshRenderableWrapper<API>>> _dynamicMeshRenderables;
+    //  std::map<Entity*, std::shared_ptr<DynamicMeshRenderableWrapper<API>>> _dynamicMeshRenderables;
     std::map<Entity*, std::shared_ptr<StaticInstancedMeshRenderable<API>>> _staticInstancedMeshRenderables;
     std::shared_ptr<SkydomeRenderableWrapper<API>> _skydomeRenderable;
     StackPOD<IMeshRenderable<API>*> _visibleMeshes;
@@ -400,14 +402,14 @@ namespace fly
     void renderQuadtreeAABBs()
     {
       StackPOD<typename BVH::Node*> visible_nodes;
-      _bvhStatic->cullVisibleNodes(visible_nodes, *_camera);
+      _bvhStatic->cullVisibleNodes(*_camera, visible_nodes);
       if (visible_nodes.size()) {
         _api.setDepthWriteEnabled<true>();
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
         std::vector<AABB const *> aabbs;
         aabbs.reserve(visible_nodes.size());
         for (const auto& n : visible_nodes) {
-          aabbs.push_back(n->getAABB());
+          aabbs.push_back(&n->getAABB());
         }
         _api.renderAABBs(aabbs, _vpScene, Vec3f(1.f, 0.f, 0.f));
       }
@@ -419,7 +421,7 @@ namespace fly
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
         std::vector<AABB const *> aabbs;
         for (auto m : _visibleMeshes) {
-          aabbs.push_back(m->getAABB());
+          aabbs.push_back(&m->getAABB());
         }
         _api.renderAABBs(aabbs, _vpScene, Vec3f(0.f, 1.f, 0.f));
       }
@@ -443,55 +445,41 @@ namespace fly
     }
     void renderShadowMap()
     {
-      auto vp_shadow_volume = _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
-        inverse(_gsp._viewMatrix), _directionalLight->getViewMatrix(), static_cast<float>(_gs->getShadowMapSize()), _gs->getFrustumSplits(), _gsp._worldToLight, _api.getZNearMapping());
-#if RENDERER_STATS
-      Timing timing;
-#endif
-      cullMeshes(vp_shadow_volume);
-#if RENDERER_STATS
-      _stats._cullingShadowMapMicroSeconds = timing.duration<std::chrono::microseconds>();
-#endif
-#if RENDERER_STATS
-      timing.start();
-#endif
-      groupMeshes<true>();
-#if RENDERER_STATS
-      _stats._shadowMapGroupingMicroSeconds = timing.duration<std::chrono::microseconds>();
-      timing.start();
-#endif
+      _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
+        inverse(_gsp._viewMatrix), static_cast<float>(_gs->getShadowMapSize()), _gs->getFrustumSplits(), _api.getZNearMapping(), _gsp._worldToLight, _vpLightVolume);
       _api.setDepthClampEnabled<true>();
       _api.enablePolygonOffset(_gs->getShadowPolygonOffsetFactor(), _gs->getShadowPolygonOffsetUnits());
       _api.setViewport(Vec2u(_gs->getShadowMapSize()));
       _renderTargets.clear();
-      if (_gs->getSinglePassShadows()) {
-        _api.setRendertargets(_renderTargets, _shadowMap.get());
+      for (unsigned i = 0; i < _gs->getFrustumSplits().size(); i++) {
+        _visibleMeshes.clear();
+#if RENDERER_STATS
+        Timing timing;
+#endif
+       cullMeshes(_vpLightVolume[i]);
+#if RENDERER_STATS
+        _stats._cullingShadowMapMicroSeconds += timing.duration<std::chrono::microseconds>();
+#endif
+#if RENDERER_STATS
+        timing.start();
+#endif
+        groupMeshes<true>();
+#if RENDERER_STATS
+        _stats._shadowMapGroupingMicroSeconds += timing.duration<std::chrono::microseconds>();
+        timing.start();
+#endif
+        _api.setRendertargets(_renderTargets, _shadowMap.get(), i);
         _api.clearRendertarget(false, true, false);
+        _gsp._VP = &_gsp._worldToLight[i];
         auto stats = renderMeshes<true>();
 #if RENDERER_STATS
-        _stats._renderedMeshesShadow += stats._renderedMeshes * static_cast<unsigned>(_gs->getFrustumSplits().size());
-        _stats._renderedTrianglesShadow += stats._renderedTriangles * static_cast<unsigned>(_gs->getFrustumSplits().size());
+        _stats._shadowMapRenderCPUMicroSeconds += timing.duration<std::chrono::microseconds>();
+        _stats._renderedMeshesShadow += stats._renderedMeshes;
+        _stats._renderedTrianglesShadow += stats._renderedTriangles;
 #endif
-      }
-      else {
-        for (unsigned i = 0; i < _gs->getFrustumSplits().size(); i++) {
-          _api.setRendertargets(_renderTargets, _shadowMap.get(), i);
-          _api.clearRendertarget(false, true, false);
-          _gsp._VP = &_gsp._worldToLight[i];
-          auto stats = renderMeshes<true>();
-#if RENDERER_STATS
-          _stats._renderedMeshesShadow += stats._renderedMeshes;
-          _stats._renderedTrianglesShadow += stats._renderedTriangles;
-#endif
-        }
       }
       _api.disablePolygonOffset();
-
-#if RENDERER_STATS
-      _stats._shadowMapRenderCPUMicroSeconds = timing.duration<std::chrono::microseconds>();
-#endif
       _gsp._smFrustumSplits = &_gs->getFrustumSplits();
-      _gsp._smBias = _gs->getShadowBias();
       _gsp._shadowDarkenFactor = _gs->getShadowDarkenFactor();
       _api.setDepthClampEnabled<false>();
     }
@@ -518,11 +506,11 @@ namespace fly
     }
     inline void cullMeshes(const Mat4f& view_projection_matrix)
     {
-      _camera->extractFrustumPlanes(view_projection_matrix);
+      _camera->extractFrustumPlanes(view_projection_matrix, _api.getZNearMapping());
 
       _visibleMeshes.clear();
       if (_staticInstancedMeshRenderables.size()) {
-        _api.prepareCulling(_camera->getFrustumPlanes(), _camera->getPosition());
+        _api.prepareCulling(_camera->getFrustumPlanes(), _gsp._camPosworld);
       }
       // Static meshes
       _bvhStatic->cullVisibleObjects(*_camera, _visibleMeshes);

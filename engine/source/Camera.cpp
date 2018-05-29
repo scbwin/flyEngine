@@ -60,24 +60,23 @@ namespace fly
   {
     _isActive = active;
   }
-  void Camera::extractFrustumPlanes(const Mat4f & vp, bool directx)
+  void Camera::extractFrustumPlanes(const Mat4f & vp, ZNearMapping z_near_mapping)
   {
     _frustumPlanes[0] = (vp.row(3) + vp.row(0)) * -1.f; // left plane
     _frustumPlanes[1] = (vp.row(3) - vp.row(0)) * -1.f; // right plane
     _frustumPlanes[2] = (vp.row(3) + vp.row(1)) * -1.f; // bottom plane
     _frustumPlanes[3] = (vp.row(3) - vp.row(1)) * -1.f; // top plane
-    _frustumPlanes[4] = (directx ? vp.row(2) : (vp.row(3) + vp.row(2))) * -1.f; // near plane
+    _frustumPlanes[4] = (z_near_mapping == ZNearMapping::ZERO ? vp.row(2) : (vp.row(3) + vp.row(2))) * -1.f; // near plane
     _frustumPlanes[5] = (vp.row(3) - vp.row(2)) * -1.f; // far plane
   }
   const std::array<Vec4f, 6>& Camera::getFrustumPlanes() const
   {
     return _frustumPlanes;
   }
-  IntersectionResult Camera::planeIntersectsAABB(const Vec4f & plane, const Vec3f& h, const Vec4f& center) const
+  IntersectionResult Camera::planeIntersectsAABB(const Vec4f & plane, const Vec3f& aabb_half_diagonal, const Vec4f& aabb_center) const
   {
- //   auto h = (aabb.getMax() - aabb.getMin()) * 0.5f;
-    auto e = dot(h, abs(plane.xyz()));
-    auto s = dot(center, plane);
+    auto e = dot(aabb_half_diagonal, abs(plane.xyz()));
+    auto s = dot(aabb_center, plane);
     if (s - e > 0.f) {
       return IntersectionResult::OUTSIDE;
     }

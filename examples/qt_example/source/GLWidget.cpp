@@ -330,7 +330,7 @@ void GLWidget::initGame()
   unsigned ent_index = 0;
   for (int x = 0; x < NUM_OBJECTS; x++) {
     for (int y = 0; y < NUM_OBJECTS; y++) {
-      auto model_matrix = fly::Transform(fly::Vec3f(x * 60.f, -sponza_model->getAABB()->getMin()[1] * sponza_scale[1], y * 60.f), fly::Vec3f(sponza_scale)).getModelMatrix();
+      auto model_matrix = fly::Transform(fly::Vec3f(x * 60.f, -sponza_model->getAABB().getMin()[1] * sponza_scale[1], y * 60.f), fly::Vec3f(sponza_scale)).getModelMatrix();
 #else
   auto model_matrix = fly::Transform(fly::Vec3f(0.f), sponza_scale).getModelMatrix();
 #endif
@@ -364,7 +364,7 @@ void GLWidget::initGame()
         //  translation[1] = 1.f;
       }
 #endif
-      fly::AABB aabb_world(*mesh->getAABB(), model_matrix);
+      fly::AABB aabb_world(mesh->getAABB(), model_matrix);
       aabb_world.expand(aabb_offset);
       entities.push_back(_engine.getEntityManager()->createEntity());
       if (has_wind) {
@@ -486,6 +486,7 @@ void GLWidget::initGame()
     auto translation = _renderer->getAABBStatic().getMin();
  //   entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(m,
   //    plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(translation, scale).getModelMatrix(), false));
+    entity->addComponent(std::make_shared<fly::StaticMeshRenderable<fly::OpenGLAPI>>(*_renderer, m, m->getMaterial(), fly::Transform(translation, scale).getModelMatrix()));
   }
 #endif
 
@@ -506,7 +507,7 @@ void GLWidget::initGame()
   }
   fly::Vec2i num_cells(NUM_CELLS);
   fly::Vec2i num_meshes(ITEMS_PER_CELL);
-  float cell_size = sphere_lods[0]->getAABB()->size() * ITEMS_PER_CELL;
+  float cell_size = sphere_lods[0]->getAABB().size() * ITEMS_PER_CELL;
   fly::Vec2i total_size = num_cells * static_cast<int>(cell_size);
   std::cout << "Instanced meshes total extents: " << total_size << std::endl;
   size_t total_meshes = 0;
@@ -532,9 +533,9 @@ void GLWidget::initGame()
       for (int x = 0; x < num_meshes[0]; x++) {
         for (int z = 0; z < num_meshes[1]; z++) {
           fly::StaticInstancedMeshRenderable<fly::OpenGLAPI>::InstanceData data;
-          data._modelMatrix = fly::Transform(fly::Vec3f(static_cast<float>(x) * sphere_lods[0]->getAABB()->size() + dist(gen) + cell_x * cell_size - total_size[0] * 0.5f,
+          data._modelMatrix = fly::Transform(fly::Vec3f(static_cast<float>(x) * sphere_lods[0]->getAABB().size() + dist(gen) + cell_x * cell_size - total_size[0] * 0.5f,
             1.2f + dist(gen) * 5.f, 
-            static_cast<float>(z) * sphere_lods[0]->getAABB()->size() + dist(gen) + cell_z * cell_size - total_size[1] * 0.5f)).getModelMatrix();
+            static_cast<float>(z) * sphere_lods[0]->getAABB().size() + dist(gen) + cell_z * cell_size - total_size[1] * 0.5f)).getModelMatrix();
           data._index = dist_uint(gen);
           data._modelMatrixInverse = inverse(data._modelMatrix);
           instance_data.push_back(data);
@@ -547,6 +548,12 @@ void GLWidget::initGame()
     }
   }
   std::cout << "Num instances:" << total_meshes << std::endl;
+#endif
+
+#if SINGLE_SPHERE
+  auto sphere_entity = _engine.getEntityManager()->createEntity();
+  sphere_entity->addComponent(std::make_shared<fly::StaticMeshRenderable<fly::OpenGLAPI>>(*_renderer, sphere_model->getMeshes().front(), sphere_model->getMeshes().front()->getMaterial(),
+    fly::Transform(fly::Vec3f(5.f, 0.f, 0.f)).getModelMatrix()));
 #endif
 
   _camController = std::make_unique<fly::CameraController>(cam_entity->getComponent<fly::Camera>(), 100.f);

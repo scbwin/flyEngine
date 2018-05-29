@@ -25,6 +25,7 @@
 //#define NUM_INSTANCED_MESHES_PER_DIR 1000
 #define NUM_CELLS 64
 #define ITEMS_PER_CELL 64
+#define SINGLE_SPHERE 0
 
 class btTriangleMesh;
 

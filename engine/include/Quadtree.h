@@ -42,17 +42,17 @@ namespace fly
       inline const Vec2f& getMax() const { return _max; }
       inline Vec2f getSize() const { return _max - _min; }
       inline void setAABB(const AABB& aabb) { _aabb = aabb; }
-      inline AABB const * getAABB() { return &_aabb; }
-      inline const std::vector<TPtr> & getObjects() { return _objects; }
+      inline const AABB&  getAABB() const { return _aabb; }
+      inline const std::vector<TPtr> & getObjects()  const { return _objects; }
       void insert(const TPtr& object)
       {
-        AABB const * aabb_object = object->getAABB();
-        _aabb = _aabb.getUnion(*aabb_object);
+        auto aabb_object = object->getAABB();
+        _aabb = _aabb.getUnion(aabb_object);
         _largestObjectAABBSize = std::max(_largestObjectAABBSize, object->getLargestObjectAABBSize());
         for (unsigned char i = 0; i < 4; i++) {
           Vec2f child_min, child_max;
           getChildBounds(child_min, child_max, i);
-          if (child_min <= aabb_object->getMin().xz() && child_max >= aabb_object->getMax().xz()) { // The child node encloses the object entirely, therefore push it further down the tree.
+          if (child_min <= aabb_object.getMin().xz() && child_max >= aabb_object.getMax().xz()) { // The child node encloses the object entirely, therefore push it further down the tree.
             if (_children[i] == nullptr) { // Create the node if not yet constructed
               _children[i] = std::make_unique<Node>(child_min, child_max);
             }
@@ -65,7 +65,7 @@ namespace fly
       bool removeObject(const TPtr& object)
       {
         // TODO: update node aabbs, largest object size and delete nodes if necessary.
-        if (object->getAABB()->intersects(_aabb)) {
+        if (object->getAABB().intersects(_aabb)) {
           for (unsigned i = 0; i < _objects.size(); i++) {
             if (_objects[i] == object) {
               _objects.erase(_objects.begin() + i);
@@ -91,7 +91,7 @@ namespace fly
         if (_objects.size()) {
           std::cout << indent << "Object aabbs :" << std::endl;
           for (const auto& e : _objects) {
-            std::cout << indent << e->getAABB()->getMin() << " " << e->getAABB()->getMax() << std::endl;
+            std::cout << indent << e->getAABB().getMin() << " " << e->getAABB().getMax() << std::endl;
           }
         }
         for (const auto& c : _children) {
@@ -100,7 +100,7 @@ namespace fly
           }
         }
       }
-      void cullAllObjects(Stack& all_objects, const Camera& camera)
+      void cullAllObjects(const Camera& camera, Stack& all_objects)
       {
         if (_aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestObjectAABBSize)) {
           for (const auto& e : _objects) {
@@ -110,12 +110,12 @@ namespace fly
           }
           for (const auto& c : _children) {
             if (c) {
-              c->cullAllObjects(all_objects, camera);
+              c->cullAllObjects(camera, all_objects);
             }
           }
         }
       }
-      void cullVisibleObjects(Stack& visible_objects, const Camera& camera) const
+      void cullVisibleObjects(const Camera& camera, Stack& visible_objects) const
       {
         if (_aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestObjectAABBSize)) {
           auto result = camera.frustumIntersectsAABB(_aabb);
@@ -127,7 +127,7 @@ namespace fly
             }
             for (const auto& c : _children) {
               if (c) {
-                c->cullAllObjects(visible_objects, camera); // No further visibility tests needed, because the node is fully within the view frustum.
+                c->cullAllObjects(camera, visible_objects); // No further visibility tests needed, because the node is fully within the view frustum.
               }
             }
           }
@@ -139,7 +139,7 @@ namespace fly
             }
             for (const auto& c : _children) {
               if (c) {
-                c->cullVisibleObjects(visible_objects, camera); // Proceed with visibility tests for child nodes.
+                c->cullVisibleObjects(camera, visible_objects); // Proceed with visibility tests for child nodes.
               }
             }
           }
@@ -167,18 +167,18 @@ namespace fly
           }
         }
       }
-      void cullAllNodes(StackPOD<Node*>& nodes, const Camera& camera)
+      void cullAllNodes(const Camera& camera, StackPOD<Node*>& nodes)
       {
         if (_aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestObjectAABBSize)) {
           nodes.push_back_secure(this);
           for (const auto& c : _children) {
             if (c) {
-              c->cullAllNodes(nodes, camera);
+              c->cullAllNodes(camera, nodes);
             }
           }
         }
       }
-      void cullVisibleNodes(StackPOD<Node*>& visible_nodes, const Camera& camera)
+      void cullVisibleNodes(const Camera& camera, StackPOD<Node*>& visible_nodes)
       {
         if (_aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestObjectAABBSize)) {
           auto result = camera.frustumIntersectsAABB(_aabb);
@@ -186,7 +186,7 @@ namespace fly
             visible_nodes.push_back_secure(this);
             for (const auto& c : _children) {
               if (c) {
-                c->cullAllNodes(visible_nodes, camera);
+                c->cullAllNodes(camera, visible_nodes);
               }
             }
           }
@@ -194,7 +194,7 @@ namespace fly
             visible_nodes.push_back_secure(this);
             for (const auto& c : _children) {
               if (c) {
-                c->cullVisibleNodes(visible_nodes, camera);
+                c->cullVisibleNodes(camera, visible_nodes);
               }
             }
           }
@@ -214,7 +214,7 @@ namespace fly
         }
         else if (aabb.intersects(_aabb)) {
           for (const auto& e : _objects) {
-            if (aabb.intersects(*e->getAABB())) {
+            if (aabb.intersects(e->getAABB())) {
               intersected_objects.push_back_secure(e);
             }
           }
@@ -255,7 +255,7 @@ namespace fly
     }
     void insert(const TPtr& object)
     {
-      if (_root->getAABB()->contains(*object->getAABB())) {
+      if (_root->getAABB().contains(object->getAABB())) {
         _root->insert(object);
       }
       else {
@@ -272,15 +272,15 @@ namespace fly
     }
     void cullVisibleObjects(const Camera& camera, Stack& stack) const
     {
-      _root->cullVisibleObjects(stack, camera);
+      _root->cullVisibleObjects(camera, stack);
     }
     void getAllObjects(Stack& stack) const
     {
       _root->getAllObjects(stack);
     }
-    void cullVisibleNodes(StackPOD<Node*>& stack, const Camera& camera) const
+    void cullVisibleNodes(const Camera& camera, StackPOD<Node*>& stack) const
     {
-      _root->cullVisibleNodes(stack, camera);
+      _root->cullVisibleNodes(camera, stack);
     }
     void getAllNodes(StackPOD<Node*>& stack)
     {
