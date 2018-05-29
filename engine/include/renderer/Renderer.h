@@ -393,7 +393,7 @@ namespace fly
     std::map<Entity*, std::shared_ptr<StaticInstancedMeshRenderable<API>>> _staticInstancedMeshRenderables;
     std::shared_ptr<SkydomeRenderableWrapper<API>> _skydomeRenderable;
     StackPOD<IMeshRenderable<API>*> _visibleMeshes;
-    std::map<ShaderDesc<API> const *, std::map<MaterialDesc<API> const *, StackPOD<IMeshRenderable<API>*, 64>>> _displayList;
+    StackPOD<ShaderDesc<API>*> _displayList;
     std::unique_ptr<BVH> _bvhStatic;
     SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
     SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&> _shaderDescCache;
@@ -528,9 +528,15 @@ namespace fly
     template<bool depth = false>
     inline void groupMeshes()
     {
-      _displayList.clear();
-      for (auto m : _visibleMeshes) {
-        _displayList[depth ? m->getShaderDescDepth()->get() : m->getShaderDesc()->get()][m->getMaterialDesc()].push_back_secure(m);
+      for (const auto& m : _visibleMeshes) {
+        const auto& material_desc = m->getMaterialDesc();
+        const auto& shader_desc = depth ? m->getShaderDescDepth()->get() : m->getShaderDesc()->get();
+        shader_desc->addMaterial(material_desc);
+        material_desc->addMeshRenderable(m);
+        if (!shader_desc->isUsed()) {
+          _displayList.push_back_secure(shader_desc);
+          shader_desc->setIsUsed(true);
+        }
       }
     }
     struct MeshRenderStats
@@ -542,19 +548,23 @@ namespace fly
     inline MeshRenderStats renderMeshes()
     {
       MeshRenderStats stats = {};
-      for (const auto& e : _displayList) { // For each shader
-        e.first->setup(_gsp);
-        for (const auto& e1 : e.second) { // For each material
-          e1.first->setup<depth>();
-          for (const auto& mr : e1.second) { // For each mesh
+      for (const auto& shader : _displayList) {
+        shader->setup(_gsp);
+        for (const auto& material : shader->getMaterials()) {
+          material->setup<depth>();
+          for (const auto& mr : material->getMeshRenderables()) {
             depth ? mr->renderDepth(_api) : mr->render(_api);
 #if RENDERER_STATS
             stats._renderedTriangles += mr->numTriangles();
             stats._renderedMeshes++;
 #endif
           }
+          material->clearMeshRenderables();
         }
+        shader->clearMaterials();
+        shader->setIsUsed(false);
       }
+      _displayList.clear();
       return stats;
     }
   };

@@ -12,6 +12,9 @@
 
 namespace fly
 {
+  template<typename T>
+  class IMeshRenderable;
+
   /**
   * Wraps a single material and generates shaders based on the material properties.
   * The setup() method takes care of sending the necessary uniform data to the GPU once the material is bound.
@@ -169,6 +172,18 @@ namespace fly
     virtual void cameraLerpingChanged(GraphicsSettings const * gs) override { create(*gs); }
     virtual void gammaChanged(GraphicsSettings const * gs) override { create(*gs); }
     virtual void screenSpaceReflectionsChanged(GraphicsSettings const * gs) override { create(*gs); }
+    inline void addMeshRenderable(IMeshRenderable<API>* mr)
+    {
+      _renderables.push_back_secure(mr);
+    }
+    inline void clearMeshRenderables()
+    {
+      _renderables.clear();
+    }
+    inline const StackPOD<IMeshRenderable<API>*>& getMeshRenderables() const
+    {
+      return _renderables;
+    }
     /* inline StackPOD<MeshRenderable<API>*, 1024>& getRenderables()
     {
     return _renderables;
@@ -193,7 +208,7 @@ namespace fly
     std::unique_ptr<typename API::StorageBuffer> _diffuseColorBuffer;
     SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&>& _shaderDescCache;
     SoftwareCache<std::string, std::shared_ptr<typename API::Shader>, typename API::ShaderSource&, typename API::ShaderSource&, typename API::ShaderSource&>& _shaderCache;
-    //    StackPOD<MeshRenderable<API>*, 1024> _renderables;
+    StackPOD<IMeshRenderable<API>*> _renderables;
   };
 }
 

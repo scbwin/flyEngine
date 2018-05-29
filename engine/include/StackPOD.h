@@ -96,6 +96,15 @@ namespace fly
     {
       return *(_end - 1);
     }
+    inline T const * find(const T& element) const
+    {
+      for (const auto& e : *this) {
+        if (e == element) {
+          return &e;
+        }
+      }
+      return _end;
+    }
   private:
     T * _begin = nullptr;
     T * _end = nullptr;

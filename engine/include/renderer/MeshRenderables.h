@@ -23,7 +23,7 @@ namespace fly
     IMeshRenderable() = default;
     inline std::shared_ptr<ShaderDesc<API>> const * getShaderDesc() { return _shaderDesc; }
     inline std::shared_ptr<ShaderDesc<API>> const * getShaderDescDepth() { return _shaderDescDepth; }
-    inline MaterialDesc<API> const * getMaterialDesc() { return _materialDesc; }
+    inline MaterialDesc<API> * getMaterialDesc() { return _materialDesc; }
     virtual void renderDepth(API const & api) = 0;
     virtual void render(API const & api) = 0;
     inline const AABB& getAABB() { return _aabb; }
@@ -45,7 +45,7 @@ namespace fly
     }
     virtual unsigned numTriangles() const = 0;
   protected:
-    MaterialDesc<API> const * _materialDesc;
+    MaterialDesc<API> * _materialDesc;
     std::shared_ptr<ShaderDesc<API>> const * _shaderDesc;
     std::shared_ptr<ShaderDesc<API>> const * _shaderDescDepth;
     AABB _aabb;
