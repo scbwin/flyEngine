@@ -23,9 +23,8 @@ namespace fly
     SS_VP = 8,
     SS_LIGHTING = 16,
     SS_GAMMA = 32,
-    SS_P_INVERSE = 64,
-    SS_WORLD_TO_LIGHT = 128,
-    SS_V_INVERSE = 256
+    SS_WORLD_TO_LIGHT = 64,
+    SS_V_INVERSE = 128
   };
 }
 

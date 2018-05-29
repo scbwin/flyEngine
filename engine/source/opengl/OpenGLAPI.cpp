@@ -17,6 +17,7 @@
 #include <fstream>
 #include <Flags.h>
 #include <ShaderDesc.h>
+#include <GlobalShaderParams.h>
 
 #define INIT_BUFFER_SIZE 1024 * 1024 * 8 // Allocate 8 MB video RAM for the vertex and index buffer each.
 
@@ -254,7 +255,7 @@ namespace fly
   }
   void OpenGLAPI::composite(const RTT& lighting_buffer, const GlobalShaderParams& params)
   {
-    _compositeShaderDesc->setup(params);
+    bindShader(&_compositeShader);
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit1()));
     lighting_buffer.bind();
     setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::lightingSampler()), miscTexUnit1());
@@ -262,7 +263,10 @@ namespace fly
   }
   void OpenGLAPI::composite(const RTT & lighting_buffer, const GlobalShaderParams & params, const RTT & dof_buffer, const Depthbuffer& depth_buffer)
   {
-    _compositeShaderDesc->setup(params);
+    bindShader(&_compositeShader);
+    auto p_inverse = inverse(params._projectionMatrix);
+    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverseThirdRow()), p_inverse.row(2));
+    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverseFourthRow()), p_inverse.row(3));
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit1()));
     lighting_buffer.bind();
     setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::lightingSampler()), miscTexUnit1());
@@ -388,17 +392,13 @@ namespace fly
   }
   void OpenGLAPI::createCompositeShader(const GraphicsSettings & gs)
   {
-    unsigned ss_flags = ShaderSetupFlags::SS_NONE;
-    if (gs.getDepthOfField()) {
-      ss_flags |= ShaderSetupFlags::SS_P_INVERSE;
-    }
     GLShaderSource vs, fs;
     _shaderGenerator.createCompositeShaderSource(gs, vs, fs);
-    auto shader = std::make_shared<GLShaderProgram>();
-    shader->add(vs);
-    shader->add(fs);
-    shader->link();
-    _compositeShaderDesc = std::make_unique<ShaderDesc<OpenGLAPI>>(shader, ss_flags, *this);
+    Shader shader;
+    shader.add(vs);
+    shader.add(fs);
+    shader.link();
+    _compositeShader = std::move(shader);
   }
   void OpenGLAPI::createScreenSpaceReflectionsShader(const GraphicsSettings & gs)
   {

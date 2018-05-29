@@ -507,15 +507,15 @@ layout(location = 0) out vec3 fragmentColor;\n\
 uniform sampler2D " + std::string(lightingSampler()) + ";\n\
 uniform sampler2D " + std::string(depthSampler()) + ";\n\
 uniform sampler2D " + std::string(dofSampler()) + ";\n\
-uniform mat4 " + std::string(projectionMatrixInverse()) + ";\n\
+uniform vec4 " + std::string(projectionMatrixInverseThirdRow()) + ";\n\
+uniform vec4 " + std::string(projectionMatrixInverseFourthRow()) + ";\n\
 in vec2 uv;\n\
 void main()\n\
 {\n\
   fragmentColor = textureLod(" + std::string(lightingSampler()) + ", uv, 0.f).rgb;\n";
     if (gs.getDepthOfField()) {
       shader_src += "  vec4 pos_ndc = vec4(vec3(uv, texture(" + std::string(depthSampler()) + ", uv).r) * 2.f - 1.f, 1.f);\n\
-  vec4 pos_view_h = " + std::string(projectionMatrixInverse()) + " * pos_ndc;\n\
-  float depth_view = (pos_view_h.z / pos_view_h.w);\n\
+  float depth_view = dot(" + std::string(projectionMatrixInverseThirdRow()) + ", pos_ndc) / dot(" + std::string(projectionMatrixInverseFourthRow()) + ", pos_ndc);\n\
   vec3 blur_color = texture(" + std::string(dofSampler()) + ", uv).rgb;\n\
   if (depth_view >= " + std::to_string(gs.getDofCenter()) + "){\n\
     fragmentColor = mix(fragmentColor, blur_color, smoothstep(" + std::to_string(gs.getDofCenter()) + ", " + std::to_string(gs.getDofFar()) + ", depth_view));\n\

@@ -32,7 +32,9 @@ namespace fly
     StackPOD& operator=(StackPOD&& other) = delete;
     ~StackPOD()
     {
-      std::free(_begin);
+      if (_begin) {
+        std::free(_begin);
+      }
     }
     inline void reserve(size_t new_capacity)
     {

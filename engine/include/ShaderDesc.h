@@ -36,9 +36,6 @@ namespace fly
       if (flags & ShaderSetupFlags::SS_GAMMA) {
         _setupFuncs.push_back_secure(typename API::ShaderSetup::setupGamma);
       }
-      if (flags & ShaderSetupFlags::SS_P_INVERSE) {
-        _setupFuncs.push_back_secure(typename API::ShaderSetup::setupPInverse);
-      }
       if (flags & ShaderSetupFlags::SS_WORLD_TO_LIGHT) {
         _setupFuncs.push_back_secure(typename API::ShaderSetup::setupWorldToLight);
       }

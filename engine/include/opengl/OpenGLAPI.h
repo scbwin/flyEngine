@@ -233,7 +233,7 @@ namespace fly
     GLShaderProgram const * _activeShader;
     GLFramebuffer _offScreenFramebuffer;
     StackPOD<GLenum> _drawBuffers;
-    std::unique_ptr<ShaderDesc<OpenGLAPI>> _compositeShaderDesc;
+    Shader _compositeShader;
     std::shared_ptr<ShaderDesc<OpenGLAPI>> _skydomeShaderDesc;
     GLShaderProgram _ssrShader;
     GLShaderProgram _blurShader;
