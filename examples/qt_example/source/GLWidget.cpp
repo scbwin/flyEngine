@@ -474,7 +474,7 @@ void GLWidget::initGame()
     std::vector<fly::Vertex> vertices_new;
     for (const auto& v : m->getVertices()) {
       fly::Vertex v_new = v;
-      v_new._uv *= (_renderer->getAABBStatic().getMax().xz() - _renderer->getAABBStatic().getMax().xz()) * 0.65f;
+      v_new._uv *= (_renderer->getAABBStatic().getMax().xz() - _renderer->getAABBStatic().getMin().xz()) * 0.65f;
       vertices_new.push_back(v_new);
     }
     m->setVertices(vertices_new);
@@ -486,7 +486,7 @@ void GLWidget::initGame()
     auto translation = _renderer->getAABBStatic().getMin();
  //   entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(m,
   //    plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(translation, scale).getModelMatrix(), false));
-    entity->addComponent(std::make_shared<fly::StaticMeshRenderable<fly::OpenGLAPI>>(*_renderer, m, m->getMaterial(), fly::Transform(translation, scale).getModelMatrix()));
+    entity->addComponent(std::make_shared<fly::StaticMeshRenderable<fly::OpenGLAPI>>(*_renderer, m, plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(translation, scale).getModelMatrix()));
   }
 #endif
 
