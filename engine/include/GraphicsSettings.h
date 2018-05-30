@@ -114,12 +114,12 @@ namespace fly
     float _smBias = 0.0035f;
     float _shadowDarkenFactor = 0.8f;
     unsigned _shadowMapSize = 1024;
-    std::vector<float> _smFrustumSplits = { 7.5f, 50.f, 500.f };
+    std::vector<float> _smFrustumSplits = { 20.f, 200.f, 500.f };
     unsigned _anisotropy = 4u;
     bool _postProcessing = true;
     bool _debugQuadtreeNodeAABBs = false;
     bool _debugObjectAABBs = false;
-    bool _cameraLerping = true;
+    bool _cameraLerping = false;
     float _cameraLerpAlpha = 0.8f;
     float _blurSigma = 2.5f;
     unsigned _blurRadius = 3u;

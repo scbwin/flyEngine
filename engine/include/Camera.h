@@ -14,11 +14,13 @@ namespace fly
   };
 
   class AABB;
+  class Sphere;
 
   class Camera : public Component
   {
   public:
     Camera(const Vec3f& pos, const Vec3f& euler_angles);
+    Camera(const Camera& other) = default;
     virtual ~Camera();
     Mat4f updateViewMatrix(const Vec3f& pos, const Vec3f& euler_angles);
     Mat3f getViewMatrixInverse() const;
@@ -35,6 +37,8 @@ namespace fly
     const std::array<Vec4f, 6>& getFrustumPlanes() const;
     IntersectionResult planeIntersectsAABB(const Vec4f& plane, const Vec3f& aabb_half_diagonal, const Vec4f& aabb_center) const;
     IntersectionResult frustumIntersectsAABB(const AABB& aabb) const;
+    IntersectionResult planeIntersectsSphere(const Vec4f& plane, const Sphere& sphere) const;
+    IntersectionResult frustumIntersectsSphere(const Sphere& sphere) const;
     float getDetailCullingThreshold() const;
     void setDetailCullingThreshold(float threshold);
   private:

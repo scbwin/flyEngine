@@ -11,12 +11,13 @@ namespace fly
   {
   public:
     Sphere() = default;
-    Sphere(const Vec3f& position, float radius);
+    Sphere(const Vec3f& center, float radius);
     Sphere(const AABB& aabb);
-    const Vec3f& getPosition() const;
+    Sphere(Vec3f const * positions, size_t count);
+    const Vec3f& getCenter() const;
     float getRadius() const;
   private:
-    Vec3f _position = Vec3f(0.f);
+    Vec3f _center = Vec3f(0.f);
     float _radius = 0.f;
   };
 }

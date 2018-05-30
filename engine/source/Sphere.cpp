@@ -3,21 +3,31 @@
 
 namespace fly
 {
-  Sphere::Sphere(const Vec3f & position, float radius) : 
-    _position(position), 
+  Sphere::Sphere(const Vec3f & center, float radius) : 
+    _center(center), 
     _radius(radius)
   {
   }
   Sphere::Sphere(const AABB & aabb) :
-    _position(aabb.center())
+    _center(aabb.center())
   {
     for (const auto& v : aabb.getVertices()) {
-      _radius = std::max(_radius, distance(aabb.center(), v));
+      _radius = std::max(_radius, distance(_center, v));
     }
   }
-  const Vec3f & Sphere::getPosition() const
+  Sphere::Sphere(Vec3f const * positions, size_t count) :
+    _center(0.f)
   {
-    return _position;
+    for (size_t i = 0; i < count; i++) {
+      _center += positions[i] / static_cast<float>(count);
+    }
+    for (size_t i = 0; i < count; i++) {
+      _radius = std::max(_radius, distance(_center, positions[i]));
+    }
+  }
+  const Vec3f & Sphere::getCenter() const
+  {
+    return _center;
   }
   float Sphere::getRadius() const
   {

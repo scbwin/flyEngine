@@ -1,5 +1,6 @@
 #include "Camera.h"
 #include <AABB.h>
+#include <Sphere.h>
 #include <math/MathHelpers.h>
 
 namespace fly
@@ -89,6 +90,28 @@ namespace fly
     Vec4f center(aabb.center(), 1.f);
     for (const auto& p : _frustumPlanes) {
       auto result = planeIntersectsAABB(p, h, center);
+      if (result == IntersectionResult::OUTSIDE) {
+        return IntersectionResult::OUTSIDE;
+      }
+      else if (result == IntersectionResult::INTERSECTING) {
+        intersecting = true;
+      }
+    }
+    return intersecting ? IntersectionResult::INTERSECTING : IntersectionResult::INSIDE;
+  }
+  IntersectionResult Camera::planeIntersectsSphere(const Vec4f & plane, const Sphere & sphere) const
+  {
+    float dist = dot(Vec4f(sphere.getCenter(), 1.f), plane);
+    if (dist > sphere.getRadius()) {
+      return IntersectionResult::OUTSIDE;
+    }
+    return dist < -sphere.getRadius() ? IntersectionResult::INSIDE : IntersectionResult::INTERSECTING;
+  }
+  IntersectionResult Camera::frustumIntersectsSphere(const Sphere & sphere) const
+  {
+    bool intersecting = false;
+    for (const auto& p : _frustumPlanes) {
+      auto result = planeIntersectsSphere(p, sphere);
       if (result == IntersectionResult::OUTSIDE) {
         return IntersectionResult::OUTSIDE;
       }

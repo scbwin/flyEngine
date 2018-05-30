@@ -85,23 +85,20 @@ namespace fly
     for (unsigned int i = 0; i < frustum_splits.size(); i++) {
       auto projection_matrix = MathHelpers::getProjectionMatrixPerspective(fov_degrees, aspect_ratio, i == 0 ? near_plane : frustum_splits[i - 1], frustum_splits[i], z_near_mapping);
       auto cube_ndc = MathHelpers::cubeNDC(z_near_mapping);
-      Mat4f p_inverse = inverse(projection_matrix); // Transform from scene NDC into scene's homogeneous eye space, for this frustum split.
-      Mat4f vp_inverse_v_light = view_matrix_light * view_matrix_inverse * p_inverse; // Transform from scene NDC to light source's homogeneous eye space, for this frustum split.
-      AABB aabb_view(AABB::fromTransform<cube_ndc.size()>(cube_ndc.data(), p_inverse));
-      AABB aabb_light(AABB::fromTransform<cube_ndc.size()>(cube_ndc.data(), vp_inverse_v_light));
-      Sphere sphere_view(aabb_view);
-      Vec3f bb_min_light_space = aabb_light.center() - sphere_view.getRadius();
-      Vec3f bb_max_light_space = aabb_light.center() + sphere_view.getRadius();
+      Vec3f corners_light[cube_ndc.size()];
+      for (size_t i = 0; i < cube_ndc.size(); i++) {
+        auto corner_light_h = view_matrix_light * view_matrix_inverse * inverse(projection_matrix) * Vec4f(cube_ndc[i], 1.f);
+        corners_light[i] = corner_light_h.xyz() / corner_light_h[3];
+      }
+      AABB aabb_light(corners_light, cube_ndc.size());
 
       // Prevents shimmering edges when the camera is moving
-      Vec2f units_per_texel = (bb_max_light_space.xy() - bb_min_light_space.xy()) / shadow_map_size;
-      Vec2f bb_min_xy = floor(bb_min_light_space.xy() / units_per_texel) * units_per_texel;
-      Vec2f bb_max_xy = ceil(bb_max_light_space.xy() / units_per_texel) * units_per_texel;
-      bb_min_light_space = Vec3f(bb_min_xy, bb_min_light_space[2]);
-      bb_max_light_space = Vec3f(bb_max_xy, bb_max_light_space[2]);
+     auto units_per_texel = (aabb_light.getMax() - aabb_light.getMin()) / shadow_map_size;
+     aabb_light.getMin() = floor(aabb_light.getMin() / units_per_texel) * units_per_texel;
+     aabb_light.getMax() = floor(aabb_light.getMax() / units_per_texel) * units_per_texel;
 
-      vp.push_back_secure(MathHelpers::getProjectionMatrixOrtho(bb_min_light_space, bb_max_light_space, z_near_mapping) * view_matrix_light); // Used for rendering
-      vp_light_volume.push_back_secure(MathHelpers::getProjectionMatrixOrtho(Vec3f(bb_min_light_space.xy(), 0.f), bb_max_light_space, z_near_mapping) * view_matrix_light); // Used for culling
+      vp.push_back_secure(MathHelpers::getProjectionMatrixOrtho(aabb_light.getMin(), aabb_light.getMax(), z_near_mapping) * view_matrix_light); // Used for rendering
+      vp_light_volume.push_back_secure(MathHelpers::getProjectionMatrixOrtho(Vec3f(aabb_light.getMin().xy(), 0.f), aabb_light.getMax(), z_near_mapping) * view_matrix_light); // Used for culling
     }
   }
 

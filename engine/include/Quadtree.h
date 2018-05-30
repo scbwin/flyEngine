@@ -9,6 +9,7 @@
 #include <Settings.h>
 #include <Camera.h>
 #include <StackPOD.h>
+#include <Sphere.h>
 
 namespace fly
 {
@@ -46,8 +47,9 @@ namespace fly
       inline const std::vector<TPtr> & getObjects()  const { return _objects; }
       void insert(const TPtr& object)
       {
-        auto aabb_object = object->getAABB();
+        const auto& aabb_object = object->getAABB();
         _aabb = _aabb.getUnion(aabb_object);
+        _sphere = Sphere(_aabb);
         _largestObjectAABBSize = std::max(_largestObjectAABBSize, object->getLargestObjectAABBSize());
         for (unsigned char i = 0; i < 4; i++) {
           Vec2f child_min, child_max;
@@ -230,6 +232,7 @@ namespace fly
       std::unique_ptr<Node> _children[4];
       // Axis aligned bounding box that the encloses the objects within this node.
       AABB _aabb;
+      Sphere _sphere;
       /** 
       * Largest object aabb size that is enclosed by this node. If the largest object within
       * a node is too small to render, then all the other objects within this node are too small as well
