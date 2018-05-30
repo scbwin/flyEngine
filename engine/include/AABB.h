@@ -24,6 +24,17 @@ namespace fly
     AABB(const Model& model);
     AABB(const Mesh& mesh);
     AABB(const std::vector<Vertex>& vertices);
+    AABB(const Vec3f * first, size_t count);
+    template<size_t count>
+    static AABB fromTransform(const Vec3f * first, const Mat4f& transform)
+    {
+      Vec3f vertices[count];
+      for (size_t i = 0; i < count; i++) {
+        Vec4f vertex_h = transform * Vec4f(first[i], 1.f);
+        vertices[i] = vertex_h.xyz() / vertex_h[3];
+      }
+      return AABB(vertices, count);
+    }
     const Vec3f& getMin() const;
     const Vec3f& getMax() const;
     Vec3f& getMin();

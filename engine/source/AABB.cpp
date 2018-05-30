@@ -52,6 +52,14 @@ namespace fly
       _bbMax = maximum(_bbMax, v._position);
     }
   }
+  AABB::AABB(const Vec3f * first, size_t count) :
+    AABB()
+  {
+    for (size_t i = 0; i < count; i++) {
+      _bbMin = minimum(_bbMin, first[i]);
+      _bbMax = maximum(_bbMax, first[i]);
+    }
+  }
   const Vec3f& AABB::getMin() const
   {
     return _bbMin;

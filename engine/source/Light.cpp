@@ -6,6 +6,7 @@
 #include <iostream>
 #include <glm/gtx/string_cast.hpp>
 #include <math/MathHelpers.h>
+#include <Sphere.h>
 
 namespace fly
 {
@@ -84,27 +85,13 @@ namespace fly
     for (unsigned int i = 0; i < frustum_splits.size(); i++) {
       auto projection_matrix = MathHelpers::getProjectionMatrixPerspective(fov_degrees, aspect_ratio, i == 0 ? near_plane : frustum_splits[i - 1], frustum_splits[i], z_near_mapping);
       auto cube_ndc = MathHelpers::cubeNDC(z_near_mapping);
-      auto computeAABB = [&cube_ndc] (const Mat4f& transform) {
-        Vec3f bb_min(std::numeric_limits<float>::max());
-        Vec3f bb_max(std::numeric_limits<float>::lowest());
-        for (const auto& v : cube_ndc) {
-          auto corner_h = transform * Vec4f(v, 1.f);
-          auto corner = corner_h.xyz() / corner_h[3];
-          bb_min = minimum(bb_min, corner);
-          bb_max = maximum(bb_max, corner);
-        }
-        return AABB(bb_min, bb_max);
-      };
       Mat4f p_inverse = inverse(projection_matrix); // Transform from scene NDC into scene's homogeneous eye space, for this frustum split.
-      auto vp_inverse_v_light = view_matrix_light * view_matrix_inverse * p_inverse; // Transform from scene NDC to light source's homogeneous eye space, for this frustum split.
-      auto aabb_view = computeAABB(p_inverse);
-      auto aabb_light = computeAABB(vp_inverse_v_light);
-      float sphere_radius = std::numeric_limits<float>::lowest();
-      for (unsigned char i = 0; i < 8; i++) {
-        sphere_radius = (std::max)(sphere_radius, distance(aabb_view.center(), aabb_view.getVertex(i)));
-      }
-      Vec3f bb_min_light_space = aabb_light.center() - sphere_radius;
-      Vec3f bb_max_light_space = aabb_light.center() + sphere_radius;
+      Mat4f vp_inverse_v_light = view_matrix_light * view_matrix_inverse * p_inverse; // Transform from scene NDC to light source's homogeneous eye space, for this frustum split.
+      AABB aabb_view(AABB::fromTransform<cube_ndc.size()>(cube_ndc.data(), p_inverse));
+      AABB aabb_light(AABB::fromTransform<cube_ndc.size()>(cube_ndc.data(), vp_inverse_v_light));
+      Sphere sphere_view(aabb_view);
+      Vec3f bb_min_light_space = aabb_light.center() - sphere_view.getRadius();
+      Vec3f bb_max_light_space = aabb_light.center() + sphere_view.getRadius();
 
       // Prevents shimmering edges when the camera is moving
       Vec2f units_per_texel = (bb_max_light_space.xy() - bb_min_light_space.xy()) / shadow_map_size;
