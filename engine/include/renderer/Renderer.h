@@ -244,14 +244,14 @@ namespace fly
           _camEulerAngles = _camera->getEulerAngles();
         }
         _gsp._viewMatrix = _camera->updateViewMatrix(_gsp._camPosworld, _camEulerAngles);
-        _gsp._viewMatrixInverse = _camera->getViewMatrixInverse();// inverse(glm::mat3(_gsp._viewMatrix));
+        _gsp._viewMatrixInverse = _camera->getViewMatrixInverse();
         _vpScene = _gsp._projectionMatrix * _gsp._viewMatrix;
         _api.setDepthTestEnabled<true>();
         _api.setFaceCullingEnabled<true>();
         _api.setCullMode<API::CullMode::BACK>();
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
         _api.setDepthWriteEnabled<true>();
-        _gsp._lightPosWorld = &_directionalLight->getPosition();
+        _gsp._lightDirWorld = &_directionalLight->getDirection();
         _gsp._lightIntensity = &_directionalLight->getIntensity();
         _gsp._time = _gameTimer->getTimeSeconds();
         _gsp._exposure = _gs->getExposure();
@@ -265,7 +265,7 @@ namespace fly
 #if RENDERER_STATS
         Timing timing;
 #endif
-        cullMeshes(_vpScene);
+        cullMeshes(_debugCamera ? _gsp._projectionMatrix * _debugCamera->updateViewMatrix(_debugCamera->getPosition(), _debugCamera->getEulerAngles()) : _vpScene, _debugCamera ? *_debugCamera : *_camera);
 #if RENDERER_STATS
         _stats._cullingMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
@@ -311,8 +311,11 @@ namespace fly
         if (_gs->getDebugObjectAABBs()) {
           renderObjectAABBs();
         }
-        if (_offScreenRendering) {
+        if (_offScreenRendering || _debugCamera) {
           _api.setDepthTestEnabled<false>();
+        }
+        if (_debugCamera) {
+          _api.renderDebugFrustum(_gsp._projectionMatrix * _debugCamera->updateViewMatrix(_debugCamera->getPosition(), _debugCamera->getEulerAngles()), *_gsp._VP);
         }
         if (_gs->getScreenSpaceReflections()) {
           _renderTargets.clear();
@@ -359,6 +362,19 @@ namespace fly
     {
       return _meshGeometryStorage.addMesh(mesh);
     }
+    inline void setDebugCamera(const std::shared_ptr<Camera>& camera)
+    {
+      _debugCamera = camera;
+    }
+    inline void removeDebugCamera()
+    {
+      _debugCamera = nullptr;
+    }
+    inline const std::shared_ptr<Camera>& getDebugCamera() const
+    {
+      return _debugCamera;
+    }
+
   private:
     API _api;
     ProjectionParams _pp;
@@ -367,6 +383,7 @@ namespace fly
     Vec3f _camEulerAngles = Vec3f(0.f);
     std::shared_ptr<Camera> _camera;
     std::shared_ptr<DirectionalLight> _directionalLight;
+    std::shared_ptr<Camera> _debugCamera;
     AABB _aabbStatic;
     GraphicsSettings * const _gs;
     std::unique_ptr<typename API::RTT> _lightingBuffer;
@@ -446,7 +463,8 @@ namespace fly
     void renderShadowMap()
     {
       _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
-        inverse(_gsp._viewMatrix), static_cast<float>(_gs->getShadowMapSize()), _gs->getFrustumSplits(), _api.getZNearMapping(), _gsp._worldToLight, _vpLightVolume);
+       _debugCamera ? inverse(_debugCamera->updateViewMatrix(_debugCamera->getPosition(), _debugCamera->getEulerAngles())) : inverse(_gsp._viewMatrix),
+        static_cast<float>(_gs->getShadowMapSize()), _gs->getFrustumSplits(), _api.getZNearMapping(), _gsp._worldToLight, _vpLightVolume);
       _api.setDepthClampEnabled<true>();
       _api.enablePolygonOffset(_gs->getShadowPolygonOffsetFactor(), _gs->getShadowPolygonOffsetUnits());
       _api.setViewport(Vec2u(_gs->getShadowMapSize()));
@@ -456,7 +474,10 @@ namespace fly
 #if RENDERER_STATS
         Timing timing;
 #endif
-       cullMeshes(_vpLightVolume[i]);
+       cullMeshes(_vpLightVolume[i], _debugCamera ? *_debugCamera : *_camera);
+       // for (const auto& e : _staticMeshRenderables) {
+       //   _visibleMeshes.push_back(e.second.get());
+      //  }
 #if RENDERER_STATS
         _stats._cullingShadowMapMicroSeconds += timing.duration<std::chrono::microseconds>();
 #endif
@@ -482,13 +503,14 @@ namespace fly
       _gsp._smFrustumSplits = &_gs->getFrustumSplits();
       _gsp._shadowDarkenFactor = _gs->getShadowDarkenFactor();
       _api.setDepthClampEnabled<false>();
+      _gsp._viewMatrixThirdRow = _debugCamera ? _debugCamera->getViewMatrix().row(2) : _gsp._viewMatrix.row(2);
     }
     void buildBVH()
     {
       _visibleMeshes.reserve(_staticMeshRenderables.size() + _staticInstancedMeshRenderables.size());
       _bvhStatic = std::make_unique<BVH>(_aabbStatic);
       std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
-      std::cout << "Static instancd mesh renderables: " << _staticInstancedMeshRenderables.size() << std::endl;
+      std::cout << "Static instanced mesh renderables: " << _staticInstancedMeshRenderables.size() << std::endl;
       Timing timing;
       for (const auto& e : _staticMeshRenderables) {
         _bvhStatic->insert(e.second.get());
@@ -504,16 +526,16 @@ namespace fly
       _shaderDescCache.clear();
       _api.createCompositeShader(*_gs);
     }
-    inline void cullMeshes(const Mat4f& view_projection_matrix)
+    inline void cullMeshes(const Mat4f& view_projection_matrix, Camera& camera)
     {
-      _camera->extractFrustumPlanes(view_projection_matrix, _api.getZNearMapping());
+      camera.extractFrustumPlanes(view_projection_matrix, _api.getZNearMapping());
 
       _visibleMeshes.clear();
       if (_staticInstancedMeshRenderables.size()) {
-        _api.prepareCulling(_camera->getFrustumPlanes(), _gsp._camPosworld);
+        _api.prepareCulling(camera.getFrustumPlanes(), _debugCamera ? _debugCamera->getPosition() : _gsp._camPosworld);
       }
       // Static meshes
-      _bvhStatic->cullVisibleObjects(*_camera, _visibleMeshes);
+      _bvhStatic->cullVisibleObjects(camera, _visibleMeshes);
       if (_staticInstancedMeshRenderables.size()) {
         _api.endCulling();
       }
@@ -556,7 +578,7 @@ namespace fly
             depth ? mr->renderDepth(_api) : mr->render(_api);
 #if RENDERER_STATS
             stats._renderedTriangles += mr->numTriangles();
-            stats._renderedMeshes++;
+            stats._renderedMeshes += mr->numMeshes();
 #endif
           }
           material->clearMeshRenderables();

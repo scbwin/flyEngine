@@ -13,7 +13,7 @@
 #include <math/FlyMath.h>
 
 #define SPONZA 1
-#define SPONZA_MANY 0
+#define SPONZA_MANY 1
 #define TOWERS 0
 #define TREE_SCENE 0
 #define PHYSICS 0
@@ -41,6 +41,7 @@ namespace fly
   class Bullet3PhysicsSystem;
   class Entity;
   class RigidBody;
+  class Camera;
 }
 
 struct CTwBar;
@@ -75,6 +76,8 @@ private:
   std::unique_ptr<fly::CameraController> _camController;
   std::shared_ptr<fly::DirectionalLight> _dl;
   std::shared_ptr<fly::Entity> _skydome;
+  std::shared_ptr<fly::Camera> _camera;
+  std::shared_ptr<fly::Camera> _debugCamera;
 #if PHYSICS
   std::shared_ptr<fly::Bullet3PhysicsSystem> _physicsSystem;
   std::vector<std::shared_ptr<btTriangleMesh>> _triangleMeshes;

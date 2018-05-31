@@ -13,13 +13,18 @@ namespace fly
   {
   }
 
-  Mat4f Camera::updateViewMatrix(const Vec3f& pos, const Vec3f& euler_angles)
+  const Mat4f& Camera::updateViewMatrix(const Vec3f& pos, const Vec3f& euler_angles)
   {
     _direction = Vec3f(cos(euler_angles[1]) * sin(euler_angles[0]), sin(euler_angles[1]), cos(euler_angles[1]) * cos(euler_angles[0]));
     _right = Vec3f(sin(euler_angles[0] - glm::half_pi<float>()), sin(euler_angles[2]), cos(euler_angles[0] - glm::half_pi<float>()));
     _up = cross(glm::vec3(_right), glm::vec3(_direction));
 
-    return MathHelpers::getViewMatrixLeftHanded(pos, _right, _up, _direction);
+    _viewMatrix = MathHelpers::getViewMatrixLeftHanded(pos, _right, _up, _direction);
+    return _viewMatrix;
+  }
+  const Mat4f & Camera::getViewMatrix()
+  {
+    return _viewMatrix;
   }
   Mat3f Camera::getViewMatrixInverse() const
   {

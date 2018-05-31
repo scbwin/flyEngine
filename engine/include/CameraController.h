@@ -13,6 +13,7 @@ namespace fly
   public:
     CameraController(const std::shared_ptr<Camera>& camera, float speed);
     virtual ~CameraController() = default;
+    void setCamera(const std::shared_ptr<Camera>& camera);
     void stepForward(float delta_time) const;
     void stepBackward(float delta_time) const;
     void stepLeft(float delta_time) const;

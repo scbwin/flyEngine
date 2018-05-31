@@ -43,6 +43,10 @@ namespace fly
     {
       return _aabb.size2();
     }
+    virtual unsigned numMeshes() const
+    {
+      return 1;
+    }
     virtual unsigned numTriangles() const = 0;
   protected:
     MaterialDesc<API> * _materialDesc;
@@ -210,6 +214,10 @@ namespace fly
     virtual unsigned numTriangles() const override
     {
       // TODO calculate correct triangle count here
+      return 0;
+    }
+    virtual unsigned numMeshes() const
+    {
       return _numInstances;
     }
   protected:

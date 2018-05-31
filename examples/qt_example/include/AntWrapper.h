@@ -2,6 +2,7 @@
 #define ANTWRAPPER_H
 
 #include <AntTweakBar.h>
+#include <memory>
 
 namespace fly
 {
@@ -11,6 +12,7 @@ namespace fly
   class CameraController;
   class Entity;
   class GameTimer;
+  class DirectionalLight;
 }
 
 class QWidget;
@@ -18,12 +20,21 @@ class QWidget;
 class AntWrapper
 {
 public:
-  AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, fly::Camera* camera, fly::CameraController* camera_controller, fly::Entity* skydome, fly::GameTimer* game_timer, QWidget* widget);
+  AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, fly::CameraController* camera_controller, 
+    fly::Entity* skydome, fly::GameTimer* game_timer, QWidget* widget, std::shared_ptr<fly::Camera> camera, fly::DirectionalLight* dl);
 private:
   static void cbSetShadows(const void* value, void* client_data);
   static void cbGetShadows(void* value, void* client_data);
   static void cbSetPCF(const void* value, void* client_data);
   static void cbGetPCF(void* value, void* client_data);
+  static void setLightDirX(const void* value, void* client_data);
+  static void getLightDirX(void* value, void* client_data);
+  static void setLightDirY(const void* value, void* client_data);
+  static void getLightDirY(void* value, void* client_data);
+  static void setLightDirZ(const void* value, void* client_data);
+  static void getLightDirZ(void* value, void* client_data);
+  static void setMaxShadowCastDistance(const void* value, void* client_data);
+  static void getMaxShadowCastDistance(void* value, void* client_data);
   static void cbSetNormalMapping(const void* value, void* client_data);
   static void cbGetNormalMapping(void* value, void* client_data);
   static void cbSetParallaxMapping(const void* value, void* client_data);

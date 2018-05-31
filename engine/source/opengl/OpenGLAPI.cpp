@@ -18,6 +18,7 @@
 #include <Flags.h>
 #include <ShaderDesc.h>
 #include <GlobalShaderParams.h>
+#include <math/MathHelpers.h>
 
 #define INIT_BUFFER_SIZE 1024 * 1024 * 8 // Allocate 8 MB video RAM for the vertex and index buffer each.
 
@@ -25,8 +26,10 @@ namespace fly
 {
   OpenGLAPI::OpenGLAPI(const Vec4f& clear_color) :
     _vboAABB(GL_ARRAY_BUFFER),
-    _aabbShader(std::move(*createShader(GLShaderSource("assets/opengl/vs_aabb.glsl", GL_VERTEX_SHADER), GLShaderSource("assets/opengl/fs_aabb.glsl", GL_FRAGMENT_SHADER), GLShaderSource("assets/opengl/gs_aabb.glsl", GL_GEOMETRY_SHADER)))),
-    _cullingShader(createComputeShader(GLShaderSource("assets/opengl/cs_culling.glsl", GL_COMPUTE_SHADER)))
+    _boxShader(std::move(*createShader(GLShaderSource("assets/opengl/vs_box.glsl", GL_VERTEX_SHADER), 
+      GLShaderSource("assets/opengl/fs_box.glsl", GL_FRAGMENT_SHADER), GLShaderSource("assets/opengl/gs_box.glsl", GL_GEOMETRY_SHADER)))),
+    _cullingShader(createComputeShader(GLShaderSource("assets/opengl/cs_culling.glsl", GL_COMPUTE_SHADER))),
+    _debugFrustumShader(std::move(*createShader(GLShaderSource("assets/opengl/vs_debug_frustum.glsl", GL_VERTEX_SHADER), GLShaderSource("assets/opengl/fs_debug_frustum.glsl", GL_FRAGMENT_SHADER))))
   {
     GL_CHECK(glGetIntegerv(GL_MAJOR_VERSION, &_glVersionMajor));
     GL_CHECK(glGetIntegerv(GL_MINOR_VERSION, &_glVersionMinor));
@@ -121,7 +124,7 @@ namespace fly
   void OpenGLAPI::renderAABBs(const std::vector<AABB const *>& aabbs, const Mat4f& transform, const Vec3f& col)
   {
     _vaoAABB.bind();
-    bindShader(&_aabbShader);
+    bindShader(&_boxShader);
     setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::viewProjectionMatrix()), transform);
     setVector(_activeShader->uniformLocation("c"), col);
     StackPOD<Vec3f> bb_buffer;
@@ -132,6 +135,25 @@ namespace fly
     }
     _vboAABB.setData(bb_buffer.begin(), bb_buffer.size(), GL_DYNAMIC_COPY);
     GL_CHECK(glDrawArraysInstanced(GL_POINTS, 0, 1, static_cast<GLsizei>(aabbs.size())));
+  }
+  void OpenGLAPI::renderDebugFrustum(const Mat4f & vp_debug_frustum, const Mat4f & vp)
+  {
+    GL_CHECK(glLineWidth(4.f));
+    bindShader(&_debugFrustumShader);
+    auto mat = vp * inverse(vp_debug_frustum);
+    auto cube_ndc = MathHelpers::cubeNDC(getZNearMapping());
+    setMatrix(_activeShader->uniformLocation("t"), mat);
+    GLVertexArray vao;
+    vao.bind();
+    GLBuffer vbo(GL_ARRAY_BUFFER);
+    vbo.setData(cube_ndc.data(), cube_ndc.size());
+    GLBuffer ibo(GL_ELEMENT_ARRAY_BUFFER);
+    std::array<unsigned short, 24> indices = { 0, 1, 1, 3, 3, 2, 2, 0, 0, 4, 4, 5, 5, 1, 3, 7, 7, 5, 7, 6, 6, 4, 6, 2 };
+    ibo.setData(indices.data(), indices.size());
+    GL_CHECK(glEnableVertexAttribArray(0));
+    GL_CHECK(glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vec3f), 0));
+    GL_CHECK(glDrawElements(GL_LINES, indices.size(), GL_UNSIGNED_SHORT, nullptr));
+    GL_CHECK(glLineWidth(1.f));
   }
   void OpenGLAPI::prepareCulling(const std::array<Vec4f, 6>& frustum_planes, const Vec3f& cam_pos_world)
   {

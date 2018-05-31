@@ -8,6 +8,10 @@ namespace fly
   CameraController::CameraController(const std::shared_ptr<Camera>& camera, float speed) : _camera(camera), _baseSpeed(speed)
   {
   }
+  void CameraController::setCamera(const std::shared_ptr<Camera>& camera)
+  {
+    _camera = camera;
+  }
   void CameraController::stepForward(float delta_time) const
   {
     updatePos(_camera->getDirection(), delta_time);

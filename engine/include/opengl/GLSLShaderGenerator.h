@@ -51,7 +51,7 @@ namespace fly
     static inline constexpr const char* projectionMatrixInverseThirdRow() { return "P_i_3"; };
     static inline constexpr const char* projectionMatrixInverseFourthRow() { return "P_i_4"; };
     static inline constexpr const char* modelViewProjectionMatrix() { return "MVP"; };
-    static inline constexpr const char* lightPositionWorld() { return "lp_ws"; };
+    static inline constexpr const char* lightDirWorld() { return "ld_w"; };
     static inline constexpr const char* cameraPositionWorld() { return "cp_ws"; };
     static inline constexpr const char* lightIntensity() { return "I_in"; };
     static inline constexpr const char* worldToLightMatrices() { return "wtl"; };

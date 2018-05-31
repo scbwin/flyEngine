@@ -55,13 +55,13 @@ void GLWidget::initializeGL()
   TwAddButton(_bar, _renderedTrianglesShadowName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _cullingName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _cullingShadowMapName, nullptr, nullptr, nullptr);
-  TwAddButton(_bar, _sceneRenderingCPUName, nullptr, nullptr, nullptr);
-  TwAddButton(_bar, _smRenderingCPUName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _sceneMeshGroupingUName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _shadowMapGroupingUName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _sceneRenderingCPUName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _smRenderingCPUName, nullptr, nullptr, nullptr);
 #endif
   auto settings_bar = TwNewBar("Settings");
-  AntWrapper(settings_bar, &_graphicsSettings, _renderer->getApi(), _camController->getCamera().get(), _camController.get(), _skydome.get(), _engine.getGameTimer(), this);
+  AntWrapper(settings_bar, &_graphicsSettings, _renderer->getApi(), _camController.get(), _skydome.get(), _engine.getGameTimer(), this, _camera, _dl.get());
   TwSetTopBar(_bar);
 }
 
@@ -160,6 +160,22 @@ void GLWidget::keyReleaseEvent(QKeyEvent * e)
   }
   if (e->key() == Qt::Key::Key_Control) {
     _camController->decelerateReleased();
+  }
+  if (e->key() == Qt::Key::Key_M) {
+    if (_camController->getCamera() == _camera) {
+      _camController->setCamera(_debugCamera);
+    }
+    else {
+      _camController->setCamera(_camera);
+    }
+  }
+  if (e->key() == Qt::Key::Key_R) {
+    if (_renderer->getDebugCamera() == nullptr) {
+      _renderer->setDebugCamera(_debugCamera);
+    }
+    else {
+      _renderer->removeDebugCamera();
+    }
   }
 }
 
@@ -491,16 +507,21 @@ void GLWidget::initGame()
 #endif
 
   auto cam_entity = _engine.getEntityManager()->createEntity();
-  cam_entity->addComponent(std::make_shared<fly::Camera>(glm::vec3(4.f, 2.f, 0.f), glm::vec3(glm::radians(270.f), 0.f, 0.f)));
+  _camera = std::make_shared<fly::Camera>(glm::vec3(4.f, 2.f, 0.f), glm::vec3(glm::radians(270.f), 0.f, 0.f));
+  cam_entity->addComponent(_camera);
   auto dl_entity = _engine.getEntityManager()->createEntity();
-  _dl = std::make_shared<fly::DirectionalLight>(glm::vec3(1.f), glm::vec3(-1000.f, 2000.f, -1000.f), glm::vec3(-500.f, 0.f, -500.f));
+  _dl = std::make_shared<fly::DirectionalLight>(fly::Vec3f(1.f), fly::Vec3f(0.5f, -1.f, 0.5f));
   dl_entity->addComponent(_dl);
+
+  _debugCamera = std::make_shared<fly::Camera>(fly::Vec3f(0.f), fly::Vec3f(0.f));
+  _renderer->setDebugCamera(_debugCamera);
 
 #if INSTANCED_MESHES
   _graphicsSettings.setShadowMapSize(8192);
   //_graphicsSettings.setExposure(0.5f);
   _graphicsSettings.setDebugObjectAABBs(true);
-  cam_entity->getComponent<fly::Camera>()->setDetailCullingThreshold(0.000005f);
+  _camera->setDetailCullingThreshold(0.000005f);
+  _debugCamera->setDetailCullingThreshold(_camera->getDetailCullingThreshold());
   std::vector<std::shared_ptr<fly::Mesh>> sphere_lods;
   for (unsigned i = 0; i < 5; i++) {
     sphere_lods.push_back(importer->loadModel("assets/sphere_lod" + std::to_string(i) + ".obj")->getMeshes()[0]);

@@ -17,7 +17,7 @@ namespace fly
   }
   void GLShaderSetup::setupLighting(const GlobalShaderParams & params, GLShaderProgram const * shader)
   {
-    setVector(shader->uniformLocation(GLSLShaderGenerator::lightPositionWorld()), *params._lightPosWorld);
+    setVector(shader->uniformLocation(GLSLShaderGenerator::lightDirWorld()), *params._lightDirWorld * -1.f);
     setVector(shader->uniformLocation(GLSLShaderGenerator::lightIntensity()), *params._lightIntensity);
     setVector(shader->uniformLocation(GLSLShaderGenerator::cameraPositionWorld()), params._camPosworld);
   }
@@ -28,7 +28,7 @@ namespace fly
     setScalar(shader->uniformLocation(GLSLShaderGenerator::numfrustumSplits()), static_cast<int>(params._smFrustumSplits->size()));
     setScalarArray(shader->uniformLocation(GLSLShaderGenerator::frustumSplits()), params._smFrustumSplits->front(), static_cast<unsigned>(params._smFrustumSplits->size()));
     setScalar(shader->uniformLocation(GLSLShaderGenerator::shadowDarkenFactor()), params._shadowDarkenFactor);
-    setVector(shader->uniformLocation(GLSLShaderGenerator::viewMatrixThirdRow()), params._viewMatrix.row(2));
+    setVector(shader->uniformLocation(GLSLShaderGenerator::viewMatrixThirdRow()), params._viewMatrixThirdRow);
   }
   void GLShaderSetup::setupTime(const GlobalShaderParams & params, GLShaderProgram const * shader)
   {

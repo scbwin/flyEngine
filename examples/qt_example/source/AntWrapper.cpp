@@ -8,11 +8,17 @@
 #include <Model.h>
 #include <GameTimer.h>
 #include <qwidget.h>
+#include <Light.h>
 
-AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, fly::Camera* camera, fly::CameraController* camera_controller, fly::Entity* skydome, fly::GameTimer* game_timer, QWidget* widget)
+AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, 
+  fly::CameraController* camera_controller, fly::Entity* skydome, fly::GameTimer* game_timer, QWidget* widget, std::shared_ptr<fly::Camera> camera, fly::DirectionalLight* dl)
 {
   TwAddVarCB(bar, "Shadows", TwType::TW_TYPE_BOOLCPP, cbSetShadows, cbGetShadows, gs, nullptr);
   TwAddVarCB(bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, cbSetPCF, cbGetPCF, gs, nullptr);
+  TwAddVarCB(bar, "Max shadow cast distane", TwType::TW_TYPE_FLOAT, setMaxShadowCastDistance, getMaxShadowCastDistance, dl, "step = 0.5f");
+  TwAddVarCB(bar, "Light dir X", TwType::TW_TYPE_FLOAT, setLightDirX, getLightDirX, dl, "step = 0.005f");
+  TwAddVarCB(bar, "Light dir Y", TwType::TW_TYPE_FLOAT, setLightDirY, getLightDirY, dl, "step = 0.005f");
+  TwAddVarCB(bar, "Light dir Z", TwType::TW_TYPE_FLOAT, setLightDirZ, getLightDirZ, dl, "step = 0.005f");
   TwAddVarCB(bar, "Shadow darken factor", TwType::TW_TYPE_FLOAT, setShadowFactor, getShadowFactor, gs, "step = 0.005f");
   TwAddVarCB(bar, "Shadow polygon offset factor", TwType::TW_TYPE_FLOAT, setSMPOFactor, getSMPOFactor, gs, "step=0.01f");
   TwAddVarCB(bar, "Shadow polygon offset units", TwType::TW_TYPE_FLOAT, setSMPOUnits, getSMPOUnits, gs, "step=0.01f");
@@ -28,7 +34,7 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "Debug object AABBs", TwType::TW_TYPE_BOOLCPP, cbSetDebugAABBs, cbGetDebugAABBs, gs, nullptr);
   TwAddVarCB(bar, "Camera lerping", TwType::TW_TYPE_BOOLCPP, setCameraLerping, getCameraLerping, gs, nullptr);
   TwAddVarCB(bar, "Camera lerp amount", TwType::TW_TYPE_FLOAT, setCameraLerpAmount, getCameraLerpAmount, gs, "step=0.001f");
-  TwAddVarCB(bar, "Detail culling threshold", TwType::TW_TYPE_FLOAT, setDetailCullingThreshold, getDetailCullingThreshold, camera, "step=0.000005f");
+  TwAddVarCB(bar, "Detail culling threshold", TwType::TW_TYPE_FLOAT, setDetailCullingThreshold, getDetailCullingThreshold, camera_controller, "step=0.0000005f");
   TwAddVarCB(bar, "Camera speed", TwType::TW_TYPE_FLOAT, setCamSpeed, getCamSpeed, camera_controller, "step=0.1f");
   TwAddVarCB(bar, "Skydome", TwType::TW_TYPE_BOOLCPP, setSkydome, getSkydome, skydome, nullptr);
   TwAddButton(bar, "Reload shaders", cbReloadShaders, api, nullptr);
@@ -67,6 +73,44 @@ void AntWrapper::cbSetPCF(const void * value, void * client_data)
 void AntWrapper::cbGetPCF(void * value, void * client_data)
 {
   *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getShadowsPCF();
+}
+void AntWrapper::setLightDirX(const void * value, void * client_data)
+{
+  auto direction = cast<fly::DirectionalLight>(client_data)->getDirection();
+  direction[0] = *cast<float>(value);
+  cast<fly::DirectionalLight>(client_data)->setDirection(direction);
+}
+void AntWrapper::getLightDirX(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::DirectionalLight>(client_data)->getDirection()[0];
+}
+void AntWrapper::setLightDirY(const void * value, void * client_data)
+{
+  auto direction = cast<fly::DirectionalLight>(client_data)->getDirection();
+  direction[1] = *cast<float>(value);
+  cast<fly::DirectionalLight>(client_data)->setDirection(direction);
+}
+void AntWrapper::getLightDirY(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::DirectionalLight>(client_data)->getDirection()[1];
+}
+void AntWrapper::setLightDirZ(const void * value, void * client_data)
+{
+  auto direction = cast<fly::DirectionalLight>(client_data)->getDirection();
+  direction[2] = *cast<float>(value);
+  cast<fly::DirectionalLight>(client_data)->setDirection(direction);
+}
+void AntWrapper::getLightDirZ(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::DirectionalLight>(client_data)->getDirection()[2];
+}
+void AntWrapper::setMaxShadowCastDistance(const void * value, void * client_data)
+{
+  cast<fly::DirectionalLight>(client_data)->setMaxShadowCastDistance(*cast<float>(value));
+}
+void AntWrapper::getMaxShadowCastDistance(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::DirectionalLight>(client_data)->getMaxShadowCastDistance();
 }
 void AntWrapper::cbSetNormalMapping(const void * value, void * client_data)
 {
@@ -195,12 +239,12 @@ void AntWrapper::getCameraLerpAmount(void * value, void * client_data)
 
 void AntWrapper::setDetailCullingThreshold(const void * value, void * client_data)
 {
-  cast<fly::Camera>(client_data)->setDetailCullingThreshold(*cast<float>(value));
+  cast<fly::CameraController>(client_data)->getCamera()->setDetailCullingThreshold(*cast<float>(value));
 }
 
 void AntWrapper::getDetailCullingThreshold(void * value, void * client_data)
 {
-  *cast<float>(value) = cast<fly::Camera>(client_data)->getDetailCullingThreshold();
+  *cast<float>(value) = cast<fly::CameraController>(client_data)->getCamera()->getDetailCullingThreshold();
 }
 
 void AntWrapper::setCamSpeed(const void * value, void * client_data)

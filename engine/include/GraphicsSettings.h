@@ -113,8 +113,8 @@ namespace fly
     bool _shadowsPCF = true;
     float _smBias = 0.0035f;
     float _shadowDarkenFactor = 0.8f;
-    unsigned _shadowMapSize = 1024;
-    std::vector<float> _smFrustumSplits = { 20.f, 200.f, 500.f };
+    unsigned _shadowMapSize = 4096;
+    std::vector<float> _smFrustumSplits = { 16.f, 32.f, 64.f, 128.f, 256.f, 512.f };
     unsigned _anisotropy = 4u;
     bool _postProcessing = true;
     bool _debugQuadtreeNodeAABBs = false;

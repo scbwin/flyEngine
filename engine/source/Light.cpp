@@ -10,7 +10,7 @@
 
 namespace fly
 {
-  Light::Light(const Vec3f & intensity, const Vec3f& pos, const Vec3f& target) : _intensity(intensity), _pos(pos), _target(target)
+  Light::Light(const Vec3f & intensity) : _intensity(intensity)
   {
   }
 
@@ -24,26 +24,6 @@ namespace fly
     _intensity = i;
   }
 
-  const Vec3f & Light::getTarget() const
-  {
-    return _target;
-  }
-
-  void Light::setTarget(const Vec3f & target)
-  {
-    _target = target;
-  }
-
-  const Vec3f & Light::getPosition() const
-  {
-    return _pos;
-  }
-
-  void Light::setPosition(const Vec3f & position)
-  {
-    _pos = position;
-  }
-
   float Light::getLensflareWeight() const
   {
     return _lensFlareWeight;
@@ -55,7 +35,7 @@ namespace fly
   }
 
   SpotLight::SpotLight(const Vec3f& color, const Vec3f& pos, const Vec3f& target, float near, float far, float penumbra_degrees, float umbra_degrees) :
-    Light(color, pos, target), _zNear(near), _zFar(far), _penumbraDegrees(penumbra_degrees), _umbraDegrees(umbra_degrees)
+    Light(color), _pos(pos), _target(target), _zNear(near), _zFar(far), _penumbraDegrees(penumbra_degrees), _umbraDegrees(umbra_degrees)
   {
     _lensFlareWeight = 0.11f;
   }
@@ -68,8 +48,9 @@ namespace fly
     view_matrix = glm::lookAt(glm::vec3(_pos), glm::vec3(_target), up);
   }
 
-  DirectionalLight::DirectionalLight(const Vec3f& color, const Vec3f& pos, const Vec3f& target) :
-    Light(color, pos, target)
+  DirectionalLight::DirectionalLight(const Vec3f& color, const Vec3f& direction) :
+    Light(color),
+    _direction(normalize(direction))
   {
     _lensFlareWeight = 2.f;
     _lensFlareRefSamplesPassed = 4000.f;
@@ -81,36 +62,55 @@ namespace fly
   {
     vp.clear();
     vp_light_volume.clear();
-    auto view_matrix_light = getViewMatrix();
     for (unsigned int i = 0; i < frustum_splits.size(); i++) {
       auto projection_matrix = MathHelpers::getProjectionMatrixPerspective(fov_degrees, aspect_ratio, i == 0 ? near_plane : frustum_splits[i - 1], frustum_splits[i], z_near_mapping);
       auto cube_ndc = MathHelpers::cubeNDC(z_near_mapping);
-      Vec3f corners_light[cube_ndc.size()];
-      for (size_t i = 0; i < cube_ndc.size(); i++) {
-        auto corner_light_h = view_matrix_light * view_matrix_inverse * inverse(projection_matrix) * Vec4f(cube_ndc[i], 1.f);
-        corners_light[i] = corner_light_h.xyz() / corner_light_h[3];
+      Vec3f center_world(0.f);
+      for (const auto& c : cube_ndc) {
+        auto pos_world_h = view_matrix_inverse * inverse(projection_matrix) * Vec4f(c, 1.f);
+        center_world += (pos_world_h.xyz() / pos_world_h[3]) / 8.f;
       }
-      AABB aabb_light(corners_light, cube_ndc.size());
+      auto view_matrix_light = getViewMatrix(center_world);
+      AABB aabb_light(AABB::fromTransform<cube_ndc.size()>(cube_ndc.data(), view_matrix_light * view_matrix_inverse * inverse(projection_matrix)));
 
       // Prevents shimmering edges when the camera is moving
      auto units_per_texel = (aabb_light.getMax() - aabb_light.getMin()) / shadow_map_size;
      aabb_light.getMin() = floor(aabb_light.getMin() / units_per_texel) * units_per_texel;
      aabb_light.getMax() = floor(aabb_light.getMax() / units_per_texel) * units_per_texel;
 
-      vp.push_back_secure(MathHelpers::getProjectionMatrixOrtho(aabb_light.getMin(), aabb_light.getMax(), z_near_mapping) * view_matrix_light); // Used for rendering
-      vp_light_volume.push_back_secure(MathHelpers::getProjectionMatrixOrtho(Vec3f(aabb_light.getMin().xy(), 0.f), aabb_light.getMax(), z_near_mapping) * view_matrix_light); // Used for culling
+      vp.push_back_secure(MathHelpers::getProjectionMatrixOrtho(aabb_light.getMin() , aabb_light.getMax(), z_near_mapping) * view_matrix_light); // Used for rendering
+      vp_light_volume.push_back_secure(MathHelpers::getProjectionMatrixOrtho(Vec3f(aabb_light.getMin().xy(), -_maxShadowCastDistance), aabb_light.getMax(), z_near_mapping) * view_matrix_light); // Used for culling
     }
   }
 
-  Mat4f DirectionalLight::getViewMatrix()
+  Mat4f DirectionalLight::getViewMatrix(const Vec3f& pos) const
   {
-    auto direction = normalize(_target - _pos);
-    auto up = normalize(Vec3f(-direction[1], direction[0], 0.f));
-    auto right = Vec3f(cross(glm::vec3(direction), glm::vec3(up)));
-    return MathHelpers::getViewMatrixLeftHanded(_pos, right, up, direction);
+    auto up = normalize(Vec3f(-_direction[1], _direction[0], 0.f));
+    auto right = Vec3f(cross(glm::vec3(_direction), glm::vec3(up)));
+    return MathHelpers::getViewMatrixLeftHanded(pos, right, up, _direction);
   }
 
-  PointLight::PointLight(const Vec3f& color, const Vec3f& pos, const Vec3f& target, float near, float far) : Light(color, pos, target), _zNear(near), _zFar(far)
+  const Vec3f & DirectionalLight::getDirection() const
+  {
+    return _direction;
+  }
+
+  void DirectionalLight::setDirection(const Vec3f & direction)
+  {
+    _direction = normalize(direction);
+  }
+
+  void DirectionalLight::setMaxShadowCastDistance(float distance)
+  {
+    _maxShadowCastDistance = distance;
+  }
+
+  float DirectionalLight::getMaxShadowCastDistance() const
+  {
+    return _maxShadowCastDistance;
+  }
+
+  PointLight::PointLight(const Vec3f& color, float near, float far) : Light(color), _zNear(near), _zFar(far)
   {
     _lensFlareWeight = 0.15f;
   }

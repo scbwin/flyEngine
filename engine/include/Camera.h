@@ -22,7 +22,8 @@ namespace fly
     Camera(const Vec3f& pos, const Vec3f& euler_angles);
     Camera(const Camera& other) = default;
     virtual ~Camera();
-    Mat4f updateViewMatrix(const Vec3f& pos, const Vec3f& euler_angles);
+    const Mat4f& updateViewMatrix(const Vec3f& pos, const Vec3f& euler_angles);
+    const Mat4f& getViewMatrix();
     Mat3f getViewMatrixInverse() const;
     const Vec3f& getPosition() const;
     const Vec3f& getDirection() const;
@@ -48,6 +49,7 @@ namespace fly
     Vec3f _direction;
     Vec3f _up;
     std::array<Vec4f, 6> _frustumPlanes;
+    Mat4f _viewMatrix;
     bool _isActive = true;
     float _detailCullingThreshold = 0.000175f;
   };

@@ -13,11 +13,12 @@ namespace fly
     Mat4f _projectionMatrix;
     Mat4f _viewMatrix;
     Mat3f _viewMatrixInverse;
+    Vec4f _viewMatrixThirdRow;
     Mat4f const * _VP;
     StackPOD<Mat4f> _worldToLight;
     std::vector<float> const * _smFrustumSplits;
     float _shadowDarkenFactor;
-    Vec3f const * _lightPosWorld;
+    Vec3f const * _lightDirWorld;
     Vec3f _camPosworld;
     Vec3f const * _lightIntensity;
     float _time;

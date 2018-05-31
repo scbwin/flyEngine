@@ -183,6 +183,7 @@ namespace fly
     void renderMesh(const MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse, const WindParamsLocal& wind_params, const AABB& aabb) const;
     void renderMeshMVP(const MeshData& mesh_data, const Mat4f& mvp) const;
     void renderAABBs(const std::vector<AABB const *>& aabbs, const Mat4f& transform, const Vec3f& col);
+    void renderDebugFrustum(const Mat4f& vp_debug_frustum, const Mat4f& vp);
     void prepareCulling(const std::array<Vec4f, 6>& frustum_planes, const Vec3f& cam_pos_world);
     void endCulling() const;
     void cullInstances(const StorageBuffer& aabb_buffer, unsigned num_instances, const StorageBuffer& visible_instances, 
@@ -237,13 +238,14 @@ namespace fly
     std::shared_ptr<ShaderDesc<OpenGLAPI>> _skydomeShaderDesc;
     GLShaderProgram _ssrShader;
     GLShaderProgram _blurShader;
-    GLShaderProgram _aabbShader;
+    GLShaderProgram _boxShader;
     GLShaderProgram _cullingShader;
     GLVertexArray _vaoAABB;
     GLBuffer _vboAABB;
     ShaderGenerator _shaderGenerator;
     GLSampler _samplerAnisotropic;
     GLint _glVersionMajor, _glVersionMinor;
+    Shader _debugFrustumShader;
     unsigned _anisotropy = 1u;
   };
 }
