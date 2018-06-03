@@ -56,10 +56,6 @@ private:
   static void cbSetDebugAABBs(const void* value, void* client_data);
   static void cbGetDebugAABBs(void* value, void* client_data);
   static void cbReloadShaders(void* client_data);
-  static void setCameraLerping(const void* value, void* client_data);
-  static void getCameraLerping(void* value, void* client_data);
-  static void setCameraLerpAmount(const void* value, void* client_data);
-  static void getCameraLerpAmount(void* value, void* client_data);
   static void setDetailCullingThreshold(const void* value, void* client_data);
   static void getDetailCullingThreshold(void* value, void* client_data);
   static void setCamSpeed(const void* value, void* client_data);
@@ -102,6 +98,8 @@ private:
   static void setSMPOUnits(const void* value, void* client_data);
   static void getSMPOFactor(void* value, void* client_data);
   static void getSMPOUnits(void* value, void* client_data);
+  static void setMTCulling(const void* value, void* client_data);
+  static void getMTCulling(void* value, void* client_data);
   template<typename T> static T* cast(void* data){return reinterpret_cast<T*>(data);}
   template<typename T> static const T* cast(const void* data) { return reinterpret_cast<const T*>(data); }
 };

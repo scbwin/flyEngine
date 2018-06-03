@@ -59,6 +59,7 @@ void GLWidget::initializeGL()
   TwAddButton(_bar, _shadowMapGroupingUName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _sceneRenderingCPUName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _smRenderingCPUName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _rendererIdleTimeName, nullptr, nullptr, nullptr);
 #endif
   auto settings_bar = TwNewBar("Settings");
   AntWrapper(settings_bar, &_graphicsSettings, _renderer->getApi(), _camController.get(), _skydome.get(), _engine.getGameTimer(), this, _camera, _dl.get());
@@ -132,6 +133,7 @@ void GLWidget::paintGL()
     TwSetParam(_bar, _smRenderingCPUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Shadow map render CPU microseconds:" + formatNumber(stats._shadowMapRenderCPUMicroSeconds)).c_str());
     TwSetParam(_bar, _sceneMeshGroupingUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Scene mesh grouping microseconds:" + formatNumber(stats._sceneMeshGroupingMicroSeconds)).c_str());
     TwSetParam(_bar, _shadowMapGroupingUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Shadow map grouping microseconds:" + formatNumber(stats._shadowMapGroupingMicroSeconds)).c_str());
+    TwSetParam(_bar, _rendererIdleTimeName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Renderer idle time microseconds:" + formatNumber(stats._rendererIdleTimeMicroSeconds)).c_str());
 #endif
     _fps = 0;
   }

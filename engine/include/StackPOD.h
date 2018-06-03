@@ -26,10 +26,44 @@ namespace fly
       allocate(size);
       _end = _begin + size;
     }
-    StackPOD(const StackPOD& other) = delete;
-    StackPOD& operator=(const StackPOD& other) = delete;
-    StackPOD(StackPOD&& other) = delete;
-    StackPOD& operator=(StackPOD&& other) = delete;
+    StackPOD(const StackPOD& other)
+    {
+      allocate(other._capacity);
+      std::memcpy(_begin, other._begin, other.size() * sizeof(T));
+    }
+    StackPOD& operator=(const StackPOD& other)
+    {
+      if (_begin) {
+        std::free(_begin);
+      }
+      _capacity = 0;
+      allocate(other._capacity);
+      std::memcpy(_begin, other._begin, other.size() * sizeof(T));
+      return *this;
+    }
+    StackPOD(StackPOD&& other) :
+      _begin(other._begin),
+      _end(other._end),
+      _capacity(other._capacity)
+    {
+      other._begin = nullptr;
+      other._end = nullptr;
+      other._capacity = 0;
+    }
+    StackPOD& operator=(StackPOD&& other)
+    {
+      if (_begin) {
+        std::free(_begin);
+      }
+      _begin = other._begin;
+      _end = other._end;
+      _capacity = other._capacity;
+
+      other._begin = nullptr;
+      other._end = nullptr;
+      other._capacity = 0;
+      return *this;
+    }
     ~StackPOD()
     {
       if (_begin) {

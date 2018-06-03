@@ -21,7 +21,6 @@ namespace fly
       virtual void depthOfFieldChanged(GraphicsSettings const * gs) = 0;
       virtual void compositingChanged(GraphicsSettings const * gs) = 0;
       virtual void anisotropyChanged(GraphicsSettings const * gs) = 0;
-      virtual void cameraLerpingChanged(GraphicsSettings const * gs) = 0;
       virtual void gammaChanged(GraphicsSettings const * gs) = 0;
       virtual void screenSpaceReflectionsChanged(GraphicsSettings const * gs) = 0;
     };
@@ -61,10 +60,6 @@ namespace fly
     void setDebugObjectAABBs(bool enable);
     unsigned getAnisotropy() const;
     void setAnisotropy(unsigned anisotropy);
-    bool getCameraLerping() const;
-    float getCameraLerpAlpha() const;
-    void setCameraLerping(bool enable);
-    void setCameraLerping(float alpha);
     void setShadowDarkenFactor(float factor);
     float getShadowDarkenFactor() const;
     bool getDepthOfField() const;
@@ -98,7 +93,8 @@ namespace fly
     void setShadowPolygonOffsetUnits(float units);
     float getShadowPolygonOffsetFactor() const;
     float getShadowPolygonOffsetUnits() const;
-
+    void setMultithreadedCulling(bool enabled);
+    bool getMultithreadedCulling() const;
   private:
     std::list<std::weak_ptr<Listener>> _listeners;
     bool _normalMapping = true;
@@ -119,8 +115,6 @@ namespace fly
     bool _postProcessing = true;
     bool _debugQuadtreeNodeAABBs = false;
     bool _debugObjectAABBs = false;
-    bool _cameraLerping = false;
-    float _cameraLerpAlpha = 0.8f;
     float _blurSigma = 2.5f;
     unsigned _blurRadius = 3u;
     std::vector<float> _blurWeights;
@@ -137,6 +131,7 @@ namespace fly
     float _ssrBlendWeight = 0.8f;
     float _shadowPolygonOffsetFactor = 1.f;
     float _shadowPolygonOffsetUnits = 1.f;
+    bool _multithreadedCulling = false;
 
     void notifiyNormalMappingChanged();
     void notifyShadowsChanged();

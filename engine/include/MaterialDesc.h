@@ -169,7 +169,6 @@ namespace fly
     virtual void depthOfFieldChanged(GraphicsSettings const * gs) override { create(*gs); }
     virtual void compositingChanged(GraphicsSettings const * gs) override { create(*gs); }
     virtual void anisotropyChanged(GraphicsSettings const * gs) override { create(*gs); }
-    virtual void cameraLerpingChanged(GraphicsSettings const * gs) override { create(*gs); }
     virtual void gammaChanged(GraphicsSettings const * gs) override { create(*gs); }
     virtual void screenSpaceReflectionsChanged(GraphicsSettings const * gs) override { create(*gs); }
     inline void addMeshRenderable(IMeshRenderable<API>* mr)

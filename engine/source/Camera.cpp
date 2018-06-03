@@ -13,6 +13,11 @@ namespace fly
   {
   }
 
+  const Mat4f & Camera::updateViewMatrix()
+  {
+    return updateViewMatrix(_pos, _eulerAngles);
+  }
+
   const Mat4f& Camera::updateViewMatrix(const Vec3f& pos, const Vec3f& euler_angles)
   {
     _direction = Vec3f(cos(euler_angles[1]) * sin(euler_angles[0]), sin(euler_angles[1]), cos(euler_angles[1]) * cos(euler_angles[0]));

@@ -18,7 +18,6 @@ namespace fly
     listener->depthOfFieldChanged(this);
     listener->compositingChanged(this);
     listener->anisotropyChanged(this);
-    listener->cameraLerpingChanged(this);
     listener->gammaChanged(this);
     listener->screenSpaceReflectionsChanged(this);
   }
@@ -51,10 +50,10 @@ namespace fly
   }
   void GraphicsSettings::setShadows(bool enabled)
   {
-    bool shadows = shadows || _shadowsPCF;
-    bool notifiy = shadows != _shadows;
+    bool shadows = enabled || _shadowsPCF;
+    bool notify = shadows != _shadows;
     _shadows = shadows;
-    if (notifiy) {
+    if (notify) {
       notifyShadowsChanged();
     }
   }
@@ -168,21 +167,6 @@ namespace fly
     _anisotropy = anisotropy;
     notifiyListeners([this](const std::shared_ptr<Listener>& l) {
       l->anisotropyChanged(this);
-    });
-  }
-  bool GraphicsSettings::getCameraLerping() const
-  {
-    return _cameraLerping;
-  }
-  float GraphicsSettings::getCameraLerpAlpha() const
-  {
-    return _cameraLerpAlpha;
-  }
-  void GraphicsSettings::setCameraLerping(float alpha)
-  {
-    _cameraLerpAlpha = glm::clamp(alpha, 0.f, 0.99f);
-    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
-      l->cameraLerpingChanged(this);
     });
   }
   void GraphicsSettings::setShadowDarkenFactor(float factor)
@@ -358,12 +342,13 @@ namespace fly
   {
     return _shadowPolygonOffsetUnits;
   }
-  void GraphicsSettings::setCameraLerping(bool enable)
+  void GraphicsSettings::setMultithreadedCulling(bool enabled)
   {
-    _cameraLerping = enable;
-    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
-      l->cameraLerpingChanged(this);
-    });
+    _multithreadedCulling = enabled;
+  }
+  bool GraphicsSettings::getMultithreadedCulling() const
+  {
+    return _multithreadedCulling;
   }
   void GraphicsSettings::setExposureEnabled(bool exposure)
   {

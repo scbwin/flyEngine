@@ -28,6 +28,7 @@
 #include <set>
 #include <GameTimer.h>
 #include <GlobalShaderParams.h>
+#include <future>
 
 #define RENDERER_STATS 1
 
@@ -51,6 +52,7 @@ namespace fly
       unsigned _sceneMeshGroupingMicroSeconds;
       unsigned _shadowMapGroupingMicroSeconds;
       unsigned _rendererTotalCPUMicroSeconds;
+      unsigned _rendererIdleTimeMicroSeconds;
     };
     const RendererStats& getStats() const { return _stats; }
 #endif
@@ -141,13 +143,6 @@ namespace fly
       graphicsSettingsChanged();
       compositingChanged(gs);
     }
-    virtual void cameraLerpingChanged(GraphicsSettings const * gs) override
-    {
-      if (gs->getCameraLerping()) {
-        _acc = 0.f;
-        _cameraLerpAlpha = gs->getCameraLerpAlpha();
-      }
-    }
     virtual void anisotropyChanged(GraphicsSettings const * gs) override
     {
       _api.setAnisotropy(gs->getAnisotropy());
@@ -184,7 +179,6 @@ namespace fly
       else if (entity->getComponent<Camera>() == component) {
         _camera = entity->getComponent<Camera>();
         _gsp._camPosworld = _camera->getPosition();
-        _camEulerAngles = _camera->getEulerAngles();
       }
       else if (entity->getComponent<DirectionalLight>() == component) {
         _directionalLight = entity->getComponent<DirectionalLight>();
@@ -231,19 +225,8 @@ namespace fly
           buildBVH();
         }
         _api.beginFrame();
-        if (_gs->getCameraLerping()) {
-          _acc += _gameTimer->getDeltaTimeSeconds();
-          while (_acc >= _dt) {
-            _gsp._camPosworld = glm::mix(glm::vec3(_camera->getPosition()), glm::vec3(_gsp._camPosworld), _cameraLerpAlpha);
-            _camEulerAngles = glm::eulerAngles(glm::slerp(glm::quat(_camera->getEulerAngles()), glm::quat(_camEulerAngles), _cameraLerpAlpha));
-            _acc -= _dt;
-          }
-        }
-        else {
-          _gsp._camPosworld = _camera->getPosition();
-          _camEulerAngles = _camera->getEulerAngles();
-        }
-        _gsp._viewMatrix = _camera->updateViewMatrix(_gsp._camPosworld, _camEulerAngles);
+        _gsp._camPosworld = _camera->getPosition();
+        _gsp._viewMatrix = _camera->updateViewMatrix(_gsp._camPosworld, _camera->getEulerAngles());
         _gsp._viewMatrixInverse = _camera->getViewMatrixInverse();
         _vpScene = _gsp._projectionMatrix * _gsp._viewMatrix;
         _api.setDepthTestEnabled<true>();
@@ -257,23 +240,49 @@ namespace fly
         _gsp._exposure = _gs->getExposure();
         _gsp._gamma = _gs->getGamma();
         _meshGeometryStorage.bind();
+
+        std::future<void> async;
+        if (_gs->getMultithreadedCulling() && _shadowMapping) {
+          async = std::async(std::launch::async, [this]() {
+#if RENDERER_STATS
+            Timing timing;
+#endif
+            cullMeshes(_debugCamera ? _gsp._projectionMatrix *
+              _debugCamera->updateViewMatrix() : _vpScene, _debugCamera ? *_debugCamera : *_camera, _visibleMeshesAsync);
+#if RENDERER_STATS
+            _stats._cullingMicroSeconds = timing.duration<std::chrono::microseconds>();
+#endif
+          });
+        }
         if (_shadowMapping) {
           renderShadowMap();
         }
+        if (_gs->getMultithreadedCulling() && _shadowMapping) {
+#if RENDERER_STATS
+          Timing timing;
+#endif
+          async.get();
+#if RENDERER_STATS
+          _stats._rendererIdleTimeMicroSeconds = timing.duration<std::chrono::microseconds>();
+#endif
+        }
+        else {
+#if RENDERER_STATS
+          Timing timing;
+#endif
+          cullMeshes(_debugCamera ? _gsp._projectionMatrix *
+            _debugCamera->updateViewMatrix() : _vpScene, _debugCamera ? *_debugCamera : *_camera, _visibleMeshes);
+#if RENDERER_STATS
+          _stats._cullingMicroSeconds = timing.duration<std::chrono::microseconds>();
+#endif
+        }
         _api.setViewport(_viewPortSize);
         _gsp._VP = &_vpScene;
-#if RENDERER_STATS
-        Timing timing;
-#endif
-        cullMeshes(_debugCamera ? _gsp._projectionMatrix * _debugCamera->updateViewMatrix(_debugCamera->getPosition(), _debugCamera->getEulerAngles()) : _vpScene, _debugCamera ? *_debugCamera : *_camera);
-#if RENDERER_STATS
-        _stats._cullingMicroSeconds = timing.duration<std::chrono::microseconds>();
-#endif
         if (_gs->depthPrepassEnabled()) {
           _renderTargets.clear();
           _api.setRendertargets(_renderTargets, _depthBuffer.get());
           _api.clearRendertarget(false, true, false);
-          groupMeshes<true>();
+          groupMeshes<true>((_gs->getMultithreadedCulling() && _shadowMapping) ? _visibleMeshesAsync : _visibleMeshes);
           renderMeshes<true>();
           _api.setDepthWriteEnabled<false>();
           _api.setDepthFunc<API::DepthFunc::EQUAL>();
@@ -293,7 +302,8 @@ namespace fly
         if (_shadowMap) {
           _api.bindShadowmap(*_shadowMap);
         }
-        renderScene();
+
+        renderScene((_gs->getMultithreadedCulling() && _shadowMapping) ? _visibleMeshesAsync : _visibleMeshes);
         if (_skydomeRenderable) {
           _api.setCullMode<API::CullMode::FRONT>();
           Mat4f view_matrix_sky_dome = _gsp._viewMatrix;
@@ -380,7 +390,6 @@ namespace fly
     ProjectionParams _pp;
     GlobalShaderParams _gsp;
     Vec2f _viewPortSize = Vec2f(1.f);
-    Vec3f _camEulerAngles = Vec3f(0.f);
     std::shared_ptr<Camera> _camera;
     std::shared_ptr<DirectionalLight> _directionalLight;
     std::shared_ptr<Camera> _debugCamera;
@@ -398,7 +407,6 @@ namespace fly
     Mat4f _vpScene;
     bool _offScreenRendering;
     bool _shadowMapping;
-    float _cameraLerpAlpha;
     float _acc = 0.f;
     float _dt = 1.f / 30.f;
 #if RENDERER_STATS
@@ -410,6 +418,8 @@ namespace fly
     std::map<Entity*, std::shared_ptr<StaticInstancedMeshRenderable<API>>> _staticInstancedMeshRenderables;
     std::shared_ptr<SkydomeRenderableWrapper<API>> _skydomeRenderable;
     StackPOD<IMeshRenderable<API>*> _visibleMeshes;
+    StackPOD<IMeshRenderable<API>*> _visibleMeshesAsync;
+   // StackPOD<IMeshRenderable<API>*> _visibleMeshes2;
     StackPOD<ShaderDesc<API>*> _displayList;
     std::unique_ptr<BVH> _bvhStatic;
     SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
@@ -443,12 +453,12 @@ namespace fly
         _api.renderAABBs(aabbs, _vpScene, Vec3f(0.f, 1.f, 0.f));
       }
     }
-    void renderScene()
+    void renderScene(const StackPOD<IMeshRenderable<API>*>& visible_meshes)
     {
 #if RENDERER_STATS
       Timing timing;
 #endif
-      groupMeshes();
+      groupMeshes(visible_meshes);
 #if RENDERER_STATS
       _stats._sceneMeshGroupingMicroSeconds = timing.duration<std::chrono::microseconds>();
       timing.start();
@@ -470,21 +480,17 @@ namespace fly
       _api.setViewport(Vec2u(_gs->getShadowMapSize()));
       _renderTargets.clear();
       for (unsigned i = 0; i < _gs->getFrustumSplits().size(); i++) {
-        _visibleMeshes.clear();
 #if RENDERER_STATS
         Timing timing;
 #endif
-       cullMeshes(_vpLightVolume[i], _debugCamera ? *_debugCamera : *_camera);
-       // for (const auto& e : _staticMeshRenderables) {
-       //   _visibleMeshes.push_back(e.second.get());
-      //  }
+       cullMeshes(_vpLightVolume[i], _debugCamera ? *_debugCamera : *_camera, _visibleMeshes);
 #if RENDERER_STATS
         _stats._cullingShadowMapMicroSeconds += timing.duration<std::chrono::microseconds>();
 #endif
 #if RENDERER_STATS
         timing.start();
 #endif
-        groupMeshes<true>();
+        groupMeshes<true>(_visibleMeshes);
 #if RENDERER_STATS
         _stats._shadowMapGroupingMicroSeconds += timing.duration<std::chrono::microseconds>();
         timing.start();
@@ -508,6 +514,8 @@ namespace fly
     void buildBVH()
     {
       _visibleMeshes.reserve(_staticMeshRenderables.size() + _staticInstancedMeshRenderables.size());
+      _visibleMeshesAsync = _visibleMeshes;
+    //  _visibleMeshes2.reserve(_visibleMeshes.capacity());
       _bvhStatic = std::make_unique<BVH>(_aabbStatic);
       std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
       std::cout << "Static instanced mesh renderables: " << _staticInstancedMeshRenderables.size() << std::endl;
@@ -526,16 +534,16 @@ namespace fly
       _shaderDescCache.clear();
       _api.createCompositeShader(*_gs);
     }
-    inline void cullMeshes(const Mat4f& view_projection_matrix, Camera& camera)
+    inline void cullMeshes(const Mat4f& view_projection_matrix, Camera camera, StackPOD<IMeshRenderable<API>*>& visible_meshes)
     {
       camera.extractFrustumPlanes(view_projection_matrix, _api.getZNearMapping());
 
-      _visibleMeshes.clear();
+      visible_meshes.clear();
       if (_staticInstancedMeshRenderables.size()) {
-        _api.prepareCulling(camera.getFrustumPlanes(), _debugCamera ? _debugCamera->getPosition() : _gsp._camPosworld);
+        _api.prepareCulling(camera.getFrustumPlanes(), camera.getPosition());
       }
       // Static meshes
-      _bvhStatic->cullVisibleObjects(camera, _visibleMeshes);
+      _bvhStatic->cullVisibleObjects(camera, visible_meshes);
       if (_staticInstancedMeshRenderables.size()) {
         _api.endCulling();
       }
@@ -548,9 +556,9 @@ namespace fly
       }*/
     }
     template<bool depth = false>
-    inline void groupMeshes()
+    inline void groupMeshes(const StackPOD<IMeshRenderable<API>*>& visible_meshes)
     {
-      for (const auto& m : _visibleMeshes) {
+      for (const auto& m : visible_meshes) {
         const auto& material_desc = m->getMaterialDesc();
         const auto& shader_desc = depth ? m->getShaderDescDepth()->get() : m->getShaderDesc()->get();
         shader_desc->addMaterial(material_desc);

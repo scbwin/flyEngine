@@ -22,6 +22,7 @@ namespace fly
     Camera(const Vec3f& pos, const Vec3f& euler_angles);
     Camera(const Camera& other) = default;
     virtual ~Camera();
+    const Mat4f& updateViewMatrix();
     const Mat4f& updateViewMatrix(const Vec3f& pos, const Vec3f& euler_angles);
     const Mat4f& getViewMatrix();
     Mat3f getViewMatrixInverse() const;

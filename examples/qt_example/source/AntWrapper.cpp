@@ -13,6 +13,7 @@
 AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, 
   fly::CameraController* camera_controller, fly::Entity* skydome, fly::GameTimer* game_timer, QWidget* widget, std::shared_ptr<fly::Camera> camera, fly::DirectionalLight* dl)
 {
+  TwAddVarCB(bar, "Multithreaded culling", TwType::TW_TYPE_BOOLCPP, setMTCulling, getMTCulling, gs, nullptr);
   TwAddVarCB(bar, "Shadows", TwType::TW_TYPE_BOOLCPP, cbSetShadows, cbGetShadows, gs, nullptr);
   TwAddVarCB(bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, cbSetPCF, cbGetPCF, gs, nullptr);
   TwAddVarCB(bar, "Max shadow cast distane", TwType::TW_TYPE_FLOAT, setMaxShadowCastDistance, getMaxShadowCastDistance, dl, "step = 0.5f");
@@ -32,8 +33,6 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "Gamma enabled", TwType::TW_TYPE_BOOLCPP, cbSetGammaEnabled, cbGetGammaEnabled, gs, nullptr);
   TwAddVarCB(bar, "Debug quadtree", TwType::TW_TYPE_BOOLCPP, cbSetDebugQuadtree, cbGetDebugQuadtree, gs, nullptr);
   TwAddVarCB(bar, "Debug object AABBs", TwType::TW_TYPE_BOOLCPP, cbSetDebugAABBs, cbGetDebugAABBs, gs, nullptr);
-  TwAddVarCB(bar, "Camera lerping", TwType::TW_TYPE_BOOLCPP, setCameraLerping, getCameraLerping, gs, nullptr);
-  TwAddVarCB(bar, "Camera lerp amount", TwType::TW_TYPE_FLOAT, setCameraLerpAmount, getCameraLerpAmount, gs, "step=0.001f");
   TwAddVarCB(bar, "Detail culling threshold", TwType::TW_TYPE_FLOAT, setDetailCullingThreshold, getDetailCullingThreshold, camera_controller, "step=0.0000005f");
   TwAddVarCB(bar, "Camera speed", TwType::TW_TYPE_FLOAT, setCamSpeed, getCamSpeed, camera_controller, "step=0.1f");
   TwAddVarCB(bar, "Skydome", TwType::TW_TYPE_BOOLCPP, setSkydome, getSkydome, skydome, nullptr);
@@ -216,27 +215,6 @@ void AntWrapper::cbReloadShaders(void * client_data)
 {
   cast<fly::OpenGLAPI>(client_data)->reloadShaders();
 }
-
-void AntWrapper::setCameraLerping(const void * value, void * client_data)
-{
-  cast<fly::GraphicsSettings>(client_data)->setCameraLerping(*cast<bool>(value));
-}
-
-void AntWrapper::getCameraLerping(void * value, void * client_data)
-{
-  *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getCameraLerping();
-}
-
-void AntWrapper::setCameraLerpAmount(const void * value, void * client_data)
-{
-  cast<fly::GraphicsSettings>(client_data)->setCameraLerping(*cast<float>(value));
-}
-
-void AntWrapper::getCameraLerpAmount(void * value, void * client_data)
-{
-  *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getCameraLerpAlpha();
-}
-
 void AntWrapper::setDetailCullingThreshold(const void * value, void * client_data)
 {
   cast<fly::CameraController>(client_data)->getCamera()->setDetailCullingThreshold(*cast<float>(value));
@@ -452,4 +430,14 @@ void AntWrapper::getSMPOFactor(void * value, void * client_data)
 void AntWrapper::getSMPOUnits(void * value, void * client_data)
 {
   *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getShadowPolygonOffsetUnits();
+}
+
+void AntWrapper::setMTCulling(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setMultithreadedCulling(*cast<bool>(value));
+}
+
+void AntWrapper::getMTCulling(void * value, void * client_data)
+{
+  *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getMultithreadedCulling();
 }
