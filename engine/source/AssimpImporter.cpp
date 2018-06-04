@@ -58,27 +58,28 @@ namespace fly
 #else
     // TODO linux implementation comes here
 #endif
-    std::string diffuse_path = "", opacity_path = "", normal_path = "";
+    auto mat = std::make_shared<Material>();
     if (material->GetTextureCount(aiTextureType::aiTextureType_DIFFUSE)) {
       aiString str;
       material->GetTexture(aiTextureType::aiTextureType_DIFFUSE, 0, &str);
-      diffuse_path = pre + str.C_Str();
+      mat->setTexturePath(Material::KEY_ALBEDO, pre + str.C_Str());
     }
     if (material->GetTextureCount(aiTextureType::aiTextureType_OPACITY)) {
       aiString str;
       material->GetTexture(aiTextureType::aiTextureType_OPACITY, 0, &str);
-      opacity_path = pre + str.C_Str();
+      mat->setTexturePath(Material::KEY_ALPHA, pre + str.C_Str());
     }
     if (material->GetTextureCount(aiTextureType::aiTextureType_HEIGHT)) {
       aiString str;
       material->GetTexture(aiTextureType::aiTextureType_HEIGHT, 0, &str);
-      normal_path = pre + str.C_Str();
+      mat->setTexturePath(Material::KEY_NORMAL, pre + str.C_Str());
     }
     aiColor3D diff;
     material->Get(AI_MATKEY_COLOR_DIFFUSE, diff);
     float s;
     material->Get(AI_MATKEY_SHININESS, s);
-
-    return std::make_shared<Material>(Vec3f({ diff.r, diff.g, diff.b }), s, diffuse_path, normal_path, opacity_path);
+    mat->setDiffuseColor(fly::Vec3f(diff.r, diff.g, diff.b));
+    mat->setSpecularExponent(s);
+    return mat;
   }
 }

@@ -4,26 +4,33 @@
 #include <string>
 #include <math/FlyMath.h>
 #include <vector>
+#include <map>
 
 namespace fly
 {
   class Material
   {
   public:
+    static constexpr const char* KEY_ALBEDO = "d";
+    static constexpr const char* KEY_NORMAL = "n";
+    static constexpr const char* KEY_ALPHA = "a";
+    static constexpr const char* KEY_HEIGHT = "h";
     Material() = default;
-    Material(const Vec3f& diffuse_color, float specular_exponent = 64.f, const std::string& diffuse_path = "", const std::string& normal_path = "", const std::string& opactiy_path = "");
-    std::string& getDiffusePath();
-    std::string& getNormalPath();
-    std::string& getOpacityPath();
-    std::string& getHeightPath();
     float getSpecularExponent() const;
     const Vec3f& getDiffuseColor() const;
     void setDiffuseColor(const Vec3f& diffuse_color);
     void setSpecularExponent(float specular);
-    void setDiffusePath(const std::string& diffuse_path);
-    void setNormalPath(const std::string& normal_path);
-    void setOpacityPath(const std::string& opacity_path);
-    void setHeightPath(const std::string& height_path);
+    void setTexturePath(const char* key, const std::string& path);
+    struct Comparator
+    {
+      inline bool operator()(const char* a, const char* b) const
+      {
+        return std::strcmp(a, b) < 0;
+      }
+    };
+    const std::map<const char*, std::string, Comparator>& getTexturePaths() const;
+    const std::string& getTexturePath(const char* key) const;
+    bool hasTexture(const char* key) const;
     void setIsReflective(bool reflective);
     bool isReflective() const;
     float getKa() const;
@@ -43,14 +50,6 @@ namespace fly
     void setDiffuseColors(const std::vector<Vec4f>& colors);
     const std::vector<Vec4f>& getDiffuseColors() const;
 
-    // Deprecated
-    bool hasWindX() const;
-    void setHasWindX(bool has_wind, float strength, float frequ);
-    bool hasWindZ() const;
-    void setHasWindZ(bool has_wind, float strength, float frequ);
-    float getWindStrength() const;
-    float getWindFrequency() const;
-
   private:
     float _ka = 0.025f;
     float _kd = 1.f;
@@ -61,18 +60,9 @@ namespace fly
     float _parallaxMaxSteps = 2.f;
     float _parallaxBinarySearchSteps = 6.f;
     Vec3f _diffuseColor;
-    std::string _diffusePath;
-    std::string _normalPath;
-    std::string _opacityPath;
-    std::string _heightPath;
+    std::map<const char*, std::string, Comparator> _texturePaths;
     bool _isReflective = false;
     std::vector<Vec4f> _diffuseColors;
-
-    // Deprecated
-    bool _hasWindX = false;
-    bool _hasWindZ = false;
-    float _windStrength;
-    float _windFrequency;
   };
 }
 

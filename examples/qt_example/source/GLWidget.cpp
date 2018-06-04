@@ -291,12 +291,12 @@ void GLWidget::initGame()
 #endif
   for (const auto& m : sponza_model->getMaterials()) {
     m->setSpecularExponent(32.f);
-    if (m->getDiffusePath() == "assets/sponza/textures\\spnza_bricks_a_diff.tga") {
-      m->setHeightPath("assets/DisplacementMap.png");
+    if (m->hasTexture(fly::Material::KEY_ALBEDO) && m->getTexturePath(fly::Material::KEY_ALBEDO) == "assets/sponza/textures\\spnza_bricks_a_diff.tga") {
+      m->setTexturePath(fly::Material::KEY_HEIGHT, "assets/DisplacementMap.png");
       m->setParallaxHeightScale(0.05f);
     }
-    else if (m->getDiffusePath() == "assets/sponza/textures\\sponza_floor_a_diff.tga") {
-      m->setHeightPath("assets/height.png");
+    else if (m->hasTexture(fly::Material::KEY_ALBEDO) && m->getTexturePath(fly::Material::KEY_ALBEDO) == "assets/sponza/textures\\sponza_floor_a_diff.tga") {
+      m->setTexturePath(fly::Material::KEY_HEIGHT, "assets/height.png");
       m->setParallaxHeightScale(0.021f);
     }
   }
@@ -485,7 +485,7 @@ void GLWidget::initGame()
 #if SPONZA_MANY || TREE_SCENE
   auto plane_model = importer->loadModel("assets/plane.obj");
   for (const auto& m : plane_model->getMaterials()) {
-    m->setNormalPath("assets/ground_normals.png");
+    m->setTexturePath(fly::Material::KEY_NORMAL, "assets/ground_normals.png");
     m->setDiffuseColor(fly::Vec3f(0.870f, 0.768f, 0.329f) * 1.5f);
   }
   for (const auto& m : plane_model->getMeshes()) {
@@ -539,7 +539,7 @@ void GLWidget::initGame()
 #endif
   std::uniform_real_distribution<float> dist(0.f, 3.f);
   auto material = std::make_shared<fly::Material>(*sphere_lods[0]->getMaterial());
-  material->setNormalPath("assets/ground_normals.png");
+  material->setTexturePath(fly::Material::KEY_NORMAL, "assets/ground_normals.png");
   material->setSpecularExponent(128.f);
   std::vector<fly::Vec4f> diffuse_colors(512);
   for (unsigned i = 0; i < diffuse_colors.size(); i++) {

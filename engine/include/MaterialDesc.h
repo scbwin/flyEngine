@@ -31,13 +31,12 @@ namespace fly
       _api(api),
       _material(material),
       _activeShader(api.getActiveShader()),
-      _diffuseMap(texture_cache.getOrCreate(material->getDiffusePath(), material->getDiffusePath())),
-      _normalMap(texture_cache.getOrCreate(material->getNormalPath(), material->getNormalPath())),
-      _alphaMap(texture_cache.getOrCreate(material->getOpacityPath(), material->getOpacityPath())),
-      _heightMap(texture_cache.getOrCreate(material->getHeightPath(), material->getHeightPath())),
       _shaderDescCache(shader_desc_cache),
       _shaderCache(shader_cache)
     {
+      for (const auto& e : material->getTexturePaths()) {
+        _textures[e.first] = texture_cache.getOrCreate(e.second, e.second);
+      }
       create(settings);
     }
     void create(const GraphicsSettings& settings)
@@ -48,29 +47,29 @@ namespace fly
       using FLAG = MeshRenderFlag;
       unsigned flag = FLAG::MR_NONE;
       _materialSetupFuncs.push_back_secure(typename API::MaterialSetup::setupMaterialConstants);
-      if (_diffuseMap) {
+      if (_material->hasTexture(Material::KEY_ALBEDO)) {
         flag |= FLAG::MR_DIFFUSE_MAP;
         _materialSetupFuncs.push_back_secure(typename API::MaterialSetup::setupDiffuse);
       }
       else {
         if (_material->getDiffuseColors().size()) {
-          _diffuseColorBuffer = std::make_unique<typename API::StorageBuffer>(std::move(_api.createStorageBuffer(_material->getDiffuseColors().data(), _material->getDiffuseColors().size())));
+          _diffuseColorBuffer = std::move(_api.createStorageBuffer(_material->getDiffuseColors().data(), _material->getDiffuseColors().size()));
           _materialSetupFuncs.push_back_secure(typename API::MaterialSetup::setupDiffuseColors);
         }
         else {
           _materialSetupFuncs.push_back_secure(typename API::MaterialSetup::setupDiffuseColor);
         }
       }
-      if (_alphaMap) {
+      if (_material->hasTexture(Material::KEY_ALPHA)) {
         flag |= FLAG::MR_ALPHA_MAP;
         _materialSetupFuncs.push_back_secure(typename API::MaterialSetup::setupAlpha);
         _materialSetupFuncsDepth.push_back_secure(typename API::MaterialSetup::setupAlpha);
       }
-      if (_normalMap && settings.getNormalMapping()) {
+      if (_material->hasTexture(Material::KEY_NORMAL) && settings.getNormalMapping()) {
         flag |= FLAG::MR_NORMAL_MAP;
         _materialSetupFuncs.push_back_secure(typename API::MaterialSetup::setupNormal);
       }
-      if (_normalMap && _heightMap && settings.getNormalMapping() && settings.getParallaxMapping()) {
+      if (_material->hasTexture(Material::KEY_NORMAL) && _material->hasTexture(Material::KEY_HEIGHT) && settings.getNormalMapping() && settings.getParallaxMapping()) {
         flag |= FLAG::MR_HEIGHT_MAP;
         _materialSetupFuncs.push_back_secure(typename API::MaterialSetup::setupHeight);
         if (settings.getReliefMapping()) {
@@ -103,28 +102,12 @@ namespace fly
     inline void setup() const
     {
       for (const auto& f : (depth ? _materialSetupFuncsDepth : _materialSetupFuncs)) {
-        f(_activeShader, *this);
+        f(*_activeShader, *this);
       }
     }
     inline const std::shared_ptr<Material>& getMaterial() const
     {
       return _material;
-    }
-    inline const std::shared_ptr<typename API::Texture>& diffuseMap() const
-    {
-      return _diffuseMap;
-    }
-    inline const std::shared_ptr<typename API::Texture>& normalMap() const
-    {
-      return _normalMap;
-    }
-    inline const std::shared_ptr<typename API::Texture>& alphaMap() const
-    {
-      return _alphaMap;
-    }
-    inline const std::shared_ptr<typename API::Texture>& heightMap() const
-    {
-      return _heightMap;
     }
     inline const std::shared_ptr<ShaderDesc<API>>& getMeshShaderDesc() const
     {
@@ -158,7 +141,7 @@ namespace fly
     {
       return _shaderCache.getOrCreate(vs._key + fs._key + gs._key, vs, fs, gs);
     }
-    inline const std::unique_ptr<typename API::StorageBuffer>& getDiffuseColorBuffer() const
+    inline const typename API::StorageBuffer& getDiffuseColorBuffer() const
     {
       return _diffuseColorBuffer;
     }
@@ -182,27 +165,31 @@ namespace fly
     {
       return _renderables;
     }
-    /* inline StackPOD<MeshRenderable<API>*, 1024>& getRenderables()
+    inline const std::shared_ptr<typename API::Texture>& getTexture(const char* key) const
     {
-    return _renderables;
-    }*/
+      return _textures.at(key);
+    }
   private:
     API & _api;
     typename API::Shader const * & _activeShader;
     std::shared_ptr<Material> const _material;
-    StackPOD<void(*)(typename API::Shader const *, const MaterialDesc&)> _materialSetupFuncs;
-    StackPOD<void(*)(typename API::Shader const *, const MaterialDesc&)> _materialSetupFuncsDepth;
+    StackPOD<void(*)(typename API::Shader const &, const MaterialDesc&)> _materialSetupFuncs;
+    StackPOD<void(*)(typename API::Shader const &, const MaterialDesc&)> _materialSetupFuncsDepth;
     std::shared_ptr<ShaderDesc<API>> _meshShaderDesc;
-    std::shared_ptr<ShaderDesc<API>> _meshShaderDescWind;
     std::shared_ptr<ShaderDesc<API>> _meshShaderDescDepth;
+    std::shared_ptr<ShaderDesc<API>> _meshShaderDescWind;
     std::shared_ptr<ShaderDesc<API>> _meshShaderDescWindDepth;
     std::shared_ptr<ShaderDesc<API>> _meshShaderDescInstanced;
     std::shared_ptr<ShaderDesc<API>> _meshShaderDescDepthInstanced;
-    std::shared_ptr<typename API::Texture> const _diffuseMap;
-    std::shared_ptr<typename API::Texture> const _normalMap;
-    std::shared_ptr<typename API::Texture> const _alphaMap;
-    std::shared_ptr<typename API::Texture> const _heightMap;
-    std::unique_ptr<typename API::StorageBuffer> _diffuseColorBuffer;
+    struct Comparator
+    {
+      inline bool operator()(const char* a, const char* b) const
+      {
+        return std::strcmp(a, b) < 0;
+      }
+    };
+    std::map<const char*, std::shared_ptr<typename API::Texture>, Comparator> _textures;
+    typename API::StorageBuffer _diffuseColorBuffer;
     SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&>& _shaderDescCache;
     SoftwareCache<std::string, std::shared_ptr<typename API::Shader>, typename API::ShaderSource&, typename API::ShaderSource&, typename API::ShaderSource&>& _shaderCache;
     StackPOD<IMeshRenderable<API>*> _renderables;
