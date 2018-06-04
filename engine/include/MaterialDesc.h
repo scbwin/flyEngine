@@ -77,10 +77,6 @@ namespace fly
           _materialSetupFuncs.push_back_secure(typename API::MaterialSetup::setupRelief);
         }
       }
-      auto fragment_source = _api.getShaderGenerator().createMeshFragmentShaderSource(flag, settings);
-      auto vertex_source = _api.getShaderGenerator().createMeshVertexShaderSource(flag, settings);
-      auto vertex_source_instanced = _api.getShaderGenerator().createMeshVertexShaderSource(flag, settings, true);
-      auto fragment_source_instanced = _api.getShaderGenerator().createMeshFragmentShaderSource(flag, settings, true);
       unsigned ss_flags = ShaderSetupFlags::SS_LIGHTING | ShaderSetupFlags::SS_VP;
       if (settings.gammaEnabled()) {
         ss_flags |= ShaderSetupFlags::SS_GAMMA;
@@ -88,9 +84,16 @@ namespace fly
       if (settings.getShadows() || settings.getShadowsPCF()) {
         ss_flags |= ShaderSetupFlags::SS_SHADOWS;
       }
+      if (settings.getScreenSpaceReflections() && _material->isReflective()) {
+        flag |= FLAG::MR_REFLECTIVE;
+        ss_flags |= ShaderSetupFlags::SS_V_INVERSE;
+      }
+      auto fragment_source = _api.getShaderGenerator().createMeshFragmentShaderSource(flag, settings);
+      auto vertex_source = _api.getShaderGenerator().createMeshVertexShaderSource(flag, settings);
+      auto vertex_source_instanced = _api.getShaderGenerator().createMeshVertexShaderSource(flag, settings, true);
+      auto fragment_source_instanced = _api.getShaderGenerator().createMeshFragmentShaderSource(flag, settings, true);
       _meshShaderDesc = createShaderDesc(createShader(vertex_source, fragment_source), ss_flags, _api);
       _meshShaderDescInstanced = createShaderDesc(createShader(vertex_source_instanced, fragment_source_instanced), ss_flags, _api);
-      _meshShaderDescReflective = settings.getScreenSpaceReflections() ? createShaderDesc(createShader(vertex_source, _api.getShaderGenerator().createMeshFragmentShaderSource(flag | FLAG::MR_REFLECTIVE, settings)), ss_flags | ShaderSetupFlags::SS_V_INVERSE, _api) : _meshShaderDesc;
       _meshShaderDescWind = createShaderDesc(createShader(_api.getShaderGenerator().createMeshVertexShaderSource(flag | FLAG::MR_WIND, settings), fragment_source), ss_flags | ShaderSetupFlags::SS_WIND | ShaderSetupFlags::SS_TIME, _api);
       _meshShaderDescDepth = createShaderDesc(createShader(_api.getShaderGenerator().createMeshVertexShaderDepthSource(flag, settings), _api.getShaderGenerator().createMeshFragmentShaderDepthSource(flag, settings)), ShaderSetupFlags::SS_VP, _api);
       _meshShaderDescDepthInstanced = createShaderDesc(createShader(_api.getShaderGenerator().createMeshVertexShaderDepthSource(flag, settings, true), _api.getShaderGenerator().createMeshFragmentShaderDepthSource(flag, settings)), ShaderSetupFlags::SS_VP, _api);
@@ -134,10 +137,6 @@ namespace fly
     inline const std::shared_ptr<ShaderDesc<API>>& getMeshShaderDescWind() const
     {
       return _meshShaderDescWind;
-    }
-    inline const std::shared_ptr<ShaderDesc<API>>& getMeshShaderDescReflective() const
-    {
-      return _meshShaderDescReflective;
     }
     inline const std::shared_ptr<ShaderDesc<API>>& getMeshShaderDescDepth() const
     {
@@ -197,7 +196,6 @@ namespace fly
     std::shared_ptr<ShaderDesc<API>> _meshShaderDescWind;
     std::shared_ptr<ShaderDesc<API>> _meshShaderDescDepth;
     std::shared_ptr<ShaderDesc<API>> _meshShaderDescWindDepth;
-    std::shared_ptr<ShaderDesc<API>> _meshShaderDescReflective;
     std::shared_ptr<ShaderDesc<API>> _meshShaderDescInstanced;
     std::shared_ptr<ShaderDesc<API>> _meshShaderDescDepthInstanced;
     std::shared_ptr<typename API::Texture> const _diffuseMap;

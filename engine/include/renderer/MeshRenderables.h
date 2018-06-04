@@ -81,7 +81,7 @@ namespace fly
       _modelMatrixInverse(inverse(glm::mat3(model_matrix)))
     {
       _materialDesc = renderer.createMaterialDesc(material).get();
-      _shaderDesc = material->isReflective() ? &_materialDesc->getMeshShaderDescReflective() : &_materialDesc->getMeshShaderDesc();
+      _shaderDesc = &_materialDesc->getMeshShaderDesc();
       _shaderDescDepth = &_materialDesc->getMeshShaderDescDepth();
       _aabb = AABB(mesh->getAABB(), model_matrix);
     }
