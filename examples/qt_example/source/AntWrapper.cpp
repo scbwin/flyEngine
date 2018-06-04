@@ -14,29 +14,31 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   fly::CameraController* camera_controller, fly::Entity* skydome, fly::GameTimer* game_timer, QWidget* widget, std::shared_ptr<fly::Camera> camera, fly::DirectionalLight* dl)
 {
   TwAddVarCB(bar, "Multithreaded culling", TwType::TW_TYPE_BOOLCPP, setMTCulling, getMTCulling, gs, nullptr);
-  TwAddVarCB(bar, "Shadows", TwType::TW_TYPE_BOOLCPP, cbSetShadows, cbGetShadows, gs, nullptr);
-  TwAddVarCB(bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, cbSetPCF, cbGetPCF, gs, nullptr);
-  TwAddVarCB(bar, "Max shadow cast distane", TwType::TW_TYPE_FLOAT, setMaxShadowCastDistance, getMaxShadowCastDistance, dl, "step = 0.5f");
+  TwAddVarCB(bar, "Shadows", TwType::TW_TYPE_BOOLCPP, setShadows, getShadows, gs, nullptr);
+  TwAddVarCB(bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, setPCF, getPCF, gs, nullptr);
+  TwAddVarCB(bar, "Max shadow cast distance", TwType::TW_TYPE_FLOAT, setMaxShadowCastDistance, getMaxShadowCastDistance, dl, "step = 0.5f");
   TwAddVarCB(bar, "Light dir X", TwType::TW_TYPE_FLOAT, setLightDirX, getLightDirX, dl, "step = 0.005f");
   TwAddVarCB(bar, "Light dir Y", TwType::TW_TYPE_FLOAT, setLightDirY, getLightDirY, dl, "step = 0.005f");
   TwAddVarCB(bar, "Light dir Z", TwType::TW_TYPE_FLOAT, setLightDirZ, getLightDirZ, dl, "step = 0.005f");
+  TwAddVarCB(bar, "God rays", TwType::TW_TYPE_BOOLCPP, setGodRays, getGodRays, gs, nullptr);
+  TwAddVarCB(bar, "God ray decay", TwType::TW_TYPE_FLOAT, setGodRayDecay, getGodRayDecay, gs, "step = 0.001f");
+  TwAddVarCB(bar, "God ray steps", TwType::TW_TYPE_FLOAT, setGodRaySteps, getGodRaySteps, gs, "step = 1.f");
   TwAddVarCB(bar, "Shadow darken factor", TwType::TW_TYPE_FLOAT, setShadowFactor, getShadowFactor, gs, "step = 0.005f");
   TwAddVarCB(bar, "Shadow polygon offset factor", TwType::TW_TYPE_FLOAT, setSMPOFactor, getSMPOFactor, gs, "step=0.01f");
   TwAddVarCB(bar, "Shadow polygon offset units", TwType::TW_TYPE_FLOAT, setSMPOUnits, getSMPOUnits, gs, "step=0.01f");
-  TwAddVarCB(bar, "Normal mapping", TwType::TW_TYPE_BOOLCPP, cbSetNormalMapping, cbGetNormalMapping, gs, nullptr);
-  TwAddVarCB(bar, "Parallax mapping", TwType::TW_TYPE_BOOLCPP, cbSetParallaxMapping, cbGetParallaxMapping, gs, nullptr);
-  TwAddVarCB(bar, "Relief mapping", TwType::TW_TYPE_BOOLCPP, cbSetReliefMapping, cbGetReliefMapping, gs, nullptr);
-  TwAddVarCB(bar, "Depth pre pass", TwType::TW_TYPE_BOOLCPP, cbSetDepthPrepass, cbGetDepthPrepass, gs, nullptr);
-  TwAddVarCB(bar, "Shadow map resolution", TwType::TW_TYPE_UINT32, cbSetShadowmapsize, cbGetShadowmapsize, gs, nullptr);
-  TwAddVarCB(bar, "Exposure", TwType::TW_TYPE_FLOAT, cbSetExposure, cbGetExposure, gs, "step = 0.01f");
-  TwAddVarCB(bar, "Gamma", TwType::TW_TYPE_FLOAT, cbSetGamma, cbGetGamma, gs, "step = 0.01f");
-  TwAddVarCB(bar, "Gamma enabled", TwType::TW_TYPE_BOOLCPP, cbSetGammaEnabled, cbGetGammaEnabled, gs, nullptr);
-  TwAddVarCB(bar, "Debug quadtree", TwType::TW_TYPE_BOOLCPP, cbSetDebugQuadtree, cbGetDebugQuadtree, gs, nullptr);
-  TwAddVarCB(bar, "Debug object AABBs", TwType::TW_TYPE_BOOLCPP, cbSetDebugAABBs, cbGetDebugAABBs, gs, nullptr);
+  TwAddVarCB(bar, "Normal mapping", TwType::TW_TYPE_BOOLCPP, setNormalMapping, getNormalMapping, gs, nullptr);
+  TwAddVarCB(bar, "Parallax mapping", TwType::TW_TYPE_BOOLCPP, setParallaxMapping, getParallaxMapping, gs, nullptr);
+  TwAddVarCB(bar, "Relief mapping", TwType::TW_TYPE_BOOLCPP, setReliefMapping, getReliefMapping, gs, nullptr);
+  TwAddVarCB(bar, "Depth pre pass", TwType::TW_TYPE_BOOLCPP, setDepthPrepass, getDepthPrepass, gs, nullptr);
+  TwAddVarCB(bar, "Shadow map resolution", TwType::TW_TYPE_UINT32, setShadowmapsize, getShadowmapsize, gs, nullptr);
+  TwAddVarCB(bar, "Exposure", TwType::TW_TYPE_FLOAT, setExposure, getExposure, gs, "step = 0.01f");
+  TwAddVarCB(bar, "Gamma", TwType::TW_TYPE_FLOAT, setGamma, getGamma, gs, "step = 0.01f");
+  TwAddVarCB(bar, "Gamma enabled", TwType::TW_TYPE_BOOLCPP, setGammaEnabled, getGammaEnabled, gs, nullptr);
+  TwAddVarCB(bar, "Debug quadtree", TwType::TW_TYPE_BOOLCPP, setDebugQuadtree, getDebugQuadtree, gs, nullptr);
+  TwAddVarCB(bar, "Debug object AABBs", TwType::TW_TYPE_BOOLCPP, setDebugAABBs, getDebugAABBs, gs, nullptr);
   TwAddVarCB(bar, "Detail culling threshold", TwType::TW_TYPE_FLOAT, setDetailCullingThreshold, getDetailCullingThreshold, camera_controller, "step=0.0000005f");
   TwAddVarCB(bar, "Camera speed", TwType::TW_TYPE_FLOAT, setCamSpeed, getCamSpeed, camera_controller, "step=0.1f");
   TwAddVarCB(bar, "Skydome", TwType::TW_TYPE_BOOLCPP, setSkydome, getSkydome, skydome, nullptr);
-  TwAddButton(bar, "Reload shaders", cbReloadShaders, api, nullptr);
   TwAddVarCB(bar, "Depth of Field", TwType::TW_TYPE_BOOLCPP, setDepthOfField, getDepthOfField, gs, nullptr);
   TwAddVarCB(bar, "DOF near", TwType::TW_TYPE_FLOAT, setDofNear, getDofNear, gs, "step = 0.01f");
   TwAddVarCB(bar, "DOF center", TwType::TW_TYPE_FLOAT, setDofCenter, getDofCenter, gs, "step = 0.01f");
@@ -54,22 +56,22 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "Fullscreen", TwType::TW_TYPE_BOOLCPP, setFullScreen, getFullScreen, widget, nullptr);
 }
 
-void AntWrapper::cbSetShadows(const void * value, void * client_data)
+void AntWrapper::setShadows(const void * value, void * client_data)
 {
   cast<fly::GraphicsSettings>(client_data)->setShadows(*cast<bool>(value));
 }
 
-void AntWrapper::cbGetShadows(void * value, void * client_data)
+void AntWrapper::getShadows(void * value, void * client_data)
 {
   *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getShadows();
 }
 
-void AntWrapper::cbSetPCF(const void * value, void * client_data)
+void AntWrapper::setPCF(const void * value, void * client_data)
 {
   cast<fly::GraphicsSettings>(client_data)->setShadowsPCF(*cast<bool>(value));
 }
 
-void AntWrapper::cbGetPCF(void * value, void * client_data)
+void AntWrapper::getPCF(void * value, void * client_data)
 {
   *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getShadowsPCF();
 }
@@ -103,6 +105,30 @@ void AntWrapper::getLightDirZ(void * value, void * client_data)
 {
   *cast<float>(value) = cast<fly::DirectionalLight>(client_data)->getDirection()[2];
 }
+void AntWrapper::setGodRays(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setGodRays(*cast<bool>(value));
+}
+void AntWrapper::getGodRays(void * value, void * client_data)
+{
+  *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getGodRays();
+}
+void AntWrapper::setGodRayDecay(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setGodRayDecay(*cast<float>(value));
+}
+void AntWrapper::getGodRayDecay(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getGodRayDecay();
+}
+void AntWrapper::setGodRaySteps(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setGodRaySteps(*cast<float>(value));
+}
+void AntWrapper::getGodRaySteps(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getGodRaySteps();
+}
 void AntWrapper::setMaxShadowCastDistance(const void * value, void * client_data)
 {
   cast<fly::DirectionalLight>(client_data)->setMaxShadowCastDistance(*cast<float>(value));
@@ -111,109 +137,104 @@ void AntWrapper::getMaxShadowCastDistance(void * value, void * client_data)
 {
   *cast<float>(value) = cast<fly::DirectionalLight>(client_data)->getMaxShadowCastDistance();
 }
-void AntWrapper::cbSetNormalMapping(const void * value, void * client_data)
+void AntWrapper::setNormalMapping(const void * value, void * client_data)
 {
   cast<fly::GraphicsSettings>(client_data)->setNormalMapping(*cast<bool>(value));
 }
 
-void AntWrapper::cbGetNormalMapping(void * value, void * client_data)
+void AntWrapper::getNormalMapping(void * value, void * client_data)
 {
   *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getNormalMapping();
 }
 
-void AntWrapper::cbSetParallaxMapping(const void * value, void * client_data)
+void AntWrapper::setParallaxMapping(const void * value, void * client_data)
 {
   cast<fly::GraphicsSettings>(client_data)->setParallaxMapping(*cast<bool>(value));
 }
 
-void AntWrapper::cbGetParallaxMapping(void * value, void * client_data)
+void AntWrapper::getParallaxMapping(void * value, void * client_data)
 {
   *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getParallaxMapping();
 }
 
-void AntWrapper::cbSetReliefMapping(const void * value, void * client_data)
+void AntWrapper::setReliefMapping(const void * value, void * client_data)
 {
   cast<fly::GraphicsSettings>(client_data)->setReliefMapping(*cast<bool>(value));
 }
 
-void AntWrapper::cbGetReliefMapping(void * value, void * client_data)
+void AntWrapper::getReliefMapping(void * value, void * client_data)
 {
   *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getReliefMapping();
 }
 
-void AntWrapper::cbSetDepthPrepass(const void * value, void * client_data)
+void AntWrapper::setDepthPrepass(const void * value, void * client_data)
 {
   cast<fly::GraphicsSettings>(client_data)->setDepthprepassEnabled(*cast<bool>(value));
 }
 
-void AntWrapper::cbGetDepthPrepass(void * value, void * client_data)
+void AntWrapper::getDepthPrepass(void * value, void * client_data)
 {
   *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->depthPrepassEnabled();
 }
 
-void AntWrapper::cbSetShadowmapsize(const void * value, void * client_data)
+void AntWrapper::setShadowmapsize(const void * value, void * client_data)
 {
   cast<fly::GraphicsSettings>(client_data)->setShadowMapSize(*cast<unsigned>(value));
 }
 
-void AntWrapper::cbGetShadowmapsize(void * value, void * client_data)
+void AntWrapper::getShadowmapsize(void * value, void * client_data)
 {
   *cast<unsigned>(value) = cast<fly::GraphicsSettings>(client_data)->getShadowMapSize();
 }
 
-void AntWrapper::cbSetExposure(const void * value, void * client_data)
+void AntWrapper::setExposure(const void * value, void * client_data)
 {
   cast<fly::GraphicsSettings>(client_data)->setExposure(*cast<float>(value));
 }
 
-void AntWrapper::cbGetExposure(void * value, void * client_data)
+void AntWrapper::getExposure(void * value, void * client_data)
 {
   *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getExposure();
 }
 
-void AntWrapper::cbSetGammaEnabled(const void * value, void * client_data)
+void AntWrapper::setGammaEnabled(const void * value, void * client_data)
 {
   cast<fly::GraphicsSettings>(client_data)->setGammaCorrectionEnabled(*cast<bool>(value));
 }
 
-void AntWrapper::cbGetGammaEnabled(void * value, void * client_data)
+void AntWrapper::getGammaEnabled(void * value, void * client_data)
 {
   *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->gammaEnabled();
 }
 
-void AntWrapper::cbSetGamma(const void * value, void * client_data)
+void AntWrapper::setGamma(const void * value, void * client_data)
 {
   cast<fly::GraphicsSettings>(client_data)->setGamma(*cast<float>(value));
 }
 
-void AntWrapper::cbGetGamma(void * value, void * client_data)
+void AntWrapper::getGamma(void * value, void * client_data)
 {
   *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getGamma();
 }
 
-void AntWrapper::cbSetDebugQuadtree(const void * value, void * client_data)
+void AntWrapper::setDebugQuadtree(const void * value, void * client_data)
 {
   cast<fly::GraphicsSettings>(client_data)->setDebugQuadtreeNodeAABBs(*cast<bool>(value));
 }
 
-void AntWrapper::cbGetDebugQuadtree(void * value, void * client_data)
+void AntWrapper::getDebugQuadtree(void * value, void * client_data)
 {
   *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getDebugQuadtreeNodeAABBs();
 }
 
-void AntWrapper::cbSetDebugAABBs(const void * value, void * client_data)
+void AntWrapper::setDebugAABBs(const void * value, void * client_data)
 {
   cast<fly::GraphicsSettings>(client_data)->setDebugObjectAABBs(*cast<bool>(value));
 }
 
-void AntWrapper::cbGetDebugAABBs(void * value, void * client_data)
+void AntWrapper::getDebugAABBs(void * value, void * client_data)
 {
   *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getDebugObjectAABBs();
-}
-
-void AntWrapper::cbReloadShaders(void * client_data)
-{
-  cast<fly::OpenGLAPI>(client_data)->reloadShaders();
 }
 void AntWrapper::setDetailCullingThreshold(const void * value, void * client_data)
 {

@@ -20,6 +20,7 @@ namespace fly
     listener->anisotropyChanged(this);
     listener->gammaChanged(this);
     listener->screenSpaceReflectionsChanged(this);
+    listener->godRaysChanged(this);
   }
   void GraphicsSettings::setNormalMapping(bool normal_mapping)
   {
@@ -349,6 +350,50 @@ namespace fly
   bool GraphicsSettings::getMultithreadedCulling() const
   {
     return _multithreadedCulling;
+  }
+  void GraphicsSettings::setGodRays(bool enabled)
+  {
+    _godRays = enabled;
+    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
+      l->godRaysChanged(this);
+    });
+  }
+  bool GraphicsSettings::getGodRays() const
+  {
+    return _godRays;
+  }
+  void GraphicsSettings::setGodRaySteps(float steps)
+  {
+    _godRaySteps = steps;
+    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
+      l->godRaysChanged(this);
+    });
+  }
+  float GraphicsSettings::getGodRaySteps() const
+  {
+    return _godRaySteps;
+  }
+  void GraphicsSettings::setGodRayScale(float scale)
+  {
+    _godRayScaleFactor = scale;
+    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
+      l->godRaysChanged(this);
+    });
+  }
+  float GraphicsSettings::getGodRayScale() const
+  {
+    return _godRayScaleFactor;
+  }
+  void GraphicsSettings::setGodRayDecay(float decay)
+  {
+    _godRayDecay = glm::clamp(decay, 0.f, 1.f);
+    notifiyListeners([this](const std::shared_ptr<Listener>& l) {
+      l->godRaysChanged(this);
+    });
+  }
+  float GraphicsSettings::getGodRayDecay() const
+  {
+    return _godRayDecay;
   }
   void GraphicsSettings::setExposureEnabled(bool exposure)
   {

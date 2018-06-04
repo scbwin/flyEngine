@@ -147,6 +147,18 @@ namespace fly
     {
       _api.setAnisotropy(gs->getAnisotropy());
     }
+    virtual void godRaysChanged(GraphicsSettings const * gs) override
+    {
+      if (gs->getGodRays()) {
+        _godRayBuffer = _api.createRenderToTexture(_viewPortSize * gs->getGodRayScale(), API::TexFilter::LINEAR);
+        _api.createGodRayShader(*gs);
+      }
+      else {
+        _godRayBuffer = nullptr;
+      }
+      graphicsSettingsChanged();
+      compositingChanged(gs);
+    }
     virtual void onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component) override
     {
       if (entity->getComponent<StaticMeshRenderable<API>>() == component) {
@@ -159,23 +171,6 @@ namespace fly
         _staticInstancedMeshRenderables[entity] = simr;
         _aabbStatic = _aabbStatic.getUnion(simr->getAABB());
       }
-      /* else if (entity->getComponent<fly::StaticInstancedMeshRenderable>() == component) {
-         auto simr = entity->getComponent<fly::StaticInstancedMeshRenderable>();
-         std::vector<typename API::MeshData> mesh_data;
-         mesh_data.reserve(simr->getMeshes().size());
-         for (const auto& m : simr->getMeshes()) {
-           mesh_data.push_back(_meshGeometryStorage.addMesh(m));
-         }
-         _staticInstancedMeshRenderables[entity] = std::make_shared<StaticInstancedMeshRenderableWrapper<API>>(simr, _matDescCache.getOrCreate(simr->getMaterial(),
-           simr->getMaterial(), *_gs), mesh_data, _api, _camera);
-         _aabbStatic = _aabbStatic.getUnion(*_staticInstancedMeshRenderables[entity]->getAABBWorld());
-       }
-       else if (entity->getComponent<fly::DynamicMeshRenderable>() == component) {
-         auto dmr = entity->getComponent<fly::DynamicMeshRenderable>();
-         _dynamicMeshRenderables[entity] = std::make_shared<DynamicMeshRenderableWrapper<API>>(dmr, _matDescCache.getOrCreate(dmr->getMaterial(), dmr->getMaterial(), *_gs),
-           _meshGeometryStorage.addMesh(dmr->getMesh()), _api, _viewMatrixInverse, *_gs);
-         _gs->addListener(_dynamicMeshRenderables.at(entity));
-       }*/
       else if (entity->getComponent<Camera>() == component) {
         _camera = entity->getComponent<Camera>();
         _gsp._camPosworld = _camera->getPosition();
@@ -193,17 +188,12 @@ namespace fly
       if (entity->getComponent<fly::StaticMeshRenderable<API>>() == component
         || entity->getComponent<fly::StaticMeshRenderableWind<API>>() == component) {
         _bvhStatic->removeObject(_staticMeshRenderables[entity].get());
-      //  _aabbStatic = _aabbStatic.getIntersection(_staticMeshRenderables[entity]->getAABB());
         _staticMeshRenderables.erase(entity);
       }
       if (entity->getComponent<fly::StaticInstancedMeshRenderable<API>>() == component) {
         _bvhStatic->removeObject(_staticInstancedMeshRenderables[entity].get());
-       // _aabbStatic = _aabbStatic.getIntersection(_staticInstancedMeshRenderables[entity]->getAABB());
         _staticInstancedMeshRenderables.erase(entity);
       }
-      //   else if (entity->getComponent<fly::DynamicMeshRenderable>() == component) {
-       //    _dynamicMeshRenderables.erase(entity);
-       //  }
       else if (entity->getComponent<Camera>() == component) {
         _camera = nullptr;
       }
@@ -240,7 +230,6 @@ namespace fly
         _gsp._exposure = _gs->getExposure();
         _gsp._gamma = _gs->getGamma();
         _meshGeometryStorage.bind();
-
         std::future<void> async;
         if (_gs->getMultithreadedCulling() && _shadowMapping) {
           async = std::async(std::launch::async, [this]() {
@@ -334,12 +323,30 @@ namespace fly
           _api.ssr(*_lightingBuffer, *_viewSpaceNormals, *_depthBuffer, _gsp._projectionMatrix, Vec4f(_gs->getSSRBlendWeight()), *_lightingBufferCopy);
         }
         if (_gs->getDepthOfField()) {
+          _api.setViewport(_viewPortSize * _gs->getDepthOfFieldScaleFactor());
           _api.separableBlur(*_lightingBuffer, _dofBuffer, _renderTargets);
+          _api.setViewport(_viewPortSize);
+        }
+        if (_gs->getGodRays()) {
+          auto light_pos_world = _gsp._camPosworld + *_gsp._lightDirWorld * -_pp._far;
+          auto light_pos_h = _vpScene * Vec4f(light_pos_world, 1.f);
+          auto light_pos_ndc = light_pos_h.xy() / light_pos_h[3];
+          auto light_pos_uv = light_pos_ndc * 0.5f + 0.5f;
+          _api.setViewport(_viewPortSize * _gs->getGodRayScale());
+          _renderTargets.clear();
+          _renderTargets.push_back(_godRayBuffer.get());
+          _api.setRendertargets(_renderTargets, nullptr);
+          _api.renderGodRays(*_depthBuffer, *_lightingBuffer, light_pos_uv);
           _api.setViewport(_viewPortSize);
         }
         if (_offScreenRendering) {
           _api.bindBackbuffer(_defaultRenderTarget);
-          _gs->getDepthOfField() ? _api.composite(*_lightingBuffer, _gsp, *_dofBuffer[0], *_depthBuffer) : _api.composite(*_lightingBuffer, _gsp);
+          if (_gs->getDepthOfField() && _gs->getGodRays()) {
+            _api.composite(*_lightingBuffer, _gsp, *_dofBuffer[0], *_depthBuffer, *_godRayBuffer);
+          }
+          else {
+            _gs->getDepthOfField() ? _api.composite(*_lightingBuffer, _gsp, *_dofBuffer[0], *_depthBuffer) : _api.composite(*_lightingBuffer, _gsp);
+          }
         }
         _api.endFrame();
       }
@@ -349,6 +356,7 @@ namespace fly
     {
       _viewPortSize = window_size;
       _gsp._projectionMatrix = MathHelpers::getProjectionMatrixPerspective(_pp._fieldOfViewDegrees, _viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._far, _api.getZNearMapping());
+      godRaysChanged(_gs);
       depthOfFieldChanged(_gs);
     }
     inline void setDefaultRendertarget(unsigned rt) { _defaultRenderTarget = rt; }
@@ -401,6 +409,7 @@ namespace fly
     std::unique_ptr<typename API::RTT> _viewSpaceNormals;
     std::unique_ptr<typename API::Shadowmap> _shadowMap;
     std::array<std::shared_ptr<typename API::RTT>, 2> _dofBuffer;
+    std::unique_ptr<typename API::RTT> _godRayBuffer;
     StackPOD<Mat4f> _vpLightVolume;
     typename API::RendertargetStack _renderTargets;
     unsigned _defaultRenderTarget = 0;

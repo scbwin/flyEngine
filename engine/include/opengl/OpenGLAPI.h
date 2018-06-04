@@ -23,6 +23,7 @@
 #include <opengl/GLSampler.h>
 #include <opengl/GLBuffer.h>
 #include <cstdint>
+#include <opengl/GLShaderInterface.h>
 
 namespace fly
 {
@@ -102,7 +103,6 @@ namespace fly
     {
       GL_CHECK(glCullFace(m == CullMode::BACK ? GL_BACK : GL_FRONT));
     }
-    void reloadShaders();
     using RTT = GLTexture;
     using Depthbuffer = GLTexture;
     using Shadowmap = GLTexture;
@@ -173,6 +173,7 @@ namespace fly
     static constexpr const int miscTexUnit1() { return 5; }
     static constexpr const int miscTexUnit2() { return 6; }
     static constexpr const int miscTexUnit3() { return 7; }
+    static constexpr const int miscTexUnit4() { return 8; }
     void beginFrame() const;
     void bindShader(GLShaderProgram const * shader);
     void bindShadowmap(const Shadowmap& shadowmap) const;
@@ -195,8 +196,10 @@ namespace fly
     void bindBackbuffer(unsigned id) const;
     void ssr(const RTT& lighting_buffer, const RTT& view_space_normals, const Depthbuffer& depth_buffer, const Mat4f& projection_matrix, const Vec4f& blend_weight, RTT& lighting_buffer_copy);
     void separableBlur(const RTT& in, const std::array<std::shared_ptr<RTT>, 2>& out, RendertargetStack& rtt_stack);
+    void renderGodRays(const Depthbuffer& depth_buffer, const RTT& lighting_buffer, const Vec2f& light_pos_uv);
     void composite(const RTT& lighting_buffer, const GlobalShaderParams& params);
     void composite(const RTT& lighting_buffer, const GlobalShaderParams& params, const RTT& dof_buffer, const Depthbuffer& depth_buffer);
+    void composite(const RTT& lighting_buffer, const GlobalShaderParams& params, const RTT& dof_buffer, const Depthbuffer& depth_buffer, const RTT& god_ray_buffer);
     void endFrame() const;
     void setAnisotropy(unsigned anisotropy);
     void enablePolygonOffset(float factor, float units) const;
@@ -220,6 +223,7 @@ namespace fly
     void createBlurShader(const GraphicsSettings& gs);
     void createCompositeShader(const GraphicsSettings& gs);
     void createScreenSpaceReflectionsShader(const GraphicsSettings& gs);
+    void createGodRayShader(const GraphicsSettings& gs);
     const std::shared_ptr<ShaderDesc<OpenGLAPI>>& getSkydomeShaderDesc() const;
     const ShaderGenerator& getShaderGenerator() const;
     Shader const *& getActiveShader();
@@ -246,7 +250,15 @@ namespace fly
     GLSampler _samplerAnisotropic;
     GLint _glVersionMajor, _glVersionMinor;
     Shader _debugFrustumShader;
+    Shader _godRayShader;
     unsigned _anisotropy = 1u;
+    inline void activateTexture(const Texture& texture, const char* key, GLint tex_unit)
+    {
+      GL_CHECK(glActiveTexture(GL_TEXTURE0 + tex_unit));
+      texture.bind();
+      setScalar(_activeShader->uniformLocation(key), tex_unit);
+    }
+    Shader createMiscShader(GLShaderSource& vs, GLShaderSource& fs) const;
   };
 }
 

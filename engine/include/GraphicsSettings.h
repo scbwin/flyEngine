@@ -23,6 +23,7 @@ namespace fly
       virtual void anisotropyChanged(GraphicsSettings const * gs) = 0;
       virtual void gammaChanged(GraphicsSettings const * gs) = 0;
       virtual void screenSpaceReflectionsChanged(GraphicsSettings const * gs) = 0;
+      virtual void godRaysChanged(GraphicsSettings const * gs) = 0;
     };
     GraphicsSettings();
     void addListener(const std::shared_ptr<Listener>& listener);
@@ -95,6 +96,14 @@ namespace fly
     float getShadowPolygonOffsetUnits() const;
     void setMultithreadedCulling(bool enabled);
     bool getMultithreadedCulling() const;
+    void setGodRays(bool enabled);
+    bool getGodRays() const;
+    void setGodRaySteps(float steps);
+    float getGodRaySteps() const;
+    void setGodRayScale(float scale);
+    float getGodRayScale() const;
+    void setGodRayDecay(float decay);
+    float getGodRayDecay() const;
   private:
     std::list<std::weak_ptr<Listener>> _listeners;
     bool _normalMapping = true;
@@ -132,6 +141,10 @@ namespace fly
     float _shadowPolygonOffsetFactor = 1.f;
     float _shadowPolygonOffsetUnits = 1.f;
     bool _multithreadedCulling = false;
+    bool _godRays = true;
+    float _godRaySteps = 64.f;
+    float _godRayScaleFactor = 0.5f;
+    float _godRayDecay = 0.955f;
 
     void notifiyNormalMappingChanged();
     void notifyShadowsChanged();

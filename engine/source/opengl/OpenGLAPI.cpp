@@ -9,7 +9,6 @@
 #include <Timing.h>
 #include <SOIL/SOIL.h>
 #include <Material.h>
-#include <opengl/GLShaderInterface.h>
 #include <Settings.h>
 #include <WindParamsLocal.h>
 #include <GraphicsSettings.h>
@@ -57,13 +56,6 @@ namespace fly
   void OpenGLAPI::setViewport(const Vec2u & size) const
   {
     GL_CHECK(glViewport(0, 0, size[0], size[1]));
-  }
-  void OpenGLAPI::reloadShaders()
-  {
-   // for (const auto& e : _shaderCache.getElements()) {
-      // e->reload();
-   // }
-    // _skydomeShader->reload();
   }
   std::vector<OpenGLAPI::IndirectInfo> OpenGLAPI::indirectFromMeshData(const std::vector<MeshData>& mesh_data) const
   {
@@ -235,17 +227,10 @@ namespace fly
     GL_CHECK(glEnable(GL_BLEND));
     GL_CHECK(glBlendColor(blend_weight[0], blend_weight[1], blend_weight[2], blend_weight[3]));
     GL_CHECK(glBlendFunc(GL_CONSTANT_COLOR, GL_ONE_MINUS_CONSTANT_COLOR));
-    //  setRendertargets({ &lighting_buffer }, nullptr);
-    _ssrShader.bind();
-    GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit0()));
-    view_space_normals.bind();
-    setScalar(_ssrShader.uniformLocation(GLSLShaderGenerator::viewSpaceNormalsSampler()), miscTexUnit0());
-    GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit1()));
-    lighting_buffer_copy.bind();
-    setScalar(_ssrShader.uniformLocation(GLSLShaderGenerator::lightingSampler()), miscTexUnit1());
-    GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit2()));
-    depth_buffer.bind();
-    setScalar(_ssrShader.uniformLocation(GLSLShaderGenerator::depthSampler()), miscTexUnit2());
+    bindShader(&_ssrShader);
+    activateTexture(view_space_normals, GLSLShaderGenerator::viewSpaceNormalsSampler(), miscTexUnit0());
+    activateTexture(lighting_buffer_copy, GLSLShaderGenerator::lightingSampler(), miscTexUnit1());
+    activateTexture(depth_buffer, GLSLShaderGenerator::depthSampler(), miscTexUnit2());
     setMatrix(_ssrShader.uniformLocation(GLSLShaderGenerator::projectionMatrix()), projection_matrix);
     auto p_inverse = inverse(projection_matrix);
     setMatrix(_ssrShader.uniformLocation(GLSLShaderGenerator::projectionMatrixInverse()), p_inverse);
@@ -259,28 +244,33 @@ namespace fly
   void OpenGLAPI::separableBlur(const RTT & in, const std::array<std::shared_ptr<RTT>, 2>& out, OpenGLAPI::RendertargetStack& rtt_stack)
   {
     in.param(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    _activeShader = &_blurShader;
+    bindShader(&_blurShader);
     _activeShader->bind();
-    setViewport(fly::Vec2u(out[1]->width(), out[1]->height()));
     for (unsigned i = 0; i < 2; i++) {
       rtt_stack.clear();
       rtt_stack.push_back_secure(out[!i].get());
       setRendertargets(rtt_stack, nullptr);
       Vec2f texel_size(1.f / out[0]->width() * i, 1.f / out[0]->height() * !i);
       setVector(_activeShader->uniformLocation(GLSLShaderGenerator::texelSize()), texel_size);
-      GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit1()));
-      i ? out[1]->bind() : in.bind();
-      setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::toBlurSampler()), miscTexUnit1());
+      activateTexture(i ? *out[1] : in, GLSLShaderGenerator::toBlurSampler(), miscTexUnit1());
       GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
     }
     in.param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   }
+  void OpenGLAPI::renderGodRays(const OpenGLAPI::Depthbuffer & depth_buffer, const RTT& lighting_buffer, const Vec2f & light_pos_uv)
+  {
+    bindShader(&_godRayShader);
+    depth_buffer.param(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    activateTexture(depth_buffer, GLSLShaderGenerator::depthSampler(), miscTexUnit0());
+    activateTexture(lighting_buffer, GLSLShaderGenerator::lightingSampler(), miscTexUnit1());
+    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::lightPosUV()), light_pos_uv);
+    GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
+    depth_buffer.param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  }
   void OpenGLAPI::composite(const RTT& lighting_buffer, const GlobalShaderParams& params)
   {
     bindShader(&_compositeShader);
-    GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit1()));
-    lighting_buffer.bind();
-    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::lightingSampler()), miscTexUnit1());
+    activateTexture(lighting_buffer, GLSLShaderGenerator::lightingSampler(), miscTexUnit1());
     GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
   }
   void OpenGLAPI::composite(const RTT & lighting_buffer, const GlobalShaderParams & params, const RTT & dof_buffer, const Depthbuffer& depth_buffer)
@@ -289,15 +279,22 @@ namespace fly
     auto p_inverse = inverse(params._projectionMatrix);
     setVector(_activeShader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverseThirdRow()), p_inverse.row(2));
     setVector(_activeShader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverseFourthRow()), p_inverse.row(3));
-    GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit1()));
-    lighting_buffer.bind();
-    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::lightingSampler()), miscTexUnit1());
-    GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit2()));
-    dof_buffer.bind();
-    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::dofSampler()), miscTexUnit2());
-    GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit3()));
-    depth_buffer.bind();
-    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::depthSampler()), miscTexUnit3());
+    activateTexture(lighting_buffer, GLSLShaderGenerator::lightingSampler(), miscTexUnit1());
+    activateTexture(dof_buffer, GLSLShaderGenerator::dofSampler(), miscTexUnit2());
+    activateTexture(depth_buffer, GLSLShaderGenerator::depthSampler(), miscTexUnit3());
+    GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
+  }
+  void OpenGLAPI::composite(const RTT & lighting_buffer, const GlobalShaderParams & params, const RTT & dof_buffer, const Depthbuffer & depth_buffer, const RTT & god_ray_buffer)
+  {
+    bindShader(&_compositeShader);
+    auto p_inverse = inverse(params._projectionMatrix);
+    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverseThirdRow()), p_inverse.row(2));
+    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverseFourthRow()), p_inverse.row(3));
+    activateTexture(lighting_buffer, GLSLShaderGenerator::lightingSampler(), miscTexUnit1());
+    activateTexture(dof_buffer, GLSLShaderGenerator::dofSampler(), miscTexUnit2());
+    activateTexture(depth_buffer, GLSLShaderGenerator::depthSampler(), miscTexUnit3());
+    activateTexture(god_ray_buffer, GLSLShaderGenerator::godRaySampler(), miscTexUnit4());
+    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::lightIntensity()), *params._lightIntensity);
     GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
   }
   void OpenGLAPI::endFrame() const
@@ -405,32 +402,26 @@ namespace fly
   void OpenGLAPI::createBlurShader(const GraphicsSettings & gs)
   {
     GLShaderSource vs, fs;
-    _shaderGenerator.createBlurShaderSource(0, gs, vs, fs);
-    GLShaderProgram shader;
-    shader.add(vs);
-    shader.add(fs);
-    shader.link();
-    _blurShader = std::move(shader);
+    _shaderGenerator.createBlurShaderSource(gs, vs, fs);
+    _blurShader = std::move(createMiscShader(vs, fs));
   }
   void OpenGLAPI::createCompositeShader(const GraphicsSettings & gs)
   {
     GLShaderSource vs, fs;
     _shaderGenerator.createCompositeShaderSource(gs, vs, fs);
-    Shader shader;
-    shader.add(vs);
-    shader.add(fs);
-    shader.link();
-    _compositeShader = std::move(shader);
+    _compositeShader = std::move(createMiscShader(vs, fs));
   }
   void OpenGLAPI::createScreenSpaceReflectionsShader(const GraphicsSettings & gs)
   {
     GLShaderSource vs, fs;
     _shaderGenerator.createSSRShaderSource(gs, vs, fs);
-    GLShaderProgram shader;
-    shader.add(vs);
-    shader.add(fs);
-    shader.link();
-    _ssrShader = std::move(shader);
+    _ssrShader = std::move(createMiscShader(vs, fs));
+  }
+  void OpenGLAPI::createGodRayShader(const GraphicsSettings & gs)
+  {
+    ShaderSource vs, fs;
+    _shaderGenerator.createGodRayShaderSource(gs, vs, fs);
+    _godRayShader = std::move(createMiscShader(vs, fs));
   }
   const std::shared_ptr<ShaderDesc<OpenGLAPI>>& OpenGLAPI::getSkydomeShaderDesc() const
   {
@@ -465,6 +456,14 @@ namespace fly
       _drawBuffers.push_back_secure(GL_NONE);
     }
     GL_CHECK(glDrawBuffers(static_cast<GLsizei>(_drawBuffers.size()), _drawBuffers.begin()));
+  }
+  OpenGLAPI::Shader OpenGLAPI::createMiscShader(GLShaderSource & vs, GLShaderSource & fs) const
+  {
+    Shader shader;
+    shader.add(vs);
+    shader.add(fs);
+    shader.link();
+    return shader;
   }
   OpenGLAPI::MeshGeometryStorage::MeshGeometryStorage() :
     _vboStack(GL_ARRAY_BUFFER, INIT_BUFFER_SIZE),

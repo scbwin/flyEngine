@@ -148,7 +148,7 @@ uniform vec3 " + std::string(bbMax()) + "; // AABB max xz\n" + std::string(noise
     fragment_src._source = createCompositeShaderSource(gs);
     fragment_src._type = GL_FRAGMENT_SHADER;
   }
-  void GLSLShaderGenerator::createBlurShaderSource(unsigned flags, const GraphicsSettings & gs, GLShaderSource & vertex_src, GLShaderSource & fragment_src)const
+  void GLSLShaderGenerator::createBlurShaderSource(const GraphicsSettings & gs, GLShaderSource & vertex_src, GLShaderSource & fragment_src)const
   {
     vertex_src = _compositeVertexSource;
     fragment_src._source = "#version 330 \n\
@@ -218,6 +218,29 @@ void main()\n\
   fragmentColor = textureLod(" + std::string(lightingSampler()) + ", uv, 0.f).rgb;\n\
 }\n";
     fragment_src._key = "fs_ssr";
+    fragment_src._type = GL_FRAGMENT_SHADER;
+  }
+  void GLSLShaderGenerator::createGodRayShaderSource(const GraphicsSettings& gs, GLShaderSource & vertex_src, GLShaderSource & fragment_src) const
+  {
+    vertex_src = _compositeVertexSource;
+    fragment_src._source = "#version 330\n\
+layout(location = 0) out vec3 fragmentColor;\n\
+uniform sampler2D " + std::string(lightingSampler()) + ";\n\
+uniform sampler2D " + std::string(depthSampler()) + ";\n\
+uniform vec2 " + std::string(lightPosUV()) + ";\n\
+in vec2 uv;\n\
+void main()\n\
+{\n\
+  fragmentColor = vec3(0.f);\n\
+  vec2 delta = (" + std::string(lightPosUV()) + " - uv) / " + std::to_string(gs.getGodRaySteps()) + ";\n\
+  vec2 tex_coord = uv;\n\
+  float decay = 1.f;\n\
+  for (float i = 0.f; i < " + std::to_string(gs.getGodRaySteps()) + "; i++, tex_coord += delta, decay *= " + std::to_string(gs.getGodRayDecay()) + ") { \n\
+    fragmentColor += decay * dot(texture(" + std::string(lightingSampler()) + ", tex_coord).rgb, vec3(0.2126f, 0.7152f, 0.0722f)) * float(texture(" + std::string(depthSampler()) + ", tex_coord).r == 1.f);\n\
+  }\n\
+  fragmentColor /= " + std::to_string(gs.getGodRaySteps()) + ";\n\
+}\n";
+    fragment_src._key = "fs_god_ray";
     fragment_src._type = GL_FRAGMENT_SHADER;
   }
   std::string GLSLShaderGenerator::createMeshVertexSource(unsigned flags, const GraphicsSettings & settings, bool instanced) const
@@ -350,8 +373,10 @@ void main() \n\
     bool tangent_space = (flags & MR_NORMAL_MAP) || (flags & MR_HEIGHT_MAP);
     std::string shader_src = "#version " + version + " \n\
 layout(location = 0) out vec3 fragmentColor;\n";
+    unsigned rt_index = 1;
     if (settings.getScreenSpaceReflections()) {
-      shader_src += "layout(location = 1) out vec3 viewSpaceNormal; \n";
+      shader_src += "layout(location = " + std::to_string(rt_index) + ") out vec3 viewSpaceNormal; \n";
+      rt_index++;
     }
     shader_src += "in vec3 pos_world;\n\
 in vec2 uv_out;\n\
@@ -509,8 +534,10 @@ layout(location = 0) out vec3 fragmentColor;\n\
 uniform sampler2D " + std::string(lightingSampler()) + ";\n\
 uniform sampler2D " + std::string(depthSampler()) + ";\n\
 uniform sampler2D " + std::string(dofSampler()) + ";\n\
+uniform sampler2D " + std::string(godRaySampler()) + ";\n\
 uniform vec4 " + std::string(projectionMatrixInverseThirdRow()) + ";\n\
 uniform vec4 " + std::string(projectionMatrixInverseFourthRow()) + ";\n\
+uniform vec3 " + std::string(lightIntensity()) + ";\n\
 in vec2 uv;\n\
 void main()\n\
 {\n\
@@ -525,6 +552,9 @@ void main()\n\
   else {\n\
     fragmentColor = mix(blur_color, fragmentColor, smoothstep(" + std::to_string(gs.getDofNear()) + ", " + std::to_string(gs.getDofCenter()) + ", depth_view));\n\
   }\n";
+    }
+    if (gs.getGodRays()) {
+      shader_src += "  fragmentColor += texture(" + std::string(godRaySampler()) + ", uv).rgb * " + std::string(lightIntensity()) + ";\n";
     }
     if (gs.exposureEnabled()) {
       shader_src += "  fragmentColor *= " + std::to_string(gs.getExposure()) + ";\n";

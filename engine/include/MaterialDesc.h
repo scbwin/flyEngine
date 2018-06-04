@@ -153,6 +153,7 @@ namespace fly
     virtual void anisotropyChanged(GraphicsSettings const * gs) override { create(*gs); }
     virtual void gammaChanged(GraphicsSettings const * gs) override { create(*gs); }
     virtual void screenSpaceReflectionsChanged(GraphicsSettings const * gs) override { create(*gs); }
+    virtual void godRaysChanged(GraphicsSettings const * gs) override { create(*gs); }
     inline void addMeshRenderable(IMeshRenderable<API>* mr)
     {
       _renderables.push_back_secure(mr);
