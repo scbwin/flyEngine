@@ -29,19 +29,20 @@ namespace fly
       {
         return _aabb;
       }
-      Node(std::vector<T*>& objects)
+      Node(std::vector<T*>& objects, unsigned begin, unsigned end)
       {
         _left._child = nullptr;
         _right._child = nullptr;
-        for (const auto& o : objects) {
-          _aabb = _aabb.getUnion(o->getAABB());
-          _largestAABBSize = std::max(_largestAABBSize, o->getLargestObjectAABBSize());
+        for (unsigned i = begin; i < end; i++) {
+          _aabb = _aabb.getUnion(objects[i]->getAABB());
+          _largestAABBSize = std::max(_largestAABBSize, objects[i]->getLargestObjectAABBSize());
         }
-        if (objects.size() <= 2) {
+        unsigned size = end - begin;
+        if (size <= 2) {
           _isLeaf = true;
-          _left._object = objects[0];
-          if (objects.size() == 2) {
-            _right._object = objects[1];
+          _left._object = objects[begin];
+          if (size == 2) {
+            _right._object = objects[begin + 1];
           }
         }
         else {
@@ -57,16 +58,14 @@ namespace fly
           else {
             index = 2;
           }
-          std::sort(objects.begin(), objects.end(), [index](const T* o1, const T* o2) {
-            auto center1 = o1->getAABB().center();
-            auto center2 = o2->getAABB().center();
-            return center1[index] > center2[index];
+          std::sort(objects.begin() + begin, objects.begin() + end, [index] (const T* o1, const T* o2) {
+            return o1->getAABB().center()[index] > o2->getAABB().center()[index];
           });
-          auto half_size = objects.size() / 2;
-          std::vector<T*> objects_left(objects.begin(), objects.begin() + half_size);
-          std::vector<T*> objects_right(objects.begin() + half_size, objects.end());
-          _left._child = new Node(objects_left);
-          _right._child = new Node(objects_right);
+          auto half_size = size / 2;
+          _left._child = new Node(objects, begin, begin + half_size);
+          if (half_size > 0) {
+            _right._child = new Node(objects, begin + half_size, end);
+          }
         }
       }
       ~Node()
@@ -135,21 +134,6 @@ namespace fly
           }
         }
       }
-      /* void cullAllObjects(const Camera& camera, Stack& all_objects)
-       {
-         if (_aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestObjectAABBSize)) {
-           for (const auto& e : _objects) {
-             if (e->cull(camera)) { // The node is already large enough -> check if the object is large enough to render.
-               all_objects.push_back(e);
-             }
-           }
-           for (const auto& c : _children) {
-             if (c) {
-               c->cullAllObjects(camera, all_objects);
-             }
-           }
-         }
-       }*/
       void cullAllObjects(const Camera& camera, StackPOD<T*>& all_objects) const
       {
         if (_aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestAABBSize)) {
@@ -184,7 +168,7 @@ namespace fly
           }
           else if (result == IntersectionResult::INTERSECTING) {
             if (_isLeaf) {
-              if (_left._object && _left._object->cullAndIntersect(camera)) {
+              if (_left._object->cullAndIntersect(camera)) {
                 visible_objects.push_back(_left._object);
               }
               if (_right._object && _right._object->cullAndIntersect(camera)) {
@@ -204,7 +188,7 @@ namespace fly
       }
     };
     KdTree(std::vector<T*>& objects) :
-      _root(objects)
+      _root(objects, 0, objects.size())
     {
     }
     void intersectObjects(const AABB& aabb, StackPOD<T*>& stack)
