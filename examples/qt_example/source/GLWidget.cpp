@@ -320,14 +320,14 @@ void GLWidget::initGame()
 #if TOWERS
   std::mt19937 gen;
   std::uniform_real_distribution<float> scale_dist(50.f, 250.f);
-  std::vector<std::shared_ptr<fly::StaticMeshRenderable>> towers;
+  std::vector<std::shared_ptr<fly::StaticMeshRenderable<API>>> towers;
   auto tower_model = importer->loadModel("assets/cube.obj");
   for (int x = 0; x < NUM_TOWERS; x++) {
     for (int y = 0; y < NUM_TOWERS; y++) {
       auto tower = _engine.getEntityManager()->createEntity();
       float scale = scale_dist(gen);
-      tower->addComponent(std::make_shared<fly::StaticMeshRenderable>(tower_model->getMeshes().front(), tower_model->getMeshes().front()->getMaterial(), fly::Transform(fly::Vec3f(x * 350.f, scale, y * 350.f), fly::Vec3f(scale / 3.f, scale, scale / 3.f)).getModelMatrix(), false));
-      towers.push_back(tower->getComponent<fly::StaticMeshRenderable>());
+      tower->addComponent(std::make_shared<fly::StaticMeshRenderable<API>>(*_renderer, tower_model->getMeshes().front(), tower_model->getMeshes().front()->getMaterial(), fly::Transform(fly::Vec3f(x * 350.f, scale, y * 350.f), fly::Vec3f(scale / 3.f, scale, scale / 3.f)).getModelMatrix()));
+      towers.push_back(tower->getComponent<fly::StaticMeshRenderable<API>>());
     }
   }
 #endif
@@ -353,10 +353,10 @@ void GLWidget::initGame()
   auto model_matrix = fly::Transform(fly::Vec3f(0.f), sponza_scale).getModelMatrix();
 #endif
 #if TOWERS && SPONZA_MANY
-  fly::AABB sponza_aabb_world(*sponza_model->getAABB(), model_matrix);
+  fly::AABB sponza_aabb_world(sponza_model->getAABB(), model_matrix);
   bool intersects = false;
   for (const auto& t : towers) {
-    if (t->getAABBWorld()->intersects(sponza_aabb_world)) {
+    if (t->getAABB().intersects(sponza_aabb_world)) {
       intersects = true;
     }
   }
