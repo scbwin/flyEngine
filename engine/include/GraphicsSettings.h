@@ -55,9 +55,9 @@ namespace fly
     void setExposure(float exposure);
     float getGamma() const;
     void setGamma(float gamma);
-    bool getDebugQuadtreeNodeAABBs() const;
+    bool getDebugBVH() const;
     bool getDebugObjectAABBs() const;
-    void setDebugQuadtreeNodeAABBs(bool enable);
+    void setDebugBVH(bool enable);
     void setDebugObjectAABBs(bool enable);
     unsigned getAnisotropy() const;
     void setAnisotropy(unsigned anisotropy);
@@ -122,7 +122,7 @@ namespace fly
     std::vector<float> _smFrustumSplits = { 16.f, 32.f, 64.f, 128.f, 256.f, 512.f };
     unsigned _anisotropy = 4u;
     bool _postProcessing = true;
-    bool _debugQuadtreeNodeAABBs = false;
+    bool _debugBVH = false;
     bool _debugObjectAABBs = false;
     float _blurSigma = 2.5f;
     unsigned _blurRadius = 3u;

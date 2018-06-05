@@ -34,7 +34,7 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "Exposure", TwType::TW_TYPE_FLOAT, setExposure, getExposure, gs, "step = 0.01f");
   TwAddVarCB(bar, "Gamma", TwType::TW_TYPE_FLOAT, setGamma, getGamma, gs, "step = 0.01f");
   TwAddVarCB(bar, "Gamma enabled", TwType::TW_TYPE_BOOLCPP, setGammaEnabled, getGammaEnabled, gs, nullptr);
-  TwAddVarCB(bar, "Debug quadtree", TwType::TW_TYPE_BOOLCPP, setDebugQuadtree, getDebugQuadtree, gs, nullptr);
+  TwAddVarCB(bar, "Debug BVH", TwType::TW_TYPE_BOOLCPP, setDebugBVH, getDebugBVH, gs, nullptr);
   TwAddVarCB(bar, "Debug object AABBs", TwType::TW_TYPE_BOOLCPP, setDebugAABBs, getDebugAABBs, gs, nullptr);
   TwAddVarCB(bar, "Detail culling threshold", TwType::TW_TYPE_FLOAT, setDetailCullingThreshold, getDetailCullingThreshold, camera_controller, "step=0.0000005f");
   TwAddVarCB(bar, "Camera speed", TwType::TW_TYPE_FLOAT, setCamSpeed, getCamSpeed, camera_controller, "step=0.1f");
@@ -217,14 +217,14 @@ void AntWrapper::getGamma(void * value, void * client_data)
   *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getGamma();
 }
 
-void AntWrapper::setDebugQuadtree(const void * value, void * client_data)
+void AntWrapper::setDebugBVH(const void * value, void * client_data)
 {
-  cast<fly::GraphicsSettings>(client_data)->setDebugQuadtreeNodeAABBs(*cast<bool>(value));
+  cast<fly::GraphicsSettings>(client_data)->setDebugBVH(*cast<bool>(value));
 }
 
-void AntWrapper::getDebugQuadtree(void * value, void * client_data)
+void AntWrapper::getDebugBVH(void * value, void * client_data)
 {
-  *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getDebugQuadtreeNodeAABBs();
+  *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getDebugBVH();
 }
 
 void AntWrapper::setDebugAABBs(const void * value, void * client_data)

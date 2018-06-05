@@ -13,7 +13,7 @@
 #include <math/FlyMath.h>
 
 #define SPONZA 1
-#define SPONZA_MANY 0
+#define SPONZA_MANY 0 && SPONZA
 #define TOWERS 0
 #define TREE_SCENE 0
 #define PHYSICS 0
@@ -51,8 +51,6 @@ class GLWidget : public QOpenGLWidget
 public:
   GLWidget();
   ~GLWidget();
-
-
 protected:
   virtual void initializeGL() override;
   virtual void resizeGL(int width, int height) override;

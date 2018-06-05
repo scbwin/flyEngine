@@ -100,13 +100,15 @@ namespace fly
       }
       void cullAllNodes(const Camera& camera, StackPOD<Node*>& nodes)
       {
-        if (_aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold())) {
+        if (_aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestAABBSize)) {
           nodes.push_back_secure(this);
-          if (!_isLeaf && _left._child) {
-            _left._child->cullAllNodes(camera, nodes);
-          }
-          if (!_isLeaf && _right._child) {
-            _right._child->cullAllNodes(camera, nodes);
+          if (!_isLeaf) {
+            if (_left._child) {
+              _left._child->cullAllNodes(camera, nodes);
+            }
+            if (_right._child) {
+              _right._child->cullAllNodes(camera, nodes);
+            }
           }
         }
       }
@@ -116,20 +118,24 @@ namespace fly
           auto result = camera.frustumIntersectsAABB(_aabb);
           if (result == IntersectionResult::INSIDE) {
             nodes.push_back_secure(this);
-            if (!_isLeaf && _left._child) {
-              _left._child->cullAllNodes(camera, nodes);
-            }
-            if (!_isLeaf && _right._child) {
-              _right._child->cullAllNodes(camera, nodes);
+            if (!_isLeaf) {
+              if (_left._child) {
+                _left._child->cullAllNodes(camera, nodes);
+              }
+              if (_right._child) {
+                _right._child->cullAllNodes(camera, nodes);
+              }
             }
           }
           else if (result == IntersectionResult::INTERSECTING) {
             nodes.push_back_secure(this);
-            if (!_isLeaf && _left._child) {
-              _left._child->cullVisibleNodes(camera, nodes);
-            }
-            if (!_isLeaf && _right._child) {
-              _right._child->cullVisibleNodes(camera, nodes);
+            if (!_isLeaf) {
+              if (_left._child) {
+                _left._child->cullVisibleNodes(camera, nodes);
+              }
+              if (_right._child) {
+                _right._child->cullVisibleNodes(camera, nodes);
+              }
             }
           }
         }

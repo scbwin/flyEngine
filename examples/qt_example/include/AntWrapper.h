@@ -57,8 +57,8 @@ private:
   static void getGammaEnabled(void* value, void* client_data);
   static void setGamma(const void* value, void* client_data);
   static void getGamma(void* value, void* client_data);
-  static void setDebugQuadtree(const void* value, void* client_data);
-  static void getDebugQuadtree(void* value, void* client_data);
+  static void setDebugBVH(const void* value, void* client_data);
+  static void getDebugBVH(void* value, void* client_data);
   static void setDebugAABBs(const void* value, void* client_data);
   static void getDebugAABBs(void* value, void* client_data);
   static void setDetailCullingThreshold(const void* value, void* client_data);

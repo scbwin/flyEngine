@@ -143,17 +143,17 @@ namespace fly
     _gamma = std::max(gamma, 0.f);
     notifyCompositingChanged();
   }
-  bool GraphicsSettings::getDebugQuadtreeNodeAABBs() const
+  bool GraphicsSettings::getDebugBVH() const
   {
-    return _debugQuadtreeNodeAABBs;
+    return _debugBVH;
   }
   bool GraphicsSettings::getDebugObjectAABBs() const
   {
     return _debugObjectAABBs;
   }
-  void GraphicsSettings::setDebugQuadtreeNodeAABBs(bool enable)
+  void GraphicsSettings::setDebugBVH(bool enable)
   {
-    _debugQuadtreeNodeAABBs = enable;
+    _debugBVH = enable;
   }
   void GraphicsSettings::setDebugObjectAABBs(bool enable)
   {

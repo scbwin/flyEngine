@@ -113,7 +113,7 @@ namespace fly
     setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::modelViewProjectionMatrix()), mvp);
     renderMesh(mesh_data);
   }
-  void OpenGLAPI::renderAABBs(const std::vector<AABB const *>& aabbs, const Mat4f& transform, const Vec3f& col)
+  void OpenGLAPI::renderAABBs(const StackPOD<AABB const *>& aabbs, const Mat4f& transform, const Vec3f& col)
   {
     _vaoAABB.bind();
     bindShader(&_boxShader);

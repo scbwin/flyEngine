@@ -217,7 +217,10 @@ namespace fly
         }
         _api.beginFrame();
         _gsp._camPosworld = _camera->getPosition();
-        _gsp._viewMatrix = _camera->updateViewMatrix(_gsp._camPosworld, _camera->getEulerAngles());
+        _gsp._viewMatrix = _camera->updateViewMatrix();
+        if (_debugCamera) {
+          _debugCamera->updateViewMatrix();
+        }
         _gsp._viewMatrixInverse = _camera->getViewMatrixInverse();
         _vpScene = _gsp._projectionMatrix * _gsp._viewMatrix;
         _api.setDepthTestEnabled<true>();
@@ -238,7 +241,7 @@ namespace fly
             Timing timing;
 #endif
             cullMeshes(_debugCamera ? _gsp._projectionMatrix *
-              _debugCamera->updateViewMatrix() : _vpScene, _debugCamera ? *_debugCamera : *_camera, _visibleMeshesAsync);
+              _debugCamera->getViewMatrix() : _vpScene, _debugCamera ? *_debugCamera : *_camera, _visibleMeshesAsync);
 #if RENDERER_STATS
             _stats._cullingMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
@@ -305,8 +308,8 @@ namespace fly
           _gsp._VP = &_vpScene; // Restore view projection matrix
           _api.setCullMode<API::CullMode::BACK>();
         }
-        if (_gs->getDebugQuadtreeNodeAABBs()) {
-          renderBVHNodes();
+        if (_gs->getDebugBVH()) {
+          renderBVHNodes(*_camera, _debugCamera ? *_debugCamera : *_camera);
         }
         if (_gs->getDebugObjectAABBs()) {
           renderObjectAABBs();
@@ -424,33 +427,30 @@ namespace fly
 #endif
     typename API::MeshGeometryStorage _meshGeometryStorage;
     std::map<Entity*, std::shared_ptr<StaticMeshRenderable<API>>> _staticMeshRenderables;
-    //  std::map<Entity*, std::shared_ptr<DynamicMeshRenderableWrapper<API>>> _dynamicMeshRenderables;
     std::map<Entity*, std::shared_ptr<StaticInstancedMeshRenderable<API>>> _staticInstancedMeshRenderables;
     std::shared_ptr<SkydomeRenderableWrapper<API>> _skydomeRenderable;
     StackPOD<IMeshRenderable<API>*> _visibleMeshes;
     StackPOD<IMeshRenderable<API>*> _visibleMeshesAsync;
-   // StackPOD<IMeshRenderable<API>*> _visibleMeshes2;
     StackPOD<ShaderDesc<API>*> _displayList;
     std::unique_ptr<BVH> _bvhStatic;
-   // std::unique_ptr<KdTree<IMeshRenderable<API>>> _kdTree;
     SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
     SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&> _shaderDescCache;
     SoftwareCache<std::string, std::shared_ptr<typename API::Shader>, typename API::ShaderSource&, typename API::ShaderSource&, typename API::ShaderSource&> _shaderCache;
     SoftwareCache<std::string, std::shared_ptr<typename API::Texture>, const std::string&> _textureCache;
-    void renderBVHNodes()
+    void renderBVHNodes(Camera render_cam, Camera cull_cam)
     {
+      cull_cam.extractFrustumPlanes(_gsp._projectionMatrix * cull_cam.getViewMatrix(), _api.getZNearMapping());
       StackPOD<typename BVH::Node*> visible_nodes;
-     // StackPOD<typename KdTree<IMeshRenderable<API>>::Node*> visible_nodes;
-      _bvhStatic->cullVisibleNodes(*_camera, visible_nodes);
+      _bvhStatic->cullVisibleNodes(cull_cam, visible_nodes);
       if (visible_nodes.size()) {
         _api.setDepthWriteEnabled<true>();
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
-        std::vector<AABB const *> aabbs;
+        StackPOD<AABB const *> aabbs;
         aabbs.reserve(visible_nodes.size());
         for (const auto& n : visible_nodes) {
           aabbs.push_back(&n->getAABB());
         }
-        _api.renderAABBs(aabbs, _vpScene, Vec3f(1.f, 0.f, 0.f));
+        _api.renderAABBs(aabbs, _gsp._projectionMatrix * render_cam.getViewMatrix(), Vec3f(1.f, 0.f, 0.f));
       }
     }
     void renderObjectAABBs()
@@ -458,7 +458,8 @@ namespace fly
       if (_visibleMeshes.size()) {
         _api.setDepthWriteEnabled<true>();
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
-        std::vector<AABB const *> aabbs;
+        StackPOD<AABB const *> aabbs;
+        aabbs.reserve(_visibleMeshes.size());
         for (auto m : _visibleMeshes) {
           aabbs.push_back(&m->getAABB());
         }
@@ -527,24 +528,19 @@ namespace fly
     {
       _visibleMeshes.reserve(_staticMeshRenderables.size() + _staticInstancedMeshRenderables.size());
       _visibleMeshesAsync = _visibleMeshes;
-    //  _visibleMeshes2.reserve(_visibleMeshes.capacity());
-     // _bvhStatic = std::make_unique<BVH>(_aabbStatic);
       std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
       std::cout << "Static instanced mesh renderables: " << _staticInstancedMeshRenderables.size() << std::endl;
       Timing timing;
       std::vector<IMeshRenderable<API>*> renderables;
       renderables.reserve(_staticMeshRenderables.size());
       for (const auto& e : _staticMeshRenderables) {
-      //  _bvhStatic->insert(e.second.get());
         renderables.push_back(e.second.get());
       }
       for (const auto& e : _staticInstancedMeshRenderables) {
-       // _bvhStatic->insert(e.second.get());
+        renderables.push_back(e.second.get());
       }
       _bvhStatic = std::make_unique<BVH>(renderables);
-    //  _kdTree = std::make_unique<KdTree<IMeshRenderable<API>>>(renderables);
       std::cout << "BVH construction took " << timing.duration<std::chrono::milliseconds>() << " milliseconds." << std::endl;
-     // _kdTree->print();
     }
     void graphicsSettingsChanged()
     {
@@ -555,24 +551,15 @@ namespace fly
     inline void cullMeshes(const Mat4f& view_projection_matrix, Camera camera, StackPOD<IMeshRenderable<API>*>& visible_meshes)
     {
       camera.extractFrustumPlanes(view_projection_matrix, _api.getZNearMapping());
-
       visible_meshes.clear();
       if (_staticInstancedMeshRenderables.size()) {
         _api.prepareCulling(camera.getFrustumPlanes(), camera.getPosition());
       }
       // Static meshes
       _bvhStatic->cullVisibleObjects(camera, visible_meshes);
-     // _kdTree->cullVisibleObjects(camera, visible_meshes);
       if (_staticInstancedMeshRenderables.size()) {
         _api.endCulling();
       }
-
-      // Dynamic meshes
-     /* for (const auto& e : _dynamicMeshRenderables) {
-        if (e.second->cull(*_camera)) {
-          _visibleMeshes.push_back(e.second.get());
-        }
-      }*/
     }
     template<bool depth = false>
     inline void groupMeshes(const StackPOD<IMeshRenderable<API>*>& visible_meshes)
