@@ -199,14 +199,7 @@ namespace fly
       void intersectObjects(const AABB& aabb, Stack& intersected_objects)
       {
         if (aabb.contains(_aabb)) {
-          for (const auto& e : _objects) {
-            intersected_objects.push_back_secure(e);
-          }
-          for (const auto& c : _children) {
-            if (c) {
-              c->getAllObjects(intersected_objects);
-            }
-          }
+          getAllObjects(intersected_objects);
         }
         else if (aabb.intersects(_aabb)) {
           for (const auto& e : _objects) {
@@ -223,7 +216,7 @@ namespace fly
       }
     private:
       // Pointers to child nodes, any of them may be nullptr.
-      std::unique_ptr<Node> _children[4];
+      std::unique_ptr<Node> _children[4] = {};
       // Axis aligned bounding box that the encloses the objects within this node.
       AABB _aabb;
       /** 
