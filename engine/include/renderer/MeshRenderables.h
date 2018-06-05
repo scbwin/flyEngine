@@ -26,7 +26,7 @@ namespace fly
     inline MaterialDesc<API> * getMaterialDesc() { return _materialDesc; }
     virtual void renderDepth(API const & api) = 0;
     virtual void render(API const & api) = 0;
-    inline const AABB& getAABB() { return _aabb; }
+    inline const AABB& getAABB() const { return _aabb; }
     virtual bool isLargeEnough(const Camera& camera) const
     {
       return _aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold());

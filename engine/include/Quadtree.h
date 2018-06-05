@@ -101,19 +101,23 @@ namespace fly
           }
         }
       }
-      void cullAllObjects(const Camera& camera, Stack& all_objects)
+      void cullAllObjects2(const Camera& camera, Stack& all_objects) const
+      {
+        for (const auto& e : _objects) {
+          if (e->cull(camera)) { // The node is already large enough -> check if the object is large enough to render.
+            all_objects.push_back(e);
+          }
+        }
+        for (const auto& c : _children) {
+          if (c) {
+            c->cullAllObjects(camera, all_objects);
+          }
+        }
+      }
+      void cullAllObjects(const Camera& camera, Stack& all_objects) const
       {
         if (_aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestObjectAABBSize)) {
-          for (const auto& e : _objects) {
-            if (e->cull(camera)) { // The node is already large enough -> check if the object is large enough to render.
-              all_objects.push_back(e);
-            }
-          }
-          for (const auto& c : _children) {
-            if (c) {
-              c->cullAllObjects(camera, all_objects);
-            }
-          }
+          cullAllObjects2(camera, all_objects);
         }
       }
       void cullVisibleObjects(const Camera& camera, Stack& visible_objects) const
@@ -121,16 +125,7 @@ namespace fly
         if (_aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestObjectAABBSize)) {
           auto result = camera.frustumIntersectsAABB(_aabb);
           if (result == IntersectionResult::INSIDE) {
-            for (const auto& e : _objects) {
-              if (e->cull(camera)) { // The node is already large enough -> check if the object is large enough to render.
-                visible_objects.push_back(e);
-              }
-            }
-            for (const auto& c : _children) {
-              if (c) {
-                c->cullAllObjects(camera, visible_objects); // No further visibility tests needed, because the node is fully within the view frustum.
-              }
-            }
+            cullAllObjects2(camera, visible_objects);
           }
           else if (result == IntersectionResult::INTERSECTING) {
             for (const auto& e : _objects) {
@@ -249,10 +244,17 @@ namespace fly
       }
     };
 
-    Quadtree(const AABB& bounds)
+    Quadtree(const std::vector<T*>& objects)
     {
-      _root = std::make_unique<Node>(bounds.getMin().xz(), bounds.getMax().xz());
-      _root->setAABB(bounds);
+      AABB aabb;
+      for (const auto& o : objects) {
+        aabb = aabb.getUnion(o->getAABB());
+      }
+      _root = std::make_unique<Node>(aabb.getMin().xz(), aabb.getMax().xz());
+      _root->setAABB(aabb);
+      for (const auto& o : objects) {
+        _root->insert(o);
+      }
     }
     void insert(const TPtr& object)
     {

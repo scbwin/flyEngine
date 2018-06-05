@@ -80,42 +80,10 @@ namespace fly
         index & 1 ? _bbMin[2] : _bbMax[2]);
     }
 
-    template<bool directx>
-    inline bool isFullyVisible(const Mat4f& transform) const
+    friend std::ostream& operator << (std::ostream& os, const AABB& aabb)
     {
-      for (unsigned i = 0; i < 8; i++) {
-        auto pos_h = transform * Vec4f(getVertex(i), 1.f);
-        for (unsigned i = 0; i < 3; i++) {
-          if (pos_h[i] > pos_h[3]) {
-            return false;
-          }
-        }
-        for (unsigned i = 0; i < 3; i++) {
-          if (pos_h[i] < (directx && i == 2 ? 0.f : -pos_h[3])) {
-            return false;
-          }
-        }
-      }
-      return true;
-    }
-
-    template<bool directx>
-    inline bool intersectsFrustum(const Mat4f& transform) const
-    {
-      unsigned char intersects = 0;
-      for (unsigned i = 0; i < 8; i++) {
-        auto pos_h = transform * Vec4f(getVertex(i), 1.f);
-        for (unsigned i = 0; i < 3; i++) {
-          intersects |= (pos_h[i] <= pos_h[3]) << i;
-        }
-        for (unsigned i = 0; i < 3; i++) {
-          intersects |= (pos_h[i] >= (directx && i == 2 ? 0.f : -pos_h[3])) << (i + 3);
-        }
-        if (intersects == 0b00111111) {
-          return true;
-        }
-      }
-      return false;
+      os << "AABB [ " << aabb.getMin() << " " << aabb.getMax() << " ]" << std::endl;
+      return os;
     }
   private:
     Vec3f _bbMin, _bbMax;

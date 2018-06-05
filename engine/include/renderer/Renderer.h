@@ -29,6 +29,7 @@
 #include <GameTimer.h>
 #include <GlobalShaderParams.h>
 #include <future>
+#include <KdTree.h>
 
 #define RENDERER_STATS 1
 
@@ -305,7 +306,7 @@ namespace fly
           _api.setCullMode<API::CullMode::BACK>();
         }
         if (_gs->getDebugQuadtreeNodeAABBs()) {
-          renderQuadtreeAABBs();
+          renderBVHNodes();
         }
         if (_gs->getDebugObjectAABBs()) {
           renderObjectAABBs();
@@ -367,7 +368,7 @@ namespace fly
     {
       return _vpScene;
     }
-    using BVH = Quadtree<IMeshRenderable<API>>;
+    using BVH = KdTree<IMeshRenderable<API>>;
     const std::unique_ptr<BVH>& getStaticBVH() const
     {
       return _bvhStatic;
@@ -431,13 +432,15 @@ namespace fly
    // StackPOD<IMeshRenderable<API>*> _visibleMeshes2;
     StackPOD<ShaderDesc<API>*> _displayList;
     std::unique_ptr<BVH> _bvhStatic;
+   // std::unique_ptr<KdTree<IMeshRenderable<API>>> _kdTree;
     SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
     SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&> _shaderDescCache;
     SoftwareCache<std::string, std::shared_ptr<typename API::Shader>, typename API::ShaderSource&, typename API::ShaderSource&, typename API::ShaderSource&> _shaderCache;
     SoftwareCache<std::string, std::shared_ptr<typename API::Texture>, const std::string&> _textureCache;
-    void renderQuadtreeAABBs()
+    void renderBVHNodes()
     {
       StackPOD<typename BVH::Node*> visible_nodes;
+     // StackPOD<typename KdTree<IMeshRenderable<API>>::Node*> visible_nodes;
       _bvhStatic->cullVisibleNodes(*_camera, visible_nodes);
       if (visible_nodes.size()) {
         _api.setDepthWriteEnabled<true>();
@@ -525,17 +528,23 @@ namespace fly
       _visibleMeshes.reserve(_staticMeshRenderables.size() + _staticInstancedMeshRenderables.size());
       _visibleMeshesAsync = _visibleMeshes;
     //  _visibleMeshes2.reserve(_visibleMeshes.capacity());
-      _bvhStatic = std::make_unique<BVH>(_aabbStatic);
+     // _bvhStatic = std::make_unique<BVH>(_aabbStatic);
       std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
       std::cout << "Static instanced mesh renderables: " << _staticInstancedMeshRenderables.size() << std::endl;
       Timing timing;
+      std::vector<IMeshRenderable<API>*> renderables;
+      renderables.reserve(_staticMeshRenderables.size());
       for (const auto& e : _staticMeshRenderables) {
-        _bvhStatic->insert(e.second.get());
+      //  _bvhStatic->insert(e.second.get());
+        renderables.push_back(e.second.get());
       }
       for (const auto& e : _staticInstancedMeshRenderables) {
-        _bvhStatic->insert(e.second.get());
+       // _bvhStatic->insert(e.second.get());
       }
+      _bvhStatic = std::make_unique<BVH>(renderables);
+    //  _kdTree = std::make_unique<KdTree<IMeshRenderable<API>>>(renderables);
       std::cout << "BVH construction took " << timing.duration<std::chrono::milliseconds>() << " milliseconds." << std::endl;
+     // _kdTree->print();
     }
     void graphicsSettingsChanged()
     {
@@ -553,6 +562,7 @@ namespace fly
       }
       // Static meshes
       _bvhStatic->cullVisibleObjects(camera, visible_meshes);
+     // _kdTree->cullVisibleObjects(camera, visible_meshes);
       if (_staticInstancedMeshRenderables.size()) {
         _api.endCulling();
       }

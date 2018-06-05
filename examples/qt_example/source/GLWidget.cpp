@@ -516,7 +516,7 @@ void GLWidget::initGame()
   dl_entity->addComponent(_dl);
 
   _debugCamera = std::make_shared<fly::Camera>(fly::Vec3f(0.f), fly::Vec3f(0.f));
-  _renderer->setDebugCamera(_debugCamera);
+  //_renderer->setDebugCamera(_debugCamera);
 
 #if INSTANCED_MESHES
   _graphicsSettings.setShadowMapSize(8192);
