@@ -128,11 +128,11 @@ namespace fly
   }
   IntersectionResult Camera::planeIntersectsSphere(const Vec4f & plane, const Sphere & sphere)
   {
-    float dist = dot(Vec4f(sphere.getCenter(), 1.f), plane);
-    if (dist > sphere.getRadius()) {
+    float dist = dot(Vec4f(sphere.center(), 1.f), plane);
+    if (dist > sphere.radius()) {
       return IntersectionResult::OUTSIDE;
     }
-    return dist < -sphere.getRadius() ? IntersectionResult::INSIDE : IntersectionResult::INTERSECTING;
+    return dist < -sphere.radius() ? IntersectionResult::INSIDE : IntersectionResult::INTERSECTING;
   }
   IntersectionResult Camera::planeIntersectsAABB(const Vec4f & plane, const Vec3f& aabb_half_diagonal, const Vec4f& aabb_center)
   {

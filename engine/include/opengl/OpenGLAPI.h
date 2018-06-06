@@ -29,13 +29,14 @@ namespace fly
 {
   class Mesh;
   class AABB;
+  class Sphere;
   class Material;
   class GLSLShaderGenerator;
   struct GlobalShaderParams;
   class GLSampler;
   struct WindParamsLocal;
   class GraphicsSettings;
-  template<typename API>
+  template<typename API, typename BV>
   class ShaderDesc;
 
   class OpenGLAPI
@@ -110,7 +111,8 @@ namespace fly
     using Shader = GLShaderProgram;
     using RendertargetStack = StackPOD<RTT const *>;
     using ShaderGenerator = GLSLShaderGenerator;
-    using MaterialSetup = GLMaterialSetup;
+    template<typename API, typename BV>
+    using MaterialSetup = GLMaterialSetup<OpenGLAPI, BV>;
     using ShaderSetup = GLShaderSetup;
     using ShaderSource = GLShaderSource;
     using StorageBuffer = GLBuffer;
@@ -182,8 +184,11 @@ namespace fly
     void renderMesh(const MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse) const;
     void renderMesh(const MeshData& mesh_data, const Mat4f& model_matrix, const WindParamsLocal& wind_params, const AABB& aabb) const;
     void renderMesh(const MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse, const WindParamsLocal& wind_params, const AABB& aabb) const;
+    void renderMesh(const MeshData& mesh_data, const Mat4f& model_matrix, const WindParamsLocal& wind_params, const Sphere& sphere) const;
+    void renderMesh(const MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse, const WindParamsLocal& wind_params, const Sphere& sphere) const;
     void renderMeshMVP(const MeshData& mesh_data, const Mat4f& mvp) const;
-    void renderAABBs(const StackPOD<AABB const *>& aabbs, const Mat4f& transform, const Vec3f& col);
+    void renderBVs(const StackPOD<AABB const *>& aabbs, const Mat4f& transform, const Vec3f& col);
+    void renderBVs(const StackPOD<Sphere const *>& spheres, const Mat4f& transform, const Vec3f& col);
     void renderDebugFrustum(const Mat4f& vp_debug_frustum, const Mat4f& vp);
     void prepareCulling(const std::array<Vec4f, 6>& frustum_planes, const Vec3f& cam_pos_world);
     void endCulling() const;
@@ -204,6 +209,7 @@ namespace fly
     void setAnisotropy(unsigned anisotropy);
     void enablePolygonOffset(float factor, float units) const;
     void disablePolygonOffset() const;
+    void renderSkydome(const Mat4f& view_projection_matrix, const MeshData& mesh_data);
     std::shared_ptr<Texture> createTexture(const std::string& path);
     std::shared_ptr<Shader> createShader(ShaderSource& vs, ShaderSource& fs, ShaderSource& gs = ShaderSource());
     Shader createComputeShader(ShaderSource& source);
@@ -224,7 +230,6 @@ namespace fly
     void createCompositeShader(const GraphicsSettings& gs);
     void createScreenSpaceReflectionsShader(const GraphicsSettings& gs);
     void createGodRayShader(const GraphicsSettings& gs);
-    const std::shared_ptr<ShaderDesc<OpenGLAPI>>& getSkydomeShaderDesc() const;
     const ShaderGenerator& getShaderGenerator() const;
     Shader const *& getActiveShader();
   private:
@@ -239,7 +244,7 @@ namespace fly
     GLFramebuffer _offScreenFramebuffer;
     StackPOD<GLenum> _drawBuffers;
     Shader _compositeShader;
-    std::shared_ptr<ShaderDesc<OpenGLAPI>> _skydomeShaderDesc;
+    Shader _skydomeShader;
     GLShaderProgram _ssrShader;
     GLShaderProgram _blurShader;
     GLShaderProgram _boxShader;

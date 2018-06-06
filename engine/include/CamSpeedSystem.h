@@ -12,11 +12,11 @@ namespace fly
   * This class is only used for demonstration purposes on how to perform intersection tests with a 
   * Bounding Volume Hierarchy (BVH)
   */
-  template<typename API>
+  template<typename API, typename BV>
   class CamSpeedSystem : public System
   {
   public:
-    CamSpeedSystem(const Renderer<API>& renderer, const std::unique_ptr<CameraController>& camera_controller) : 
+    CamSpeedSystem(const Renderer<API, BV>& renderer, const std::unique_ptr<CameraController>& camera_controller) : 
       _bvhStatic(renderer.getStaticBVH()),
       _camController(camera_controller)
     {
@@ -38,7 +38,7 @@ namespace fly
     }
   private:
     std::unique_ptr<typename Renderer<API>::BVH> const & _bvhStatic;
-    StackPOD<IMeshRenderable<API>*> _intersectedObjects;
+    StackPOD<IMeshRenderable<API, BV>*> _intersectedObjects;
     std::unique_ptr<CameraController> const & _camController;
     float _speedFactorLow = 0.2f;
     float _speedFactorHigh = 1.f;

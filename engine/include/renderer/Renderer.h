@@ -35,7 +35,7 @@
 
 namespace fly
 {
-  template<class API>
+  template<typename API, typename BV>
   class Renderer : public System, public GraphicsSettings::Listener
   {
   public:
@@ -58,15 +58,15 @@ namespace fly
     const RendererStats& getStats() const { return _stats; }
 #endif
     Renderer(GraphicsSettings * gs) : _api(Vec4f(0.149f, 0.509f, 0.929f, 1.f)), _gs(gs),
-      _matDescCache(SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&>(
+      _matDescCache(SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API, BV>>, const std::shared_ptr<Material>&, const GraphicsSettings&>(
         [this, gs](const std::shared_ptr<Material>& material, const GraphicsSettings&  settings) {
-      auto desc = std::make_shared<MaterialDesc<API>>(material, _api, settings, _textureCache, _shaderDescCache, _shaderCache);
+      auto desc = std::make_shared<MaterialDesc<API, BV>>(material, _api, settings, _textureCache, _shaderDescCache, _shaderCache);
       gs->addListener(desc);
       return desc;
     })),
-      _shaderDescCache(SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&>(
+      _shaderDescCache(SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API, BV>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&>(
         [this](const std::shared_ptr<typename API::Shader>& shader, unsigned flags, API& api) {
-      return std::make_shared<ShaderDesc<API>>(shader, flags, api);
+      return std::make_shared<ShaderDesc<API, BV>>(shader, flags, api);
     })),
       _textureCache(SoftwareCache<std::string, std::shared_ptr<typename API::Texture>, const std::string&>([this](const std::string& path) {
       return _api.createTexture(path);
@@ -162,15 +162,15 @@ namespace fly
     }
     virtual void onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component) override
     {
-      if (entity->getComponent<StaticMeshRenderable<API>>() == component) {
-        auto smr = entity->getComponent<StaticMeshRenderable<API>>();
+      if (entity->getComponent<StaticMeshRenderable<API, BV>>() == component) {
+        auto smr = entity->getComponent<StaticMeshRenderable<API, BV>>();
         _staticMeshRenderables[entity] = smr;
-        _aabbStatic = _aabbStatic.getUnion(smr->getAABB());
+        _bvStatic = _bvStatic.getUnion(smr->getBV());
       }
-      else if (entity->getComponent<StaticInstancedMeshRenderable<API>>() == component) {
-        auto simr = entity->getComponent<StaticInstancedMeshRenderable<API>>();
+      else if (entity->getComponent<StaticInstancedMeshRenderable<API, BV>>() == component) {
+        auto simr = entity->getComponent<StaticInstancedMeshRenderable<API, BV>>();
         _staticInstancedMeshRenderables[entity] = simr;
-        _aabbStatic = _aabbStatic.getUnion(simr->getAABB());
+        _bvStatic = _bvStatic.getUnion(simr->getBV());
       }
       else if (entity->getComponent<Camera>() == component) {
         _camera = entity->getComponent<Camera>();
@@ -186,12 +186,12 @@ namespace fly
     }
     virtual void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component) override
     {
-      if (entity->getComponent<fly::StaticMeshRenderable<API>>() == component
-        || entity->getComponent<fly::StaticMeshRenderableWind<API>>() == component) {
+      if (entity->getComponent<fly::StaticMeshRenderable<API, BV>>() == component
+        || entity->getComponent<fly::StaticMeshRenderableWind<API, BV>>() == component) {
         _bvhStatic->removeObject(_staticMeshRenderables[entity].get());
         _staticMeshRenderables.erase(entity);
       }
-      if (entity->getComponent<fly::StaticInstancedMeshRenderable<API>>() == component) {
+      if (entity->getComponent<fly::StaticInstancedMeshRenderable<API, BV>>() == component) {
         _bvhStatic->removeObject(_staticInstancedMeshRenderables[entity].get());
         _staticInstancedMeshRenderables.erase(entity);
       }
@@ -302,17 +302,18 @@ namespace fly
           Mat4f view_matrix_sky_dome = _gsp._viewMatrix;
           view_matrix_sky_dome[3] = Vec4f(Vec3f(0.f), 1.f);
           auto skydome_vp = _gsp._projectionMatrix * view_matrix_sky_dome;
-          _gsp._VP = &skydome_vp;
-          _api.getSkydomeShaderDesc()->setup(_gsp);
-          _skydomeRenderable->render();
-          _gsp._VP = &_vpScene; // Restore view projection matrix
+         // _gsp._VP = &skydome_vp;
+       //   _api.getSkydomeShaderDesc()->setup(_gsp);
+        //  _skydomeRenderable->render();
+       //   _gsp._VP = &_vpScene; // Restore view projection matrix
+          _api.renderSkydome(skydome_vp, _skydomeRenderable->getMeshData());
           _api.setCullMode<API::CullMode::BACK>();
         }
         if (_gs->getDebugBVH()) {
           renderBVHNodes(*_camera, _debugCamera ? *_debugCamera : *_camera);
         }
         if (_gs->getDebugObjectAABBs()) {
-          renderObjectAABBs();
+          renderObjectBVs();
         }
         if (_offScreenRendering || _debugCamera) {
           _api.setDepthTestEnabled<false>();
@@ -365,18 +366,18 @@ namespace fly
     }
     inline void setDefaultRendertarget(unsigned rt) { _defaultRenderTarget = rt; }
     API* getApi() { return &_api; }
-    const AABB& getAABBStatic() const { return _aabbStatic; }
+    const BV& getBVStatic() const { return _bvStatic; }
     std::vector<std::shared_ptr<Material>> getAllMaterials() { return _api.getAllMaterials(); }
     const Mat4f& getViewProjectionMatrix() const
     {
       return _vpScene;
     }
-    using BVH = KdTree<IMeshRenderable<API>>;
+    using BVH = KdTree<IMeshRenderable<API, BV>, BV>;
     const std::unique_ptr<BVH>& getStaticBVH() const
     {
       return _bvhStatic;
     }
-    const std::shared_ptr<MaterialDesc<API>> & createMaterialDesc(const std::shared_ptr<Material>& material)
+    const std::shared_ptr<MaterialDesc<API, BV>> & createMaterialDesc(const std::shared_ptr<Material>& material)
     {
       return _matDescCache.getOrCreate(material, material, *_gs);
     }
@@ -405,7 +406,7 @@ namespace fly
     std::shared_ptr<Camera> _camera;
     std::shared_ptr<DirectionalLight> _directionalLight;
     std::shared_ptr<Camera> _debugCamera;
-    AABB _aabbStatic;
+    BV _bvStatic;
     GraphicsSettings * const _gs;
     std::unique_ptr<typename API::RTT> _lightingBuffer;
     std::unique_ptr<typename API::RTT> _lightingBufferCopy;
@@ -426,15 +427,15 @@ namespace fly
     RendererStats _stats;
 #endif
     typename API::MeshGeometryStorage _meshGeometryStorage;
-    std::map<Entity*, std::shared_ptr<StaticMeshRenderable<API>>> _staticMeshRenderables;
-    std::map<Entity*, std::shared_ptr<StaticInstancedMeshRenderable<API>>> _staticInstancedMeshRenderables;
+    std::map<Entity*, std::shared_ptr<StaticMeshRenderable<API, BV>>> _staticMeshRenderables;
+    std::map<Entity*, std::shared_ptr<StaticInstancedMeshRenderable<API, BV>>> _staticInstancedMeshRenderables;
     std::shared_ptr<SkydomeRenderableWrapper<API>> _skydomeRenderable;
-    StackPOD<IMeshRenderable<API>*> _visibleMeshes;
-    StackPOD<IMeshRenderable<API>*> _visibleMeshesAsync;
-    StackPOD<ShaderDesc<API>*> _displayList;
+    StackPOD<IMeshRenderable<API, BV>*> _visibleMeshes;
+    StackPOD<IMeshRenderable<API, BV>*> _visibleMeshesAsync;
+    StackPOD<ShaderDesc<API, BV>*> _displayList;
     std::unique_ptr<BVH> _bvhStatic;
-    SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
-    SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&> _shaderDescCache;
+    SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API, BV>>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
+    SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API, BV>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&> _shaderDescCache;
     SoftwareCache<std::string, std::shared_ptr<typename API::Shader>, typename API::ShaderSource&, typename API::ShaderSource&, typename API::ShaderSource&> _shaderCache;
     SoftwareCache<std::string, std::shared_ptr<typename API::Texture>, const std::string&> _textureCache;
     void renderBVHNodes(Camera render_cam, Camera cull_cam)
@@ -445,28 +446,28 @@ namespace fly
       if (visible_nodes.size()) {
         _api.setDepthWriteEnabled<true>();
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
-        StackPOD<AABB const *> aabbs;
-        aabbs.reserve(visible_nodes.size());
+        StackPOD<BV const *> bvs;
+        bvs.reserve(visible_nodes.size());
         for (const auto& n : visible_nodes) {
-          aabbs.push_back(&n->getAABB());
+          bvs.push_back(&n->getBV());
         }
-        _api.renderAABBs(aabbs, _gsp._projectionMatrix * render_cam.getViewMatrix(), Vec3f(1.f, 0.f, 0.f));
+        _api.renderBVs(bvs, _gsp._projectionMatrix * render_cam.getViewMatrix(), Vec3f(1.f, 0.f, 0.f));
       }
     }
-    void renderObjectAABBs()
+    void renderObjectBVs()
     {
       if (_visibleMeshes.size()) {
         _api.setDepthWriteEnabled<true>();
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
-        StackPOD<AABB const *> aabbs;
-        aabbs.reserve(_visibleMeshes.size());
+        StackPOD<BV const *> bvs;
+        bvs.reserve(_visibleMeshes.size());
         for (auto m : _visibleMeshes) {
-          aabbs.push_back(&m->getAABB());
+          bvs.push_back(&m->getBV());
         }
-        _api.renderAABBs(aabbs, _vpScene, Vec3f(0.f, 1.f, 0.f));
+        _api.renderBVs(bvs, _vpScene, Vec3f(0.f, 1.f, 0.f));
       }
     }
-    void renderScene(const StackPOD<IMeshRenderable<API>*>& visible_meshes)
+    void renderScene(const StackPOD<IMeshRenderable<API, BV>*>& visible_meshes)
     {
 #if RENDERER_STATS
       Timing timing;
@@ -531,7 +532,7 @@ namespace fly
       std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
       std::cout << "Static instanced mesh renderables: " << _staticInstancedMeshRenderables.size() << std::endl;
       Timing timing;
-      std::vector<IMeshRenderable<API>*> renderables;
+      std::vector<IMeshRenderable<API, BV>*> renderables;
       renderables.reserve(_staticMeshRenderables.size());
       for (const auto& e : _staticMeshRenderables) {
         renderables.push_back(e.second.get());
@@ -548,7 +549,7 @@ namespace fly
       _shaderDescCache.clear();
       _api.createCompositeShader(*_gs);
     }
-    inline void cullMeshes(const Mat4f& view_projection_matrix, Camera camera, StackPOD<IMeshRenderable<API>*>& visible_meshes)
+    inline void cullMeshes(const Mat4f& view_projection_matrix, Camera camera, StackPOD<IMeshRenderable<API, BV>*>& visible_meshes)
     {
       camera.extractFrustumPlanes(view_projection_matrix, _api.getZNearMapping());
       visible_meshes.clear();
@@ -557,12 +558,17 @@ namespace fly
       }
       // Static meshes
       _bvhStatic->cullVisibleObjects(camera, visible_meshes);
+      //for (const auto& e : _staticMeshRenderables) {
+      //  if (camera.frustumIntersectsBoundingVolume(e.second->getBV()) != IntersectionResult::OUTSIDE) {
+       //   visible_meshes.push_back(e.second.get());
+      //  }
+     // }
       if (_staticInstancedMeshRenderables.size()) {
         _api.endCulling();
       }
     }
     template<bool depth = false>
-    inline void groupMeshes(const StackPOD<IMeshRenderable<API>*>& visible_meshes)
+    inline void groupMeshes(const StackPOD<IMeshRenderable<API, BV>*>& visible_meshes)
     {
       for (const auto& m : visible_meshes) {
         const auto& material_desc = m->getMaterialDesc();

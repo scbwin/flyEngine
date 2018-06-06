@@ -42,7 +42,7 @@ namespace fly
   {
     return _materialIndex;
   }
-  const AABB& Mesh::getAABB() const
+  const AABB & Mesh::getAABB() const
   {
     return _aabb;
   }

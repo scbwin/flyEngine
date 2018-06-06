@@ -17,6 +17,7 @@
 #include <renderer/MeshRenderables.h>
 
 using API = fly::OpenGLAPI;
+using BV = fly::AABB;
 
 GLWidget::GLWidget()
 {
@@ -30,10 +31,10 @@ GLWidget::~GLWidget()
 
 void GLWidget::initializeGL()
 {
-  _renderer = std::make_shared<fly::Renderer<API>>(&_graphicsSettings);
+  _renderer = std::make_shared<fly::Renderer<API, BV>>(&_graphicsSettings);
   _graphicsSettings.addListener(_renderer);
   _engine.addSystem(_renderer);
-  auto cam_speed_system = std::make_shared<fly::CamSpeedSystem<API>>(*_renderer, _camController);
+  auto cam_speed_system = std::make_shared<fly::CamSpeedSystem<API, BV>>(*_renderer, _camController);
   _engine.addSystem(cam_speed_system);
 
 #if PHYSICS
@@ -338,7 +339,7 @@ void GLWidget::initGame()
   num_renderables *= NUM_OBJECTS * NUM_OBJECTS;
 #endif
   std::vector<std::shared_ptr<fly::Entity>> entities;
-  std::vector<std::shared_ptr<fly::StaticMeshRenderable<fly::OpenGLAPI>>> smrs;
+  std::vector<std::shared_ptr<fly::StaticMeshRenderable<API, BV>>> smrs;
   entities.reserve(num_renderables);
   smrs.reserve(num_renderables);
 
@@ -386,7 +387,7 @@ void GLWidget::initGame()
       aabb_world.expand(aabb_offset);
       entities.push_back(_engine.getEntityManager()->createEntity());
       if (has_wind) {
-        auto smr = std::make_shared<fly::StaticMeshRenderableWind<fly::OpenGLAPI>>(*_renderer, mesh,
+        auto smr = std::make_shared<fly::StaticMeshRenderableWind<API, BV>>(*_renderer, mesh,
 #if SPONZA_MANY
           mesh->getMaterial(), transform);
 #else
@@ -396,7 +397,7 @@ void GLWidget::initGame()
         smrs.push_back(smr);
       }
       else {
-        smrs.push_back(std::make_shared<fly::StaticMeshRenderable<fly::OpenGLAPI>>(*_renderer, mesh,
+        smrs.push_back(std::make_shared<fly::StaticMeshRenderable<API, BV>>(*_renderer, mesh,
 #if SPONZA_MANY
           mesh->getMaterial(), transform));
 #else
@@ -492,19 +493,19 @@ void GLWidget::initGame()
     std::vector<fly::Vertex> vertices_new;
     for (const auto& v : m->getVertices()) {
       fly::Vertex v_new = v;
-      v_new._uv *= (_renderer->getAABBStatic().getMax().xz() - _renderer->getAABBStatic().getMin().xz()) * 0.65f;
+      v_new._uv *= (_renderer->getBVStatic().getMax().xz() - _renderer->getBVStatic().getMin().xz()) * 0.65f;
       vertices_new.push_back(v_new);
     }
     m->setVertices(vertices_new);
   }
   for (const auto& m : plane_model->getMeshes()) {
     auto entity = _engine.getEntityManager()->createEntity();
-    auto scale = _renderer->getAABBStatic().getMax() - _renderer->getAABBStatic().getMin();
+    auto scale = _renderer->getBVStatic().getMax() - _renderer->getBVStatic().getMin();
     scale[1] = 1.f;
-    auto translation = _renderer->getAABBStatic().getMin();
+    auto translation = _renderer->getBVStatic().getMin();
  //   entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(m,
   //    plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(translation, scale).getModelMatrix(), false));
-    entity->addComponent(std::make_shared<fly::StaticMeshRenderable<fly::OpenGLAPI>>(*_renderer, m, plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(translation, scale)));
+    entity->addComponent(std::make_shared<fly::StaticMeshRenderable<API, BV>>(*_renderer, m, plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(translation, scale)));
   }
 #endif
 
@@ -551,11 +552,11 @@ void GLWidget::initGame()
   for (int cell_x = 0; cell_x < num_cells[0]; cell_x++) {
     for (int cell_z = 0; cell_z < num_cells[1]; cell_z++) {
       auto instanced_entity = _engine.getEntityManager()->createEntity();
-      std::vector<fly::StaticInstancedMeshRenderable<fly::OpenGLAPI>::InstanceData> instance_data;
+      std::vector<fly::StaticInstancedMeshRenderable<API, BV>::InstanceData> instance_data;
       //std::vector<unsigned> indices;
       for (int x = 0; x < num_meshes[0]; x++) {
         for (int z = 0; z < num_meshes[1]; z++) {
-          fly::StaticInstancedMeshRenderable<fly::OpenGLAPI>::InstanceData data;
+          fly::StaticInstancedMeshRenderable<API, BV>::InstanceData data;
           data._modelMatrix = fly::Transform(fly::Vec3f(static_cast<float>(x) * sphere_lods[0]->getAABB().size() + dist(gen) + cell_x * cell_size - total_size[0] * 0.5f,
             1.2f + dist(gen) * 5.f, 
             static_cast<float>(z) * sphere_lods[0]->getAABB().size() + dist(gen) + cell_z * cell_size - total_size[1] * 0.5f)).getModelMatrix();
@@ -564,7 +565,7 @@ void GLWidget::initGame()
           instance_data.push_back(data);
         }
       }
-      auto instanced_renderable = std::make_shared<fly::StaticInstancedMeshRenderable<fly::OpenGLAPI>>(*_renderer, sphere_lods, material, instance_data);
+      auto instanced_renderable = std::make_shared<fly::StaticInstancedMeshRenderable<API, BV>>(*_renderer, sphere_lods, material, instance_data);
       instanced_entity->addComponent(instanced_renderable);
     //  instanced_renderable->clear();
       total_meshes += instance_data.size();
@@ -575,7 +576,7 @@ void GLWidget::initGame()
 
 #if SINGLE_SPHERE
   auto sphere_entity = _engine.getEntityManager()->createEntity();
-  sphere_entity->addComponent(std::make_shared<fly::StaticMeshRenderable<fly::OpenGLAPI>>(*_renderer, sphere_model->getMeshes().front(), sphere_model->getMeshes().front()->getMaterial(),
+  sphere_entity->addComponent(std::make_shared<fly::StaticMeshRenderable<API, BV>>(*_renderer, sphere_model->getMeshes().front(), sphere_model->getMeshes().front()->getMaterial(),
     fly::Transform(fly::Vec3f(5.f, 0.f, 0.f), fly::Vec3f(5.f, 1.5f, 2.f))));
 #endif
 

@@ -10,27 +10,28 @@
 #include <Component.h>
 #include <WindParamsLocal.h>
 #include <Transform.h>
+#include <Sphere.h>
 
 namespace fly
 {
-  template<typename API>
+  template<typename API, typename BV = AABB>
   class Renderer;
 
-  template<typename API>
+  template<typename API, typename BV>
   class IMeshRenderable : public Component
   {
   public:
     virtual ~IMeshRenderable() = default;
     IMeshRenderable() = default;
-    inline std::shared_ptr<ShaderDesc<API>> const * getShaderDesc() { return _shaderDesc; }
-    inline std::shared_ptr<ShaderDesc<API>> const * getShaderDescDepth() { return _shaderDescDepth; }
-    inline MaterialDesc<API> * getMaterialDesc() { return _materialDesc; }
+    inline std::shared_ptr<ShaderDesc<API, BV>> const * getShaderDesc() { return _shaderDesc; }
+    inline std::shared_ptr<ShaderDesc<API, BV>> const * getShaderDescDepth() { return _shaderDescDepth; }
+    inline MaterialDesc<API, BV> * getMaterialDesc() { return _materialDesc; }
     virtual void renderDepth(API const & api) = 0;
     virtual void render(API const & api) = 0;
-    inline const AABB& getAABB() const { return _aabb; }
+    inline const BV& getBV() const { return _bv; }
     virtual bool isLargeEnough(const Camera& camera) const
     {
-      return _aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold());
+      return _bv.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold());
     }
     virtual bool cull(const Camera& c) // Fine-grained distance culling, called if the object is fully visible from the camera's point of view.
     {
@@ -38,11 +39,11 @@ namespace fly
     }
     virtual bool cullAndIntersect(const Camera& c) // Fine-grained culling, only called if the bounding box of the node the object is in intersects the view frustum.
     {
-      return cull(c) && c.frustumIntersectsBoundingVolume(_aabb) != IntersectionResult::OUTSIDE;
+      return cull(c) && c.frustumIntersectsBoundingVolume(_bv) != IntersectionResult::OUTSIDE;
     }
-    virtual float getLargestObjectAABBSize() const
+    virtual float getLargestObjectBVSize() const
     {
-      return _aabb.size2();
+      return _bv.size2();
     }
     virtual unsigned numMeshes() const
     {
@@ -50,10 +51,18 @@ namespace fly
     }
     virtual unsigned numTriangles() const = 0;
   protected:
-    MaterialDesc<API> * _materialDesc;
-    std::shared_ptr<ShaderDesc<API>> const * _shaderDesc;
-    std::shared_ptr<ShaderDesc<API>> const * _shaderDescDepth;
-    AABB _aabb;
+    MaterialDesc<API, BV> * _materialDesc;
+    std::shared_ptr<ShaderDesc<API, BV>> const * _shaderDesc;
+    std::shared_ptr<ShaderDesc<API, BV>> const * _shaderDescDepth;
+    BV _bv;
+    void createBV(const Mesh& mesh, const Transform& transform, Sphere& result)
+    {
+      result = Sphere(mesh, transform);
+    }
+    void createBV(const Mesh& mesh, const Transform& transform, AABB& result)
+    {
+      result = AABB(mesh.getAABB(), transform.getModelMatrix());
+    }
   };
   template<typename API>
   class SkydomeRenderableWrapper
@@ -66,16 +75,16 @@ namespace fly
       _meshData(mesh_data)
     {
     }
-    void render()
+    const typename API::MeshData& getMeshData() const
     {
-      _api.renderMesh(_meshData);
+      return _meshData;
     }
   };
-  template<typename API>
-  class StaticMeshRenderable : public IMeshRenderable<API>
+  template<typename API, typename BV>
+  class StaticMeshRenderable : public IMeshRenderable<API, BV>
   {
   public:
-    StaticMeshRenderable(Renderer<API>& renderer, const std::shared_ptr<Mesh>& mesh,
+    StaticMeshRenderable(Renderer<API, BV>& renderer, const std::shared_ptr<Mesh>& mesh,
       const std::shared_ptr<Material>& material, const Transform& transform) :
       _meshData(renderer.addMesh(mesh)),
       _modelMatrix(transform.getModelMatrix()),
@@ -84,7 +93,7 @@ namespace fly
       _materialDesc = renderer.createMaterialDesc(material).get();
       _shaderDesc = &_materialDesc->getMeshShaderDesc();
       _shaderDescDepth = &_materialDesc->getMeshShaderDescDepth();
-      _aabb = AABB(mesh->getAABB(), transform.getModelMatrix());
+      createBV(*mesh, transform, _bv);
     }
     virtual ~StaticMeshRenderable() = default;
     virtual void render(API const & api) override
@@ -104,27 +113,27 @@ namespace fly
     Mat4f _modelMatrix;
     Mat3f _modelMatrixInverse;
   };
-  template<typename API>
-  class StaticMeshRenderableWind : public StaticMeshRenderable<API>
+  template<typename API, typename BV>
+  class StaticMeshRenderableWind : public StaticMeshRenderable<API, BV>
   {
   public:
-    StaticMeshRenderableWind(Renderer<API>& renderer, const std::shared_ptr<Mesh>& mesh,
+    StaticMeshRenderableWind(Renderer<API, BV>& renderer, const std::shared_ptr<Mesh>& mesh,
       const std::shared_ptr<Material>& material, const Transform& transform) :
-      StaticMeshRenderable<API>(renderer, mesh, material, transform)
+      StaticMeshRenderable<API, BV>(renderer, mesh, material, transform)
     {
       _materialDesc = renderer.createMaterialDesc(material).get();
       _shaderDesc = &_materialDesc->getMeshShaderDescWind();
       _shaderDescDepth = &_materialDesc->getMeshShaderDescDepthWind();
-      _windParams._pivotWorld = _aabb.getMax()[1];
+      _windParams._pivotWorld = _bv.getMax()[1];
       _windParams._bendFactorExponent = 2.5f;
     }
     virtual void render(API const & api) override
     {
-      api.renderMesh(_meshData, _modelMatrix, _modelMatrixInverse, _windParams, _aabb);
+      api.renderMesh(_meshData, _modelMatrix, _modelMatrixInverse, _windParams, _bv);
     }
     virtual void renderDepth(API const & api) override
     {
-      api.renderMesh(_meshData, _modelMatrix, _windParams, _aabb);
+      api.renderMesh(_meshData, _modelMatrix, _windParams, _bv);
     }
     void setWindParams(const WindParamsLocal& params)
     {
@@ -132,13 +141,13 @@ namespace fly
     }
     void expandAABB(const Vec3f& amount)
     {
-      _aabb.expand(amount);
+      _bv.expand(amount);
     }
   protected:
     WindParamsLocal _windParams;
   };
-  template<typename API>
-  class StaticInstancedMeshRenderable : public IMeshRenderable<API>
+  template<typename API, typename BV>
+  class StaticInstancedMeshRenderable : public IMeshRenderable<API, BV>
   {
   public:
     struct InstanceData
@@ -148,7 +157,7 @@ namespace fly
       unsigned _index; // Can be an index into a color array or an index into a texture array
       unsigned _padding[3];
     };
-    StaticInstancedMeshRenderable(Renderer<API>& renderer, const std::vector<std::shared_ptr<Mesh>>& lods,
+    StaticInstancedMeshRenderable(Renderer<API, BV>& renderer, const std::vector<std::shared_ptr<Mesh>>& lods,
       const std::shared_ptr<Material>& material, const std::vector<InstanceData>& instance_data) :
       _visibleInstances(renderer.getApi()->createStorageBuffer<unsigned>(nullptr, instance_data.size() * lods.size())),
       _instanceData(renderer.getApi()->createStorageBuffer<InstanceData>(instance_data.data(), instance_data.size())),
@@ -170,16 +179,16 @@ namespace fly
         aabb_local = aabb_local.getUnion(m->getAABB());
       }
 
-      StackPOD<Vec4f> aabbs_min_max;
-      aabbs_min_max.reserve(instance_data.size() * 2u);
+      StackPOD<Vec4f> bbs_min_max;
+      bbs_min_max.reserve(instance_data.size() * 2u);
       for (unsigned i = 0; i < instance_data.size(); i++) {
         AABB aabb_world(aabb_local, instance_data[i]._modelMatrix);
-        aabbs_min_max.push_back(Vec4f(aabb_world.getMin(), 1.f));
-        aabbs_min_max.push_back(Vec4f(aabb_world.getMax(), 1.f));
-        _aabb = _aabb.getUnion(aabb_world);
-        _largestAABBSize = std::max(_largestAABBSize, aabb_world.size2());
+        bbs_min_max.push_back(Vec4f(aabb_world.getMin(), 1.f));
+        bbs_min_max.push_back(Vec4f(aabb_world.getMax(), 1.f));
+        _bv = _bv.getUnion(aabb_world);
+        _largestBVSize = std::max(_largestBVSize, aabb_world.size2());
       }
-      _aabbBuffer = std::move(renderer.getApi()->createStorageBuffer<Vec4f>(aabbs_min_max.begin(), aabbs_min_max.size()));
+      _aabbBuffer = std::move(renderer.getApi()->createStorageBuffer<Vec4f>(bbs_min_max.begin(), bbs_min_max.size()));
     }
     virtual ~StaticInstancedMeshRenderable() = default;
 
@@ -191,9 +200,9 @@ namespace fly
     {
       api.renderInstances(_visibleInstances, _indirectBuffer, _instanceData, _indirectInfo, _numInstances);
     }
-    virtual float getLargestObjectAABBSize() const override
+    virtual float getLargestObjectBVSize() const override
     {
-      return _largestAABBSize;
+      return _largestBVSize;
     }
     virtual bool cull(const Camera& camera) override
     {
@@ -206,11 +215,11 @@ namespace fly
     }
     virtual bool cullAndIntersect(const Camera& camera) override
     {
-      return camera.frustumIntersectsBoundingVolume(_aabb) != IntersectionResult::OUTSIDE && cull(camera);
+      return camera.frustumIntersectsBoundingVolume(_bv) != IntersectionResult::OUTSIDE && cull(camera);
     }
     virtual bool isLargeEnough(const Camera& camera) const
     {
-      return _aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestAABBSize);
+      return _bv.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestBVSize);
     }
     virtual unsigned numTriangles() const override
     {
@@ -223,7 +232,7 @@ namespace fly
     }
   protected:
     std::vector<typename API::IndirectInfo> _indirectInfo;
-    float _largestAABBSize = 0.f;
+    float _largestBVSize = 0.f;
     typename API::StorageBuffer _aabbBuffer;
     typename API::StorageBuffer _visibleInstances;
     typename API::StorageBuffer _instanceData;

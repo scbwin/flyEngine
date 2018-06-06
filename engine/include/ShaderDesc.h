@@ -4,16 +4,19 @@
 #include <memory>
 #include <StackPOD.h>
 #include <Flags.h>
+#include <functional>
 
 namespace fly
 {
-  template<typename T>
+  template<typename API, typename BV>
   class MaterialDesc;
+  
+  struct GlobalShaderParams;
 
   /**
   * Class that wraps a single shader program and sets up the necessary uniform data once the shader is bound. 
   */
-  template<typename API>
+  template<typename API, typename BV>
   class ShaderDesc
   {
   public:
@@ -53,7 +56,7 @@ namespace fly
         f(params, _shader.get());
       }
     }
-    inline void addMaterial(MaterialDesc<API>* material)
+    inline void addMaterial(MaterialDesc<API, BV>* material)
     {
       if (_materials.find(material) == _materials.end()) {
         _materials.push_back_secure(material);
@@ -63,7 +66,7 @@ namespace fly
     {
       _materials.clear();
     }
-    inline const StackPOD<MaterialDesc<API>*>& getMaterials() const
+    inline const StackPOD<MaterialDesc<API, BV>*>& getMaterials() const
     {
       return _materials;
     }
@@ -75,15 +78,11 @@ namespace fly
     {
       _isUsed = is_used;
     }
-   /* inline const std::shared_ptr<typename API::Shader>& getShader() const
-    {
-      return _shader;
-    }*/
   private:
     std::shared_ptr<typename API::Shader> _shader;
     StackPOD<void(*)(const GlobalShaderParams&, typename API::Shader const *)> _setupFuncs;
     API & _api;
-    StackPOD<MaterialDesc<API>*> _materials;
+    StackPOD<MaterialDesc<API, BV>*> _materials;
     bool _isUsed = false;
   };
 }

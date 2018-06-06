@@ -22,7 +22,6 @@
 #define NUM_TOWERS 15
 #define DELETE_CURTAIN 1
 #define INSTANCED_MESHES 0
-//#define NUM_INSTANCED_MESHES_PER_DIR 1000
 #define NUM_CELLS 64
 #define ITEMS_PER_CELL 64
 #define SINGLE_SPHERE 0
@@ -32,7 +31,7 @@ class btTriangleMesh;
 namespace fly
 {
   class OpenGLAPI;
-  template<class T>
+  template<typename API, typename BV>
   class Renderer;
   class GameTimer;
   class CameraController;
@@ -42,6 +41,8 @@ namespace fly
   class Entity;
   class RigidBody;
   class Camera;
+  class AABB;
+  class Sphere;
 }
 
 struct CTwBar;
@@ -70,7 +71,7 @@ protected:
 private:
   fly::Engine _engine;
   fly::GraphicsSettings _graphicsSettings;
-  std::shared_ptr<fly::Renderer<fly::OpenGLAPI>> _renderer;
+  std::shared_ptr<fly::Renderer<fly::OpenGLAPI, fly::AABB>> _renderer;
   std::unique_ptr<fly::CameraController> _camController;
   std::shared_ptr<fly::DirectionalLight> _dl;
   std::shared_ptr<fly::Entity> _skydome;

@@ -80,6 +80,23 @@ namespace fly
         index & 1 ? _bbMin[2] : _bbMax[2]);
     }
 
+    inline unsigned getLongestAxis(unsigned depth) const
+    {
+      auto vec = _bbMax - _bbMin;
+      float longest_axis = std::max(vec[0], std::max(vec[1], vec[2]));
+      unsigned index;
+      if (longest_axis == vec[0]) {
+        index = 0;
+      }
+      else if (longest_axis == vec[1]) {
+        index = 1;
+      }
+      else {
+        index = 2;
+      }
+      return index;
+    }
+
     friend std::ostream& operator << (std::ostream& os, const AABB& aabb)
     {
       os << "AABB [ " << aabb.getMin() << " " << aabb.getMax() << " ]" << std::endl;

@@ -9,7 +9,7 @@
 
 namespace fly
 {
-  template<typename T>
+  template<typename T, typename BV>
   class KdTree
   {
   public:
@@ -24,24 +24,24 @@ namespace fly
       NodeData _left;
       NodeData _right;
       bool _isLeaf = false;
-      AABB _aabb;
-      float _largestAABBSize = 0.f;
+      BV _bv;
+      float _largestBVSize = 0.f;
       inline bool isLargeEnough(const Camera& camera) const
       {
-        return _aabb.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestAABBSize);
+        return _bv.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestBVSize);
       }
     public:
-      inline const AABB& getAABB() const
+      inline const BV& getBV() const
       {
-        return _aabb;
+        return _bv;
       }
-      Node(std::vector<T*>& objects, unsigned begin, unsigned end)
+      Node(std::vector<T*>& objects, unsigned begin, unsigned end, unsigned depth)
       {
         _left._child = nullptr;
         _right._child = nullptr;
         for (unsigned i = begin; i < end; i++) {
-          _aabb = _aabb.getUnion(objects[i]->getAABB());
-          _largestAABBSize = std::max(_largestAABBSize, objects[i]->getLargestObjectAABBSize());
+          _bv = _bv.getUnion(objects[i]->getBV());
+          _largestBVSize = std::max(_largestBVSize, objects[i]->getLargestObjectBVSize());
         }
         unsigned size = end - begin;
         if (size <= 2) {
@@ -52,25 +52,14 @@ namespace fly
           }
         }
         else {
-          auto vec = _aabb.getMax() - _aabb.getMin();
-          float longest_axis = std::max(vec[0], std::max(vec[1], vec[2]));
-          unsigned index;
-          if (longest_axis == vec[0]) {
-            index = 0;
-          }
-          else if (longest_axis == vec[1]) {
-            index = 1;
-          }
-          else {
-            index = 2;
-          }
+          unsigned index = _bv.getLongestAxis(depth);
           std::sort(objects.begin() + begin, objects.begin() + end, [index](const T* o1, const T* o2) {
-            return o1->getAABB().center()[index] > o2->getAABB().center()[index];
+            return o1->getBV().center()[index] > o2->getBV().center()[index];
           });
           auto half_size = size / 2;
-          _left._child = new Node(objects, begin, begin + half_size);
+          _left._child = new Node(objects, begin, begin + half_size, depth + 1);
           if (half_size > 0) {
-            _right._child = new Node(objects, begin + half_size, end);
+            _right._child = new Node(objects, begin + half_size, end, depth + 1);
           }
         }
       }
@@ -92,10 +81,10 @@ namespace fly
           indent += "  ";
         }
         if (_isLeaf) {
-          std::cout << indent << "Leaf aabb:" << _aabb << std::endl;
+          std::cout << indent << "Leaf aabb:" << _bv << std::endl;
         }
         else {
-          std::cout << indent << "Internal aabb:" << _aabb << std::endl;
+          std::cout << indent << "Internal aabb:" << _bv << std::endl;
         }
         if (!_isLeaf && _left._child) {
           _left._child->print(level + 1);
@@ -119,7 +108,7 @@ namespace fly
       void cullVisibleNodes(const Camera& camera, StackPOD<Node*>& nodes)
       {
         if (isLargeEnough(camera)) {
-          auto result = camera.frustumIntersectsBoundingVolume(_aabb);
+          auto result = camera.frustumIntersectsBoundingVolume(_bv);
           if (result == IntersectionResult::INSIDE) {
             nodes.push_back_secure(this);
             if (!_isLeaf) {
@@ -166,7 +155,7 @@ namespace fly
       void cullVisibleObjects(const Camera& camera, StackPOD<T*>& visible_objects) const
       {
         if (isLargeEnough(camera)) {
-          auto result = camera.frustumIntersectsBoundingVolume(_aabb);
+          auto result = camera.frustumIntersectsBoundingVolume(_bv);
           if (result == IntersectionResult::INSIDE) {
             cullAllObjects2(camera, visible_objects);
           }
@@ -203,36 +192,36 @@ namespace fly
           }
         }
       }
-      void intersectObjects(const AABB& aabb, StackPOD<T*>& intersected_objects) const
+      void intersectObjects(const BV& bv, StackPOD<T*>& intersected_objects) const
       {
-        if (aabb.contains(_aabb)) {
+        if (bv.contains(_bv)) {
           getAllObjects(intersected_objects);
         }
-        else if (aabb.intersects(_aabb)) {
+        else if (bv.intersects(_bv)) {
           if (_isLeaf) {
-            if (_left._object && aabb.intersects(_left._object->getAABB())) {
+            if (_left._object && bv.intersects(_left._object->getBV())) {
               intersected_objects.push_back_secure(_left._object);
             }
-            if (_right._object && aabb.intersects(_right._object->getAABB())) {
+            if (_right._object && bv.intersects(_right._object->getBV())) {
               intersected_objects.push_back_secure(_right._object);
             }
           }
           else {
-            _left._child->intersectObjects(aabb, intersected_objects);
+            _left._child->intersectObjects(bv, intersected_objects);
             if (_right._child) {
-              _right._child->intersectObjects(aabb, intersected_objects);
+              _right._child->intersectObjects(bv, intersected_objects);
             }
           }
         }
       }
     };
     KdTree(std::vector<T*>& objects) :
-      _root(objects, 0, static_cast<unsigned>(objects.size()))
+      _root(objects, 0, static_cast<unsigned>(objects.size()), 0)
     {
     }
-    void intersectObjects(const AABB& aabb, StackPOD<T*>& stack) const
+    void intersectObjects(const BV& bv, StackPOD<T*>& stack) const
     {
-      _root.intersectObjects(aabb, stack);
+      _root.intersectObjects(bv, stack);
     }
     bool removeObject(const T* object)
     {

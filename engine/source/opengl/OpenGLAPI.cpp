@@ -28,7 +28,8 @@ namespace fly
     _boxShader(std::move(*createShader(GLShaderSource("assets/opengl/vs_box.glsl", GL_VERTEX_SHADER), 
       GLShaderSource("assets/opengl/fs_box.glsl", GL_FRAGMENT_SHADER), GLShaderSource("assets/opengl/gs_box.glsl", GL_GEOMETRY_SHADER)))),
     _cullingShader(createComputeShader(GLShaderSource("assets/opengl/cs_culling.glsl", GL_COMPUTE_SHADER))),
-    _debugFrustumShader(std::move(*createShader(GLShaderSource("assets/opengl/vs_debug_frustum.glsl", GL_VERTEX_SHADER), GLShaderSource("assets/opengl/fs_debug_frustum.glsl", GL_FRAGMENT_SHADER))))
+    _debugFrustumShader(std::move(*createShader(GLShaderSource("assets/opengl/vs_debug_frustum.glsl", GL_VERTEX_SHADER), GLShaderSource("assets/opengl/fs_debug_frustum.glsl", GL_FRAGMENT_SHADER)))),
+    _skydomeShader(std::move(*createShader(GLShaderSource("assets/opengl/vs_skybox.glsl", GL_VERTEX_SHADER), GLShaderSource("assets/opengl/fs_skydome_new.glsl", GL_FRAGMENT_SHADER))))
   {
     GL_CHECK(glGetIntegerv(GL_MAJOR_VERSION, &_glVersionMajor));
     GL_CHECK(glGetIntegerv(GL_MINOR_VERSION, &_glVersionMinor));
@@ -41,8 +42,6 @@ namespace fly
     }
     GL_CHECK(glVertexAttribPointer(0, 3, GL_FLOAT, false, 2 * sizeof(Vec3f), 0));
     GL_CHECK(glVertexAttribPointer(1, 3, GL_FLOAT, false, 2 * sizeof(Vec3f), reinterpret_cast<const void*>(sizeof(Vec3f))));
-
-    _skydomeShaderDesc = std::make_shared<ShaderDesc<OpenGLAPI>>(createShader(GLShaderSource("assets/opengl/vs_skybox.glsl", GL_VERTEX_SHADER), GLShaderSource("assets/opengl/fs_skydome_new.glsl", GL_FRAGMENT_SHADER)), ShaderSetupFlags::SS_VP, *this);
 
     GL_CHECK(glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]));
   }
@@ -108,12 +107,20 @@ namespace fly
     setMatrixTranspose(_activeShader->uniformLocation(GLSLShaderGenerator::modelMatrixInverse()), model_matrix_inverse);
     renderMesh(mesh_data, model_matrix, params, aabb);
   }
+  void OpenGLAPI::renderMesh(const MeshData & mesh_data, const Mat4f & model_matrix, const WindParamsLocal & wind_params, const Sphere & sphere) const
+  {
+    renderMesh(mesh_data, model_matrix, wind_params, AABB(sphere.getMin(), sphere.getMax()));
+  }
+  void OpenGLAPI::renderMesh(const MeshData & mesh_data, const Mat4f & model_matrix, const Mat3f & model_matrix_inverse, const WindParamsLocal & wind_params, const Sphere & sphere) const
+  {
+    renderMesh(mesh_data, model_matrix, model_matrix_inverse, wind_params, AABB(sphere.getMin(), sphere.getMax()));
+  }
   void OpenGLAPI::renderMeshMVP(const MeshData & mesh_data, const Mat4f & mvp) const
   {
     setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::modelViewProjectionMatrix()), mvp);
     renderMesh(mesh_data);
   }
-  void OpenGLAPI::renderAABBs(const StackPOD<AABB const *>& aabbs, const Mat4f& transform, const Vec3f& col)
+  void OpenGLAPI::renderBVs(const StackPOD<AABB const *>& aabbs, const Mat4f& transform, const Vec3f& col)
   {
     _vaoAABB.bind();
     bindShader(&_boxShader);
@@ -127,6 +134,10 @@ namespace fly
     }
     _vboAABB.setData(bb_buffer.begin(), bb_buffer.size(), GL_DYNAMIC_COPY);
     GL_CHECK(glDrawArraysInstanced(GL_POINTS, 0, 1, static_cast<GLsizei>(aabbs.size())));
+  }
+  void OpenGLAPI::renderBVs(const StackPOD<Sphere const *>& spheres, const Mat4f& transform, const Vec3f& col)
+  {
+
   }
   void OpenGLAPI::renderDebugFrustum(const Mat4f & vp_debug_frustum, const Mat4f & vp)
   {
@@ -321,6 +332,12 @@ namespace fly
   {
     GL_CHECK(glDisable(GL_POLYGON_OFFSET_FILL));
   }
+  void OpenGLAPI::renderSkydome(const Mat4f & view_projection_matrix, const MeshData& mesh_data)
+  {
+    bindShader(&_skydomeShader);
+    setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::viewProjectionMatrix()), view_projection_matrix);
+    renderMesh(mesh_data);
+  }
   std::shared_ptr<OpenGLAPI::Texture> OpenGLAPI::createTexture(const std::string & path)
   {
     auto tex = SOIL_load_OGL_texture(path.c_str(), SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_TEXTURE_REPEATS | SOIL_FLAG_COMPRESS_TO_DXT);
@@ -423,10 +440,10 @@ namespace fly
     _shaderGenerator.createGodRayShaderSource(gs, vs, fs);
     _godRayShader = std::move(createMiscShader(vs, fs));
   }
-  const std::shared_ptr<ShaderDesc<OpenGLAPI>>& OpenGLAPI::getSkydomeShaderDesc() const
-  {
-    return _skydomeShaderDesc;
-  }
+  //const std::shared_ptr<ShaderDesc<OpenGLAPI>>& OpenGLAPI::getSkydomeShaderDesc() const
+  //{
+  //  return _skydomeShaderDesc;
+  //}
   const OpenGLAPI::ShaderGenerator& OpenGLAPI::getShaderGenerator() const
   {
     return _shaderGenerator;
