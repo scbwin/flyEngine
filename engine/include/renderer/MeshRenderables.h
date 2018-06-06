@@ -9,6 +9,7 @@
 #include <AABB.h>
 #include <Component.h>
 #include <WindParamsLocal.h>
+#include <Transform.h>
 
 namespace fly
 {
@@ -37,7 +38,7 @@ namespace fly
     }
     virtual bool cullAndIntersect(const Camera& c) // Fine-grained culling, only called if the bounding box of the node the object is in intersects the view frustum.
     {
-      return cull(c) && c.frustumIntersectsAABB(_aabb) != IntersectionResult::OUTSIDE;
+      return cull(c) && c.frustumIntersectsBoundingVolume(_aabb) != IntersectionResult::OUTSIDE;
     }
     virtual float getLargestObjectAABBSize() const
     {
@@ -75,15 +76,15 @@ namespace fly
   {
   public:
     StaticMeshRenderable(Renderer<API>& renderer, const std::shared_ptr<Mesh>& mesh,
-      const std::shared_ptr<Material>& material, const Mat4f& model_matrix) :
+      const std::shared_ptr<Material>& material, const Transform& transform) :
       _meshData(renderer.addMesh(mesh)),
-      _modelMatrix(model_matrix),
-      _modelMatrixInverse(inverse(glm::mat3(model_matrix)))
+      _modelMatrix(transform.getModelMatrix()),
+      _modelMatrixInverse(inverse(glm::mat3(transform.getModelMatrix())))
     {
       _materialDesc = renderer.createMaterialDesc(material).get();
       _shaderDesc = &_materialDesc->getMeshShaderDesc();
       _shaderDescDepth = &_materialDesc->getMeshShaderDescDepth();
-      _aabb = AABB(mesh->getAABB(), model_matrix);
+      _aabb = AABB(mesh->getAABB(), transform.getModelMatrix());
     }
     virtual ~StaticMeshRenderable() = default;
     virtual void render(API const & api) override
@@ -108,8 +109,8 @@ namespace fly
   {
   public:
     StaticMeshRenderableWind(Renderer<API>& renderer, const std::shared_ptr<Mesh>& mesh,
-      const std::shared_ptr<Material>& material, const Mat4f& model_matrix) :
-      StaticMeshRenderable<API>(renderer, mesh, material, model_matrix)
+      const std::shared_ptr<Material>& material, const Transform& transform) :
+      StaticMeshRenderable<API>(renderer, mesh, material, transform)
     {
       _materialDesc = renderer.createMaterialDesc(material).get();
       _shaderDesc = &_materialDesc->getMeshShaderDescWind();
@@ -205,7 +206,7 @@ namespace fly
     }
     virtual bool cullAndIntersect(const Camera& camera) override
     {
-      return camera.frustumIntersectsAABB(_aabb) != IntersectionResult::OUTSIDE && cull(camera);
+      return camera.frustumIntersectsBoundingVolume(_aabb) != IntersectionResult::OUTSIDE && cull(camera);
     }
     virtual bool isLargeEnough(const Camera& camera) const
     {

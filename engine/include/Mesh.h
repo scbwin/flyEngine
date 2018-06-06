@@ -7,6 +7,7 @@
 #include <functional>
 #include "Vertex.h"
 #include <AABB.h>
+#include <Sphere.h>
 
 namespace fly
 {
@@ -24,6 +25,7 @@ namespace fly
     void setIndices(const std::vector<unsigned>& indices);
     unsigned int getMaterialIndex() const;
     const AABB& getAABB() const;
+    const Sphere& getSphere() const;
     void setMaterialIndex(unsigned material_index);
     void setMaterial(const std::shared_ptr<Material>& material);
     const std::shared_ptr<Material>& getMaterial() const;
@@ -34,7 +36,7 @@ namespace fly
     unsigned int _materialIndex;
     std::shared_ptr<Material> _material;
     AABB _aabb;
-
+    Sphere _sphere;
   };
 }
 

@@ -1,5 +1,7 @@
 #include <Sphere.h>
 #include <AABB.h>
+#include <Mesh.h>
+#include <Transform.h>
 
 namespace fly
 {
@@ -15,16 +17,24 @@ namespace fly
       _radius = std::max(_radius, distance(_center, v));
     }
   }
-  Sphere::Sphere(Vec3f const * positions, size_t count) :
-    _center(0.f)
+
+  Sphere::Sphere(const Mesh & mesh)
   {
-    for (size_t i = 0; i < count; i++) {
-      _center += positions[i] / static_cast<float>(count);
+    for (const auto& v : mesh.getVertices()) {
+      _center += v._position / static_cast<float>(mesh.getVertices().size());
     }
-    for (size_t i = 0; i < count; i++) {
-      _radius = std::max(_radius, distance(_center, positions[i]));
+    for (const auto& v : mesh.getVertices()) {
+      _radius = std::max(_radius, distance(v._position, _center));
     }
   }
+
+  Sphere::Sphere(const Sphere & other, const Transform& transform) :
+    _center(other._center + transform.getTranslation())
+  {
+    float scale = std::max(transform.getScale()[0], std::max(transform.getScale()[1], transform.getScale()[2]));
+    _radius = other._radius * scale;
+  }
+
   const Vec3f & Sphere::getCenter() const
   {
     return _center;

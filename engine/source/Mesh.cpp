@@ -17,7 +17,8 @@ namespace fly
     _vertices(vertices), 
     _indices(indices), 
     _materialIndex(material_index), 
-    _aabb(*this)
+    _aabb(*this),
+    _sphere(*this)
   {
   }
   const std::vector<Vertex>& Mesh::getVertices() const
@@ -44,6 +45,10 @@ namespace fly
   const AABB& Mesh::getAABB() const
   {
     return _aabb;
+  }
+  const Sphere & Mesh::getSphere() const
+  {
+    return _sphere;
   }
   void Mesh::setMaterialIndex(unsigned material_index)
   {

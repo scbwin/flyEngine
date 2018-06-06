@@ -79,21 +79,16 @@ namespace fly
     _frustumPlanes[3] = (vp.row(3) - vp.row(1)) * -1.f; // top plane
     _frustumPlanes[4] = (z_near_mapping == ZNearMapping::ZERO ? vp.row(2) : (vp.row(3) + vp.row(2))) * -1.f; // near plane
     _frustumPlanes[5] = (vp.row(3) - vp.row(2)) * -1.f; // far plane
+
+    for (auto& p : _frustumPlanes) {
+      p /= p.xyz().length();
+    }
   }
   const std::array<Vec4f, 6>& Camera::getFrustumPlanes() const
   {
     return _frustumPlanes;
   }
-  IntersectionResult Camera::planeIntersectsAABB(const Vec4f & plane, const Vec3f& aabb_half_diagonal, const Vec4f& aabb_center) const
-  {
-    auto e = dot(aabb_half_diagonal, abs(plane.xyz()));
-    auto s = dot(aabb_center, plane);
-    if (s - e > 0.f) {
-      return IntersectionResult::OUTSIDE;
-    }
-    return s + e < 0.f ? IntersectionResult::INSIDE : IntersectionResult::INTERSECTING;
-  }
-  IntersectionResult Camera::frustumIntersectsAABB(const AABB & aabb) const
+  IntersectionResult Camera::frustumIntersectsBoundingVolume(const AABB & aabb) const
   {
     bool intersecting = false;
     auto h = (aabb.getMax() - aabb.getMin()) * 0.5f;
@@ -109,15 +104,7 @@ namespace fly
     }
     return intersecting ? IntersectionResult::INTERSECTING : IntersectionResult::INSIDE;
   }
-  IntersectionResult Camera::planeIntersectsSphere(const Vec4f & plane, const Sphere & sphere) const
-  {
-    float dist = dot(Vec4f(sphere.getCenter(), 1.f), plane);
-    if (dist > sphere.getRadius()) {
-      return IntersectionResult::OUTSIDE;
-    }
-    return dist < -sphere.getRadius() ? IntersectionResult::INSIDE : IntersectionResult::INTERSECTING;
-  }
-  IntersectionResult Camera::frustumIntersectsSphere(const Sphere & sphere) const
+  IntersectionResult Camera::frustumIntersectsBoundingVolume(const Sphere & sphere) const
   {
     bool intersecting = false;
     for (const auto& p : _frustumPlanes) {
@@ -138,5 +125,22 @@ namespace fly
   void Camera::setDetailCullingThreshold(float threshold)
   {
     _detailCullingThreshold = std::max(0.f, threshold);
+  }
+  IntersectionResult Camera::planeIntersectsSphere(const Vec4f & plane, const Sphere & sphere)
+  {
+    float dist = dot(Vec4f(sphere.getCenter(), 1.f), plane);
+    if (dist > sphere.getRadius()) {
+      return IntersectionResult::OUTSIDE;
+    }
+    return dist < -sphere.getRadius() ? IntersectionResult::INSIDE : IntersectionResult::INTERSECTING;
+  }
+  IntersectionResult Camera::planeIntersectsAABB(const Vec4f & plane, const Vec3f& aabb_half_diagonal, const Vec4f& aabb_center)
+  {
+    auto e = dot(aabb_half_diagonal, abs(plane.xyz()));
+    auto s = dot(aabb_center, plane);
+    if (s - e > 0.f) {
+      return IntersectionResult::OUTSIDE;
+    }
+    return s + e < 0.f ? IntersectionResult::INSIDE : IntersectionResult::INTERSECTING;
   }
 }

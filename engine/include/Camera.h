@@ -37,10 +37,9 @@ namespace fly
     void setActive(bool active);
     void extractFrustumPlanes(const Mat4f& vp, ZNearMapping z_near_mapping);
     const std::array<Vec4f, 6>& getFrustumPlanes() const;
-    IntersectionResult planeIntersectsAABB(const Vec4f& plane, const Vec3f& aabb_half_diagonal, const Vec4f& aabb_center) const;
-    IntersectionResult frustumIntersectsAABB(const AABB& aabb) const;
-    IntersectionResult planeIntersectsSphere(const Vec4f& plane, const Sphere& sphere) const;
-    IntersectionResult frustumIntersectsSphere(const Sphere& sphere) const;
+    IntersectionResult frustumIntersectsBoundingVolume(const AABB& aabb) const;
+    IntersectionResult frustumIntersectsBoundingVolume(const Sphere& sphere) const;
+
     float getDetailCullingThreshold() const;
     void setDetailCullingThreshold(float threshold);
   private:
@@ -53,6 +52,8 @@ namespace fly
     Mat4f _viewMatrix;
     bool _isActive = true;
     float _detailCullingThreshold = 0.000175f;
+    static IntersectionResult planeIntersectsAABB(const Vec4f& plane, const Vec3f& aabb_half_diagonal, const Vec4f& aabb_center);
+    static IntersectionResult planeIntersectsSphere(const Vec4f& plane, const Sphere& sphere);
   };
 }
 

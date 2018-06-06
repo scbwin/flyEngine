@@ -326,7 +326,7 @@ void GLWidget::initGame()
     for (int y = 0; y < NUM_TOWERS; y++) {
       auto tower = _engine.getEntityManager()->createEntity();
       float scale = scale_dist(gen);
-      tower->addComponent(std::make_shared<fly::StaticMeshRenderable<API>>(*_renderer, tower_model->getMeshes().front(), tower_model->getMeshes().front()->getMaterial(), fly::Transform(fly::Vec3f(x * 350.f, scale, y * 350.f), fly::Vec3f(scale / 3.f, scale, scale / 3.f)).getModelMatrix()));
+      tower->addComponent(std::make_shared<fly::StaticMeshRenderable<API>>(*_renderer, tower_model->getMeshes().front(), tower_model->getMeshes().front()->getMaterial(), fly::Transform(fly::Vec3f(x * 350.f, scale, y * 350.f), fly::Vec3f(scale / 3.f, scale, scale / 3.f))));
       towers.push_back(tower->getComponent<fly::StaticMeshRenderable<API>>());
     }
   }
@@ -348,9 +348,9 @@ void GLWidget::initGame()
   unsigned ent_index = 0;
   for (int x = 0; x < NUM_OBJECTS; x++) {
     for (int y = 0; y < NUM_OBJECTS; y++) {
-      auto model_matrix = fly::Transform(fly::Vec3f(x * 60.f, -sponza_model->getAABB().getMin()[1] * sponza_scale[1], y * 60.f), fly::Vec3f(sponza_scale)).getModelMatrix();
+      fly::Transform transform (fly::Vec3f(x * 60.f, -sponza_model->getAABB().getMin()[1] * sponza_scale[1], y * 60.f), fly::Vec3f(sponza_scale));
 #else
-  auto model_matrix = fly::Transform(fly::Vec3f(0.f), sponza_scale).getModelMatrix();
+  fly::Transform transform (fly::Vec3f(0.f), sponza_scale);
 #endif
 #if TOWERS && SPONZA_MANY
   fly::AABB sponza_aabb_world(sponza_model->getAABB(), model_matrix);
@@ -382,15 +382,15 @@ void GLWidget::initGame()
         //  translation[1] = 1.f;
       }
 #endif
-      fly::AABB aabb_world(mesh->getAABB(), model_matrix);
+      fly::AABB aabb_world(mesh->getAABB(), transform.getModelMatrix());
       aabb_world.expand(aabb_offset);
       entities.push_back(_engine.getEntityManager()->createEntity());
       if (has_wind) {
         auto smr = std::make_shared<fly::StaticMeshRenderableWind<fly::OpenGLAPI>>(*_renderer, mesh,
 #if SPONZA_MANY
-          mesh->getMaterial(), model_matrix);
+          mesh->getMaterial(), transform);
 #else
-          mesh->getMaterial(), model_matrix);
+          mesh->getMaterial(), transform);
 #endif
         smr->expandAABB(aabb_offset);
         smrs.push_back(smr);
@@ -398,9 +398,9 @@ void GLWidget::initGame()
       else {
         smrs.push_back(std::make_shared<fly::StaticMeshRenderable<fly::OpenGLAPI>>(*_renderer, mesh,
 #if SPONZA_MANY
-          mesh->getMaterial(), model_matrix));
+          mesh->getMaterial(), transform));
 #else
-          mesh->getMaterial(), model_matrix));
+          mesh->getMaterial(), transform));
 #endif
       }
       index++;
@@ -504,7 +504,7 @@ void GLWidget::initGame()
     auto translation = _renderer->getAABBStatic().getMin();
  //   entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(m,
   //    plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(translation, scale).getModelMatrix(), false));
-    entity->addComponent(std::make_shared<fly::StaticMeshRenderable<fly::OpenGLAPI>>(*_renderer, m, plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(translation, scale).getModelMatrix()));
+    entity->addComponent(std::make_shared<fly::StaticMeshRenderable<fly::OpenGLAPI>>(*_renderer, m, plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(translation, scale)));
   }
 #endif
 
@@ -576,7 +576,7 @@ void GLWidget::initGame()
 #if SINGLE_SPHERE
   auto sphere_entity = _engine.getEntityManager()->createEntity();
   sphere_entity->addComponent(std::make_shared<fly::StaticMeshRenderable<fly::OpenGLAPI>>(*_renderer, sphere_model->getMeshes().front(), sphere_model->getMeshes().front()->getMaterial(),
-    fly::Transform(fly::Vec3f(5.f, 0.f, 0.f)).getModelMatrix()));
+    fly::Transform(fly::Vec3f(5.f, 0.f, 0.f), fly::Vec3f(5.f, 1.5f, 2.f))));
 #endif
 
   _camController = std::make_unique<fly::CameraController>(cam_entity->getComponent<fly::Camera>(), 100.f);

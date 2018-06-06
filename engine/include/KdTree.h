@@ -119,7 +119,7 @@ namespace fly
       void cullVisibleNodes(const Camera& camera, StackPOD<Node*>& nodes)
       {
         if (isLargeEnough(camera)) {
-          auto result = camera.frustumIntersectsAABB(_aabb);
+          auto result = camera.frustumIntersectsBoundingVolume(_aabb);
           if (result == IntersectionResult::INSIDE) {
             nodes.push_back_secure(this);
             if (!_isLeaf) {
@@ -166,7 +166,7 @@ namespace fly
       void cullVisibleObjects(const Camera& camera, StackPOD<T*>& visible_objects) const
       {
         if (isLargeEnough(camera)) {
-          auto result = camera.frustumIntersectsAABB(_aabb);
+          auto result = camera.frustumIntersectsBoundingVolume(_aabb);
           if (result == IntersectionResult::INSIDE) {
             cullAllObjects2(camera, visible_objects);
           }
