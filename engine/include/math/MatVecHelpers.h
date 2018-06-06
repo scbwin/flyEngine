@@ -11,39 +11,43 @@
 namespace fly
 {
   template<unsigned Dim, typename T>
-  inline T dot(const Vector<Dim, T>& a, const Vector<Dim, T>& b)
+  static inline T dot(const Vector<Dim, T>& a, const Vector<Dim, T>& b)
   {
     return ComputeDot<Dim, T, Dim - 1>::call(a, b);
   }
 
+  /**
+  * Component-wise minimum
+  */
   template<unsigned Dim, typename T>
-  inline Vector<Dim, T> minimum(const Vector<Dim, T>& a, const Vector<Dim, T>& b)
+  static inline Vector<Dim, T> minimum(const Vector<Dim, T>& a, const Vector<Dim, T>& b)
   {
     Vector<Dim, T> result;
-    for (unsigned i = 0; i < Dim; i++) {
-      result[i] = (std::min)(a[i], b[i]);
-    }
+    ComputeMin<Dim, T, Dim - 1>::call(a, b, result);
+    return result;
+  }
+  /**
+  * Component-wise maximum
+  */
+  template<unsigned Dim, typename T>
+  static inline Vector<Dim, T> maximum(const Vector<Dim, T>& a, const Vector<Dim, T>& b)
+  {
+    Vector<Dim, T> result;
+    ComputeMax<Dim, T, Dim - 1>::call(a, b, result);
     return result;
   }
 
+  /**
+  * Component-wise clamping
+  */
   template<unsigned Dim, typename T>
-  inline Vector<Dim, T> maximum(const Vector<Dim, T>& a, const Vector<Dim, T>& b)
-  {
-    Vector<Dim, T> result;
-    for (unsigned i = 0; i < Dim; i++) {
-      result[i] = (std::max)(a[i], b[i]);
-    }
-    return result;
-  }
-
-  template<unsigned Dim, typename T>
-  inline Vector<Dim, T> clamp(const Vector<Dim, T>& a, const Vector<Dim, T>& min_val, const Vector<Dim, T>& max_val)
+  static inline Vector<Dim, T> clamp(const Vector<Dim, T>& a, const Vector<Dim, T>& min_val, const Vector<Dim, T>& max_val)
   {
     return minimum(max_val, maximum(min_val, a));
   }
 
   template<unsigned Dim, typename T>
-  inline T distance(const Vector<Dim, T>& a, const Vector<Dim, T>& b)
+  static inline T distance(const Vector<Dim, T>& a, const Vector<Dim, T>& b)
   {
     return (b - a).length();
   }
@@ -52,58 +56,61 @@ namespace fly
   * Squared distance, doesn't involve expensive square root evaluation
   */
   template<unsigned Dim, typename T>
-  inline T distance2(const Vector<Dim, T>& a, const Vector<Dim, T>& b)
+  static inline T distance2(const Vector<Dim, T>& a, const Vector<Dim, T>& b)
   {
     return (b - a).length2();
   }
 
   template<unsigned Dim, typename T>
-  inline Vector<Dim, T> normalize(const Vector<Dim, T>& a)
+  static inline Vector<Dim, T> normalize(const Vector<Dim, T>& a)
   {
     return a / a.length();
   }
-
+  /**
+  * Component-wise round
+  */
   template<unsigned Dim, typename T>
-  inline Vector<Dim, T> round(const Vector<Dim, T>& a)
+  static inline Vector<Dim, T> round(const Vector<Dim, T>& a)
   {
     Vector<Dim, T> result;
-    for (unsigned i = 0; i < Dim; i++) {
-      result[i] = std::round(a[i]);
-    }
+    ComputeRound<Dim, T, Dim - 1>::call(a, result);
     return result;
   }
+  /**
+  * Component-wise floor
+  */
   template<unsigned Dim, typename T>
-  inline Vector<Dim, T> floor(const Vector<Dim, T>& a)
+  static inline Vector<Dim, T> floor(const Vector<Dim, T>& a)
   {
     Vector<Dim, T> result;
-    for (unsigned i = 0; i < Dim; i++) {
-      result[i] = std::floor(a[i]);
-    }
+    ComputeFloor<Dim, T, Dim - 1>::call(a, result);
     return result;
   }
-
+  /**
+  * Component-wise ceil
+  */
   template<unsigned Dim, typename T>
-  inline Vector<Dim, T> ceil(const Vector<Dim, T>& a)
+  static inline Vector<Dim, T> ceil(const Vector<Dim, T>& a)
   {
     Vector<Dim, T> result;
-    for (unsigned i = 0; i < Dim; i++) {
-      result[i] = std::ceil(a[i]);
-    }
+    ComputeCeil<Dim, T, Dim - 1>::call(a, result);
     return result;
   }
-
+  /**
+  * Component-wise absolute value
+  */
   template<unsigned Dim, typename T>
-  inline Vector<Dim, T> abs(const Vector<Dim, T>& a)
+  static inline Vector<Dim, T> abs(const Vector<Dim, T>& a)
   {
     Vector<Dim, T> result;
-    for (unsigned i = 0; i < Dim; i++) {
-      result[i] = std::abs(a[i]);
-    }
+    ComputeAbs<Dim, T, Dim - 1>::call(a, result);
     return result;
   }
-
+  /**
+  * Identity matrix
+  */
   template<unsigned Dim, typename T>
-  inline Matrix<Dim, Dim, T> identity()
+  static inline Matrix<Dim, Dim, T> identity()
   {
     Matrix<Dim, Dim, T> ret;
     for (unsigned i = 0; i < Dim; i++) {
@@ -113,9 +120,11 @@ namespace fly
     }
     return ret;
   }
-
+  /**
+  * Translation matrix
+  */
   template<unsigned Dim, typename T>
-  inline Matrix<Dim, Dim, T> translate(const Vector<Dim - 1, T>& t)
+  static inline Matrix<Dim, Dim, T> translate(const Vector<Dim - 1, T>& t)
   {
     auto ret = identity<Dim, T>();
     for (unsigned i = 0; i < Dim - 1; i++) {
@@ -124,8 +133,11 @@ namespace fly
     return ret;
   }
 
+  /**
+  * Scale matrix
+  */
   template<unsigned Dim, typename T>
-  inline Matrix<Dim, Dim, T> scale(const Vector<Dim - 1, T>& s)
+  static inline Matrix<Dim, Dim, T> scale(const Vector<Dim - 1, T>& s)
   {
     auto ret = identity<Dim, T>();
     for (unsigned i = 0; i < Dim - 1; i++) {
@@ -134,10 +146,22 @@ namespace fly
     return ret;
   }
 
+  /**
+  * Matrix inverse
+  */
   template<unsigned Dim, typename T>
-  inline Matrix<Dim, Dim, T> inverse(const Matrix<Dim, Dim, T>& mat)
+  static inline Matrix<Dim, Dim, T> inverse(const Matrix<Dim, Dim, T>& mat)
   {
     return glm::inverse(glm::mat<Dim, Dim, T>(mat));
+  }
+
+  /**
+  * Matrix transpose
+  */
+  template<unsigned Dim, typename T>
+  static inline Matrix<Dim, Dim, T> transpose(const Matrix<Dim, Dim, T>& mat)
+  {
+    return glm::transpose(glm::mat<Dim, Dim, T>(mat));
   }
 }
 
