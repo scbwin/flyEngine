@@ -71,7 +71,7 @@ namespace fly
         for (const auto& i : m->getIndices()) {
           indices.push_back(i + base_vertex);
         }
-        base_vertex += m->getVertices().size();
+        base_vertex += static_cast<unsigned>(m->getVertices().size());
       }
       _meshes.push_back(std::make_shared<Mesh>(vertices, indices, e.first));
       _meshes.back()->setMaterial(_materials[e.first]);

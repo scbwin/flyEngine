@@ -30,7 +30,7 @@ namespace fly
   {
     return { 0, 1, 1, 6, 6, 3, 3, 0,   0, 2, 2, 4, 4, 1,   2, 5, 5, 7, 7, 4,   7, 6, 5, 3 };
   }
-  void GeometryGenerator::generateGeoMipMap(int size, int tile_size, unsigned num_lods, std::vector<glm::vec2>& vertices, std::vector<unsigned>& indices, std::map<unsigned, std::map<unsigned, IndexBufferInfo>>& index_offsets)
+  void GeometryGenerator::generateGeoMipMap(unsigned size, unsigned tile_size, unsigned num_lods, std::vector<glm::vec2>& vertices, std::vector<unsigned>& indices, std::map<unsigned, std::map<unsigned, IndexBufferInfo>>& index_offsets)
   {
     assert(!vertices.size() && !indices.size() && size % tile_size == 0);
     std::vector<unsigned> foo;
@@ -43,10 +43,10 @@ namespace fly
       }
     }
   }
-  std::vector<unsigned> GeometryGenerator::genGMMIndices(int size, unsigned lod, unsigned flag)
+  std::vector<unsigned> GeometryGenerator::genGMMIndices(unsigned size, unsigned lod, unsigned flag)
   {
     unsigned step = static_cast<unsigned>(pow(2, lod));
-    auto getIndex = [size](int x, int y) {
+    auto getIndex = [size](unsigned x, unsigned y) {
       return y * (size + 1) + x;
     };
     auto genIndices = [size, getIndex, step](const glm::uvec2& start_off, const glm::uvec2& end_off) {
@@ -65,7 +65,7 @@ namespace fly
     };
     auto genSkirtHorizontal = [size, getIndex, step] (int y, int y_dir, bool swap) {
       std::vector<unsigned> ind;
-      for (int x = 0; x + step * 2 <= size; x += step * 2) {
+      for (unsigned x = 0; x + step * 2 <= size; x += step * 2) {
         std::vector<unsigned> indices;
         indices.push_back(getIndex(x, y));
         indices.push_back(getIndex(x, y + step * y_dir));
@@ -87,7 +87,7 @@ namespace fly
     };
     auto genSkirtVertical = [size, getIndex, step](int x, int x_dir, bool swap) {
       std::vector<unsigned> ind;
-      for (int y = 0; y + step * 2 <= size; y += step * 2) {
+      for (unsigned y = 0; y + step * 2 <= size; y += step * 2) {
         std::vector<unsigned> indices;
         indices.push_back(getIndex(x, y));
         indices.push_back(getIndex(x + step * x_dir, y));

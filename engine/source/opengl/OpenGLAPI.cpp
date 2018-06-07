@@ -5,7 +5,6 @@
 #include <Model.h>
 #include <Vertex.h>
 #include <Mesh.h>
-#include <opengl/GLWrappers.h>
 #include <Timing.h>
 #include <SOIL/SOIL.h>
 #include <Material.h>

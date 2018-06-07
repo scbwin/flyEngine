@@ -11,7 +11,7 @@ namespace fly
     std::mt19937 gen;
     std::uniform_real_distribution<float> dist(-1.f, 1.f);
 
-    _gradientVectors.resize(pow(_gridWidth, 2));
+    _gradientVectors.resize(static_cast<size_t>(pow(_gridWidth, 2)));
 
     for (int x = 0; x <= grid_size; x++) {
       for (int y = 0; y <= grid_size; y++) {
