@@ -81,6 +81,7 @@ private:
   std::shared_ptr<fly::Camera> _camera;
   std::shared_ptr<fly::Camera> _debugCamera;
   std::unique_ptr<AntWrapper> _antWrapper;
+  void updateStats();
 #if PHYSICS
   std::shared_ptr<fly::Bullet3PhysicsSystem> _physicsSystem;
   std::vector<std::shared_ptr<btTriangleMesh>> _triangleMeshes;

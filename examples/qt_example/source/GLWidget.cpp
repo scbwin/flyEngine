@@ -40,9 +40,11 @@ void GLWidget::initializeGL()
   _engine.addSystem(_physicsSystem);
 #endif
   initGame();
-  auto timer = new QTimer(this);
-  QObject::connect(timer, &QTimer::timeout, this, static_cast<void(GLWidget::*)()>(&GLWidget::update));
-  timer->start(0);
+  {
+    auto timer = new QTimer(this);
+    QObject::connect(timer, &QTimer::timeout, this, static_cast<void(GLWidget::*)()>(&GLWidget::update));
+    timer->start(0);
+  }
   TwInit(TwGraphAPI::TW_OPENGL_CORE, nullptr);
   _bar = TwNewBar("Stats");
   TwAddButton(_bar, _fpsButtonName, nullptr, nullptr, nullptr);
@@ -59,6 +61,9 @@ void GLWidget::initializeGL()
   TwAddButton(_bar, _sceneRenderingCPUName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _smRenderingCPUName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _rendererIdleTimeName, nullptr, nullptr, nullptr);
+  auto timer = new QTimer(this);
+  QObject::connect(timer, &QTimer::timeout, this, static_cast<void(GLWidget::*)()>(&GLWidget::updateStats));
+  timer->start(100);
 #endif
   auto settings_bar = TwNewBar("Settings");
   _antWrapper =  std::make_unique<AntWrapper>(settings_bar, &_graphicsSettings, _renderer->getApi(), _camController.get(), _skydome, 
@@ -120,21 +125,6 @@ void GLWidget::paintGL()
     _measure = _engine.getGameTimer()->getTotalTimeSeconds() + 1.f;
     std::string fps_label_str = std::to_string(_fps) + " FPS";
     TwSetParam(_bar, _fpsButtonName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, fps_label_str.c_str());
-#if RENDERER_STATS
-    const auto& stats = _renderer->getStats();
-    TwSetParam(_bar, _rendererCPUTimeName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Renderer total CPU microseconds:" + formatNumber(stats._rendererTotalCPUMicroSeconds)).c_str());
-    TwSetParam(_bar, _renderedMeshesName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Meshes:" + formatNumber(stats._renderedMeshes)).c_str());
-    TwSetParam(_bar, _renderedMeshesShadowName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Meshes SM:" + formatNumber(stats._renderedMeshesShadow)).c_str());
-    TwSetParam(_bar, _renderedTrianglesName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Triangles:" + formatNumber(stats._renderedTriangles)).c_str());
-    TwSetParam(_bar, _renderedTrianglesShadowName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Triangles SM:" + formatNumber(stats._renderedTrianglesShadow)).c_str());
-    TwSetParam(_bar, _cullingName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Culling microseconds:" + formatNumber(stats._cullingMicroSeconds)).c_str());
-    TwSetParam(_bar, _cullingShadowMapName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Culling shadow map microseconds:" + formatNumber(stats._cullingShadowMapMicroSeconds)).c_str());
-    TwSetParam(_bar, _sceneRenderingCPUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Scene render CPU microseconds:" + formatNumber(stats._sceneRenderingCPUMicroSeconds)).c_str());
-    TwSetParam(_bar, _smRenderingCPUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Shadow map render CPU microseconds:" + formatNumber(stats._shadowMapRenderCPUMicroSeconds)).c_str());
-    TwSetParam(_bar, _sceneMeshGroupingUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Scene mesh grouping microseconds:" + formatNumber(stats._sceneMeshGroupingMicroSeconds)).c_str());
-    TwSetParam(_bar, _shadowMapGroupingUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Shadow map grouping microseconds:" + formatNumber(stats._shadowMapGroupingMicroSeconds)).c_str());
-    TwSetParam(_bar, _rendererIdleTimeName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Renderer idle time microseconds:" + formatNumber(stats._rendererIdleTimeMicroSeconds)).c_str());
-#endif
     _fps = 0;
   }
   TwDraw();
@@ -172,12 +162,7 @@ void GLWidget::keyReleaseEvent(QKeyEvent * e)
     }
   }
   if (e->key() == Qt::Key::Key_R) {
-    if (_renderer->getDebugCamera() == nullptr) {
-      _renderer->setDebugCamera(_debugCamera);
-    }
-    else {
-      _renderer->removeDebugCamera();
-    }
+    _renderer->setDebugCamera(_renderer->getDebugCamera() == nullptr ? _debugCamera : nullptr);
   }
 }
 
@@ -261,6 +246,25 @@ void GLWidget::mouseReleaseEvent(QMouseEvent * e)
 
 void GLWidget::wheelEvent(QWheelEvent * e)
 {
+}
+
+void GLWidget::updateStats()
+{
+#if RENDERER_STATS
+  const auto& stats = _renderer->getStats();
+  TwSetParam(_bar, _rendererCPUTimeName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Renderer total CPU microseconds:" + formatNumber(stats._rendererTotalCPUMicroSeconds)).c_str());
+  TwSetParam(_bar, _renderedMeshesName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Meshes:" + formatNumber(stats._renderedMeshes)).c_str());
+  TwSetParam(_bar, _renderedMeshesShadowName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Meshes SM:" + formatNumber(stats._renderedMeshesShadow)).c_str());
+  TwSetParam(_bar, _renderedTrianglesName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Triangles:" + formatNumber(stats._renderedTriangles)).c_str());
+  TwSetParam(_bar, _renderedTrianglesShadowName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Triangles SM:" + formatNumber(stats._renderedTrianglesShadow)).c_str());
+  TwSetParam(_bar, _cullingName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Culling microseconds:" + formatNumber(stats._cullingMicroSeconds)).c_str());
+  TwSetParam(_bar, _cullingShadowMapName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Culling shadow map microseconds:" + formatNumber(stats._cullingShadowMapMicroSeconds)).c_str());
+  TwSetParam(_bar, _sceneRenderingCPUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Scene render CPU microseconds:" + formatNumber(stats._sceneRenderingCPUMicroSeconds)).c_str());
+  TwSetParam(_bar, _smRenderingCPUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Shadow map render CPU microseconds:" + formatNumber(stats._shadowMapRenderCPUMicroSeconds)).c_str());
+  TwSetParam(_bar, _sceneMeshGroupingUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Scene mesh grouping microseconds:" + formatNumber(stats._sceneMeshGroupingMicroSeconds)).c_str());
+  TwSetParam(_bar, _shadowMapGroupingUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Shadow map grouping microseconds:" + formatNumber(stats._shadowMapGroupingMicroSeconds)).c_str());
+  TwSetParam(_bar, _rendererIdleTimeName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Renderer idle time microseconds:" + formatNumber(stats._rendererIdleTimeMicroSeconds)).c_str());
+#endif
 }
 
 void GLWidget::initGame()

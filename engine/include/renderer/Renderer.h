@@ -376,15 +376,11 @@ namespace fly
     {
       return _meshGeometryStorage.addMesh(mesh);
     }
-    inline void setDebugCamera(const std::shared_ptr<Camera>& camera)
+    void setDebugCamera(const std::shared_ptr<Camera>& camera)
     {
       _debugCamera = camera;
     }
-    inline void removeDebugCamera()
-    {
-      _debugCamera = nullptr;
-    }
-    inline const std::shared_ptr<Camera>& getDebugCamera() const
+    const std::shared_ptr<Camera>& getDebugCamera() const
     {
       return _debugCamera;
     }
