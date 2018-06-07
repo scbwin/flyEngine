@@ -11,26 +11,19 @@ namespace fly
   class Material
   {
   public:
-    static constexpr const char* KEY_ALBEDO = "d";
-    static constexpr const char* KEY_NORMAL = "n";
-    static constexpr const char* KEY_ALPHA = "a";
-    static constexpr const char* KEY_HEIGHT = "h";
+    enum class TextureKey
+    {
+      ALPHA, ALBEDO, HEIGHT, NORMAL
+    };
     Material() = default;
     float getSpecularExponent() const;
     const Vec3f& getDiffuseColor() const;
     void setDiffuseColor(const Vec3f& diffuse_color);
     void setSpecularExponent(float specular);
-    void setTexturePath(const char* key, const std::string& path);
-    struct Comparator
-    {
-      inline bool operator()(const char* a, const char* b) const
-      {
-        return std::strcmp(a, b) < 0;
-      }
-    };
-    const std::map<const char*, std::string, Comparator>& getTexturePaths() const;
-    const std::string& getTexturePath(const char* key) const;
-    bool hasTexture(const char* key) const;
+    void setTexturePath(TextureKey key, const std::string& path);
+    const std::map<TextureKey, std::string>& getTexturePaths() const;
+    const std::string& getTexturePath(TextureKey key) const;
+    bool hasTexture(TextureKey key) const;
     void setIsReflective(bool reflective);
     bool isReflective() const;
     float getKa() const;
@@ -60,7 +53,7 @@ namespace fly
     float _parallaxMaxSteps = 2.f;
     float _parallaxBinarySearchSteps = 6.f;
     Vec3f _diffuseColor;
-    std::map<const char*, std::string, Comparator> _texturePaths;
+    std::map<TextureKey, std::string> _texturePaths;
     bool _isReflective = false;
     std::vector<Vec4f> _diffuseColors;
   };

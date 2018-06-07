@@ -26,25 +26,25 @@ namespace fly
     static void GLMaterialSetup::setupDiffuse(GLShaderProgram const & shader, const MaterialDesc<OpenGLAPI, BV>& desc)
     {
       GL_CHECK(glActiveTexture(GL_TEXTURE0 + OpenGLAPI::diffuseTexUnit()));
-      desc.getTexture(Material::KEY_ALBEDO)->bind();
+      desc.getTexture(Material::TextureKey::ALBEDO)->bind();
       setScalar(shader.uniformLocation(GLSLShaderGenerator::diffuseSampler()), OpenGLAPI::diffuseTexUnit());
     }
     static void GLMaterialSetup::setupAlpha(GLShaderProgram const & shader, const MaterialDesc<OpenGLAPI, BV>& desc)
     {
       GL_CHECK(glActiveTexture(GL_TEXTURE0 + OpenGLAPI::alphaTexUnit()));
-      desc.getTexture(Material::KEY_ALPHA)->bind();
+      desc.getTexture(Material::TextureKey::ALPHA)->bind();
       setScalar(shader.uniformLocation(GLSLShaderGenerator::alphaSampler()), OpenGLAPI::alphaTexUnit());
     }
     static void GLMaterialSetup::setupNormal(GLShaderProgram const & shader, const MaterialDesc<OpenGLAPI, BV>& desc)
     {
       GL_CHECK(glActiveTexture(GL_TEXTURE0 + OpenGLAPI::normalTexUnit()));
-      desc.getTexture(Material::KEY_NORMAL)->bind();
+      desc.getTexture(Material::TextureKey::NORMAL)->bind();
       setScalar(shader.uniformLocation(GLSLShaderGenerator::normalSampler()), OpenGLAPI::normalTexUnit());
     }
     static void GLMaterialSetup::setupHeight(GLShaderProgram const & shader, const MaterialDesc<OpenGLAPI, BV>& desc)
     {
       GL_CHECK(glActiveTexture(GL_TEXTURE0 + OpenGLAPI::heightTexUnit()));
-      desc.getTexture(Material::KEY_HEIGHT)->bind();
+      desc.getTexture(Material::TextureKey::HEIGHT)->bind();
       setScalar(shader.uniformLocation(GLSLShaderGenerator::heightSampler()), OpenGLAPI::heightTexUnit());
       setScalar(shader.uniformLocation(GLSLShaderGenerator::parallaxHeightScale()), desc.getMaterial()->getParallaxHeightScale());
     }

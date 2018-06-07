@@ -285,9 +285,6 @@ void GLWidget::initGame()
 #else
   auto sponza_model = importer->loadModel("assets/sponza/sponza.obj");
   sponza_model->getMaterials()[10]->setIsReflective(true);
- // for (const auto& m : sponza_model->getMaterials()) {
-    //m->setIsReflective(true);
-  //}
 #if DELETE_CURTAIN
   auto meshes = sponza_model->getMeshes();
   meshes.erase(meshes.end() - 28);
@@ -295,12 +292,12 @@ void GLWidget::initGame()
 #endif
   for (const auto& m : sponza_model->getMaterials()) {
     m->setSpecularExponent(32.f);
-    if (m->hasTexture(fly::Material::KEY_ALBEDO) && m->getTexturePath(fly::Material::KEY_ALBEDO) == "assets/sponza/textures\\spnza_bricks_a_diff.tga") {
-      m->setTexturePath(fly::Material::KEY_HEIGHT, "assets/DisplacementMap.png");
+    if (m->hasTexture(fly::Material::TextureKey::ALBEDO) && m->getTexturePath(fly::Material::TextureKey::ALBEDO) == "assets/sponza/textures\\spnza_bricks_a_diff.tga") {
+      m->setTexturePath(fly::Material::TextureKey::HEIGHT, "assets/DisplacementMap.png");
       m->setParallaxHeightScale(0.05f);
     }
-    else if (m->hasTexture(fly::Material::KEY_ALBEDO) && m->getTexturePath(fly::Material::KEY_ALBEDO) == "assets/sponza/textures\\sponza_floor_a_diff.tga") {
-      m->setTexturePath(fly::Material::KEY_HEIGHT, "assets/height.png");
+    else if (m->hasTexture(fly::Material::TextureKey::ALBEDO) && m->getTexturePath(fly::Material::TextureKey::ALBEDO) == "assets/sponza/textures\\sponza_floor_a_diff.tga") {
+      m->setTexturePath(fly::Material::TextureKey::HEIGHT, "assets/height.png");
       m->setParallaxHeightScale(0.021f);
     }
   }
@@ -486,8 +483,9 @@ void GLWidget::initGame()
 #if SPONZA_MANY || TREE_SCENE
   auto plane_model = importer->loadModel("assets/plane.obj");
   for (const auto& m : plane_model->getMaterials()) {
-    m->setTexturePath(fly::Material::KEY_NORMAL, "assets/ground_normals.png");
+    m->setTexturePath(fly::Material::TextureKey::NORMAL, "assets/ground_normals.png");
     m->setDiffuseColor(fly::Vec3f(0.870f, 0.768f, 0.329f) * 1.5f);
+   // m->setIsReflective(true);
   }
   for (const auto& m : plane_model->getMeshes()) {
     std::vector<fly::Vertex> vertices_new;

@@ -6,19 +6,19 @@ namespace fly
   {
     _specularExponent = std::max(1.f, specular);
   }
-  void Material::setTexturePath(const char * key, const std::string & path)
+  void Material::setTexturePath(Material::TextureKey key, const std::string & path)
   {
     _texturePaths[key] = path;
   }
-  const std::map<const char*, std::string, Material::Comparator>& Material::getTexturePaths() const
+  const std::map<Material::TextureKey, std::string>& Material::getTexturePaths() const
   {
     return _texturePaths;
   }
-  const std::string & Material::getTexturePath(const char * key) const
+  const std::string & Material::getTexturePath(Material::TextureKey key) const
   {
     return _texturePaths.at(key);
   }
-  bool Material::hasTexture(const char * key) const
+  bool Material::hasTexture(Material::TextureKey key) const
   {
     return _texturePaths.find(key) != _texturePaths.end();
   }

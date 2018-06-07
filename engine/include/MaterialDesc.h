@@ -47,7 +47,7 @@ namespace fly
       using FLAG = MeshRenderFlag;
       unsigned flag = FLAG::MR_NONE;
       _materialSetupFuncs.push_back_secure(typename API::MaterialSetup<API, BV>::setupMaterialConstants);
-      if (_material->hasTexture(Material::KEY_ALBEDO)) {
+      if (_material->hasTexture(Material::TextureKey::ALBEDO)) {
         flag |= FLAG::MR_DIFFUSE_MAP;
         _materialSetupFuncs.push_back_secure(typename API::MaterialSetup<API, BV>::setupDiffuse);
       }
@@ -60,16 +60,16 @@ namespace fly
           _materialSetupFuncs.push_back_secure(typename API::MaterialSetup<API, BV>::setupDiffuseColor);
         }
       }
-      if (_material->hasTexture(Material::KEY_ALPHA)) {
+      if (_material->hasTexture(Material::TextureKey::ALPHA)) {
         flag |= FLAG::MR_ALPHA_MAP;
         _materialSetupFuncs.push_back_secure(typename API::MaterialSetup<API, BV>::setupAlpha);
         _materialSetupFuncsDepth.push_back_secure(typename API::MaterialSetup<API, BV>::setupAlpha);
       }
-      if (_material->hasTexture(Material::KEY_NORMAL) && settings.getNormalMapping()) {
+      if (_material->hasTexture(Material::TextureKey::NORMAL) && settings.getNormalMapping()) {
         flag |= FLAG::MR_NORMAL_MAP;
         _materialSetupFuncs.push_back_secure(typename API::MaterialSetup<API, BV>::setupNormal);
       }
-      if (_material->hasTexture(Material::KEY_NORMAL) && _material->hasTexture(Material::KEY_HEIGHT) && settings.getNormalMapping() && settings.getParallaxMapping()) {
+      if (_material->hasTexture(Material::TextureKey::NORMAL) && _material->hasTexture(Material::TextureKey::HEIGHT) && settings.getNormalMapping() && settings.getParallaxMapping()) {
         flag |= FLAG::MR_HEIGHT_MAP;
         _materialSetupFuncs.push_back_secure(typename API::MaterialSetup<API, BV>::setupHeight);
         if (settings.getReliefMapping()) {
@@ -92,11 +92,11 @@ namespace fly
       auto vertex_source_instanced = _api.getShaderGenerator().createMeshVertexShaderSource(flag, settings, true);
       auto fragment_source_instanced = _api.getShaderGenerator().createMeshFragmentShaderSource(flag, settings, true);
       _meshShaderDesc = createShaderDesc(createShader(vertex_source, fragment_source), ss_flags, _api);
-      _meshShaderDescInstanced = createShaderDesc(createShader(vertex_source_instanced, fragment_source_instanced), ss_flags, _api);
-      _meshShaderDescWind = createShaderDesc(createShader(_api.getShaderGenerator().createMeshVertexShaderSource(flag | FLAG::MR_WIND, settings), fragment_source), ss_flags | ShaderSetupFlags::SS_WIND | ShaderSetupFlags::SS_TIME, _api);
       _meshShaderDescDepth = createShaderDesc(createShader(_api.getShaderGenerator().createMeshVertexShaderDepthSource(flag, settings), _api.getShaderGenerator().createMeshFragmentShaderDepthSource(flag, settings)), ShaderSetupFlags::SS_VP, _api);
+      _meshShaderDescInstanced = createShaderDesc(createShader(vertex_source_instanced, fragment_source_instanced), ss_flags, _api);
       _meshShaderDescDepthInstanced = createShaderDesc(createShader(_api.getShaderGenerator().createMeshVertexShaderDepthSource(flag, settings, true), _api.getShaderGenerator().createMeshFragmentShaderDepthSource(flag, settings)), ShaderSetupFlags::SS_VP, _api);
-      _meshShaderDescWindDepth = createShaderDesc(createShader(_api.getShaderGenerator().createMeshVertexShaderDepthSource(flag | FLAG::MR_WIND, settings), _api.getShaderGenerator().createMeshFragmentShaderDepthSource(flag | FLAG::MR_WIND, settings)), ShaderSetupFlags::SS_VP | ShaderSetupFlags::SS_WIND | ShaderSetupFlags::SS_TIME, _api);
+      _meshShaderDescWind = createShaderDesc(createShader(_api.getShaderGenerator().createMeshVertexShaderSource(flag | FLAG::MR_WIND, settings), fragment_source), ss_flags | ShaderSetupFlags::SS_WIND | ShaderSetupFlags::SS_TIME, _api);
+      _meshShaderDescDepthWind = createShaderDesc(createShader(_api.getShaderGenerator().createMeshVertexShaderDepthSource(flag | FLAG::MR_WIND, settings), _api.getShaderGenerator().createMeshFragmentShaderDepthSource(flag | FLAG::MR_WIND, settings)), ShaderSetupFlags::SS_VP | ShaderSetupFlags::SS_WIND | ShaderSetupFlags::SS_TIME, _api);
     }
     template<bool depth>
     inline void setup() const
@@ -127,7 +127,7 @@ namespace fly
     }
     inline const std::shared_ptr<ShaderDesc<API, BV>>& getMeshShaderDescDepthWind() const
     {
-      return _meshShaderDescWindDepth;
+      return _meshShaderDescDepthWind;
     }
     inline const std::shared_ptr<ShaderDesc<API, BV>>& getMeshShaderDescDepthInstanced() const
     {
@@ -166,7 +166,7 @@ namespace fly
     {
       return _renderables;
     }
-    inline const std::shared_ptr<typename API::Texture>& getTexture(const char* key) const
+    inline const std::shared_ptr<typename API::Texture>& getTexture(Material::TextureKey key) const
     {
       return _textures.at(key);
     }
@@ -179,17 +179,10 @@ namespace fly
     std::shared_ptr<ShaderDesc<API, BV>> _meshShaderDesc;
     std::shared_ptr<ShaderDesc<API, BV>> _meshShaderDescDepth;
     std::shared_ptr<ShaderDesc<API, BV>> _meshShaderDescWind;
-    std::shared_ptr<ShaderDesc<API, BV>> _meshShaderDescWindDepth;
+    std::shared_ptr<ShaderDesc<API, BV>> _meshShaderDescDepthWind;
     std::shared_ptr<ShaderDesc<API, BV>> _meshShaderDescInstanced;
     std::shared_ptr<ShaderDesc<API, BV>> _meshShaderDescDepthInstanced;
-    struct Comparator
-    {
-      inline bool operator()(const char* a, const char* b) const
-      {
-        return std::strcmp(a, b) < 0;
-      }
-    };
-    std::map<const char*, std::shared_ptr<typename API::Texture>, Comparator> _textures;
+    std::map<Material::TextureKey, std::shared_ptr<typename API::Texture>> _textures;
     typename API::StorageBuffer _diffuseColorBuffer;
     SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API, BV>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&>& _shaderDescCache;
     SoftwareCache<std::string, std::shared_ptr<typename API::Shader>, typename API::ShaderSource&, typename API::ShaderSource&, typename API::ShaderSource&>& _shaderCache;

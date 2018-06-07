@@ -38,7 +38,6 @@ namespace fly
         vertices[i]._bitangent *= -1.f;
       }
     }
-
     std::vector<unsigned int> indices;
     for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
       for (unsigned int j = 0; j < mesh->mFaces[i].mNumIndices; j++) {
@@ -62,17 +61,17 @@ namespace fly
     if (material->GetTextureCount(aiTextureType::aiTextureType_DIFFUSE)) {
       aiString str;
       material->GetTexture(aiTextureType::aiTextureType_DIFFUSE, 0, &str);
-      mat->setTexturePath(Material::KEY_ALBEDO, pre + str.C_Str());
+      mat->setTexturePath(Material::TextureKey::ALBEDO, pre + str.C_Str());
     }
     if (material->GetTextureCount(aiTextureType::aiTextureType_OPACITY)) {
       aiString str;
       material->GetTexture(aiTextureType::aiTextureType_OPACITY, 0, &str);
-      mat->setTexturePath(Material::KEY_ALPHA, pre + str.C_Str());
+      mat->setTexturePath(Material::TextureKey::ALPHA, pre + str.C_Str());
     }
     if (material->GetTextureCount(aiTextureType::aiTextureType_HEIGHT)) {
       aiString str;
       material->GetTexture(aiTextureType::aiTextureType_HEIGHT, 0, &str);
-      mat->setTexturePath(Material::KEY_NORMAL, pre + str.C_Str());
+      mat->setTexturePath(Material::TextureKey::NORMAL, pre + str.C_Str());
     }
     aiColor3D diff;
     material->Get(AI_MATKEY_COLOR_DIFFUSE, diff);

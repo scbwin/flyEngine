@@ -155,13 +155,13 @@ namespace fly
     ibo.setData(indices.data(), indices.size());
     GL_CHECK(glEnableVertexAttribArray(0));
     GL_CHECK(glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vec3f), 0));
-    GL_CHECK(glDrawElements(GL_LINES, indices.size(), GL_UNSIGNED_SHORT, nullptr));
+    GL_CHECK(glDrawElements(GL_LINES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_SHORT, nullptr));
     GL_CHECK(glLineWidth(1.f));
   }
   void OpenGLAPI::prepareCulling(const std::array<Vec4f, 6>& frustum_planes, const Vec3f& cam_pos_world)
   {
     bindShader(&_cullingShader);
-    setVectorArray(_activeShader->uniformLocation("fp"), frustum_planes.front(), frustum_planes.size());
+    setVectorArray(_activeShader->uniformLocation("fp"), frustum_planes.front(), static_cast<unsigned>(frustum_planes.size()));
     setVector(_activeShader->uniformLocation("cp_w"), cam_pos_world);
   }
   void OpenGLAPI::endCulling() const
@@ -178,7 +178,7 @@ namespace fly
     indirect_draw_buffer.setData(info.data(), info.size(), GL_DYNAMIC_DRAW);
 
     unsigned group_size = 1024; // TODO: remove hard-coded value
-    unsigned num_groups = std::ceil(static_cast<float>(num_instances) / static_cast<float>(group_size));
+    unsigned num_groups = static_cast<unsigned>(std::ceil(static_cast<float>(num_instances) / static_cast<float>(group_size)));
 
     aabb_buffer.bindBase(GLSLShaderGenerator::bufferBindingAABB());
     visible_instances.bindBase(GLSLShaderGenerator::bufferBindingVisibleInstances());
