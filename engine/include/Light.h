@@ -4,7 +4,6 @@
 #include "math/FlyMath.h"
 #include "Mesh.h"
 #include <memory>
-#include "Component.h"
 #include <ZNearMapping.h>
 #include <StackPOD.h>
 
@@ -13,7 +12,7 @@ namespace fly
   class RenderingSystem;
   class AbstractWindow;
 
-  class Light : public Component
+  class Light
   {
   public:
     Light(const Vec3f& color);

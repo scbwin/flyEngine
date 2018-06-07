@@ -10,7 +10,6 @@ namespace fly
   {
     system->setGameTimer(&_gameTimer);
     _systems.push_back(system);
-    _em.addListener(system);
   }
   void Engine::update()
   {
@@ -19,11 +18,7 @@ namespace fly
       s->update();
     }
   }
-  EntityManager* Engine::getEntityManager()
-  {
-    return &_em;
-  }
-  GameTimer * Engine::getGameTimer()
+  GameTimer* Engine::getGameTimer()
   {
     return &_gameTimer;
   }

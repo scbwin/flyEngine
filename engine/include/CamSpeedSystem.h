@@ -22,13 +22,6 @@ namespace fly
     {
     }
     virtual ~CamSpeedSystem() = default;
-
-    virtual void onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component) override
-    {
-    }
-    virtual void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component) override
-    {
-    }
     virtual void update() override
     {
       AABB aabb(_camController->getCamera()->getPosition() - _range, _camController->getCamera()->getPosition() + _range);

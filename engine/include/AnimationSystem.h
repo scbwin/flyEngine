@@ -2,7 +2,7 @@
 #define ANIMATIONSYSTEM_H
 
 #include <memory>
-#include <map>
+#include <set>
 #include "System.h"
 
 namespace fly
@@ -15,11 +15,10 @@ namespace fly
   public:
     AnimationSystem();
     virtual ~AnimationSystem();
-    virtual void onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component) override;
-    virtual void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component) override;
     virtual void update() override;
+    void startAnimation(const std::shared_ptr<Animation>& animation);
   private:
-    std::map<Entity*, std::shared_ptr<Animation>> _animations;
+    std::set<std::shared_ptr<Animation>> _animations;
   };
 }
 

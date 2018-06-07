@@ -1,13 +1,12 @@
 #ifndef ANIMATION_H
 #define ANIMATION_H
 
-#include "Component.h"
 #include <functional>
 #include <memory>
 
 namespace fly
 {
-  class Animation : public Component
+  class Animation
   {
   public:
 

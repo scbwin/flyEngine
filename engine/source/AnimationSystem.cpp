@@ -1,5 +1,4 @@
 #include "AnimationSystem.h"
-#include "Entity.h"
 #include "Animation.h"
 #include <vector>
 #include <iostream>
@@ -13,31 +12,27 @@ namespace fly
   AnimationSystem::~AnimationSystem()
   {
   }
-  void AnimationSystem::onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component)
-  {
-    addIfInterested(entity, component, _animations);
-  }
-  void AnimationSystem::onComponentRemoved(Entity * entity, const std::shared_ptr<Component>& component)
-  {
-    deleteIfInterested(entity, component, _animations);
-  }
   void AnimationSystem::update()
   {
-    std::vector<Entity*> to_delete;
-    for (const auto& e : _animations) {
-      const auto& a = e.second;
+    std::vector<std::shared_ptr<Animation>> to_delete;
+    for (const auto& a : _animations) {
       float progress;
       if (_gameTimer->getTimeSeconds() >= a->getTimeEnd()) {
         progress = 1.f;
-        to_delete.push_back(e.first);
+        to_delete.push_back(a);
       }
       else {
         progress = a->getInterpolator()->getInterpolation((_gameTimer->getTimeSeconds() - a->getTimeStart()) / (a->getTimeEnd() - a->getTimeStart()));
       }
       a->getUpdateFunction()(progress);
     }
-    for (auto& e : to_delete) {
-      e->getComponent<Animation>()->getOnDelete()();
+    for (auto& a : to_delete) {
+      a->getOnDelete()();
+      _animations.erase(a);
     }
+  }
+  void AnimationSystem::startAnimation(const std::shared_ptr<Animation>& animation)
+  {
+    _animations.insert(animation);
   }
 }

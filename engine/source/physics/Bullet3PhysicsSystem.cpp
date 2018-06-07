@@ -1,6 +1,5 @@
 #include <physics/Bullet3PhysicsSystem.h>
 #include <btBulletDynamicsCommon.h>
-#include <Entity.h>
 #include <physics/RigidBody.h>
 #include <GameTimer.h>
 
@@ -26,18 +25,6 @@ namespace fly
   const std::unique_ptr<btDiscreteDynamicsWorld>& Bullet3PhysicsSystem::getDynamicsWorld() const
   {
     return _world;
-  }
-  void Bullet3PhysicsSystem::onComponentAdded(Entity * entity, const std::shared_ptr<Component>& component)
-  {
-    if (auto c = addIfInterested<RigidBody>(entity, component, _rigidBodys)) {
-      _world->addRigidBody(c->getBtRigidBody().get());
-    }
-  }
-  void Bullet3PhysicsSystem::onComponentRemoved(Entity * entity, const std::shared_ptr<Component>& component)
-  {
-    if (auto c = deleteIfInterested<RigidBody>(entity, component, _rigidBodys)) {
-      _world->removeRigidBody(c->getBtRigidBody().get());
-    }
   }
   void Bullet3PhysicsSystem::update()
   {

@@ -3,16 +3,20 @@
 #include <opengl/OpenGLAPI.h>
 #include <Camera.h>
 #include <CameraController.h>
-#include <Entity.h>
-#include <SkydomeRenderable.h>
 #include <Model.h>
 #include <GameTimer.h>
 #include <qwidget.h>
 #include <Light.h>
+#include <renderer/Renderer.h>
 
 AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, 
-  fly::CameraController* camera_controller, fly::Entity* skydome, fly::GameTimer* game_timer, QWidget* widget, std::shared_ptr<fly::Camera> camera, fly::DirectionalLight* dl)
+  fly::CameraController* camera_controller, std::shared_ptr<fly::SkydomeRenderable<fly::OpenGLAPI, fly::AABB>> skydome,
+  fly::GameTimer* game_timer, QWidget* widget, std::shared_ptr<fly::Camera> camera, fly::DirectionalLight* dl,
+  fly::Renderer<fly::OpenGLAPI, fly::AABB>* renderer)
 {
+  _skydomeData._renderer = renderer;
+  _skydomeData._skydome = skydome;
+
   TwAddVarCB(bar, "Multithreaded culling", TwType::TW_TYPE_BOOLCPP, setMTCulling, getMTCulling, gs, nullptr);
   TwAddVarCB(bar, "Shadows", TwType::TW_TYPE_BOOLCPP, setShadows, getShadows, gs, nullptr);
   TwAddVarCB(bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, setPCF, getPCF, gs, nullptr);
@@ -38,7 +42,7 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "Debug object AABBs", TwType::TW_TYPE_BOOLCPP, setDebugAABBs, getDebugAABBs, gs, nullptr);
   TwAddVarCB(bar, "Detail culling threshold", TwType::TW_TYPE_FLOAT, setDetailCullingThreshold, getDetailCullingThreshold, camera_controller, "step=0.0000005f");
   TwAddVarCB(bar, "Camera speed", TwType::TW_TYPE_FLOAT, setCamSpeed, getCamSpeed, camera_controller, "step=0.1f");
-  TwAddVarCB(bar, "Skydome", TwType::TW_TYPE_BOOLCPP, setSkydome, getSkydome, skydome, nullptr);
+  TwAddVarCB(bar, "Skydome", TwType::TW_TYPE_BOOLCPP, setSkydome, getSkydome, &_skydomeData, nullptr);
   TwAddVarCB(bar, "Depth of Field", TwType::TW_TYPE_BOOLCPP, setDepthOfField, getDepthOfField, gs, nullptr);
   TwAddVarCB(bar, "DOF near", TwType::TW_TYPE_FLOAT, setDofNear, getDofNear, gs, "step = 0.01f");
   TwAddVarCB(bar, "DOF center", TwType::TW_TYPE_FLOAT, setDofCenter, getDofCenter, gs, "step = 0.01f");
@@ -229,12 +233,12 @@ void AntWrapper::getDebugBVH(void * value, void * client_data)
 
 void AntWrapper::setDebugAABBs(const void * value, void * client_data)
 {
-  cast<fly::GraphicsSettings>(client_data)->setDebugObjectAABBs(*cast<bool>(value));
+  cast<fly::GraphicsSettings>(client_data)->setDebugObjectBVs(*cast<bool>(value));
 }
 
 void AntWrapper::getDebugAABBs(void * value, void * client_data)
 {
-  *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getDebugObjectAABBs();
+  *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getDebugObjectBVs();
 }
 void AntWrapper::setDetailCullingThreshold(const void * value, void * client_data)
 {
@@ -258,18 +262,12 @@ void AntWrapper::getCamSpeed(void * value, void * client_data)
 
 void AntWrapper::setSkydome(const void * value, void * client_data)
 {
-  fly::Entity* e = cast<fly::Entity>(client_data);
-  if (*cast<bool>(value)) {
-    e->addComponent(std::make_shared<fly::SkydomeRenderable>(e->getComponent<fly::Model>()->getMeshes().front()));
-  }
-  else {
-    e->removeComponent<fly::SkydomeRenderable>();
-  }
+  cast<SkydomeData>(client_data)->_renderer->setSkydome(*cast<bool>(value) ? cast<SkydomeData>(client_data)->_skydome : nullptr);
 }
 
 void AntWrapper::getSkydome(void * value, void * client_data)
 {
-  *cast<bool>(value) = cast<fly::Entity>(client_data)->getComponent<fly::SkydomeRenderable>() != nullptr;
+  *cast<bool>(value) = cast<SkydomeData>(client_data)->_renderer->getSkydome() != nullptr;
 }
 
 void AntWrapper::setShadowFactor(const void * value, void * client_data)

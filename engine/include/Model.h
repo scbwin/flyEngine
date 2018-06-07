@@ -1,7 +1,6 @@
 #ifndef MODEL_H
 #define MODEL_H
 
-#include <Component.h>
 #include <memory>
 #include <vector>
 #include <Material.h>
@@ -11,7 +10,7 @@ namespace fly
 {
   class Mesh;
 
-  class Model : public Component
+  class Model
   {
   public:
     Model(const std::vector<std::shared_ptr<Mesh>>& meshes, const std::vector<std::shared_ptr<Material>>& materials);

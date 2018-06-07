@@ -2,7 +2,6 @@
 #define CAMERA_H
 
 #include <math/FlyMath.h>
-#include "Component.h"
 #include <array>
 #include <ZNearMapping.h>
 
@@ -16,7 +15,7 @@ namespace fly
   class AABB;
   class Sphere;
 
-  class Camera : public Component
+  class Camera
   {
   public:
     Camera(const Vec3f& pos, const Vec3f& euler_angles);

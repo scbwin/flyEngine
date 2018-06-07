@@ -2,11 +2,10 @@
 #define TRANSFORM_H
 
 #include <math/FlyMath.h>
-#include "Component.h"
 
 namespace fly
 {
-  class Transform : public Component
+  class Transform
   {
   public:
     Transform(const Vec3f& translation = Vec3f(0.f), const Vec3f& scale = Vec3f(1.f), const Vec3f& degrees = Vec3f(0.f));

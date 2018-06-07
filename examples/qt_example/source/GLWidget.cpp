@@ -10,8 +10,6 @@
 #include <CameraController.h>
 #include <AntTweakBar.h>
 #include <LevelOfDetail.h>
-#include <SkydomeRenderable.h>
-#include <AntWrapper.h>
 #include <random>
 #include <CamSpeedSystem.h>
 #include <renderer/MeshRenderables.h>
@@ -63,7 +61,8 @@ void GLWidget::initializeGL()
   TwAddButton(_bar, _rendererIdleTimeName, nullptr, nullptr, nullptr);
 #endif
   auto settings_bar = TwNewBar("Settings");
-  AntWrapper(settings_bar, &_graphicsSettings, _renderer->getApi(), _camController.get(), _skydome.get(), _engine.getGameTimer(), this, _camera, _dl.get());
+  _antWrapper =  std::make_unique<AntWrapper>(settings_bar, &_graphicsSettings, _renderer->getApi(), _camController.get(), _skydome, 
+    _engine.getGameTimer(), this, _camera, _dl.get(), _renderer.get());
   TwSetTopBar(_bar);
 }
 
@@ -338,9 +337,9 @@ void GLWidget::initGame()
 #if SPONZA_MANY
   num_renderables *= NUM_OBJECTS * NUM_OBJECTS;
 #endif
-  std::vector<std::shared_ptr<fly::Entity>> entities;
+ // std::vector<std::shared_ptr<fly::Entity>> entities;
   std::vector<std::shared_ptr<fly::StaticMeshRenderable<API, BV>>> smrs;
-  entities.reserve(num_renderables);
+ // entities.reserve(num_renderables);
   smrs.reserve(num_renderables);
 
 #endif
@@ -385,7 +384,7 @@ void GLWidget::initGame()
 #endif
       fly::AABB aabb_world(mesh->getAABB(), transform.getModelMatrix());
       aabb_world.expand(aabb_offset);
-      entities.push_back(_engine.getEntityManager()->createEntity());
+     // entities.push_back(_engine.getEntityManager()->createEntity());
       if (has_wind) {
         auto smr = std::make_shared<fly::StaticMeshRenderableWind<API, BV>>(*_renderer, mesh,
 #if SPONZA_MANY
@@ -415,13 +414,11 @@ void GLWidget::initGame()
   }
 #endif
 #if SPONZA
-  for (unsigned i = 0; i < entities.size(); i++) {
-    entities[i]->addComponent(smrs[i]);
+  _renderer->addStaticMeshRenderables(smrs);
 #if PHYSICS
     const auto& model_matrix = smrs[i]->getModelMatrix();
     entities[i]->addComponent(std::make_shared<fly::RigidBody>(model_matrix[3].xyz(), 0.f, _sponzaShapes[i], 0.1f));
 #endif
-  }
 #endif
 #endif
 #if PHYSICS || SKYDOME
@@ -432,9 +429,8 @@ void GLWidget::initGame()
   }
 #endif
 #if SKYDOME
-  _skydome = _engine.getEntityManager()->createEntity();
-  _skydome->addComponent(sphere_model);
-  _skydome->addComponent(std::make_shared<fly::SkydomeRenderable>(sphere_model->getMeshes().front()));
+  _skydome = std::make_shared<fly::SkydomeRenderable<API, BV>>(*_renderer, sphere_model->getMeshes().front());
+  _renderer->setSkydome(_skydome);
 #endif
 #if PHYSICS
  // _graphicsSettings.setDebugObjectAABBs(true);
@@ -493,36 +489,31 @@ void GLWidget::initGame()
     std::vector<fly::Vertex> vertices_new;
     for (const auto& v : m->getVertices()) {
       fly::Vertex v_new = v;
-      v_new._uv *= (_renderer->getBVStatic().getMax().xz() - _renderer->getBVStatic().getMin().xz()) * 0.65f;
+      v_new._uv *= (_renderer->getSceneBounds().getMax().xz() - _renderer->getSceneBounds().getMin().xz()) * 0.65f;
       vertices_new.push_back(v_new);
     }
     m->setVertices(vertices_new);
   }
   for (const auto& m : plane_model->getMeshes()) {
-    auto entity = _engine.getEntityManager()->createEntity();
-    auto scale = _renderer->getBVStatic().getMax() - _renderer->getBVStatic().getMin();
+    auto scale = _renderer->getSceneBounds().getMax() - _renderer->getSceneBounds().getMin();
     scale[1] = 1.f;
-    auto translation = _renderer->getBVStatic().getMin();
- //   entity->addComponent(std::make_shared<fly::StaticMeshRenderable>(m,
-  //    plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(translation, scale).getModelMatrix(), false));
-    entity->addComponent(std::make_shared<fly::StaticMeshRenderable<API, BV>>(*_renderer, m, plane_model->getMaterials()[m->getMaterialIndex()], fly::Transform(translation, scale)));
+    auto translation = _renderer->getSceneBounds().getMin();
+    fly::Transform transform(translation, scale);
+    _renderer->addStaticMeshRenderable(std::make_shared<fly::StaticMeshRenderable<API, BV>>(*_renderer, m, plane_model->getMaterials()[m->getMaterialIndex()], transform));
   }
 #endif
 
-  auto cam_entity = _engine.getEntityManager()->createEntity();
   _camera = std::make_shared<fly::Camera>(glm::vec3(4.f, 2.f, 0.f), glm::vec3(glm::radians(270.f), 0.f, 0.f));
-  cam_entity->addComponent(_camera);
-  auto dl_entity = _engine.getEntityManager()->createEntity();
   _dl = std::make_shared<fly::DirectionalLight>(fly::Vec3f(1.f), fly::Vec3f(0.5f, -1.f, 0.5f));
-  dl_entity->addComponent(_dl);
+  _renderer->setCamera(_camera);
+  _renderer->setDirectionalLight(_dl);
 
   _debugCamera = std::make_shared<fly::Camera>(fly::Vec3f(0.f), fly::Vec3f(0.f));
   //_renderer->setDebugCamera(_debugCamera);
 
 #if INSTANCED_MESHES
-  _graphicsSettings.setShadowMapSize(8192);
-  //_graphicsSettings.setExposure(0.5f);
-  _graphicsSettings.setDebugObjectAABBs(true);
+//  _graphicsSettings.setShadowMapSize(8192);
+  _graphicsSettings.setDebugObjectBVs(true);
   _camera->setDetailCullingThreshold(0.000005f);
   _debugCamera->setDetailCullingThreshold(_camera->getDetailCullingThreshold());
   std::vector<std::shared_ptr<fly::Mesh>> sphere_lods;
@@ -546,14 +537,11 @@ void GLWidget::initGame()
   for (unsigned i = 0; i < diffuse_colors.size(); i++) {
     diffuse_colors[i] = fly::Vec4f(dist(gen) / 3.f, dist(gen) / 3.f, dist(gen) / 3.f, dist(gen) / 3.f);
   }
-  //material->setKs(2.f);
   material->setDiffuseColors(diffuse_colors);
   std::uniform_int_distribution<unsigned> dist_uint(0, static_cast<unsigned>(diffuse_colors.size() - 1));
   for (int cell_x = 0; cell_x < num_cells[0]; cell_x++) {
     for (int cell_z = 0; cell_z < num_cells[1]; cell_z++) {
-      auto instanced_entity = _engine.getEntityManager()->createEntity();
       std::vector<fly::StaticInstancedMeshRenderable<API, BV>::InstanceData> instance_data;
-      //std::vector<unsigned> indices;
       for (int x = 0; x < num_meshes[0]; x++) {
         for (int z = 0; z < num_meshes[1]; z++) {
           fly::StaticInstancedMeshRenderable<API, BV>::InstanceData data;
@@ -566,7 +554,7 @@ void GLWidget::initGame()
         }
       }
       auto instanced_renderable = std::make_shared<fly::StaticInstancedMeshRenderable<API, BV>>(*_renderer, sphere_lods, material, instance_data);
-      instanced_entity->addComponent(instanced_renderable);
+      _renderer->addStaticMeshRenderable(instanced_renderable);
     //  instanced_renderable->clear();
       total_meshes += instance_data.size();
     }
@@ -575,12 +563,12 @@ void GLWidget::initGame()
 #endif
 
 #if SINGLE_SPHERE
-  auto sphere_entity = _engine.getEntityManager()->createEntity();
-  sphere_entity->addComponent(std::make_shared<fly::StaticMeshRenderable<API, BV>>(*_renderer, sphere_model->getMeshes().front(), sphere_model->getMeshes().front()->getMaterial(),
+ // auto sphere_entity = _engine.getEntityManager()->createEntity();
+  _renderer->addStaticMeshRenderable(std::make_shared<fly::StaticMeshRenderable<API, BV>>(*_renderer, sphere_model->getMeshes().front(), sphere_model->getMeshes().front()->getMaterial(),
     fly::Transform(fly::Vec3f(5.f, 0.f, 0.f), fly::Vec3f(5.f, 1.5f, 2.f))));
 #endif
 
-  _camController = std::make_unique<fly::CameraController>(cam_entity->getComponent<fly::Camera>(), 100.f);
+  _camController = std::make_unique<fly::CameraController>(_camera, 100.f);
   std::cout << "Init game took " << init_game_timing.duration<std::chrono::milliseconds>() << " milliseconds." << std::endl;
 }
 

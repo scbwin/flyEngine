@@ -16,32 +16,9 @@ namespace fly
     System();
     virtual ~System();
     void setGameTimer(GameTimer const * game_timer);
-
-    virtual void onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component) = 0;
-    virtual void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component) = 0;
     virtual void update() = 0;
   protected:
     GameTimer const * _gameTimer;
-    template<typename ComponentType>
-    std::shared_ptr<ComponentType> addIfInterested(Entity* e, const std::shared_ptr<Component>& component, std::map<Entity*, std::shared_ptr<ComponentType>>& map)
-    {
-      auto c_interested = e->getComponent<ComponentType>();
-      if (c_interested == component) {
-        map[e] = c_interested;
-        return c_interested;
-      }
-      return nullptr;
-    }
-    template<typename ComponentType>
-    std::shared_ptr<ComponentType> deleteIfInterested(Entity* e, const std::shared_ptr<Component>& component, std::map<Entity*, std::shared_ptr<ComponentType>>& map)
-    {
-      auto c_interested = e->getComponent<ComponentType>();
-      if (c_interested == component) {
-        map.erase(e);
-        return c_interested;
-      }
-      return nullptr;
-    }
   };
 }
 

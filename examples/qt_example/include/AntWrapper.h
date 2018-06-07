@@ -13,6 +13,11 @@ namespace fly
   class Entity;
   class GameTimer;
   class DirectionalLight;
+  template<typename API, typename BV>
+  class SkydomeRenderable;
+  class AABB;
+  template<typename API, typename BV>
+  class Renderer;
 }
 
 class QWidget;
@@ -20,9 +25,17 @@ class QWidget;
 class AntWrapper
 {
 public:
+  AntWrapper() = default;
   AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* api, fly::CameraController* camera_controller, 
-    fly::Entity* skydome, fly::GameTimer* game_timer, QWidget* widget, std::shared_ptr<fly::Camera> camera, fly::DirectionalLight* dl);
+    std::shared_ptr<fly::SkydomeRenderable<fly::OpenGLAPI, fly::AABB>> skydome, fly::GameTimer* game_timer, QWidget* widget, 
+    std::shared_ptr<fly::Camera> camera, fly::DirectionalLight* dl, fly::Renderer<fly::OpenGLAPI, fly::AABB>* renderer);
 private:
+  struct SkydomeData
+  {
+    fly::Renderer<fly::OpenGLAPI, fly::AABB>* _renderer;
+    std::shared_ptr<fly::SkydomeRenderable<fly::OpenGLAPI, fly::AABB>> _skydome;
+  };
+  SkydomeData _skydomeData;
   static void setShadows(const void* value, void* client_data);
   static void getShadows(void* value, void* client_data);
   static void setPCF(const void* value, void* client_data);

@@ -2,7 +2,6 @@
 #define RIGIDBODY_H
 
 #include <memory>
-#include <Component.h>
 #include <math/FlyMath.h>
 
 class btCollisionShape;
@@ -11,7 +10,7 @@ struct btDefaultMotionState;
 
 namespace fly
 {
-  class RigidBody : public Component
+  class RigidBody
   {
   public:
     RigidBody(const Vec3f& position, float mass, const std::shared_ptr<btCollisionShape>& col_shape, float resitution = 1.f, float linear_damping = 0.05f, float angular_damping = 0.05f);

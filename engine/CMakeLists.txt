@@ -9,7 +9,7 @@ set(BUILD_PHYSICS "" CACHE BOOL "")
 set(INCLUDE_OPENCV "" CACHE BOOL "")
 
 set (HEADER_FILES
-	${IDIR}/AABB.h ${IDIR}/Animation.h ${IDIR}/AnimationSystem.h ${IDIR}/AssimpImporter.h ${IDIR}/Billboard.h ${IDIR}/Camera.h ${IDIR}/Component.h ${IDIR}/Engine.h ${IDIR}/Entity.h ${IDIR}/EntityManager.h ${IDIR}/FixedTimestepSystem.h
+	${IDIR}/AABB.h ${IDIR}/Animation.h ${IDIR}/AnimationSystem.h ${IDIR}/AssimpImporter.h ${IDIR}/Billboard.h ${IDIR}/Camera.h ${IDIR}/Engine.h ${IDIR}/FixedTimestepSystem.h
 	${IDIR}/GameTimer.h ${IDIR}/GeometryGenerator.h ${IDIR}/IImporter.h ${IDIR}/Light.h ${IDIR}/Material.h ${IDIR}/Mesh.h ${IDIR}/Model.h ${IDIR}/NoiseGen.h ${IDIR}/Renderables.h ${IDIR}/RenderingSystem.h
 	${IDIR}/System.h ${IDIR}/Terrain.h ${IDIR}/TerrainNew.h ${IDIR}/Transform.h ${IDIR}/Vertex.h
 	${IDIR}/Leakcheck.h
@@ -19,7 +19,7 @@ set (HEADER_FILES
 	${IDIR}/physics/ParticleSystem.h ${IDIR}/physics/PhysicsSystem.h ${IDIR}/Quadtree.h ${IDIR}/Octree.h ${IDIR}/Settings.h ${IDIR}/GraphicsSettings.h ${IDIR}/LevelOfDetail.h ${IDIR}/Timing.h ${IDIR}/renderer/Renderer.h
 	${IDIR}/CameraController.h ${IDIR}/opengl/GLShaderInterface.h ${IDIR}/opengl/GLFramebuffer.h
 	${IDIR}/opengl/GLSLShaderGenerator.h ${IDIR}/SoftwareCache.h ${IDIR}/opengl/GLSampler.h ${IDIR}/WindParams.h ${IDIR}/WindParamsLocal.h
-	${IDIR}/SkydomeRenderable.h ${IDIR}/opengl/GLMaterialSetup.h ${IDIR}/opengl/GLShaderSetup.h ${IDIR}/opengl/GLShaderProgram.h ${IDIR}/opengl/GLShaderSource.h ${IDIR}/StackPOD.h
+    ${IDIR}/opengl/GLMaterialSetup.h ${IDIR}/opengl/GLShaderSetup.h ${IDIR}/opengl/GLShaderProgram.h ${IDIR}/opengl/GLShaderSource.h ${IDIR}/StackPOD.h
 	${IDIR}/Flags.h ${IDIR}/MaterialDesc.h ${IDIR}/renderer/MeshRenderables.h ${IDIR}/ShaderDesc.h ${IDIR}/CamSpeedSystem.h
 	${IDIR}/GlobalShaderParams.h ${IDIR}/ZNearMapping.h ${IDIR}/Sphere.h ${IDIR}/KdTree.h
 )
@@ -32,14 +32,14 @@ if(${BUILD_DX11})
 endif()
 
 set (SOURCE_FILES
-	${SDIR}/AABB.cpp ${SDIR}/Animation.cpp ${SDIR}/AnimationSystem.cpp ${SDIR}/AssimpImporter.cpp ${SDIR}/Billboard.cpp ${SDIR}/Camera.cpp ${SDIR}/Component.cpp ${SDIR}/Engine.cpp ${SDIR}/Entity.cpp ${SDIR}/EntityManager.cpp ${SDIR}/FixedTimestepSystem.cpp
+	${SDIR}/AABB.cpp ${SDIR}/Animation.cpp ${SDIR}/AnimationSystem.cpp ${SDIR}/AssimpImporter.cpp ${SDIR}/Billboard.cpp ${SDIR}/Camera.cpp ${SDIR}/Engine.cpp ${SDIR}/FixedTimestepSystem.cpp
 	${SDIR}/GameTimer.cpp ${SDIR}/GeometryGenerator.cpp ${SDIR}/Light.cpp ${SDIR}/Material.cpp ${SDIR}/Mesh.cpp ${SDIR}/Model.cpp ${SDIR}/NoiseGen.cpp ${SDIR}/Renderables.cpp ${SDIR}/RenderingSystem.cpp
 	${SDIR}/System.cpp ${SDIR}/Terrain.cpp ${SDIR}/TerrainNew.cpp ${SDIR}/Transform.cpp 
 	${SDIR}/opengl/GLWrappers.cpp ${SDIR}/opengl/OpenGLUtils.cpp ${SDIR}/opengl/RenderingSystemOpenGL.cpp ${SDIR}/opengl/GLTexture.cpp
 	${SDIR}/physics/ParticleSystem.cpp ${SDIR}/physics/PhysicsSystem.cpp ${SDIR}/LevelOfDetail.cpp ${SDIR}/Timing.cpp ${SDIR}/opengl/OpenGLAPI.cpp
 	${SDIR}/opengl/GLVertexArray.cpp ${SDIR}/opengl/GLBuffer.cpp ${SDIR}/CameraController.cpp ${SDIR}/opengl/GLFramebuffer.cpp
 	${SDIR}/opengl/GLSLShaderGenerator.cpp ${SDIR}/opengl/GLSampler.cpp ${SDIR}/GraphicsSettings.cpp
-	${SDIR}/SkydomeRenderable.cpp ${SDIR}/opengl/GLMaterialSetup.cpp ${SDIR}/opengl/GLShaderSetup.cpp ${SDIR}/opengl/GLShaderProgram.cpp ${SDIR}/opengl/GLShaderSource.cpp
+	${SDIR}/opengl/GLMaterialSetup.cpp ${SDIR}/opengl/GLShaderSetup.cpp ${SDIR}/opengl/GLShaderProgram.cpp ${SDIR}/opengl/GLShaderSource.cpp
 	${SDIR}/Sphere.cpp
 )
 

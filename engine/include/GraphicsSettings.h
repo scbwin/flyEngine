@@ -56,9 +56,9 @@ namespace fly
     float getGamma() const;
     void setGamma(float gamma);
     bool getDebugBVH() const;
-    bool getDebugObjectAABBs() const;
+    bool getDebugObjectBVs() const;
     void setDebugBVH(bool enable);
-    void setDebugObjectAABBs(bool enable);
+    void setDebugObjectBVs(bool enable);
     unsigned getAnisotropy() const;
     void setAnisotropy(unsigned anisotropy);
     void setShadowDarkenFactor(float factor);
@@ -123,7 +123,7 @@ namespace fly
     unsigned _anisotropy = 4u;
     bool _postProcessing = true;
     bool _debugBVH = false;
-    bool _debugObjectAABBs = false;
+    bool _debugObjectBVs = false;
     float _blurSigma = 2.5f;
     unsigned _blurRadius = 3u;
     std::vector<float> _blurWeights;

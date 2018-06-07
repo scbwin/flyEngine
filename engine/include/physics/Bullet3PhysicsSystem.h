@@ -23,8 +23,6 @@ namespace fly
     int getSimulationSubsteps() const;
     const std::unique_ptr<btDiscreteDynamicsWorld>& getDynamicsWorld() const;
   private:
-    virtual void onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component) override;
-    virtual void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component) override;
     virtual void update() override;
 
     std::unique_ptr<btBroadphaseInterface> _iBroadphase;

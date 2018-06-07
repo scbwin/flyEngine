@@ -7,7 +7,6 @@
 #include <MaterialDesc.h>
 #include <Material.h>
 #include <AABB.h>
-#include <Component.h>
 #include <WindParamsLocal.h>
 #include <Transform.h>
 #include <Sphere.h>
@@ -18,7 +17,7 @@ namespace fly
   class Renderer;
 
   template<typename API, typename BV>
-  class IMeshRenderable : public Component
+  class IMeshRenderable
   {
   public:
     virtual ~IMeshRenderable() = default;
@@ -64,15 +63,13 @@ namespace fly
       result = AABB(mesh.getAABB(), transform.getModelMatrix());
     }
   };
-  template<typename API>
-  class SkydomeRenderableWrapper
+  template<typename API, typename BV>
+  class SkydomeRenderable
   {
   public:
-    API const & _api;
     typename API::MeshData _meshData;
-    SkydomeRenderableWrapper(const typename API::MeshData& mesh_data, API const & api) :
-      _api(api),
-      _meshData(mesh_data)
+    SkydomeRenderable(Renderer<API, BV>& renderer, const std::shared_ptr<Mesh>& mesh) :
+      _meshData(renderer.addMesh(mesh))
     {
     }
     const typename API::MeshData& getMeshData() const

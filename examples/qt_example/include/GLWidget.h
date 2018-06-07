@@ -11,6 +11,7 @@
 #include <set>
 #include <GraphicsSettings.h>
 #include <math/FlyMath.h>
+#include <AntWrapper.h>
 
 #define SPONZA 1
 #define SPONZA_MANY 0 && SPONZA
@@ -33,6 +34,8 @@ namespace fly
   class OpenGLAPI;
   template<typename API, typename BV>
   class Renderer;
+  template<typename API, typename BV>
+  class SkydomeRenderable;
   class GameTimer;
   class CameraController;
   class DirectionalLight;
@@ -74,9 +77,10 @@ private:
   std::shared_ptr<fly::Renderer<fly::OpenGLAPI, fly::AABB>> _renderer;
   std::unique_ptr<fly::CameraController> _camController;
   std::shared_ptr<fly::DirectionalLight> _dl;
-  std::shared_ptr<fly::Entity> _skydome;
+  std::shared_ptr<fly::SkydomeRenderable<fly::OpenGLAPI, fly::AABB>> _skydome;
   std::shared_ptr<fly::Camera> _camera;
   std::shared_ptr<fly::Camera> _debugCamera;
+  std::unique_ptr<AntWrapper> _antWrapper;
 #if PHYSICS
   std::shared_ptr<fly::Bullet3PhysicsSystem> _physicsSystem;
   std::vector<std::shared_ptr<btTriangleMesh>> _triangleMeshes;

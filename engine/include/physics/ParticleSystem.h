@@ -19,7 +19,7 @@ namespace fly
     float _birth;
   };
 
-  class ParticleSystem : public Component
+  class ParticleSystem
   {
   public:
     struct ParticleSystemDesc

@@ -9,7 +9,6 @@
 #include <map>
 #include <Model.h>
 #include <memory>
-#include <Entity.h>
 #include <Camera.h>
 #include <Light.h>
 #include <iostream>
@@ -19,7 +18,6 @@
 #include <functional>
 #include <GraphicsSettings.h>
 #include <Timing.h>
-#include <SkydomeRenderable.h>
 #include <StackPOD.h>
 #include <Flags.h>
 #include <MaterialDesc.h>
@@ -160,50 +158,43 @@ namespace fly
       graphicsSettingsChanged();
       compositingChanged(gs);
     }
-    virtual void onComponentAdded(Entity* entity, const std::shared_ptr<Component>& component) override
+    void addStaticMeshRenderable(const std::shared_ptr<StaticMeshRenderable<API, BV>>& smr) {
+      _staticMeshRenderables.push_back(smr);
+      _sceneBounds = _sceneBounds.getUnion(smr->getBV());
+    }
+    void addStaticMeshRenderables(const std::vector<std::shared_ptr<StaticMeshRenderable<API, BV>>>& smrs)
     {
-      if (entity->getComponent<StaticMeshRenderable<API, BV>>() == component) {
-        auto smr = entity->getComponent<StaticMeshRenderable<API, BV>>();
-        _staticMeshRenderables[entity] = smr;
-        _bvStatic = _bvStatic.getUnion(smr->getBV());
-      }
-      else if (entity->getComponent<StaticInstancedMeshRenderable<API, BV>>() == component) {
-        auto simr = entity->getComponent<StaticInstancedMeshRenderable<API, BV>>();
-        _staticInstancedMeshRenderables[entity] = simr;
-        _bvStatic = _bvStatic.getUnion(simr->getBV());
-      }
-      else if (entity->getComponent<Camera>() == component) {
-        _camera = entity->getComponent<Camera>();
-        _gsp._camPosworld = _camera->getPosition();
-      }
-      else if (entity->getComponent<DirectionalLight>() == component) {
-        _directionalLight = entity->getComponent<DirectionalLight>();
-      }
-      else if (entity->getComponent<fly::SkydomeRenderable>() == component) {
-        auto sdr = entity->getComponent<fly::SkydomeRenderable>();
-        _skydomeRenderable = std::make_shared<SkydomeRenderableWrapper<API>>(_meshGeometryStorage.addMesh(sdr->getMesh()), _api);
+      _staticMeshRenderables.insert(_staticMeshRenderables.begin(), smrs.begin(), smrs.end());
+      for (const auto& smr : smrs) {
+        _sceneBounds = _sceneBounds.getUnion(smr->getBV());
       }
     }
-    virtual void onComponentRemoved(Entity* entity, const std::shared_ptr<Component>& component) override
+    void addStaticMeshRenderable(const std::shared_ptr<StaticInstancedMeshRenderable<API, BV>>& simr) {
+      _staticInstancedMeshRenderables.push_back(simr);
+      _sceneBounds = _sceneBounds.getUnion(simr->getBV());
+    }
+    void addStaticMeshRenderables(const std::vector<std::shared_ptr<StaticInstancedMeshRenderable<API, BV>>>& simrs)
     {
-      if (entity->getComponent<fly::StaticMeshRenderable<API, BV>>() == component
-        || entity->getComponent<fly::StaticMeshRenderableWind<API, BV>>() == component) {
-        _bvhStatic->removeObject(_staticMeshRenderables[entity].get());
-        _staticMeshRenderables.erase(entity);
+      _staticInstancedMeshRenderables.insert(_staticInstancedMeshRenderables.begin(), simrs.begin(), simrs.end());
+      for (const auto& simr : simrs) {
+        _sceneBounds = _sceneBounds.getUnion(simr->getBV());
       }
-      if (entity->getComponent<fly::StaticInstancedMeshRenderable<API, BV>>() == component) {
-        _bvhStatic->removeObject(_staticInstancedMeshRenderables[entity].get());
-        _staticInstancedMeshRenderables.erase(entity);
-      }
-      else if (entity->getComponent<Camera>() == component) {
-        _camera = nullptr;
-      }
-      else if (entity->getComponent<DirectionalLight>() == component) {
-        _directionalLight = nullptr;
-      }
-      else if (entity->getComponent<fly::SkydomeRenderable>() == component) {
-        _skydomeRenderable = nullptr;
-      }
+    }
+    void setSkydome(const std::shared_ptr<SkydomeRenderable<API, BV>>& sdr)
+    {
+      _skydomeRenderable = sdr;
+    }
+    const std::shared_ptr<SkydomeRenderable<API, BV>>& getSkydome() const
+    {
+      return _skydomeRenderable;
+    }
+    void setCamera(const std::shared_ptr<Camera>& camera)
+    {
+      _camera = camera;
+    }
+    void setDirectionalLight(const std::shared_ptr<DirectionalLight>& dl)
+    {
+      _directionalLight = dl;
     }
     virtual void update() override
     {
@@ -302,17 +293,13 @@ namespace fly
           Mat4f view_matrix_sky_dome = _gsp._viewMatrix;
           view_matrix_sky_dome[3] = Vec4f(Vec3f(0.f), 1.f);
           auto skydome_vp = _gsp._projectionMatrix * view_matrix_sky_dome;
-         // _gsp._VP = &skydome_vp;
-       //   _api.getSkydomeShaderDesc()->setup(_gsp);
-        //  _skydomeRenderable->render();
-       //   _gsp._VP = &_vpScene; // Restore view projection matrix
           _api.renderSkydome(skydome_vp, _skydomeRenderable->getMeshData());
           _api.setCullMode<API::CullMode::BACK>();
         }
         if (_gs->getDebugBVH()) {
           renderBVHNodes(*_camera, _debugCamera ? *_debugCamera : *_camera);
         }
-        if (_gs->getDebugObjectAABBs()) {
+        if (_gs->getDebugObjectBVs()) {
           renderObjectBVs();
         }
         if (_offScreenRendering || _debugCamera) {
@@ -377,6 +364,10 @@ namespace fly
     {
       return _bvhStatic;
     }
+    const BV& getSceneBounds() const
+    {
+      return _sceneBounds;
+    }
     const std::shared_ptr<MaterialDesc<API, BV>> & createMaterialDesc(const std::shared_ptr<Material>& material)
     {
       return _matDescCache.getOrCreate(material, material, *_gs);
@@ -427,12 +418,13 @@ namespace fly
     RendererStats _stats;
 #endif
     typename API::MeshGeometryStorage _meshGeometryStorage;
-    std::map<Entity*, std::shared_ptr<StaticMeshRenderable<API, BV>>> _staticMeshRenderables;
-    std::map<Entity*, std::shared_ptr<StaticInstancedMeshRenderable<API, BV>>> _staticInstancedMeshRenderables;
-    std::shared_ptr<SkydomeRenderableWrapper<API>> _skydomeRenderable;
+    std::vector<std::shared_ptr<StaticMeshRenderable<API, BV>>> _staticMeshRenderables;
+    std::vector<std::shared_ptr<StaticInstancedMeshRenderable<API, BV>>> _staticInstancedMeshRenderables;
+    std::shared_ptr<SkydomeRenderable<API, BV>> _skydomeRenderable;
     StackPOD<IMeshRenderable<API, BV>*> _visibleMeshes;
     StackPOD<IMeshRenderable<API, BV>*> _visibleMeshesAsync;
     StackPOD<ShaderDesc<API, BV>*> _displayList;
+    BV _sceneBounds;
     std::unique_ptr<BVH> _bvhStatic;
     SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API, BV>>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
     SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API, BV>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&> _shaderDescCache;
@@ -487,7 +479,7 @@ namespace fly
     void renderShadowMap()
     {
       _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
-       _debugCamera ? inverse(_debugCamera->updateViewMatrix(_debugCamera->getPosition(), _debugCamera->getEulerAngles())) : inverse(_gsp._viewMatrix),
+        _debugCamera ? inverse(_debugCamera->updateViewMatrix(_debugCamera->getPosition(), _debugCamera->getEulerAngles())) : inverse(_gsp._viewMatrix),
         static_cast<float>(_gs->getShadowMapSize()), _gs->getFrustumSplits(), _api.getZNearMapping(), _gsp._worldToLight, _vpLightVolume);
       _api.setDepthClampEnabled<true>();
       _api.enablePolygonOffset(_gs->getShadowPolygonOffsetFactor(), _gs->getShadowPolygonOffsetUnits());
@@ -497,7 +489,7 @@ namespace fly
 #if RENDERER_STATS
         Timing timing;
 #endif
-       cullMeshes(_vpLightVolume[i], _debugCamera ? *_debugCamera : *_camera, _visibleMeshes);
+        cullMeshes(_vpLightVolume[i], _debugCamera ? *_debugCamera : *_camera, _visibleMeshes);
 #if RENDERER_STATS
         _stats._cullingShadowMapMicroSeconds += timing.duration<std::chrono::microseconds>();
 #endif
@@ -531,14 +523,17 @@ namespace fly
       _visibleMeshesAsync = _visibleMeshes;
       std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
       std::cout << "Static instanced mesh renderables: " << _staticInstancedMeshRenderables.size() << std::endl;
+      if (_visibleMeshes.capacity() == 0) {
+        throw std::exception("No meshes were added to the renderer.");
+      }
       Timing timing;
       std::vector<IMeshRenderable<API, BV>*> renderables;
-      renderables.reserve(_staticMeshRenderables.size());
-      for (const auto& e : _staticMeshRenderables) {
-        renderables.push_back(e.second.get());
+      renderables.reserve(_staticMeshRenderables.size() + _staticInstancedMeshRenderables.size());
+      for (const auto& smr : _staticMeshRenderables) {
+        renderables.push_back(smr.get());
       }
-      for (const auto& e : _staticInstancedMeshRenderables) {
-        renderables.push_back(e.second.get());
+      for (const auto& simr : _staticInstancedMeshRenderables) {
+        renderables.push_back(simr.get());
       }
       _bvhStatic = std::make_unique<BVH>(renderables);
       std::cout << "BVH construction took " << timing.duration<std::chrono::milliseconds>() << " milliseconds." << std::endl;
@@ -556,13 +551,7 @@ namespace fly
       if (_staticInstancedMeshRenderables.size()) {
         _api.prepareCulling(camera.getFrustumPlanes(), camera.getPosition());
       }
-      // Static meshes
       _bvhStatic->cullVisibleObjects(camera, visible_meshes);
-      //for (const auto& e : _staticMeshRenderables) {
-      //  if (camera.frustumIntersectsBoundingVolume(e.second->getBV()) != IntersectionResult::OUTSIDE) {
-       //   visible_meshes.push_back(e.second.get());
-      //  }
-     // }
       if (_staticInstancedMeshRenderables.size()) {
         _api.endCulling();
       }

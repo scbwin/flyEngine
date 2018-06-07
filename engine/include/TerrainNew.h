@@ -1,12 +1,11 @@
 #ifndef TERRAINNEW_H
 #define TERRAINNEW_H
 
-#include <Component.h>
 #include <vector>
 
 namespace fly
 {
-  class TerrainNew : public Component
+  class TerrainNew
   {
   public:
     TerrainNew(int size, const std::vector<std::string>& albedo_paths, const std::vector<std::string>& normal_paths, float uv_scale_details);

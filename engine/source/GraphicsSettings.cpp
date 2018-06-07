@@ -147,17 +147,17 @@ namespace fly
   {
     return _debugBVH;
   }
-  bool GraphicsSettings::getDebugObjectAABBs() const
+  bool GraphicsSettings::getDebugObjectBVs() const
   {
-    return _debugObjectAABBs;
+    return _debugObjectBVs;
   }
   void GraphicsSettings::setDebugBVH(bool enable)
   {
     _debugBVH = enable;
   }
-  void GraphicsSettings::setDebugObjectAABBs(bool enable)
+  void GraphicsSettings::setDebugObjectBVs(bool enable)
   {
-    _debugObjectAABBs = enable;
+    _debugObjectBVs = enable;
   }
   unsigned GraphicsSettings::getAnisotropy() const
   {
