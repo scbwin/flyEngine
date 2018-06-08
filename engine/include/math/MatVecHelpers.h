@@ -107,6 +107,14 @@ namespace fly
     return result;
   }
   /**
+  * Component-wise linear interpolation
+  */
+  template<unsigned Dim, typename T>
+  static inline Vector<Dim, T> lerp(const Vector<Dim, T>& a, const Vector<Dim, T>& b, T alpha)
+  {
+    return a * (static_cast<T>(1) - alpha) + b * alpha;
+  }
+  /**
   * Identity matrix
   */
   template<unsigned Dim, typename T>

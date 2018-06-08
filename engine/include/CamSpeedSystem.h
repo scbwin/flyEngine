@@ -3,7 +3,7 @@
 
 #include <System.h>
 #include <renderer/Renderer.h>
-#include <CameraController.h>
+#include <PhysicsCameraController.h>
 
 namespace fly
 {
@@ -16,7 +16,7 @@ namespace fly
   class CamSpeedSystem : public System
   {
   public:
-    CamSpeedSystem(const Renderer<API, BV>& renderer, const std::unique_ptr<CameraController>& camera_controller) : 
+    CamSpeedSystem(const Renderer<API, BV>& renderer, const std::shared_ptr<PhysicsCameraController>& camera_controller) :
       _bvhStatic(renderer.getStaticBVH()),
       _camController(camera_controller)
     {
@@ -27,14 +27,12 @@ namespace fly
       AABB aabb(_camController->getCamera()->getPosition() - _range, _camController->getCamera()->getPosition() + _range);
       _intersectedObjects.clear();
       _bvhStatic->intersectObjects(aabb, _intersectedObjects);
-      _camController->setSpeedFactor(_intersectedObjects.size() ? _speedFactorLow : _speedFactorHigh);
+      _camController->setDamping(_intersectedObjects.size() ? 0.7f : PhysicsCameraController::DEFAULT_DAMPING);
     }
   private:
     std::unique_ptr<typename Renderer<API>::BVH> const & _bvhStatic;
     StackPOD<IMeshRenderable<API, BV>*> _intersectedObjects;
-    std::unique_ptr<CameraController> const & _camController;
-    float _speedFactorLow = 0.2f;
-    float _speedFactorHigh = 1.f;
+    std::shared_ptr<PhysicsCameraController> const & _camController;
     float _range = 1.f;
   };
 }

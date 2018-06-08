@@ -12,7 +12,7 @@ namespace fly
   {
     _camera = camera;
   }
-  void CameraController::stepForward(float delta_time) const
+ /* void CameraController::stepForward(float delta_time) const
   {
     updatePos(_camera->getDirection(), delta_time);
   }
@@ -51,7 +51,7 @@ namespace fly
   void CameraController::decelerateReleased()
   {
     _accelerate = 1.f;
-  }
+  }*/
   void CameraController::mousePress(const Vec3f & mouse_pos)
   {
     _mousePos = mouse_pos;

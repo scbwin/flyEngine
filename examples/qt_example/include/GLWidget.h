@@ -38,6 +38,7 @@ namespace fly
   class SkydomeRenderable;
   class GameTimer;
   class CameraController;
+  class PhysicsCameraController;
   class DirectionalLight;
   class Model;
   class Bullet3PhysicsSystem;
@@ -76,11 +77,15 @@ private:
   fly::GraphicsSettings _graphicsSettings;
   std::shared_ptr<fly::Renderer<fly::OpenGLAPI, fly::AABB>> _renderer;
   std::unique_ptr<fly::CameraController> _camController;
+  std::shared_ptr<fly::PhysicsCameraController> _physicsCC;
   std::shared_ptr<fly::DirectionalLight> _dl;
   std::shared_ptr<fly::SkydomeRenderable<fly::OpenGLAPI, fly::AABB>> _skydome;
   std::shared_ptr<fly::Camera> _camera;
   std::shared_ptr<fly::Camera> _debugCamera;
   std::unique_ptr<AntWrapper> _antWrapper;
+  float _camAccelerationDefault = 200.f;
+  float _camAccelerationHigh = 400.f;
+  float _camAccelerationLow = 100.f;
   void updateStats();
 #if PHYSICS
   std::shared_ptr<fly::Bullet3PhysicsSystem> _physicsSystem;

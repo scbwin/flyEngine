@@ -14,7 +14,7 @@ namespace fly
     CameraController(const std::shared_ptr<Camera>& camera, float speed);
     virtual ~CameraController() = default;
     void setCamera(const std::shared_ptr<Camera>& camera);
-    void stepForward(float delta_time) const;
+  /*  void stepForward(float delta_time) const;
     void stepBackward(float delta_time) const;
     void stepLeft(float delta_time) const;
     void stepRight(float delta_time) const;
@@ -23,7 +23,7 @@ namespace fly
     void acceleratePressed();
     void accelerateReleased();
     void deceleratePressed();
-    void decelerateReleased();
+    void decelerateReleased();*/
     void mousePress(const Vec3f& mouse_pos);
     void mouseMove(const Vec3f& mouse_pos);
     void mouseRelease();

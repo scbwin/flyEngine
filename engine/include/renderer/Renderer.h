@@ -203,9 +203,6 @@ namespace fly
       Timing timing_total;
 #endif
       if (_camera && _directionalLight) {
-        if (!_bvhStatic) {
-          buildBVH();
-        }
         _api.beginFrame();
         _gsp._camPosworld = _camera->getPosition();
         _gsp._viewMatrix = _camera->updateViewMatrix();
@@ -384,7 +381,27 @@ namespace fly
     {
       return _debugCamera;
     }
-
+    void buildBVH()
+    {
+      _visibleMeshes.reserve(_staticMeshRenderables.size() + _staticInstancedMeshRenderables.size());
+      _visibleMeshesAsync = _visibleMeshes;
+      std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
+      std::cout << "Static instanced mesh renderables: " << _staticInstancedMeshRenderables.size() << std::endl;
+      if (_visibleMeshes.capacity() == 0) {
+        throw std::exception("No meshes were added to the renderer.");
+      }
+      Timing timing;
+      std::vector<IMeshRenderable<API, BV>*> renderables;
+      renderables.reserve(_staticMeshRenderables.size() + _staticInstancedMeshRenderables.size());
+      for (const auto& smr : _staticMeshRenderables) {
+        renderables.push_back(smr.get());
+      }
+      for (const auto& simr : _staticInstancedMeshRenderables) {
+        renderables.push_back(simr.get());
+      }
+      _bvhStatic = std::make_unique<BVH>(renderables);
+      std::cout << "BVH construction took " << timing.duration<std::chrono::milliseconds>() << " milliseconds." << std::endl;
+    }
   private:
     API _api;
     ProjectionParams _pp;
@@ -512,27 +529,6 @@ namespace fly
       _gsp._shadowDarkenFactor = _gs->getShadowDarkenFactor();
       _api.setDepthClampEnabled<false>();
       _gsp._viewMatrixThirdRow = _debugCamera ? _debugCamera->getViewMatrix().row(2) : _gsp._viewMatrix.row(2);
-    }
-    void buildBVH()
-    {
-      _visibleMeshes.reserve(_staticMeshRenderables.size() + _staticInstancedMeshRenderables.size());
-      _visibleMeshesAsync = _visibleMeshes;
-      std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
-      std::cout << "Static instanced mesh renderables: " << _staticInstancedMeshRenderables.size() << std::endl;
-      if (_visibleMeshes.capacity() == 0) {
-        throw std::exception("No meshes were added to the renderer.");
-      }
-      Timing timing;
-      std::vector<IMeshRenderable<API, BV>*> renderables;
-      renderables.reserve(_staticMeshRenderables.size() + _staticInstancedMeshRenderables.size());
-      for (const auto& smr : _staticMeshRenderables) {
-        renderables.push_back(smr.get());
-      }
-      for (const auto& simr : _staticInstancedMeshRenderables) {
-        renderables.push_back(simr.get());
-      }
-      _bvhStatic = std::make_unique<BVH>(renderables);
-      std::cout << "BVH construction took " << timing.duration<std::chrono::milliseconds>() << " milliseconds." << std::endl;
     }
     void graphicsSettingsChanged()
     {

@@ -13,6 +13,7 @@
 #include <random>
 #include <CamSpeedSystem.h>
 #include <renderer/MeshRenderables.h>
+#include <PhysicsCameraController.h>
 
 using API = fly::OpenGLAPI;
 using BV = fly::AABB;
@@ -32,7 +33,7 @@ void GLWidget::initializeGL()
   _renderer = std::make_shared<fly::Renderer<API, BV>>(&_graphicsSettings);
   _graphicsSettings.addListener(_renderer);
   _engine.addSystem(_renderer);
-  auto cam_speed_system = std::make_shared<fly::CamSpeedSystem<API, BV>>(*_renderer, _camController);
+  auto cam_speed_system = std::make_shared<fly::CamSpeedSystem<API, BV>>(*_renderer, _physicsCC);
   _engine.addSystem(cam_speed_system);
 
 #if PHYSICS
@@ -101,24 +102,33 @@ void GLWidget::paintGL()
     }
   }
 #endif
+  fly::Vec3f acc_dir(0.f);
   if (contains<int>(_keysPressed, 'W')) {
-    _camController->stepForward(_engine.getGameTimer()->getDeltaTimeSeconds());
+    acc_dir += _camera->getDirection();
   }
   if (contains<int>(_keysPressed, 'A')) {
-    _camController->stepLeft(_engine.getGameTimer()->getDeltaTimeSeconds());
+    acc_dir -= _camera->getRight();
   }
   if (contains<int>(_keysPressed, 'S')) {
-    _camController->stepBackward(_engine.getGameTimer()->getDeltaTimeSeconds());
+    acc_dir -= _camera->getDirection();
   }
   if (contains<int>(_keysPressed, 'D')) {
-    _camController->stepRight(_engine.getGameTimer()->getDeltaTimeSeconds());
+    acc_dir += _camera->getRight();
   }
   if (contains<int>(_keysPressed, 'C')) {
-    _camController->stepDown(_engine.getGameTimer()->getDeltaTimeSeconds());
+    acc_dir -= _camera->getUp();
   }
   if (contains<int>(_keysPressed, Qt::Key::Key_Space)) {
-    _camController->stepUp(_engine.getGameTimer()->getDeltaTimeSeconds());
+    acc_dir += _camera->getUp();
   }
+  float acc;
+  if (contains<int>(_keysPressed, Qt::Key::Key_Shift)) {
+    acc = _camAccelerationHigh;
+  }
+  else {
+    acc = contains<int>(_keysPressed, Qt::Key::Key_Control) ? _camAccelerationLow : _camAccelerationDefault;
+  }
+  _physicsCC->setAcceleration(acc_dir, acc);
   _engine.update();
   _fps++;
   if (_engine.getGameTimer()->getTotalTimeSeconds() >= _measure) {
@@ -133,12 +143,6 @@ void GLWidget::paintGL()
 void GLWidget::keyPressEvent(QKeyEvent * e)
 {
   _keysPressed.insert(e->key());
-  if (e->key() == Qt::Key::Key_Shift) {
-    _camController->acceleratePressed();
-  }
-  if (e->key() == Qt::Key::Key_Control) {
-    _camController->deceleratePressed();
-  }
   if (e->key() == Qt::Key::Key_I) {
   //  _renderer->getApi()->writeShadersToDisk();
   }
@@ -148,10 +152,10 @@ void GLWidget::keyReleaseEvent(QKeyEvent * e)
 {
   _keysPressed.erase(e->key());
   if (e->key() == Qt::Key::Key_Shift) {
-    _camController->accelerateReleased();
+ //   _camController->accelerateReleased();
   }
   if (e->key() == Qt::Key::Key_Control) {
-    _camController->decelerateReleased();
+  //  _camController->decelerateReleased();
   }
   if (e->key() == Qt::Key::Key_M) {
     if (_camController->getCamera() == _camera) {
@@ -347,8 +351,8 @@ void GLWidget::initGame()
 
 #if SPONZA_MANY
   unsigned ent_index = 0;
-  for (int x = 0; x < NUM_OBJECTS; x++) {
-    for (int y = 0; y < NUM_OBJECTS; y++) {
+  for (int x = -NUM_OBJECTS / 2; x < NUM_OBJECTS / 2; x++) {
+    for (int y = -NUM_OBJECTS / 2; y < NUM_OBJECTS / 2; y++) {
       fly::Transform transform (fly::Vec3f(x * 60.f, -sponza_model->getAABB().getMin()[1] * sponza_scale[1], y * 60.f), fly::Vec3f(sponza_scale));
 #else
   fly::Transform transform (fly::Vec3f(0.f), sponza_scale);
@@ -571,7 +575,10 @@ void GLWidget::initGame()
 #endif
 
   _camController = std::make_unique<fly::CameraController>(_camera, 100.f);
+  _physicsCC = std::make_shared<fly::PhysicsCameraController>(_camera);
+  _engine.addSystem(_physicsCC);
   std::cout << "Init game took " << init_game_timing.duration<std::chrono::milliseconds>() << " milliseconds." << std::endl;
+  _renderer->buildBVH();
 }
 
 std::string GLWidget::formatNumber(unsigned number)
