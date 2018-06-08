@@ -3,8 +3,8 @@
 #include <Vertex.h>
 #include <Mesh.h>
 
-#define FLY_VEC2(vec) fly::Vec2f({vec.x, vec.y});
-#define FLY_VEC3(vec) fly::Vec3f({vec.x, vec.y, vec.z});
+#define FLY_VEC2(vec) fly::Vec2f(vec.x, vec.y)
+#define FLY_VEC3(vec) fly::Vec3f(vec.x, vec.y, vec.z)
 
 namespace fly
 {
@@ -30,12 +30,11 @@ namespace fly
     std::vector<Vertex> vertices(mesh->mNumVertices);
     for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
       vertices[i]._position = FLY_VEC3(mesh->mVertices[i]);
-      vertices[i]._normal = FLY_VEC3(mesh->mNormals[i]);
+      vertices[i]._normal = CompressedNormal(FLY_VEC3(mesh->mNormals[i]));
       if (mesh->mTextureCoords[0] != nullptr) {
         vertices[i]._uv = FLY_VEC2(mesh->mTextureCoords[0][i]);
-        vertices[i]._tangent = FLY_VEC3(mesh->mTangents[i]);
-        vertices[i]._bitangent = FLY_VEC3(mesh->mBitangents[i]);
-        vertices[i]._bitangent *= -1.f;
+        vertices[i]._tangent = CompressedNormal(FLY_VEC3(mesh->mTangents[i]));
+        vertices[i]._bitangent = CompressedNormal(FLY_VEC3(mesh->mBitangents[i]) * -1.f);
       }
     }
     std::vector<unsigned int> indices;
