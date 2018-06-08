@@ -27,6 +27,7 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "God rays", TwType::TW_TYPE_BOOLCPP, setGodRays, getGodRays, gs, nullptr);
   TwAddVarCB(bar, "God ray decay", TwType::TW_TYPE_FLOAT, setGodRayDecay, getGodRayDecay, gs, "step = 0.001f");
   TwAddVarCB(bar, "God ray steps", TwType::TW_TYPE_FLOAT, setGodRaySteps, getGodRaySteps, gs, "step = 1.f");
+  TwAddVarCB(bar, "God ray fade dist", TwType::TW_TYPE_FLOAT, setGodRayFadeDist, getGodRayFadeDist, gs, "step = 0.001");
   TwAddVarCB(bar, "Shadow darken factor", TwType::TW_TYPE_FLOAT, setShadowFactor, getShadowFactor, gs, "step = 0.005f");
   TwAddVarCB(bar, "Shadow polygon offset factor", TwType::TW_TYPE_FLOAT, setSMPOFactor, getSMPOFactor, gs, "step=0.01f");
   TwAddVarCB(bar, "Shadow polygon offset units", TwType::TW_TYPE_FLOAT, setSMPOUnits, getSMPOUnits, gs, "step=0.01f");
@@ -132,6 +133,14 @@ void AntWrapper::setGodRaySteps(const void * value, void * client_data)
 void AntWrapper::getGodRaySteps(void * value, void * client_data)
 {
   *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getGodRaySteps();
+}
+void AntWrapper::setGodRayFadeDist(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setGodRayFadeDist(*cast<float>(value));
+}
+void AntWrapper::getGodRayFadeDist(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::GraphicsSettings>(client_data)->getGodRayFadeDist();
 }
 void AntWrapper::setMaxShadowCastDistance(const void * value, void * client_data)
 {

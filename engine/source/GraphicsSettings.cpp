@@ -1,7 +1,7 @@
 #include <GraphicsSettings.h>
 #include <algorithm>
-#include <glm/glm.hpp>
 #include <iostream>
+#include <math/FlyMath.h>
 
 namespace fly
 {
@@ -386,7 +386,7 @@ namespace fly
   }
   void GraphicsSettings::setGodRayDecay(float decay)
   {
-    _godRayDecay = glm::clamp(decay, 0.f, 1.f);
+    _godRayDecay = clamp(decay, 0.f, 1.f);
     notifiyListeners([this](const std::shared_ptr<Listener>& l) {
       l->godRaysChanged(this);
     });
@@ -394,6 +394,14 @@ namespace fly
   float GraphicsSettings::getGodRayDecay() const
   {
     return _godRayDecay;
+  }
+  void GraphicsSettings::setGodRayFadeDist(float dist)
+  {
+    _godRayFadeDist = clamp(dist, 0.f, 1.f);
+  }
+  float GraphicsSettings::getGodRayFadeDist() const
+  {
+    return _godRayFadeDist;
   }
   void GraphicsSettings::setExposureEnabled(bool exposure)
   {

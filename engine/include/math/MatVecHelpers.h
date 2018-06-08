@@ -45,6 +45,11 @@ namespace fly
   {
     return minimum(max_val, maximum(min_val, a));
   }
+  template<typename T>
+  static inline T clamp(T a, T min_val, T max_val)
+  {
+    return std::min(max_val, std::max(min_val, a));
+  }
 
   template<unsigned Dim, typename T>
   static inline T distance(const Vector<Dim, T>& a, const Vector<Dim, T>& b)

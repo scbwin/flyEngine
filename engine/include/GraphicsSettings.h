@@ -104,6 +104,8 @@ namespace fly
     float getGodRayScale() const;
     void setGodRayDecay(float decay);
     float getGodRayDecay() const;
+    void setGodRayFadeDist(float dist);
+    float getGodRayFadeDist() const;
   private:
     std::list<std::weak_ptr<Listener>> _listeners;
     bool _normalMapping = true;
@@ -145,6 +147,7 @@ namespace fly
     float _godRaySteps = 64.f;
     float _godRayScaleFactor = 0.5f;
     float _godRayDecay = 0.955f;
+    float _godRayFadeDist = 0.1f;
 
     void notifiyNormalMappingChanged();
     void notifyShadowsChanged();

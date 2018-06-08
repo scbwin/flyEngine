@@ -316,22 +316,27 @@ namespace fly
           _api.separableBlur(*_lightingBuffer, _dofBuffer, _renderTargets);
           _api.setViewport(_viewPortSize);
         }
+        Vec3f god_ray_intensity(0.f);
         if (_gs->getGodRays()) {
           auto light_pos_world = _gsp._camPosworld + *_gsp._lightDirWorld * -_pp._far;
           auto light_pos_h = _vpScene * Vec4f(light_pos_world, 1.f);
           auto light_pos_ndc = light_pos_h.xy() / light_pos_h[3];
-          auto light_pos_uv = light_pos_ndc * 0.5f + 0.5f;
-          _api.setViewport(_viewPortSize * _gs->getGodRayScale());
-          _renderTargets.clear();
-          _renderTargets.push_back(_godRayBuffer.get());
-          _api.setRendertargets(_renderTargets, nullptr);
-          _api.renderGodRays(*_depthBuffer, *_lightingBuffer, light_pos_uv);
-          _api.setViewport(_viewPortSize);
+          if (light_pos_ndc >= -1.f && light_pos_ndc <= 1.f) {
+            auto light_pos_uv = light_pos_ndc * 0.5f + 0.5f;
+            _api.setViewport(_viewPortSize * _gs->getGodRayScale());
+            _renderTargets.clear();
+            _renderTargets.push_back(_godRayBuffer.get());
+            _api.setRendertargets(_renderTargets, nullptr);
+            _api.renderGodRays(*_depthBuffer, *_lightingBuffer, light_pos_uv);
+            _api.setViewport(_viewPortSize);
+            float min_dist = std::min(light_pos_uv[0], std::min(light_pos_uv[1], std::min(1.f - light_pos_uv[0], 1.f - light_pos_uv[1])));
+            god_ray_intensity = *_gsp._lightIntensity * glm::smoothstep(0.f, _gs->getGodRayFadeDist(), min_dist);
+          }
         }
         if (_offScreenRendering) {
           _api.bindBackbuffer(_defaultRenderTarget);
-          if (_gs->getDepthOfField() && _gs->getGodRays()) {
-            _api.composite(*_lightingBuffer, _gsp, *_dofBuffer[0], *_depthBuffer, *_godRayBuffer);
+          if (_gs->getDepthOfField() && _gs->getGodRays() && god_ray_intensity > Vec3f(0.f)) {
+            _api.composite(*_lightingBuffer, _gsp, *_dofBuffer[0], *_depthBuffer, *_godRayBuffer, god_ray_intensity);
           }
           else {
             _gs->getDepthOfField() ? _api.composite(*_lightingBuffer, _gsp, *_dofBuffer[0], *_depthBuffer) : _api.composite(*_lightingBuffer, _gsp);

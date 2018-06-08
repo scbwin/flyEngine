@@ -52,6 +52,8 @@ private:
   static void getGodRayDecay(void* value, void* client_data);
   static void setGodRaySteps(const void* value, void* client_data);
   static void getGodRaySteps(void* value, void* client_data);
+  static void setGodRayFadeDist(const void* value, void* client_data);
+  static void getGodRayFadeDist(void* value, void* client_data);
   static void setMaxShadowCastDistance(const void* value, void* client_data);
   static void getMaxShadowCastDistance(void* value, void* client_data);
   static void setNormalMapping(const void* value, void* client_data);

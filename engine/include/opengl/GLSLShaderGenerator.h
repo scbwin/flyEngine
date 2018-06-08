@@ -58,6 +58,7 @@ namespace fly
     static inline constexpr const char* lightDirWorld() { return "ld_w"; };
     static inline constexpr const char* cameraPositionWorld() { return "cp_ws"; };
     static inline constexpr const char* lightIntensity() { return "I_in"; };
+    static constexpr const char* godRayIntensity = "gi";
     static inline constexpr const char* worldToLightMatrices() { return "wtl"; };
     static inline constexpr const char* frustumSplits() { return "fs"; };
     static inline constexpr const char* numfrustumSplits() { return "nfs"; };

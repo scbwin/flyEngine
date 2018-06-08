@@ -294,7 +294,8 @@ namespace fly
     activateTexture(depth_buffer, GLSLShaderGenerator::depthSampler(), miscTexUnit3());
     GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
   }
-  void OpenGLAPI::composite(const RTT & lighting_buffer, const GlobalShaderParams & params, const RTT & dof_buffer, const Depthbuffer & depth_buffer, const RTT & god_ray_buffer)
+  void OpenGLAPI::composite(const RTT & lighting_buffer, const GlobalShaderParams & params, const RTT & dof_buffer, 
+    const Depthbuffer & depth_buffer, const RTT & god_ray_buffer, const Vec3f& god_ray_intensity)
   {
     bindShader(&_compositeShader);
     auto p_inverse = inverse(params._projectionMatrix);
@@ -304,7 +305,7 @@ namespace fly
     activateTexture(dof_buffer, GLSLShaderGenerator::dofSampler(), miscTexUnit2());
     activateTexture(depth_buffer, GLSLShaderGenerator::depthSampler(), miscTexUnit3());
     activateTexture(god_ray_buffer, GLSLShaderGenerator::godRaySampler(), miscTexUnit4());
-    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::lightIntensity()), *params._lightIntensity);
+    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::godRayIntensity), god_ray_intensity);
     GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
   }
   void OpenGLAPI::endFrame() const

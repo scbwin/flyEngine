@@ -204,7 +204,7 @@ namespace fly
     void renderGodRays(const Depthbuffer& depth_buffer, const RTT& lighting_buffer, const Vec2f& light_pos_uv);
     void composite(const RTT& lighting_buffer, const GlobalShaderParams& params);
     void composite(const RTT& lighting_buffer, const GlobalShaderParams& params, const RTT& dof_buffer, const Depthbuffer& depth_buffer);
-    void composite(const RTT& lighting_buffer, const GlobalShaderParams& params, const RTT& dof_buffer, const Depthbuffer& depth_buffer, const RTT& god_ray_buffer);
+    void composite(const RTT& lighting_buffer, const GlobalShaderParams& params, const RTT& dof_buffer, const Depthbuffer& depth_buffer, const RTT& god_ray_buffer, const Vec3f& god_ray_intensity);
     void endFrame() const;
     void setAnisotropy(unsigned anisotropy);
     void enablePolygonOffset(float factor, float units) const;

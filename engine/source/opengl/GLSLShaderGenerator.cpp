@@ -537,7 +537,7 @@ uniform sampler2D " + std::string(dofSampler()) + ";\n\
 uniform sampler2D " + std::string(godRaySampler()) + ";\n\
 uniform vec4 " + std::string(projectionMatrixInverseThirdRow()) + ";\n\
 uniform vec4 " + std::string(projectionMatrixInverseFourthRow()) + ";\n\
-uniform vec3 " + std::string(lightIntensity()) + ";\n\
+uniform vec3 " + godRayIntensity + ";\n\
 in vec2 uv;\n\
 void main()\n\
 {\n\
@@ -554,7 +554,7 @@ void main()\n\
   }\n";
     }
     if (gs.getGodRays()) {
-      shader_src += "  fragmentColor += texture(" + std::string(godRaySampler()) + ", uv).rgb * " + std::string(lightIntensity()) + ";\n";
+      shader_src += "  fragmentColor += texture(" + std::string(godRaySampler()) + ", uv).rgb * " + godRayIntensity + ";\n";
     }
     if (gs.exposureEnabled()) {
       shader_src += "  fragmentColor *= " + std::to_string(gs.getExposure()) + ";\n";
