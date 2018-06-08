@@ -537,7 +537,7 @@ void GLWidget::initGame()
 #endif
   std::uniform_real_distribution<float> dist(0.f, 3.f);
   auto material = std::make_shared<fly::Material>(*sphere_lods[0]->getMaterial());
-  material->setTexturePath(fly::Material::KEY_NORMAL, "assets/ground_normals.png");
+  material->setTexturePath(fly::Material::TextureKey::NORMAL, "assets/ground_normals.png");
   material->setSpecularExponent(128.f);
   std::vector<fly::Vec4f> diffuse_colors(512);
   for (unsigned i = 0; i < diffuse_colors.size(); i++) {
