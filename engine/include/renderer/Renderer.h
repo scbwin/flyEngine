@@ -339,6 +339,7 @@ namespace fly
             _api.composite(*_lightingBuffer, _gsp, *_dofBuffer[0], *_depthBuffer, *_godRayBuffer, god_ray_intensity);
           }
           else {
+            // TODO: switch to composite shader without god rays
             _gs->getDepthOfField() ? _api.composite(*_lightingBuffer, _gsp, *_dofBuffer[0], *_depthBuffer) : _api.composite(*_lightingBuffer, _gsp);
           }
         }
