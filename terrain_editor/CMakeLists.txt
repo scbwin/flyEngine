@@ -18,11 +18,13 @@ set(SOURCE_FILES
 find_package(Qt5Widgets)
 find_package(Qt5OpenGL)
 find_package(flyEngine REQUIRED)
+set (ANT_DIR "" CACHE PATH "")
+set (ANT_LIB "" CACHE FILEPATH "")
 
 include_directories(source/ ${OpenCV_DIRS} ${FLY_DIRS} ${ANT_DIR})
 add_executable(terrain_editor ${HEADER_FILES} ${SOURCE_FILES} )
 
-target_link_libraries(terrain_editor Qt5::Widgets Qt5::OpenGL ${FLY_LIBS})
+target_link_libraries(terrain_editor Qt5::Widgets Qt5::OpenGL ${FLY_LIBS} ${ANT_LIB})
 
 if (WIN32)
 set_target_properties(terrain_editor PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "@CMAKE_CURRENT_LIST_DIR@/..")

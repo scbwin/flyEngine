@@ -15,6 +15,6 @@ int main(int argc, char* argv[])
   QApplication app(argc, argv);
   GLWidget gl_widget;
   gl_widget.resize(1024, 768);
-  gl_widget.show();
+  gl_widget.showFullScreen();
   return app.exec();
 }
