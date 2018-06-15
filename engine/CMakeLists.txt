@@ -21,7 +21,7 @@ set (HEADER_FILES
 	${IDIR}/opengl/GLSLShaderGenerator.h ${IDIR}/SoftwareCache.h ${IDIR}/opengl/GLSampler.h ${IDIR}/WindParams.h ${IDIR}/WindParamsLocal.h
     ${IDIR}/opengl/GLMaterialSetup.h ${IDIR}/opengl/GLShaderSetup.h ${IDIR}/opengl/GLShaderProgram.h ${IDIR}/opengl/GLShaderSource.h ${IDIR}/StackPOD.h
 	${IDIR}/Flags.h ${IDIR}/MaterialDesc.h ${IDIR}/renderer/MeshRenderables.h ${IDIR}/ShaderDesc.h ${IDIR}/CamSpeedSystem.h
-	${IDIR}/GlobalShaderParams.h ${IDIR}/ZNearMapping.h ${IDIR}/Sphere.h ${IDIR}/KdTree.h
+	${IDIR}/GlobalShaderParams.h ${IDIR}/ZNearMapping.h ${IDIR}/Sphere.h ${IDIR}/KdTree.h ${IDIR}/Cube.h
 )
 
 if(${BUILD_PHYSICS})
@@ -40,7 +40,7 @@ set (SOURCE_FILES
 	${SDIR}/opengl/GLVertexArray.cpp ${SDIR}/opengl/GLBuffer.cpp ${SDIR}/CameraController.cpp ${SDIR}/PhysicsCameraController.cpp ${SDIR}/opengl/GLFramebuffer.cpp
 	${SDIR}/opengl/GLSLShaderGenerator.cpp ${SDIR}/opengl/GLSampler.cpp ${SDIR}/GraphicsSettings.cpp
 	${SDIR}/opengl/GLMaterialSetup.cpp ${SDIR}/opengl/GLShaderSetup.cpp ${SDIR}/opengl/GLShaderProgram.cpp ${SDIR}/opengl/GLShaderSource.cpp
-	${SDIR}/Sphere.cpp
+	${SDIR}/Sphere.cpp ${SDIR}/Cube.cpp
 )
 
 if(${BUILD_PHYSICS})

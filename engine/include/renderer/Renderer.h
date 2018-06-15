@@ -202,149 +202,148 @@ namespace fly
       _stats = {};
       Timing timing_total;
 #endif
-      if (_camera && _directionalLight) {
-        _api.beginFrame();
-        _gsp._camPosworld = _camera->getPosition();
-        _gsp._viewMatrix = _camera->updateViewMatrix();
-        if (_debugCamera) {
-          _debugCamera->updateViewMatrix();
-        }
-        _gsp._viewMatrixInverse = _camera->getViewMatrixInverse();
-        _vpScene = _gsp._projectionMatrix * _gsp._viewMatrix;
-        _api.setDepthTestEnabled<true>();
-        _api.setFaceCullingEnabled<true>();
-        _api.setCullMode<API::CullMode::BACK>();
-        _api.setDepthFunc<API::DepthFunc::LEQUAL>();
-        _api.setDepthWriteEnabled<true>();
-        _gsp._lightDirWorld = &_directionalLight->getDirection();
-        _gsp._lightIntensity = &_directionalLight->getIntensity();
-        _gsp._time = _gameTimer->getTimeSeconds();
-        _gsp._exposure = _gs->getExposure();
-        _gsp._gamma = _gs->getGamma();
-        _meshGeometryStorage.bind();
-        std::future<void> async;
-        if (_gs->getMultithreadedCulling() && _shadowMapping) {
-          async = std::async(std::launch::async, [this]() {
-#if RENDERER_STATS
-            Timing timing;
-#endif
-            cullMeshes(_debugCamera ? _gsp._projectionMatrix *
-              _debugCamera->getViewMatrix() : _vpScene, _debugCamera ? *_debugCamera : *_camera, _visibleMeshesAsync);
-#if RENDERER_STATS
-            _stats._cullingMicroSeconds = timing.duration<std::chrono::microseconds>();
-#endif
-          });
-        }
-        if (_shadowMapping) {
-          renderShadowMap();
-        }
-        if (_gs->getMultithreadedCulling() && _shadowMapping) {
-#if RENDERER_STATS
-          Timing timing;
-#endif
-          async.get();
-#if RENDERER_STATS
-          _stats._rendererIdleTimeMicroSeconds = timing.duration<std::chrono::microseconds>();
-#endif
-        }
-        else {
+      assert(_camera && _directionalLight);
+      _api.beginFrame();
+      _gsp._camPosworld = _camera->getPosition();
+      _gsp._viewMatrix = _camera->updateViewMatrix();
+      if (_debugCamera) {
+        _debugCamera->updateViewMatrix();
+      }
+      _gsp._viewMatrixInverse = _camera->getViewMatrixInverse();
+      _vpScene = _gsp._projectionMatrix * _gsp._viewMatrix;
+      _api.setDepthTestEnabled<true>();
+      _api.setFaceCullingEnabled<true>();
+      _api.setCullMode<API::CullMode::BACK>();
+      _api.setDepthFunc<API::DepthFunc::LEQUAL>();
+      _api.setDepthWriteEnabled<true>();
+      _gsp._lightDirWorld = &_directionalLight->getDirection();
+      _gsp._lightIntensity = &_directionalLight->getIntensity();
+      _gsp._time = _gameTimer->getTimeSeconds();
+      _gsp._exposure = _gs->getExposure();
+      _gsp._gamma = _gs->getGamma();
+      _meshGeometryStorage.bind();
+      std::future<void> async;
+      if (_gs->getMultithreadedCulling() && _shadowMapping) {
+        async = std::async(std::launch::async, [this]() {
 #if RENDERER_STATS
           Timing timing;
 #endif
           cullMeshes(_debugCamera ? _gsp._projectionMatrix *
-            _debugCamera->updateViewMatrix() : _vpScene, _debugCamera ? *_debugCamera : *_camera, _visibleMeshes);
+            _debugCamera->getViewMatrix() : _vpScene, _debugCamera ? *_debugCamera : *_camera, _visibleMeshesAsync);
 #if RENDERER_STATS
           _stats._cullingMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
+        });
+      }
+      if (_shadowMapping) {
+        renderShadowMap();
+      }
+      if (_gs->getMultithreadedCulling() && _shadowMapping) {
+#if RENDERER_STATS
+        Timing timing;
+#endif
+        async.get();
+#if RENDERER_STATS
+        _stats._rendererIdleTimeMicroSeconds = timing.duration<std::chrono::microseconds>();
+#endif
+      }
+      else {
+#if RENDERER_STATS
+        Timing timing;
+#endif
+        cullMeshes(_debugCamera ? _gsp._projectionMatrix *
+          _debugCamera->updateViewMatrix() : _vpScene, _debugCamera ? *_debugCamera : *_camera, _visibleMeshes);
+#if RENDERER_STATS
+        _stats._cullingMicroSeconds = timing.duration<std::chrono::microseconds>();
+#endif
+      }
+      _api.setViewport(_viewPortSize);
+      _gsp._VP = &_vpScene;
+      if (_gs->depthPrepassEnabled()) {
+        _renderTargets.clear();
+        _api.setRendertargets(_renderTargets, _depthBuffer.get());
+        _api.clearRendertarget(false, true, false);
+        groupMeshes<true>((_gs->getMultithreadedCulling() && _shadowMapping) ? _visibleMeshesAsync : _visibleMeshes);
+        renderMeshes<true>();
+        _api.setDepthWriteEnabled<false>();
+        _api.setDepthFunc<API::DepthFunc::EQUAL>();
+      }
+      if (_offScreenRendering) {
+        _renderTargets.clear();
+        _renderTargets.push_back(_lightingBuffer.get());
+        if (_gs->getScreenSpaceReflections()) {
+          _renderTargets.push_back(_viewSpaceNormals.get());
         }
+        _api.setRendertargets(_renderTargets, _depthBuffer.get());
+      }
+      else {
+        _api.bindBackbuffer(_defaultRenderTarget);
+      }
+      _api.clearRendertarget(_skydomeRenderable == nullptr, !_gs->depthPrepassEnabled(), false);
+      if (_shadowMap) {
+        _api.bindShadowmap(*_shadowMap);
+      }
+
+      renderScene((_gs->getMultithreadedCulling() && _shadowMapping) ? _visibleMeshesAsync : _visibleMeshes);
+      if (_skydomeRenderable) {
+        _api.setCullMode<API::CullMode::FRONT>();
+        Mat4f view_matrix_sky_dome = _gsp._viewMatrix;
+        view_matrix_sky_dome[3] = Vec4f(Vec3f(0.f), 1.f);
+        auto skydome_vp = _gsp._projectionMatrix * view_matrix_sky_dome;
+        _api.renderSkydome(skydome_vp, _skydomeRenderable->getMeshData());
+        _api.setCullMode<API::CullMode::BACK>();
+      }
+      if (_gs->getDebugBVH()) {
+        renderBVHNodes(*_camera, _debugCamera ? *_debugCamera : *_camera);
+      }
+      if (_gs->getDebugObjectBVs()) {
+        renderObjectBVs();
+      }
+      if (_offScreenRendering || _debugCamera) {
+        _api.setDepthTestEnabled<false>();
+      }
+      if (_debugCamera) {
+        _api.renderDebugFrustum(_gsp._projectionMatrix * _debugCamera->updateViewMatrix(_debugCamera->getPosition(), _debugCamera->getEulerAngles()), *_gsp._VP);
+      }
+      if (_gs->getScreenSpaceReflections()) {
+        _renderTargets.clear();
+        _renderTargets.push_back(_lightingBuffer.get());
+        _api.setRendertargets(_renderTargets, nullptr);
+        _api.ssr(*_lightingBuffer, *_viewSpaceNormals, *_depthBuffer, _gsp._projectionMatrix, Vec4f(_gs->getSSRBlendWeight()), *_lightingBufferCopy);
+      }
+      if (_gs->getDepthOfField()) {
+        _api.setViewport(_viewPortSize * _gs->getDepthOfFieldScaleFactor());
+        _api.separableBlur(*_lightingBuffer, _dofBuffer, _renderTargets);
         _api.setViewport(_viewPortSize);
-        _gsp._VP = &_vpScene;
-        if (_gs->depthPrepassEnabled()) {
+      }
+      Vec3f god_ray_intensity(0.f);
+      if (_gs->getGodRays()) {
+        auto light_pos_world = _gsp._camPosworld + *_gsp._lightDirWorld * -_pp._far;
+        auto light_pos_h = _vpScene * Vec4f(light_pos_world, 1.f);
+        auto light_pos_ndc = light_pos_h.xy() / light_pos_h[3];
+        if (light_pos_ndc >= -1.f && light_pos_ndc <= 1.f) {
+          auto light_pos_uv = light_pos_ndc * 0.5f + 0.5f;
+          _api.setViewport(_viewPortSize * _gs->getGodRayScale());
           _renderTargets.clear();
-          _api.setRendertargets(_renderTargets, _depthBuffer.get());
-          _api.clearRendertarget(false, true, false);
-          groupMeshes<true>((_gs->getMultithreadedCulling() && _shadowMapping) ? _visibleMeshesAsync : _visibleMeshes);
-          renderMeshes<true>();
-          _api.setDepthWriteEnabled<false>();
-          _api.setDepthFunc<API::DepthFunc::EQUAL>();
+          _renderTargets.push_back(_godRayBuffer.get());
+          _api.setRendertargets(_renderTargets, nullptr);
+          _api.renderGodRays(*_depthBuffer, *_lightingBuffer, light_pos_uv);
+          _api.setViewport(_viewPortSize);
+          float min_dist = std::min(light_pos_uv[0], std::min(light_pos_uv[1], std::min(1.f - light_pos_uv[0], 1.f - light_pos_uv[1])));
+          god_ray_intensity = *_gsp._lightIntensity * glm::smoothstep(0.f, _gs->getGodRayFadeDist(), min_dist);
         }
-        if (_offScreenRendering) {
-          _renderTargets.clear();
-          _renderTargets.push_back(_lightingBuffer.get());
-          if (_gs->getScreenSpaceReflections()) {
-            _renderTargets.push_back(_viewSpaceNormals.get());
-          }
-          _api.setRendertargets(_renderTargets, _depthBuffer.get());
+      }
+      if (_offScreenRendering) {
+        _api.bindBackbuffer(_defaultRenderTarget);
+        if (_gs->getDepthOfField() && _gs->getGodRays() && god_ray_intensity > Vec3f(0.f)) {
+          _api.composite(*_lightingBuffer, _gsp, *_dofBuffer[0], *_depthBuffer, *_godRayBuffer, god_ray_intensity);
         }
         else {
-          _api.bindBackbuffer(_defaultRenderTarget);
+          // TODO: switch to composite shader without god rays
+          _gs->getDepthOfField() ? _api.composite(*_lightingBuffer, _gsp, *_dofBuffer[0], *_depthBuffer) : _api.composite(*_lightingBuffer, _gsp);
         }
-        _api.clearRendertarget(_skydomeRenderable == nullptr, !_gs->depthPrepassEnabled(), false);
-        if (_shadowMap) {
-          _api.bindShadowmap(*_shadowMap);
-        }
-
-        renderScene((_gs->getMultithreadedCulling() && _shadowMapping) ? _visibleMeshesAsync : _visibleMeshes);
-        if (_skydomeRenderable) {
-          _api.setCullMode<API::CullMode::FRONT>();
-          Mat4f view_matrix_sky_dome = _gsp._viewMatrix;
-          view_matrix_sky_dome[3] = Vec4f(Vec3f(0.f), 1.f);
-          auto skydome_vp = _gsp._projectionMatrix * view_matrix_sky_dome;
-          _api.renderSkydome(skydome_vp, _skydomeRenderable->getMeshData());
-          _api.setCullMode<API::CullMode::BACK>();
-        }
-        if (_gs->getDebugBVH()) {
-          renderBVHNodes(*_camera, _debugCamera ? *_debugCamera : *_camera);
-        }
-        if (_gs->getDebugObjectBVs()) {
-          renderObjectBVs();
-        }
-        if (_offScreenRendering || _debugCamera) {
-          _api.setDepthTestEnabled<false>();
-        }
-        if (_debugCamera) {
-          _api.renderDebugFrustum(_gsp._projectionMatrix * _debugCamera->updateViewMatrix(_debugCamera->getPosition(), _debugCamera->getEulerAngles()), *_gsp._VP);
-        }
-        if (_gs->getScreenSpaceReflections()) {
-          _renderTargets.clear();
-          _renderTargets.push_back(_lightingBuffer.get());
-          _api.setRendertargets(_renderTargets, nullptr);
-          _api.ssr(*_lightingBuffer, *_viewSpaceNormals, *_depthBuffer, _gsp._projectionMatrix, Vec4f(_gs->getSSRBlendWeight()), *_lightingBufferCopy);
-        }
-        if (_gs->getDepthOfField()) {
-          _api.setViewport(_viewPortSize * _gs->getDepthOfFieldScaleFactor());
-          _api.separableBlur(*_lightingBuffer, _dofBuffer, _renderTargets);
-          _api.setViewport(_viewPortSize);
-        }
-        Vec3f god_ray_intensity(0.f);
-        if (_gs->getGodRays()) {
-          auto light_pos_world = _gsp._camPosworld + *_gsp._lightDirWorld * -_pp._far;
-          auto light_pos_h = _vpScene * Vec4f(light_pos_world, 1.f);
-          auto light_pos_ndc = light_pos_h.xy() / light_pos_h[3];
-          if (light_pos_ndc >= -1.f && light_pos_ndc <= 1.f) {
-            auto light_pos_uv = light_pos_ndc * 0.5f + 0.5f;
-            _api.setViewport(_viewPortSize * _gs->getGodRayScale());
-            _renderTargets.clear();
-            _renderTargets.push_back(_godRayBuffer.get());
-            _api.setRendertargets(_renderTargets, nullptr);
-            _api.renderGodRays(*_depthBuffer, *_lightingBuffer, light_pos_uv);
-            _api.setViewport(_viewPortSize);
-            float min_dist = std::min(light_pos_uv[0], std::min(light_pos_uv[1], std::min(1.f - light_pos_uv[0], 1.f - light_pos_uv[1])));
-            god_ray_intensity = *_gsp._lightIntensity * glm::smoothstep(0.f, _gs->getGodRayFadeDist(), min_dist);
-          }
-        }
-        if (_offScreenRendering) {
-          _api.bindBackbuffer(_defaultRenderTarget);
-          if (_gs->getDepthOfField() && _gs->getGodRays() && god_ray_intensity > Vec3f(0.f)) {
-            _api.composite(*_lightingBuffer, _gsp, *_dofBuffer[0], *_depthBuffer, *_godRayBuffer, god_ray_intensity);
-          }
-          else {
-            // TODO: switch to composite shader without god rays
-            _gs->getDepthOfField() ? _api.composite(*_lightingBuffer, _gsp, *_dofBuffer[0], *_depthBuffer) : _api.composite(*_lightingBuffer, _gsp);
-          }
-        }
-        _api.endFrame();
       }
+      _api.endFrame();
       _stats._rendererTotalCPUMicroSeconds = timing_total.duration<std::chrono::microseconds>();
     }
     void onResize(const Vec2u& window_size)

@@ -96,7 +96,7 @@ void GLWidget::initializeGL()
 
   _skydomeShader = std::make_unique<fly::GLShaderProgram>();
   _skydomeShader->add(fly::GLShaderSource("assets/opengl/vs_skybox.glsl", GL_VERTEX_SHADER));
-  _skydomeShader->add(fly::GLShaderSource("assets/opengl/fs_skydome_new.glsl", GL_FRAGMENT_SHADER));
+  _skydomeShader->add(fly::GLShaderSource("assets/opengl/fs_skydome_proc.glsl", GL_FRAGMENT_SHADER));
   _skydomeShader->link();
 
   _skydomeVao = std::make_unique<fly::GLVertexArray>();
