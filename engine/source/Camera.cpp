@@ -88,36 +88,6 @@ namespace fly
   {
     return _frustumPlanes;
   }
-  IntersectionResult Camera::frustumIntersectsBoundingVolume(const AABB & aabb) const
-  {
-    bool intersecting = false;
-    auto h = (aabb.getMax() - aabb.getMin()) * 0.5f;
-    Vec4f center(aabb.center(), 1.f);
-    for (const auto& p : _frustumPlanes) {
-      auto result = planeIntersectsAABB(p, h, center);
-      if (result == IntersectionResult::OUTSIDE) {
-        return IntersectionResult::OUTSIDE;
-      }
-      else if (result == IntersectionResult::INTERSECTING) {
-        intersecting = true;
-      }
-    }
-    return intersecting ? IntersectionResult::INTERSECTING : IntersectionResult::INSIDE;
-  }
-  IntersectionResult Camera::frustumIntersectsBoundingVolume(const Sphere & sphere) const
-  {
-    bool intersecting = false;
-    for (const auto& p : _frustumPlanes) {
-      auto result = planeIntersectsSphere(p, sphere);
-      if (result == IntersectionResult::OUTSIDE) {
-        return IntersectionResult::OUTSIDE;
-      }
-      else if (result == IntersectionResult::INTERSECTING) {
-        intersecting = true;
-      }
-    }
-    return intersecting ? IntersectionResult::INTERSECTING : IntersectionResult::INSIDE;
-  }
   float Camera::getDetailCullingThreshold() const
   {
     return _detailCullingThreshold;
@@ -126,21 +96,8 @@ namespace fly
   {
     _detailCullingThreshold = std::max(0.f, threshold);
   }
-  IntersectionResult Camera::planeIntersectsSphere(const Vec4f & plane, const Sphere & sphere)
+  Camera::CullingParams Camera::getCullingParams() const
   {
-    float dist = dot(Vec4f(sphere.center(), 1.f), plane);
-    if (dist > sphere.radius()) {
-      return IntersectionResult::OUTSIDE;
-    }
-    return dist < -sphere.radius() ? IntersectionResult::INSIDE : IntersectionResult::INTERSECTING;
-  }
-  IntersectionResult Camera::planeIntersectsAABB(const Vec4f & plane, const Vec3f& aabb_half_diagonal, const Vec4f& aabb_center)
-  {
-    auto e = dot(aabb_half_diagonal, abs(plane.xyz()));
-    auto s = dot(aabb_center, plane);
-    if (s - e > 0.f) {
-      return IntersectionResult::OUTSIDE;
-    }
-    return s + e < 0.f ? IntersectionResult::INSIDE : IntersectionResult::INTERSECTING;
+    return { _pos, _detailCullingThreshold, _frustumPlanes };
   }
 }

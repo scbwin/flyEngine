@@ -6,6 +6,7 @@
 #include <AABB.h>
 #include <Camera.h>
 #include <StackPOD.h>
+#include <IntersectionTests.h>
 
 namespace fly
 {
@@ -26,9 +27,9 @@ namespace fly
       bool _isLeaf = false;
       BV _bv;
       float _largestBVSize = 0.f;
-      inline bool isLargeEnough(const Camera& camera) const
+      inline bool isLargeEnough(const Camera::CullingParams& cp) const
       {
-        return _bv.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestBVSize);
+        return _bv.isLargeEnough(cp._camPos, cp._thresh, _largestBVSize);
       }
     public:
       inline const BV& getBV() const
@@ -93,85 +94,85 @@ namespace fly
           _right._child->print(level + 1);
         }
       }
-      void cullAllNodes(const Camera& camera, StackPOD<Node*>& nodes)
+      void cullAllNodes(const Camera::CullingParams& cp, StackPOD<Node*>& nodes)
       {
-        if (isLargeEnough(camera)) {
+        if (isLargeEnough(cp)) {
           nodes.push_back_secure(this);
           if (!_isLeaf) {
-            _left._child->cullAllNodes(camera, nodes);
+            _left._child->cullAllNodes(cp, nodes);
             if (_right._child) {
-              _right._child->cullAllNodes(camera, nodes);
+              _right._child->cullAllNodes(cp, nodes);
             }
           }
         }
       }
-      void cullVisibleNodes(const Camera& camera, StackPOD<Node*>& nodes)
+      void cullVisibleNodes(const Camera::CullingParams& cp, StackPOD<Node*>& nodes)
       {
-        if (isLargeEnough(camera)) {
-          auto result = camera.frustumIntersectsBoundingVolume(_bv);
+        if (isLargeEnough(cp)) {
+          auto result = IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes);
           if (result == IntersectionResult::INSIDE) {
             nodes.push_back_secure(this);
             if (!_isLeaf) {
-              _left._child->cullAllNodes(camera, nodes);
+              _left._child->cullAllNodes(cp, nodes);
               if (_right._child) {
-                _right._child->cullAllNodes(camera, nodes);
+                _right._child->cullAllNodes(cp, nodes);
               }
             }
           }
           else if (result == IntersectionResult::INTERSECTING) {
             nodes.push_back_secure(this);
             if (!_isLeaf) {
-              _left._child->cullVisibleNodes(camera, nodes);
+              _left._child->cullVisibleNodes(cp, nodes);
               if (_right._child) {
-                _right._child->cullVisibleNodes(camera, nodes);
+                _right._child->cullVisibleNodes(cp, nodes);
               }
             }
           }
         }
       }
-      void cullAllObjects(const Camera& camera, StackPOD<T*>& all_objects) const
+      void cullAllObjects(const Camera::CullingParams& cp, StackPOD<T*>& all_objects) const
       {
-        if (isLargeEnough(camera)) {
-          cullAllObjects2(camera, all_objects);
+        if (isLargeEnough(cp)) {
+          cullAllObjects2(cp, all_objects);
         }
       }
-      inline void cullAllObjects2(const Camera& camera, StackPOD<T*>& all_objects) const
+      inline void cullAllObjects2(const Camera::CullingParams& cp, StackPOD<T*>& all_objects) const
       {
         if (_isLeaf) {
-          if (_left._object->cull(camera)) {
+          if (_left._object->cull(cp)) {
             all_objects.push_back(_left._object);
           }
-          if (_right._object && _right._object->cull(camera)) {
+          if (_right._object && _right._object->cull(cp)) {
             all_objects.push_back(_right._object);
           }
         }
         else {
-          _left._child->cullAllObjects(camera, all_objects);
+          _left._child->cullAllObjects(cp, all_objects);
           if (_right._child) {
-            _right._child->cullAllObjects(camera, all_objects);
+            _right._child->cullAllObjects(cp, all_objects);
           }
         }
       }
-      void cullVisibleObjects(const Camera& camera, StackPOD<T*>& visible_objects) const
+      void cullVisibleObjects(const Camera::CullingParams& cp, StackPOD<T*>& visible_objects) const
       {
-        if (isLargeEnough(camera)) {
-          auto result = camera.frustumIntersectsBoundingVolume(_bv);
+        if (isLargeEnough(cp)) {
+          auto result = IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes);
           if (result == IntersectionResult::INSIDE) {
-            cullAllObjects2(camera, visible_objects);
+            cullAllObjects2(cp, visible_objects);
           }
           else if (result == IntersectionResult::INTERSECTING) {
             if (_isLeaf) {
-              if (_left._object->cullAndIntersect(camera)) {
+              if (_left._object->cullAndIntersect(cp)) {
                 visible_objects.push_back(_left._object);
               }
-              if (_right._object && _right._object->cullAndIntersect(camera)) {
+              if (_right._object && _right._object->cullAndIntersect(cp)) {
                 visible_objects.push_back(_right._object);
               }
             }
             else {
-              _left._child->cullVisibleObjects(camera, visible_objects);
+              _left._child->cullVisibleObjects(cp, visible_objects);
               if (_right._child) {
-                _right._child->cullVisibleObjects(camera, visible_objects);
+                _right._child->cullVisibleObjects(cp, visible_objects);
               }
             }
           }
@@ -234,11 +235,11 @@ namespace fly
     }
     void cullVisibleNodes(const Camera& camera, StackPOD<Node*>& nodes)
     {
-      _root.cullVisibleNodes(camera, nodes);
+      _root.cullVisibleNodes(camera.getCullingParams(), nodes);
     }
     void cullVisibleObjects(const Camera& camera, StackPOD<T*>& visible_objects) const
     {
-      _root.cullVisibleObjects(camera, visible_objects);
+      _root.cullVisibleObjects(camera.getCullingParams(), visible_objects);
     }
   private:
     Node _root;

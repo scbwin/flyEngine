@@ -10,6 +10,7 @@
 #include <WindParamsLocal.h>
 #include <Transform.h>
 #include <Sphere.h>
+#include <IntersectionTests.h>
 
 namespace fly
 {
@@ -28,17 +29,17 @@ namespace fly
     virtual void renderDepth(API const & api) = 0;
     virtual void render(API const & api) = 0;
     inline const BV& getBV() const { return _bv; }
-    virtual bool isLargeEnough(const Camera& camera) const
+    virtual bool isLargeEnough(const Camera::CullingParams& cp) const
     {
-      return _bv.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold());
+      return _bv.isLargeEnough(cp._camPos, cp._thresh);
     }
-    virtual bool cull(const Camera& c) // Fine-grained distance culling, called if the object is fully visible from the camera's point of view.
+    virtual bool cull(const Camera::CullingParams& cp) // Fine-grained distance culling, called if the object is fully visible from the camera's point of view.
     {
-      return isLargeEnough(c);
+      return isLargeEnough(cp);
     }
-    virtual bool cullAndIntersect(const Camera& c) // Fine-grained culling, only called if the bounding box of the node the object is in intersects the view frustum.
+    virtual bool cullAndIntersect(const Camera::CullingParams& cp) // Fine-grained culling, only called if the bounding box of the node the object is in intersects the view frustum.
     {
-      return cull(c) && c.frustumIntersectsBoundingVolume(_bv) != IntersectionResult::OUTSIDE;
+      return cull(cp) && IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes) != IntersectionResult::OUTSIDE;
     }
     virtual float getLargestObjectBVSize() const
     {
@@ -201,22 +202,22 @@ namespace fly
     {
       return _largestBVSize;
     }
-    virtual bool cull(const Camera& camera) override
+    virtual bool cull(const Camera::CullingParams& cp) override
     {
-      if (isLargeEnough(camera)) {
+      if (isLargeEnough(cp)) {
         _api.cullInstances(_aabbBuffer, _numInstances, _visibleInstances, _indirectBuffer,
-          _indirectInfo, _lodMultiplier, camera.getDetailCullingThreshold());
+          _indirectInfo, _lodMultiplier, cp._thresh);
         return true;
       }
       return false;
     }
-    virtual bool cullAndIntersect(const Camera& camera) override
+    virtual bool cullAndIntersect(const Camera::CullingParams& cp) override
     {
-      return camera.frustumIntersectsBoundingVolume(_bv) != IntersectionResult::OUTSIDE && cull(camera);
+      return IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes) != IntersectionResult::OUTSIDE && cull(cp);
     }
-    virtual bool isLargeEnough(const Camera& camera) const
+    virtual bool isLargeEnough(const Camera::CullingParams& cp) const
     {
-      return _bv.isLargeEnough(camera.getPosition(), camera.getDetailCullingThreshold(), _largestBVSize);
+      return _bv.isLargeEnough(cp._camPos, cp._thresh, _largestBVSize);
     }
     virtual unsigned numTriangles() const override
     {
