@@ -56,15 +56,15 @@ namespace fly
     const RendererStats& getStats() const { return _stats; }
 #endif
     Renderer(GraphicsSettings * gs) : _api(Vec4f(0.149f, 0.509f, 0.929f, 1.f)), _gs(gs),
-      _matDescCache(SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API, BV>>, const std::shared_ptr<Material>&, const GraphicsSettings&>(
+      _matDescCache(SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&>(
         [this, gs](const std::shared_ptr<Material>& material, const GraphicsSettings&  settings) {
-      auto desc = std::make_shared<MaterialDesc<API, BV>>(material, _api, settings, _textureCache, _shaderDescCache, _shaderCache);
+      auto desc = std::make_shared<MaterialDesc<API>>(material, _api, settings, _textureCache, _shaderDescCache, _shaderCache);
       gs->addListener(desc);
       return desc;
     })),
-      _shaderDescCache(SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API, BV>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&>(
+      _shaderDescCache(SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&>(
         [this](const std::shared_ptr<typename API::Shader>& shader, unsigned flags, API& api) {
-      return std::make_shared<ShaderDesc<API, BV>>(shader, flags, api);
+      return std::make_shared<ShaderDesc<API>>(shader, flags, api);
     })),
       _textureCache(SoftwareCache<std::string, std::shared_ptr<typename API::Texture>, const std::string&>([this](const std::string& path) {
       return _api.createTexture(path);
@@ -370,7 +370,7 @@ namespace fly
     {
       return _sceneBounds;
     }
-    const std::shared_ptr<MaterialDesc<API, BV>> & createMaterialDesc(const std::shared_ptr<Material>& material)
+    const std::shared_ptr<MaterialDesc<API>> & createMaterialDesc(const std::shared_ptr<Material>& material)
     {
       return _matDescCache.getOrCreate(material, material, *_gs);
     }
@@ -441,11 +441,12 @@ namespace fly
     std::shared_ptr<SkydomeRenderable<API, BV>> _skydomeRenderable;
     StackPOD<IMeshRenderable<API, BV>*> _visibleMeshes;
     StackPOD<IMeshRenderable<API, BV>*> _visibleMeshesAsync;
-    StackPOD<ShaderDesc<API, BV>*> _displayList;
+    //StackPOD<ShaderDesc<API, BV>*> _displayList;
+    std::map<ShaderDesc<API>*, std::map<MaterialDesc<API>*, StackPOD<IMeshRenderable<API, BV>*>>> _displayList;
     BV _sceneBounds;
     std::unique_ptr<BVH> _bvhStatic;
-    SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API, BV>>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
-    SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API, BV>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&> _shaderDescCache;
+    SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
+    SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&> _shaderDescCache;
     SoftwareCache<std::string, std::shared_ptr<typename API::Shader>, typename API::ShaderSource&, typename API::ShaderSource&, typename API::ShaderSource&> _shaderCache;
     SoftwareCache<std::string, std::shared_ptr<typename API::Texture>, const std::string&> _textureCache;
     void renderBVHNodes(Camera render_cam, Camera cull_cam)
@@ -557,14 +558,7 @@ namespace fly
     inline void groupMeshes(const StackPOD<IMeshRenderable<API, BV>*>& visible_meshes)
     {
       for (const auto& m : visible_meshes) {
-        const auto& material_desc = m->getMaterialDesc();
-        const auto& shader_desc = depth ? m->getShaderDescDepth()->get() : m->getShaderDesc()->get();
-        shader_desc->addMaterial(material_desc);
-        material_desc->addMeshRenderable(m);
-        if (!shader_desc->isUsed()) {
-          _displayList.push_back_secure(shader_desc);
-          shader_desc->setIsUsed(true);
-        }
+        _displayList[depth ? m->getShaderDescDepth()->get() : m->getShaderDesc()->get()][m->getMaterialDesc()].push_back_secure(m);
       }
     }
     struct MeshRenderStats
@@ -577,20 +571,17 @@ namespace fly
     {
       MeshRenderStats stats = {};
       for (const auto& shader : _displayList) {
-        shader->setup(_gsp);
-        for (const auto& material : shader->getMaterials()) {
-          material->setup<depth>();
-          for (const auto& mr : material->getMeshRenderables()) {
+        shader.first->setup(_gsp);
+        for (const auto& material : shader.second) {
+          material.first->setup<depth>();
+          for (const auto& mr : material.second) {
             depth ? mr->renderDepth(_api) : mr->render(_api);
 #if RENDERER_STATS
             stats._renderedTriangles += mr->numTriangles();
             stats._renderedMeshes += mr->numMeshes();
 #endif
           }
-          material->clearMeshRenderables();
         }
-        shader->clearMaterials();
-        shader->setIsUsed(false);
       }
       _displayList.clear();
       return stats;

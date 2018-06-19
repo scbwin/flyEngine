@@ -8,7 +8,7 @@
 
 namespace fly
 {
-  template<typename API, typename BV>
+  template<typename API>
   class MaterialDesc;
   
   struct GlobalShaderParams;
@@ -16,7 +16,7 @@ namespace fly
   /**
   * Class that wraps a single shader program and sets up the necessary uniform data once the shader is bound. 
   */
-  template<typename API, typename BV>
+  template<typename API>
   class ShaderDesc
   {
   public:
@@ -56,34 +56,10 @@ namespace fly
         f(params, _shader.get());
       }
     }
-    inline void addMaterial(MaterialDesc<API, BV>* material)
-    {
-      if (_materials.find(material) == _materials.end()) {
-        _materials.push_back_secure(material);
-      }
-    }
-    inline void clearMaterials()
-    {
-      _materials.clear();
-    }
-    inline const StackPOD<MaterialDesc<API, BV>*>& getMaterials() const
-    {
-      return _materials;
-    }
-    inline bool isUsed() const
-    {
-      return _isUsed;
-    }
-    inline void setIsUsed(bool is_used)
-    {
-      _isUsed = is_used;
-    }
   private:
     std::shared_ptr<typename API::Shader> _shader;
     StackPOD<void(*)(const GlobalShaderParams&, typename API::Shader const *)> _setupFuncs;
     API & _api;
-    StackPOD<MaterialDesc<API, BV>*> _materials;
-    bool _isUsed = false;
   };
 }
 

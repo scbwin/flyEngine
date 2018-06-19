@@ -24,6 +24,7 @@
 #include <opengl/GLBuffer.h>
 #include <cstdint>
 #include <opengl/GLShaderInterface.h>
+#include <opengl/GLMaterialSetup.h>
 
 namespace fly
 {
@@ -36,8 +37,6 @@ namespace fly
   class GLSampler;
   struct WindParamsLocal;
   class GraphicsSettings;
-  template<typename API, typename BV>
-  class ShaderDesc;
 
   class OpenGLAPI
   {
@@ -111,8 +110,7 @@ namespace fly
     using Shader = GLShaderProgram;
     using RendertargetStack = StackPOD<RTT const *>;
     using ShaderGenerator = GLSLShaderGenerator;
-    template<typename API, typename BV>
-    using MaterialSetup = GLMaterialSetup<OpenGLAPI, BV>;
+    using MaterialSetup = GLMaterialSetup;
     using ShaderSetup = GLShaderSetup;
     using ShaderSource = GLShaderSource;
     using StorageBuffer = GLBuffer;
@@ -257,7 +255,7 @@ namespace fly
     Shader _debugFrustumShader;
     Shader _godRayShader;
     unsigned _anisotropy = 1u;
-    inline void activateTexture(const Texture& texture, const char* key, GLint tex_unit)
+    inline void activateTexture(const Texture& texture, const char* key, GLint tex_unit) const
     {
       GL_CHECK(glActiveTexture(GL_TEXTURE0 + tex_unit));
       texture.bind();

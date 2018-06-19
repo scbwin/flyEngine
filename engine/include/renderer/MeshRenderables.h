@@ -22,9 +22,9 @@ namespace fly
   public:
     virtual ~IMeshRenderable() = default;
     IMeshRenderable() = default;
-    inline std::shared_ptr<ShaderDesc<API, BV>> const * getShaderDesc() { return _shaderDesc; }
-    inline std::shared_ptr<ShaderDesc<API, BV>> const * getShaderDescDepth() { return _shaderDescDepth; }
-    inline MaterialDesc<API, BV> * getMaterialDesc() { return _materialDesc; }
+    inline std::shared_ptr<ShaderDesc<API>> const * getShaderDesc() { return _shaderDesc; }
+    inline std::shared_ptr<ShaderDesc<API>> const * getShaderDescDepth() { return _shaderDescDepth; }
+    inline MaterialDesc<API> * getMaterialDesc() { return _materialDesc; }
     virtual void renderDepth(API const & api) = 0;
     virtual void render(API const & api) = 0;
     inline const BV& getBV() const { return _bv; }
@@ -50,9 +50,9 @@ namespace fly
     }
     virtual unsigned numTriangles() const = 0;
   protected:
-    MaterialDesc<API, BV> * _materialDesc;
-    std::shared_ptr<ShaderDesc<API, BV>> const * _shaderDesc;
-    std::shared_ptr<ShaderDesc<API, BV>> const * _shaderDescDepth;
+    MaterialDesc<API> * _materialDesc;
+    std::shared_ptr<ShaderDesc<API>> const * _shaderDesc;
+    std::shared_ptr<ShaderDesc<API>> const * _shaderDescDepth;
     BV _bv;
     void createBV(const Mesh& mesh, const Transform& transform, Sphere& result)
     {
