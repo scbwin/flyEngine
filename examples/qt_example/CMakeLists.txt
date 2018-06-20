@@ -6,6 +6,8 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # Instruct CMake to run moc automatically when needed.
 set(CMAKE_AUTOMOC ON)
 
+set(FAST_FLOAT true CACHE BOOL "")
+
 set(HEADER_FILES
 	include/GLWidget.h
 	include/AntWrapper.h
@@ -22,6 +24,10 @@ find_package(Qt5OpenGL)
 find_package(flyEngine REQUIRED)
 set (ANT_DIR "" CACHE PATH "")
 set (ANT_LIB "" CACHE FILEPATH "")
+
+if (${FAST_FLOAT})
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fp:fast")
+endif()
 
 include_directories(include/ ${OpenCV_DIRS} ${FLY_DIRS} ${ANT_DIR})
 add_executable(qt_example ${HEADER_FILES} ${SOURCE_FILES} )

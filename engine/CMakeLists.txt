@@ -4,9 +4,10 @@ project (flyEngine)
 set (IDIR include)
 set (SDIR source)
 
-set(BUILD_DX11 "" CACHE BOOL "")
-set(BUILD_PHYSICS "" CACHE BOOL "")
-set(INCLUDE_OPENCV "" CACHE BOOL "")
+set(BUILD_DX11 false CACHE BOOL "")
+set(BUILD_PHYSICS false CACHE BOOL "")
+set(INCLUDE_OPENCV false CACHE BOOL "")
+set(FAST_FLOAT true CACHE BOOL "")
 
 set (HEADER_FILES
 	${IDIR}/AABB.h ${IDIR}/Animation.h ${IDIR}/AnimationSystem.h ${IDIR}/AssimpImporter.h ${IDIR}/Billboard.h ${IDIR}/Camera.h ${IDIR}/Engine.h ${IDIR}/FixedTimestepSystem.h
@@ -111,6 +112,11 @@ add_definitions(-DINCLUDE_OPENCV)
 endif()
 
 include_directories(${INCLUDE_DIRS} )
+
+if (${FAST_FLOAT})
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fp:fast")
+endif()
+
 add_library(flyEngine STATIC ${HEADER_FILES} ${SOURCE_FILES})
 
 target_link_libraries(flyEngine ${LIBRARIES})
