@@ -14,7 +14,7 @@
 
 namespace fly
 {
-  template<typename API, typename BV = AABB>
+  template<typename API, typename BV>
   class Renderer;
 
   template<typename API, typename BV>
@@ -29,17 +29,13 @@ namespace fly
     virtual void renderDepth(API const & api) = 0;
     virtual void render(API const & api) = 0;
     inline const BV& getBV() const { return _bv; }
-    virtual bool isLargeEnough(const Camera::CullingParams& cp) const
+    virtual bool cull(const Camera::CullingParams& cp) // Fine-grained distance culling, called if the object is fully visible from the camera's point of view.
     {
       return _bv.isLargeEnough(cp._camPos, cp._thresh);
     }
-    virtual bool cull(const Camera::CullingParams& cp) // Fine-grained distance culling, called if the object is fully visible from the camera's point of view.
-    {
-      return isLargeEnough(cp);
-    }
     virtual bool cullAndIntersect(const Camera::CullingParams& cp) // Fine-grained culling, only called if the bounding box of the node the object is in intersects the view frustum.
     {
-      return cull(cp) && IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes) != IntersectionResult::OUTSIDE;
+      return _bv.isLargeEnough(cp._camPos, cp._thresh) && IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes) != IntersectionResult::OUTSIDE;
     }
     virtual float getLargestObjectBVSize() const
     {
@@ -204,7 +200,7 @@ namespace fly
     }
     virtual bool cull(const Camera::CullingParams& cp) override
     {
-      if (isLargeEnough(cp)) {
+      if (_bv.isLargeEnough(cp._camPos, cp._thresh, _largestBVSize)) {
         _api.cullInstances(_aabbBuffer, _numInstances, _visibleInstances, _indirectBuffer,
           _indirectInfo, _lodMultiplier, cp._thresh);
         return true;
@@ -215,13 +211,9 @@ namespace fly
     {
       return IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes) != IntersectionResult::OUTSIDE && cull(cp);
     }
-    virtual bool isLargeEnough(const Camera::CullingParams& cp) const
-    {
-      return _bv.isLargeEnough(cp._camPos, cp._thresh, _largestBVSize);
-    }
     virtual unsigned numTriangles() const override
     {
-      // TODO calculate correct triangle count here
+      // TODO calculate correct triangle count, without stalling the pipeline
       return 0;
     }
     virtual unsigned numMeshes() const

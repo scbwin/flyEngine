@@ -139,10 +139,8 @@ namespace fly
       inline void cullAllObjects2(const Camera::CullingParams& cp, StackPOD<T*>& all_objects) const
       {
         if (_isLeaf) {
-          if (_left._object->cull(cp)) {
-            all_objects.push_back(_left._object);
-          }
-          if (_right._object && _right._object->cull(cp)) {
+          all_objects.push_back(_left._object);
+          if (_right._object) {
             all_objects.push_back(_right._object);
           }
         }
@@ -153,26 +151,24 @@ namespace fly
           }
         }
       }
-      void cullVisibleObjects(const Camera::CullingParams& cp, StackPOD<T*>& visible_objects) const
+      void cullVisibleObjects(const Camera::CullingParams& cp, StackPOD<T*>& fully_visible_objects, StackPOD<T*>& intersected_objects) const
       {
         if (isLargeEnough(cp)) {
           auto result = IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes);
           if (result == IntersectionResult::INSIDE) {
-            cullAllObjects2(cp, visible_objects);
+            cullAllObjects2(cp, fully_visible_objects);
           }
           else if (result == IntersectionResult::INTERSECTING) {
             if (_isLeaf) {
-              if (_left._object->cullAndIntersect(cp)) {
-                visible_objects.push_back(_left._object);
-              }
-              if (_right._object && _right._object->cullAndIntersect(cp)) {
-                visible_objects.push_back(_right._object);
+              intersected_objects.push_back(_left._object);
+              if (_right._object) {
+                intersected_objects.push_back(_right._object);
               }
             }
             else {
-              _left._child->cullVisibleObjects(cp, visible_objects);
+              _left._child->cullVisibleObjects(cp, fully_visible_objects, intersected_objects);
               if (_right._child) {
-                _right._child->cullVisibleObjects(cp, visible_objects);
+                _right._child->cullVisibleObjects(cp, fully_visible_objects, intersected_objects);
               }
             }
           }
@@ -233,13 +229,13 @@ namespace fly
     {
       _root.print(0);
     }
-    void cullVisibleNodes(const Camera& camera, StackPOD<Node*>& nodes)
+    void cullVisibleNodes(const Camera::CullingParams& cp, StackPOD<Node*>& nodes)
     {
-      _root.cullVisibleNodes(camera.getCullingParams(), nodes);
+      _root.cullVisibleNodes(cp, nodes);
     }
-    void cullVisibleObjects(const Camera& camera, StackPOD<T*>& visible_objects) const
+    void cullVisibleObjects(const Camera::CullingParams& cp, StackPOD<T*>& fully_visible_objects, StackPOD<T*>& intersected_objects) const
     {
-      _root.cullVisibleObjects(camera.getCullingParams(), visible_objects);
+      _root.cullVisibleObjects(cp, fully_visible_objects, intersected_objects);
     }
   private:
     Node _root;

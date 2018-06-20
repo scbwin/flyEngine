@@ -229,7 +229,7 @@ namespace fly
           Timing timing;
 #endif
           cullMeshes(_debugCamera ? _gsp._projectionMatrix *
-            _debugCamera->getViewMatrix() : _vpScene, _debugCamera ? *_debugCamera : *_camera, _visibleMeshesAsync);
+            _debugCamera->getViewMatrix() : _vpScene, _debugCamera ? *_debugCamera : *_camera, _fullyVisibleMeshesAsync, _intersectedMeshesAsync, _visibleMeshesAsync);
 #if RENDERER_STATS
           _stats._cullingMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
@@ -252,7 +252,7 @@ namespace fly
         Timing timing;
 #endif
         cullMeshes(_debugCamera ? _gsp._projectionMatrix *
-          _debugCamera->updateViewMatrix() : _vpScene, _debugCamera ? *_debugCamera : *_camera, _visibleMeshes);
+          _debugCamera->updateViewMatrix() : _vpScene, _debugCamera ? *_debugCamera : *_camera, _fullyVisibleMeshes, _intersectedMeshes, _visibleMeshes);
 #if RENDERER_STATS
         _stats._cullingMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
@@ -283,7 +283,6 @@ namespace fly
       if (_shadowMap) {
         _api.bindShadowmap(*_shadowMap);
       }
-
       renderScene((_gs->getMultithreadedCulling() && _shadowMapping) ? _visibleMeshesAsync : _visibleMeshes);
       if (_skydomeRenderable) {
         _api.setCullMode<API::CullMode::FRONT>();
@@ -390,6 +389,10 @@ namespace fly
     {
       _visibleMeshes.reserve(_staticMeshRenderables.size() + _staticInstancedMeshRenderables.size());
       _visibleMeshesAsync = _visibleMeshes;
+      _fullyVisibleMeshes = _visibleMeshes;
+      _fullyVisibleMeshesAsync = _visibleMeshes;
+      _intersectedMeshes = _visibleMeshes;
+      _intersectedMeshesAsync = _visibleMeshes;
       std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
       std::cout << "Static instanced mesh renderables: " << _staticInstancedMeshRenderables.size() << std::endl;
       if (_visibleMeshes.capacity() == 0) {
@@ -439,6 +442,10 @@ namespace fly
     std::vector<std::shared_ptr<StaticMeshRenderable<API, BV>>> _staticMeshRenderables;
     std::vector<std::shared_ptr<StaticInstancedMeshRenderable<API, BV>>> _staticInstancedMeshRenderables;
     std::shared_ptr<SkydomeRenderable<API, BV>> _skydomeRenderable;
+    StackPOD<IMeshRenderable<API, BV>*> _fullyVisibleMeshes;
+    StackPOD<IMeshRenderable<API, BV>*> _fullyVisibleMeshesAsync;
+    StackPOD<IMeshRenderable<API, BV>*> _intersectedMeshes;
+    StackPOD<IMeshRenderable<API, BV>*> _intersectedMeshesAsync;
     StackPOD<IMeshRenderable<API, BV>*> _visibleMeshes;
     StackPOD<IMeshRenderable<API, BV>*> _visibleMeshesAsync;
     //StackPOD<ShaderDesc<API, BV>*> _displayList;
@@ -453,7 +460,7 @@ namespace fly
     {
       cull_cam.extractFrustumPlanes(_gsp._projectionMatrix * cull_cam.getViewMatrix(), _api.getZNearMapping());
       StackPOD<typename BVH::Node*> visible_nodes;
-      _bvhStatic->cullVisibleNodes(cull_cam, visible_nodes);
+      _bvhStatic->cullVisibleNodes(cull_cam.getCullingParams(), visible_nodes);
       if (visible_nodes.size()) {
         _api.setDepthWriteEnabled<true>();
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
@@ -508,7 +515,7 @@ namespace fly
 #if RENDERER_STATS
         Timing timing;
 #endif
-        cullMeshes(_vpLightVolume[i], _debugCamera ? *_debugCamera : *_camera, _visibleMeshes);
+        cullMeshes(_vpLightVolume[i], _debugCamera ? *_debugCamera : *_camera, _fullyVisibleMeshes, _intersectedMeshes, _visibleMeshes);
 #if RENDERER_STATS
         _stats._cullingShadowMapMicroSeconds += timing.duration<std::chrono::microseconds>();
 #endif
@@ -542,14 +549,28 @@ namespace fly
       _shaderDescCache.clear();
       _api.createCompositeShader(*_gs);
     }
-    inline void cullMeshes(const Mat4f& view_projection_matrix, Camera camera, StackPOD<IMeshRenderable<API, BV>*>& visible_meshes)
+    inline void cullMeshes(const Mat4f& view_projection_matrix, Camera camera, 
+      StackPOD<IMeshRenderable<API, BV>*>& fully_visible_meshes, StackPOD<IMeshRenderable<API, BV>*>& intersected_meshes, StackPOD<IMeshRenderable<API, BV>*>& visible_meshes)
     {
       camera.extractFrustumPlanes(view_projection_matrix, _api.getZNearMapping());
+      fully_visible_meshes.clear();
+      intersected_meshes.clear();
       visible_meshes.clear();
+      auto cp = camera.getCullingParams();
+      _bvhStatic->cullVisibleObjects(cp, fully_visible_meshes, intersected_meshes);
       if (_staticInstancedMeshRenderables.size()) {
-        _api.prepareCulling(camera.getFrustumPlanes(), camera.getPosition());
+        _api.prepareCulling(cp._frustumPlanes, cp._camPos);
       }
-      _bvhStatic->cullVisibleObjects(camera, visible_meshes);
+      for (const auto& m : fully_visible_meshes) {
+        if (m->cull(cp)) {
+          visible_meshes.push_back(m);
+        }
+      }
+      for (const auto& m : intersected_meshes) {
+        if (m->cullAndIntersect(cp)) {
+          visible_meshes.push_back(m);
+        }
+      }
       if (_staticInstancedMeshRenderables.size()) {
         _api.endCulling();
       }

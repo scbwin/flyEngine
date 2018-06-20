@@ -30,7 +30,7 @@ namespace fly
       _camController->setDamping(_intersectedObjects.size() ? 0.7f : PhysicsCameraController::DEFAULT_DAMPING);
     }
   private:
-    std::unique_ptr<typename Renderer<API>::BVH> const & _bvhStatic;
+    std::unique_ptr<typename Renderer<API, BV>::BVH> const & _bvhStatic;
     StackPOD<IMeshRenderable<API, BV>*> _intersectedObjects;
     std::shared_ptr<PhysicsCameraController> const & _camController;
     float _range = 1.f;
