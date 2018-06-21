@@ -28,6 +28,7 @@ set (ANT_LIB "" CACHE FILEPATH "")
 if (${FAST_FLOAT})
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fp:fast")
 endif()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
 
 include_directories(include/ ${OpenCV_DIRS} ${FLY_DIRS} ${ANT_DIR})
 add_executable(qt_example ${HEADER_FILES} ${SOURCE_FILES} )

@@ -117,6 +117,8 @@ if (${FAST_FLOAT})
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fp:fast")
 endif()
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+
 add_library(flyEngine STATIC ${HEADER_FILES} ${SOURCE_FILES})
 
 target_link_libraries(flyEngine ${LIBRARIES})
