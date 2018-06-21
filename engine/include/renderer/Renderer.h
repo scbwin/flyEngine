@@ -283,7 +283,7 @@ namespace fly
       if (_shadowMap) {
         _api.bindShadowmap(*_shadowMap);
       }
-      renderScene((_gs->getMultithreadedCulling() && _shadowMapping) ? _visibleMeshesAsync : _visibleMeshes);
+      renderScene(_gs->getMultithreadedCulling() && _shadowMapping ? _visibleMeshesAsync : _visibleMeshes);
       if (_skydomeRenderable) {
         _api.setCullMode<API::CullMode::FRONT>();
         Mat4f view_matrix_sky_dome = _gsp._viewMatrix;
@@ -549,7 +549,11 @@ namespace fly
       _shaderDescCache.clear();
       _api.createCompositeShader(*_gs);
     }
-    inline void cullMeshes(const Mat4f& view_projection_matrix, Camera camera, 
+    inline unsigned elementsPerThread(unsigned num_elements, unsigned num_threads) const
+    {
+      return static_cast<unsigned>(std::ceil(static_cast<float>(num_elements) / static_cast<float>(num_threads)));
+    }
+    inline void cullMeshes(const Mat4f& view_projection_matrix, Camera camera,
       StackPOD<IMeshRenderable<API, BV>*>& fully_visible_meshes, StackPOD<IMeshRenderable<API, BV>*>& intersected_meshes, StackPOD<IMeshRenderable<API, BV>*>& visible_meshes)
     {
       camera.extractFrustumPlanes(view_projection_matrix, _api.getZNearMapping());
@@ -561,12 +565,40 @@ namespace fly
       if (_staticInstancedMeshRenderables.size()) {
         _api.prepareCulling(cp._frustumPlanes, cp._camPos);
       }
-      for (const auto& m : fully_visible_meshes) {
-        if (m->cull(cp)) {
-          visible_meshes.push_back(m);
+      auto num_threads = std::thread::hardware_concurrency();
+      unsigned num_meshes = static_cast<unsigned>(fully_visible_meshes.size());
+      auto elements_per_thread = elementsPerThread(num_meshes, num_threads);
+      if (_gs->getMultithreadedDetailCulling() && elements_per_thread >= 256) {
+        std::vector<std::future<StackPOD<IMeshRenderable<API, BV>*>>> futures;
+        futures.reserve(num_threads);
+        unsigned j = 0;
+        const auto& meshes_to_cull = fully_visible_meshes;
+        for (unsigned i = 0; i < num_threads; i++) {
+          unsigned max_index = std::min(j + elements_per_thread, num_meshes);
+          futures.push_back(std::async(std::launch::async, [j, max_index, cp, &meshes_to_cull]() {
+            StackPOD<IMeshRenderable<API, BV>*> meshes;
+            meshes.reserve(max_index - j);
+            for (unsigned i = j; i < max_index; i++) {
+              if (meshes_to_cull[i]->cull(cp)) {
+                meshes.push_back(meshes_to_cull[i]);
+              }
+            }
+            return meshes;
+          }));
+          j += elements_per_thread;
+        }
+        for (auto& f : futures) {
+          visible_meshes.append(f.get());
         }
       }
-      for (const auto& m : intersected_meshes) {
+      else {
+        for (const auto& m : fully_visible_meshes) {
+          if (m->cull(cp)) {
+            visible_meshes.push_back(m);
+          }
+        }
+      }
+      for (const auto& m : intersected_meshes) { // No need to multithread intersected meshes, because the amount is usually much smaller compared to fully visible meshes.
         if (m->cullAndIntersect(cp)) {
           visible_meshes.push_back(m);
         }

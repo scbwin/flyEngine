@@ -351,6 +351,14 @@ namespace fly
   {
     return _multithreadedCulling;
   }
+  void GraphicsSettings::setMultithreadedDetailCulling(bool enabled)
+  {
+    _multithreadedDetailCulling = enabled;
+  }
+  bool GraphicsSettings::getMultithreadedDetailCulling() const
+  {
+    return _multithreadedDetailCulling;
+  }
   void GraphicsSettings::setGodRays(bool enabled)
   {
     _godRays = enabled;

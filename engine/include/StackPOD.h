@@ -70,6 +70,15 @@ namespace fly
         std::free(_begin);
       }
     }
+    inline void append(const StackPOD& other)
+    {
+      auto new_size = size() + other.size();
+      while (capacity() < new_size) {
+        allocate(capacity() * 2u);
+      }
+      std::memcpy(_end, other._begin, other.size() * sizeof(T));
+      _end += other.size();
+    }
     inline void reserve(size_t new_capacity)
     {
       if (new_capacity > _capacity) {

@@ -18,6 +18,7 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   _skydomeData._skydome = skydome;
 
   TwAddVarCB(bar, "Multithreaded culling", TwType::TW_TYPE_BOOLCPP, setMTCulling, getMTCulling, gs, nullptr);
+  TwAddVarCB(bar, "Multithreaded detail culling", TwType::TW_TYPE_BOOLCPP, setMTDetailCulling, getMTDetailCulling, gs, nullptr);
   TwAddVarCB(bar, "Shadows", TwType::TW_TYPE_BOOLCPP, setShadows, getShadows, gs, nullptr);
   TwAddVarCB(bar, "Shadows PCF", TwType::TW_TYPE_BOOLCPP, setPCF, getPCF, gs, nullptr);
   TwAddVarCB(bar, "Max shadow cast distance", TwType::TW_TYPE_FLOAT, setMaxShadowCastDistance, getMaxShadowCastDistance, dl, "step = 0.5f");
@@ -468,4 +469,13 @@ void AntWrapper::setMTCulling(const void * value, void * client_data)
 void AntWrapper::getMTCulling(void * value, void * client_data)
 {
   *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getMultithreadedCulling();
+}
+void AntWrapper::setMTDetailCulling(const void * value, void * client_data)
+{
+  cast<fly::GraphicsSettings>(client_data)->setMultithreadedDetailCulling(*cast<bool>(value));
+}
+
+void AntWrapper::getMTDetailCulling(void * value, void * client_data)
+{
+  *cast<bool>(value) = cast<fly::GraphicsSettings>(client_data)->getMultithreadedDetailCulling();
 }

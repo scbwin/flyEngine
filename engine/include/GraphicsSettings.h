@@ -96,6 +96,8 @@ namespace fly
     float getShadowPolygonOffsetUnits() const;
     void setMultithreadedCulling(bool enabled);
     bool getMultithreadedCulling() const;
+    void setMultithreadedDetailCulling(bool enabled);
+    bool getMultithreadedDetailCulling() const;
     void setGodRays(bool enabled);
     bool getGodRays() const;
     void setGodRaySteps(float steps);
@@ -143,6 +145,7 @@ namespace fly
     float _shadowPolygonOffsetFactor = 1.f;
     float _shadowPolygonOffsetUnits = 1.f;
     bool _multithreadedCulling = false;
+    bool _multithreadedDetailCulling = false;
     bool _godRays = true;
     float _godRaySteps = 64.f;
     float _godRayScaleFactor = 0.5f;

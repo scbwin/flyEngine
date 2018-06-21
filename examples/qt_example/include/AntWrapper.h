@@ -120,6 +120,8 @@ private:
   static void getSMPOUnits(void* value, void* client_data);
   static void setMTCulling(const void* value, void* client_data);
   static void getMTCulling(void* value, void* client_data);
+  static void setMTDetailCulling(const void* value, void* client_data);
+  static void getMTDetailCulling(void* value, void* client_data);
   template<typename T> static T* cast(void* data){return reinterpret_cast<T*>(data);}
   template<typename T> static const T* cast(const void* data) { return reinterpret_cast<const T*>(data); }
 };
