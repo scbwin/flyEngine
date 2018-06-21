@@ -453,15 +453,13 @@ in vec3 bitangent_local;\n";
   }\n";
     }
     shader_src += "  vec3 l = " + std::string((((flags & MR_HEIGHT_MAP) || (flags & MR_NORMAL_MAP)) ? "world_to_tangent *" : "")) + std::string(lightDirWorld()) + ";\n";
+    std::string normal_str = "normal_world";
     if (flags & MeshRenderFlag::MR_NORMAL_MAP) {
-      shader_src += "  vec3 normal_ts = normalize((texture(" + std::string(normalSampler()) + ", uv).xyz * 2.f - 1.f));\n\
-  float diffuse = clamp(dot(l, normal_ts), 0.f, 1.f);\n\
-  float specular = pow(clamp(dot(normalize(e + l), normal_ts), 0.f, 1.f), " + std::string(specularExponent()) + ");\n";
+      shader_src += "  vec3 normal_ts = normalize((texture(" + std::string(normalSampler()) + ", uv).xyz * 2.f - 1.f));\n";
+      normal_str = "normal_ts";
     }
-    else {
-      shader_src += "  float diffuse = clamp(dot(l, normal_world), 0.f, 1.f);\n\
-  float specular = pow(clamp(dot(normalize(e + l), normal_world), 0.f, 1.f), " + std::string(specularExponent()) + ");\n";
-    }
+    shader_src += "  float diffuse = max(dot(l, " + normal_str + "), 0.f);\n\
+  float specular = pow(max(dot(normalize(e + l), " + normal_str + "), 0.f), " + std::string(specularExponent()) + ");\n";
 
     if (flags & MeshRenderFlag::MR_DIFFUSE_MAP) {
       shader_src += "  vec3 albedo = texture(" + std::string(diffuseSampler()) + ", uv).rgb;\n";
