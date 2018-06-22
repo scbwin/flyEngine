@@ -354,7 +354,6 @@ namespace fly
     }
     inline void setDefaultRendertarget(unsigned rt) { _defaultRenderTarget = rt; }
     API* getApi() { return &_api; }
-    const BV& getBVStatic() const { return _bvStatic; }
     std::vector<std::shared_ptr<Material>> getAllMaterials() { return _api.getAllMaterials(); }
     const Mat4f& getViewProjectionMatrix() const
     {
@@ -409,6 +408,8 @@ namespace fly
       }
       _bvhStatic = std::make_unique<BVH>(renderables);
       std::cout << "BVH construction took " << timing.duration<std::chrono::milliseconds>() << " milliseconds." << std::endl;
+      std::cout << "BVH takes " << static_cast<float>(_bvhStatic->getSizeInBytes()) / 1024.f / 1024.f << " MB memory" << std::endl;
+      std::cout << "Scene bounds:" << _bvhStatic->getBV() << std::endl;
     }
   private:
     API _api;
@@ -418,7 +419,6 @@ namespace fly
     std::shared_ptr<Camera> _camera;
     std::shared_ptr<DirectionalLight> _directionalLight;
     std::shared_ptr<Camera> _debugCamera;
-    BV _bvStatic;
     GraphicsSettings * const _gs;
     std::unique_ptr<typename API::RTT> _lightingBuffer;
     std::unique_ptr<typename API::RTT> _lightingBufferCopy;

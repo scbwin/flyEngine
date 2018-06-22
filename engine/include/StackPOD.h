@@ -30,6 +30,7 @@ namespace fly
     {
       allocate(other._capacity);
       std::memcpy(_begin, other._begin, other.size() * sizeof(T));
+      _end = _begin + other.size();
     }
     StackPOD& operator=(const StackPOD& other)
     {
@@ -39,6 +40,7 @@ namespace fly
       _capacity = 0;
       allocate(other._capacity);
       std::memcpy(_begin, other._begin, other.size() * sizeof(T));
+      _end = _begin + other.size();
       return *this;
     }
     StackPOD(StackPOD&& other) :

@@ -211,6 +211,16 @@ namespace fly
           }
         }
       }
+      void getSizeInBytes(size_t& bytes) const
+      {
+        bytes += sizeof(*this);
+        if (!_isLeaf) {
+          _left._child->getSizeInBytes(bytes);
+          if (_right._child) {
+            _right._child->getSizeInBytes(bytes);
+          }
+        }
+      }
     };
     KdTree(std::vector<T*>& objects) :
       _root(objects, 0, static_cast<unsigned>(objects.size()), 0)
@@ -236,6 +246,16 @@ namespace fly
     void cullVisibleObjects(const Camera::CullingParams& cp, StackPOD<T*>& fully_visible_objects, StackPOD<T*>& intersected_objects) const
     {
       _root.cullVisibleObjects(cp, fully_visible_objects, intersected_objects);
+    }
+    size_t getSizeInBytes() const
+    {
+      size_t bytes = 0;
+      _root.getSizeInBytes(bytes);
+      return bytes;
+    }
+    const BV& getBV() const
+    {
+      return _root.getBV();
     }
   private:
     Node _root;
