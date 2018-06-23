@@ -22,7 +22,7 @@ set (HEADER_FILES
 	${IDIR}/opengl/GLSLShaderGenerator.h ${IDIR}/SoftwareCache.h ${IDIR}/opengl/GLSampler.h ${IDIR}/WindParams.h ${IDIR}/WindParamsLocal.h
     ${IDIR}/opengl/GLMaterialSetup.h ${IDIR}/opengl/GLShaderSetup.h ${IDIR}/opengl/GLShaderProgram.h ${IDIR}/opengl/GLShaderSource.h ${IDIR}/StackPOD.h
 	${IDIR}/Flags.h ${IDIR}/MaterialDesc.h ${IDIR}/renderer/MeshRenderables.h ${IDIR}/ShaderDesc.h ${IDIR}/CamSpeedSystem.h
-	${IDIR}/GlobalShaderParams.h ${IDIR}/ZNearMapping.h ${IDIR}/Sphere.h ${IDIR}/KdTree.h ${IDIR}/Cube.h ${IDIR}/IntersectionTests.h
+	${IDIR}/GlobalShaderParams.h ${IDIR}/ZNearMapping.h ${IDIR}/Sphere.h ${IDIR}/KdTree.h ${IDIR}/KdTreeOld.h ${IDIR}/Cube.h ${IDIR}/IntersectionTests.h
 )
 
 if(${BUILD_PHYSICS})

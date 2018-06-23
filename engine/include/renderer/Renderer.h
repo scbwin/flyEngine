@@ -359,7 +359,7 @@ namespace fly
     {
       return _vpScene;
     }
-    using BVH = KdTree<IMeshRenderable<API, BV>, BV>;
+    using BVH = KdTree<IMeshRenderable<API, BV>*, BV>;
     const std::unique_ptr<BVH>& getStaticBVH() const
     {
       return _bvhStatic;
