@@ -34,10 +34,7 @@ namespace fly
     }
     StackPOD& operator=(const StackPOD& other)
     {
-      if (_begin) {
-        std::free(_begin);
-      }
-      _capacity = 0;
+      deallocate();
       allocate(other._capacity);
       std::memcpy(_begin, other._begin, other.size() * sizeof(T));
       _end = _begin + other.size();
@@ -48,38 +45,33 @@ namespace fly
       _end(other._end),
       _capacity(other._capacity)
     {
-      other._begin = nullptr;
-      other._end = nullptr;
-      other._capacity = 0;
+      other.deallocate();
     }
     StackPOD& operator=(StackPOD&& other)
     {
-      if (_begin) {
-        std::free(_begin);
+      if (this != &other) {
+        deallocate();
+        _begin = other._begin;
+        _end = other._end;
+        _capacity = other._capacity;
+        other.deallocate();
       }
-      _begin = other._begin;
-      _end = other._end;
-      _capacity = other._capacity;
-
-      other._begin = nullptr;
-      other._end = nullptr;
-      other._capacity = 0;
       return *this;
     }
     ~StackPOD()
     {
-      if (_begin) {
-        std::free(_begin);
-      }
+      deallocate();
     }
     inline void append(const StackPOD& other)
     {
       auto new_size = size() + other.size();
-      while (capacity() < new_size) {
-        allocate(capacity() * 2u);
+      if (new_size + other.size()) {
+        while (_capacity < new_size) {
+          allocate(_capacity ? _capacity * 2u : 1u);
+        }
+        std::memcpy(_end, other._begin, other.size() * sizeof(T));
+        _end += other.size();
       }
-      std::memcpy(_end, other._begin, other.size() * sizeof(T));
-      _end += other.size();
     }
     inline void reserve(size_t new_capacity)
     {
@@ -161,6 +153,15 @@ namespace fly
       _begin = reinterpret_cast<T*>(std::realloc(_begin, new_capacity * sizeof(T)));
       _capacity = new_capacity;
       _end = _begin + size_old;
+    }
+    inline void deallocate()
+    {
+      if (_begin) {
+        std::free(_begin);
+      }
+      _capacity = 0;
+      _begin = nullptr;
+      _end = nullptr;
     }
   };
 }
