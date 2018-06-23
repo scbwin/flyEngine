@@ -6,6 +6,7 @@
 #include <vector>
 #include <StackPOD.h>
 #include <IntersectionTests.h>
+#include <CullResult.h>
 
 namespace fly
 {
@@ -32,16 +33,22 @@ namespace fly
       {
         return _bv;
       }
-      virtual void cullVisibleObjects(const Camera::CullingParams& cp, StackPOD<T>& fully_visible_objects, StackPOD<T>& intersected_objects) const = 0;
+      virtual void cullVisibleObjects(const Camera::CullingParams& cp, CullResult<T>& cull_result) const = 0;
       virtual void cullAllObjects(const Camera::CullingParams& cp, StackPOD<T>& objects) const = 0;
       virtual void getSizeInBytes(size_t& bytes) const = 0;
       virtual void intersectObjects(const BV& bv, StackPOD<T>& stack) const = 0;
+      virtual void cullVisibleNodes(const Camera::CullingParams& cp, StackPOD<Node const *>& nodes) const = 0;
+      virtual void cullAllNodes(const Camera::CullingParams& cp, StackPOD<Node const *>& nodes) const = 0;
     protected:
       BV _bv;
       float _largestBVSize = 0.f;
       inline bool isLargeEnough(const Camera::CullingParams& cp) const
       {
         return _bv.isLargeEnough(cp._camPos, cp._thresh, _largestBVSize);
+      }
+      inline IntersectionResult intersect(const Camera::CullingParams& cp) const
+      {
+        return IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes);
       }
     };
     class LeafNode : public Node
@@ -53,15 +60,15 @@ namespace fly
         _left = objects[begin];
         _right = end - begin > 1 ? objects[begin + 1] : nullptr;
       }
-      virtual void cullVisibleObjects(const Camera::CullingParams& cp, StackPOD<T>& fully_visible_objects, StackPOD<T>& intersected_objects) const override
+      virtual void cullVisibleObjects(const Camera::CullingParams& cp, CullResult<T>& cull_result) const override
       {
         if (isLargeEnough(cp)) {
-          auto result = IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes);
+          auto result = intersect(cp);
           if (result == IntersectionResult::INSIDE) {
-            add(fully_visible_objects);
+            add(cull_result._fullyVisibleObjects);
           }
           else if (result == IntersectionResult::INTERSECTING) {
-            add(intersected_objects);
+            add(cull_result._intersectedObjects);
           }
         }
       }
@@ -84,6 +91,18 @@ namespace fly
           if (_right && bv.intersects(_right->getBV())) {
             objects.push_back_secure(_right);
           }
+        }
+      }
+      virtual void cullVisibleNodes(const Camera::CullingParams& cp, StackPOD<Node const *>& nodes) const override
+      {
+        if (isLargeEnough(cp) && intersect(cp) != IntersectionResult::OUTSIDE) {
+          nodes.push_back_secure(this);
+        }
+      }
+      virtual void cullAllNodes(const Camera::CullingParams& cp, StackPOD<Node const *>& nodes) const override
+      {
+        if (isLargeEnough(cp)) {
+          nodes.push_back_secure(this);
         }
       }
     private:
@@ -112,17 +131,17 @@ namespace fly
         _right = createNode(num_objects_right, begin + num_objects_left, end, depth + 1, objects);
       }
       virtual ~InternalNode() = default;
-      virtual void cullVisibleObjects(const Camera::CullingParams& cp, StackPOD<T>& fully_visible_objects, StackPOD<T>& intersected_objects) const override
+      virtual void cullVisibleObjects(const Camera::CullingParams& cp, CullResult<T>& cull_result) const override
       {
         if (isLargeEnough(cp)) {
-          auto result = IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes);
+          auto result = intersect(cp);
           if (result == IntersectionResult::INSIDE) {
-            _left->cullAllObjects(cp, fully_visible_objects);
-            _right->cullAllObjects(cp, fully_visible_objects);
+            _left->cullAllObjects(cp, cull_result._fullyVisibleObjects);
+            _right->cullAllObjects(cp, cull_result._fullyVisibleObjects);
           }
           else if (result == IntersectionResult::INTERSECTING) {
-            _left->cullVisibleObjects(cp, fully_visible_objects, intersected_objects);
-            _right->cullVisibleObjects(cp, fully_visible_objects, intersected_objects);
+            _left->cullVisibleObjects(cp, cull_result);
+            _right->cullVisibleObjects(cp, cull_result);
           }
         }
       }
@@ -146,6 +165,31 @@ namespace fly
           _right->intersectObjects(bv, objects);
         }
       }
+      virtual void cullVisibleNodes(const Camera::CullingParams& cp, StackPOD<Node const *>& nodes) const override
+      {
+        if (isLargeEnough(cp)) {
+          auto result = intersect(cp);
+          if (result != IntersectionResult::OUTSIDE) {
+            nodes.push_back_secure(this);
+            if (result == IntersectionResult::INSIDE) {
+              _left->cullAllNodes(cp, nodes);
+              _right->cullAllNodes(cp, nodes);
+            }
+            else {
+              _left->cullVisibleNodes(cp, nodes);
+              _right->cullVisibleNodes(cp, nodes);
+            }
+          }
+        }
+      }
+      virtual void cullAllNodes(const Camera::CullingParams& cp, StackPOD<Node const *>& nodes) const override
+      {
+        if (isLargeEnough(cp)) {
+          nodes.push_back_secure(this);
+          _left->cullAllNodes(cp, nodes);
+          _right->cullAllNodes(cp, nodes);
+        }
+      }
     private:
       std::unique_ptr<Node> _left;
       std::unique_ptr<Node> _right;
@@ -154,24 +198,17 @@ namespace fly
       _root(createNode(static_cast<unsigned>(objects.size()), 0, static_cast<unsigned>(objects.size()), 0, objects))
     {
     }
-    static std::unique_ptr<Node> createNode(unsigned num_objects, unsigned begin, unsigned end, unsigned depth, std::vector<T>& objects)
+    void cullVisibleObjects(const Camera::CullingParams& cp, CullResult<T>& cull_result) const
     {
-      if (num_objects <= 2) {
-        return num_objects ? std::make_unique<LeafNode>(begin, end, depth, objects) : nullptr;
-      }
-      return std::make_unique<InternalNode>(begin, end, depth, objects);
-    }
-    void cullVisibleObjects(const Camera::CullingParams& cp, StackPOD<T>& fully_visible_objects, StackPOD<T>& intersected_objects) const
-    {
-      _root->cullVisibleObjects(cp, fully_visible_objects, intersected_objects);
+      _root->cullVisibleObjects(cp, cull_result);
     }
     void intersectObjects(const BV& bv, StackPOD<T>& intersected_objects) const
     {
        _root->intersectObjects(bv, intersected_objects);
     }
-    void cullVisibleNodes(const Camera::CullingParams& cp, StackPOD<Node*>& nodes)
+    void cullVisibleNodes(const Camera::CullingParams& cp, StackPOD<Node const *>& nodes)
     {
-
+      _root->cullVisibleNodes(cp, nodes);
     }
     size_t getSizeInBytes() const
     {
@@ -185,6 +222,13 @@ namespace fly
     }
   private:
     std::unique_ptr<Node> _root;
+    static std::unique_ptr<Node> createNode(unsigned num_objects, unsigned begin, unsigned end, unsigned depth, std::vector<T>& objects)
+    {
+      if (num_objects <= 2) {
+        return num_objects ? std::make_unique<LeafNode>(begin, end, depth, objects) : nullptr;
+      }
+      return std::make_unique<InternalNode>(begin, end, depth, objects);
+    }
   };
 }
 

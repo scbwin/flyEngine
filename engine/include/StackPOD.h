@@ -45,7 +45,9 @@ namespace fly
       _end(other._end),
       _capacity(other._capacity)
     {
-      other.deallocate();
+      other._begin = nullptr;
+      other._end = nullptr;
+      other._capacity = 0;
     }
     StackPOD& operator=(StackPOD&& other)
     {
@@ -54,7 +56,9 @@ namespace fly
         _begin = other._begin;
         _end = other._end;
         _capacity = other._capacity;
-        other.deallocate();
+        other._begin = nullptr;
+        other._end = nullptr;
+        other._capacity = 0;
       }
       return *this;
     }
@@ -65,13 +69,11 @@ namespace fly
     inline void append(const StackPOD& other)
     {
       auto new_size = size() + other.size();
-      if (new_size + other.size()) {
-        while (_capacity < new_size) {
-          allocate(_capacity ? _capacity * 2u : 1u);
-        }
-        std::memcpy(_end, other._begin, other.size() * sizeof(T));
-        _end += other.size();
+      while (_capacity < new_size) {
+        allocate(_capacity ? _capacity * 2u : 1u);
       }
+      std::memcpy(_end, other._begin, other.size() * sizeof(T));
+      _end += other.size();
     }
     inline void reserve(size_t new_capacity)
     {

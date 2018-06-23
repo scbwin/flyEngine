@@ -229,7 +229,7 @@ namespace fly
           Timing timing;
 #endif
           cullMeshes(_debugCamera ? _gsp._projectionMatrix *
-            _debugCamera->getViewMatrix() : _vpScene, _debugCamera ? *_debugCamera : *_camera, _fullyVisibleMeshesAsync, _intersectedMeshesAsync, _visibleMeshesAsync);
+            _debugCamera->getViewMatrix() : _vpScene, _debugCamera ? *_debugCamera : *_camera, _visibleMeshesAsync, _cullResultAsync);
 #if RENDERER_STATS
           _stats._cullingMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
@@ -252,7 +252,7 @@ namespace fly
         Timing timing;
 #endif
         cullMeshes(_debugCamera ? _gsp._projectionMatrix *
-          _debugCamera->updateViewMatrix() : _vpScene, _debugCamera ? *_debugCamera : *_camera, _fullyVisibleMeshes, _intersectedMeshes, _visibleMeshes);
+          _debugCamera->updateViewMatrix() : _vpScene, _debugCamera ? *_debugCamera : *_camera, _visibleMeshes, _cullResult);
 #if RENDERER_STATS
         _stats._cullingMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
@@ -388,10 +388,8 @@ namespace fly
     {
       _visibleMeshes.reserve(_staticMeshRenderables.size() + _staticInstancedMeshRenderables.size());
       _visibleMeshesAsync = _visibleMeshes;
-      _fullyVisibleMeshes = _visibleMeshes;
-      _fullyVisibleMeshesAsync = _visibleMeshes;
-      _intersectedMeshes = _visibleMeshes;
-      _intersectedMeshesAsync = _visibleMeshes;
+      _cullResult.reserve(_visibleMeshes.capacity());
+      _cullResultAsync.reserve(_visibleMeshes.capacity());
       std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
       std::cout << "Static instanced mesh renderables: " << _staticInstancedMeshRenderables.size() << std::endl;
       if (_visibleMeshes.capacity() == 0) {
@@ -442,13 +440,10 @@ namespace fly
     std::vector<std::shared_ptr<StaticMeshRenderable<API, BV>>> _staticMeshRenderables;
     std::vector<std::shared_ptr<StaticInstancedMeshRenderable<API, BV>>> _staticInstancedMeshRenderables;
     std::shared_ptr<SkydomeRenderable<API, BV>> _skydomeRenderable;
-    StackPOD<IMeshRenderable<API, BV>*> _fullyVisibleMeshes;
-    StackPOD<IMeshRenderable<API, BV>*> _fullyVisibleMeshesAsync;
-    StackPOD<IMeshRenderable<API, BV>*> _intersectedMeshes;
-    StackPOD<IMeshRenderable<API, BV>*> _intersectedMeshesAsync;
+    CullResult<IMeshRenderable<API, BV>*> _cullResult;
+    CullResult<IMeshRenderable<API, BV>*> _cullResultAsync;
     StackPOD<IMeshRenderable<API, BV>*> _visibleMeshes;
     StackPOD<IMeshRenderable<API, BV>*> _visibleMeshesAsync;
-    //StackPOD<ShaderDesc<API, BV>*> _displayList;
     std::map<ShaderDesc<API>*, std::map<MaterialDesc<API>*, StackPOD<IMeshRenderable<API, BV>*>>> _displayList;
     BV _sceneBounds;
     std::unique_ptr<BVH> _bvhStatic;
@@ -459,7 +454,7 @@ namespace fly
     void renderBVHNodes(Camera render_cam, Camera cull_cam)
     {
       cull_cam.extractFrustumPlanes(_gsp._projectionMatrix * cull_cam.getViewMatrix(), _api.getZNearMapping());
-      StackPOD<typename BVH::Node*> visible_nodes;
+      StackPOD<typename BVH::Node const *> visible_nodes;
       _bvhStatic->cullVisibleNodes(cull_cam.getCullingParams(), visible_nodes);
       if (visible_nodes.size()) {
         _api.setDepthWriteEnabled<true>();
@@ -515,7 +510,7 @@ namespace fly
 #if RENDERER_STATS
         Timing timing;
 #endif
-        cullMeshes(_vpLightVolume[i], _debugCamera ? *_debugCamera : *_camera, _fullyVisibleMeshes, _intersectedMeshes, _visibleMeshes);
+        cullMeshes(_vpLightVolume[i], _debugCamera ? *_debugCamera : *_camera, _visibleMeshes, _cullResult);
 #if RENDERER_STATS
         _stats._cullingShadowMapMicroSeconds += timing.duration<std::chrono::microseconds>();
 #endif
@@ -554,25 +549,24 @@ namespace fly
       return static_cast<unsigned>(std::ceil(static_cast<float>(num_elements) / static_cast<float>(num_threads)));
     }
     inline void cullMeshes(const Mat4f& view_projection_matrix, Camera camera,
-      StackPOD<IMeshRenderable<API, BV>*>& fully_visible_meshes, StackPOD<IMeshRenderable<API, BV>*>& intersected_meshes, StackPOD<IMeshRenderable<API, BV>*>& visible_meshes)
+      StackPOD<IMeshRenderable<API, BV>*>& visible_meshes, CullResult<IMeshRenderable<API, BV>*>& cull_result)
     {
       camera.extractFrustumPlanes(view_projection_matrix, _api.getZNearMapping());
-      fully_visible_meshes.clear();
-      intersected_meshes.clear();
       visible_meshes.clear();
+      cull_result.clear();
       auto cp = camera.getCullingParams();
-      _bvhStatic->cullVisibleObjects(cp, fully_visible_meshes, intersected_meshes);
+      _bvhStatic->cullVisibleObjects(cp, cull_result);
       if (_staticInstancedMeshRenderables.size()) {
         _api.prepareCulling(cp._frustumPlanes, cp._camPos);
       }
       auto num_threads = std::thread::hardware_concurrency();
-      unsigned num_meshes = static_cast<unsigned>(fully_visible_meshes.size());
+      unsigned num_meshes = static_cast<unsigned>(cull_result._fullyVisibleObjects.size());
       auto elements_per_thread = elementsPerThread(num_meshes, num_threads);
       if (_gs->getMultithreadedDetailCulling() && elements_per_thread >= 256) {
         std::vector<std::future<StackPOD<IMeshRenderable<API, BV>*>>> futures;
         futures.reserve(num_threads);
         unsigned j = 0;
-        const auto& meshes_to_cull = fully_visible_meshes;
+        const auto& meshes_to_cull = cull_result._fullyVisibleObjects;
         for (unsigned i = 0; i < num_threads; i++) {
           unsigned max_index = std::min(j + elements_per_thread, num_meshes);
           futures.push_back(std::async(std::launch::async, [j, max_index, cp, &meshes_to_cull]() {
@@ -592,13 +586,13 @@ namespace fly
         }
       }
       else {
-        for (const auto& m : fully_visible_meshes) {
+        for (const auto& m : cull_result._fullyVisibleObjects) {
           if (m->cull(cp)) {
             visible_meshes.push_back(m);
           }
         }
       }
-      for (const auto& m : intersected_meshes) { // No need to multithread intersected meshes, because the amount is usually much smaller compared to fully visible meshes.
+      for (const auto& m : cull_result._intersectedObjects) { // No need to multithread intersected meshes, because the amount is usually much smaller compared to fully visible meshes.
         if (m->cullAndIntersect(cp)) {
           visible_meshes.push_back(m);
         }
