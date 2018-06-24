@@ -37,6 +37,7 @@ namespace fly
   class Renderer : public System, public GraphicsSettings::Listener
   {
   public:
+    using MeshRenderable = IMeshRenderable<API, BV>;
 #if RENDERER_STATS
     struct RendererStats
     {
@@ -215,12 +216,12 @@ namespace fly
       Timing timing_total;
 #endif
       assert(_camera && _directionalLight);
+      _multiThreadedCulling = _gs->getMultithreadedCulling() && _shadowMapping;
+      _renderListScene = _multiThreadedCulling ? &_renderListAsync : &_renderList;
       _api.beginFrame();
       _gsp._camPosworld = _camera->getPosition();
       _gsp._viewMatrix = _camera->updateViewMatrix();
-      if (_debugCamera) {
-        _debugCamera->updateViewMatrix();
-      }
+      (*_cullCamera)->updateViewMatrix();
       _gsp._viewMatrixInverse = _camera->getViewMatrixInverse();
       _vpScene = _gsp._projectionMatrix * _gsp._viewMatrix;
       _api.setDepthTestEnabled<true>();
@@ -235,13 +236,13 @@ namespace fly
       _gsp._gamma = _gs->getGamma();
       _meshGeometryStorage.bind();
       std::future<void> async;
-      auto cull_vp = _debugCamera ? (_gsp._projectionMatrix * _debugCamera->getViewMatrix()) : _vpScene;
-      if (_gs->getMultithreadedCulling() && _shadowMapping) {
+      auto cull_vp = _gsp._projectionMatrix * (*_cullCamera)->getViewMatrix();
+      if (_multiThreadedCulling) {
         async = std::async(std::launch::async, [this, cull_vp]() {
 #if RENDERER_STATS
           Timing timing;
 #endif
-          cullMeshes(cull_vp, _debugCamera ? *_debugCamera : *_camera, _renderListAsync, _cullResultAsync);
+          cullMeshes(cull_vp, **_cullCamera, *_renderListScene, _cullResultAsync);
 #if RENDERER_STATS
           _stats._cullingMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
@@ -250,7 +251,7 @@ namespace fly
       if (_shadowMapping) {
         renderShadowMap();
       }
-      if (_gs->getMultithreadedCulling() && _shadowMapping) {
+      if (_multiThreadedCulling) {
 #if RENDERER_STATS
         Timing timing;
 #endif
@@ -258,14 +259,14 @@ namespace fly
 #if RENDERER_STATS
         _stats._rendererIdleTimeMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
-        cullGPU(_renderListAsync, _debugCamera ? *_debugCamera : *_camera, cull_vp);
+        cullGPU(*_renderListScene, **_cullCamera, cull_vp);
       }
       else {
 #if RENDERER_STATS
         Timing timing;
 #endif
-        cullMeshes(cull_vp, _debugCamera ? *_debugCamera : *_camera, _renderList, _cullResult);
-        cullGPU(_renderList, _debugCamera ? *_debugCamera : *_camera, cull_vp);
+        cullMeshes(cull_vp, **_cullCamera, *_renderListScene, _cullResult);
+        cullGPU(*_renderListScene, **_cullCamera, cull_vp);
 #if RENDERER_STATS
         _stats._cullingMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
@@ -276,7 +277,7 @@ namespace fly
         _renderTargets.clear();
         _api.setRendertargets(_renderTargets, _depthBuffer.get());
         _api.clearRendertarget(false, true, false);
-        groupMeshes<true>((_gs->getMultithreadedCulling() && _shadowMapping) ? _renderListAsync._visibleMeshes : _renderList._visibleMeshes);
+        groupMeshes<true>(_renderListScene->_visibleMeshes);
         renderMeshes<true>();
         _api.setDepthWriteEnabled<false>();
         _api.setDepthFunc<API::DepthFunc::EQUAL>();
@@ -296,7 +297,7 @@ namespace fly
       if (_shadowMap) {
         _api.bindShadowmap(*_shadowMap);
       }
-      renderScene(_gs->getMultithreadedCulling() && _shadowMapping ? _renderListAsync._visibleMeshes : _renderList._visibleMeshes);
+      renderScene();
       if (_skydomeRenderable) {
         _api.setCullMode<API::CullMode::FRONT>();
         Mat4f view_matrix_sky_dome = _gsp._viewMatrix;
@@ -306,7 +307,7 @@ namespace fly
         _api.setCullMode<API::CullMode::BACK>();
       }
       if (_gs->getDebugBVH()) {
-        renderBVHNodes(*_camera, _debugCamera ? *_debugCamera : *_camera);
+        renderBVHNodes(*_camera, **_cullCamera);
       }
       if (_gs->getDebugObjectBVs()) {
         renderObjectBVs();
@@ -315,7 +316,7 @@ namespace fly
         _api.setDepthTestEnabled<false>();
       }
       if (_debugCamera) {
-        _api.renderDebugFrustum(_gsp._projectionMatrix * _debugCamera->updateViewMatrix(_debugCamera->getPosition(), _debugCamera->getEulerAngles()), *_gsp._VP);
+        _api.renderDebugFrustum(_gsp._projectionMatrix * _debugCamera->getViewMatrix(), _vpScene);
       }
       if (_gs->getScreenSpaceReflections()) {
         _renderTargets.clear();
@@ -372,7 +373,7 @@ namespace fly
     {
       return _vpScene;
     }
-    using BVH = KdTree<IMeshRenderable<API, BV>*, BV>;
+    using BVH = KdTree<MeshRenderable*, BV>;
     const std::unique_ptr<BVH>& getStaticBVH() const
     {
       return _bvhStatic;
@@ -392,6 +393,7 @@ namespace fly
     void setDebugCamera(const std::shared_ptr<Camera>& camera)
     {
       _debugCamera = camera;
+      _cullCamera = _debugCamera ? &_debugCamera : &_camera;
     }
     const std::shared_ptr<Camera>& getDebugCamera() const
     {
@@ -400,7 +402,7 @@ namespace fly
     void buildBVH()
     {
       _renderList.reserve(_staticMeshRenderables.size() + _staticInstancedMeshRenderables.size() + _staticMeshRenderablesLod.size());
-      _renderListAsync = _renderList;
+      _renderListAsync.reserve(_renderList._visibleMeshes.capacity());
       _cullResult.reserve(_renderList._visibleMeshes.capacity());
       _cullResultAsync.reserve(_renderList._visibleMeshes.capacity());
       std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
@@ -410,7 +412,7 @@ namespace fly
         throw std::exception("No meshes were added to the renderer.");
       }
       Timing timing;
-      std::vector<IMeshRenderable<API, BV>*> renderables;
+      std::vector<MeshRenderable*> renderables;
       renderables.reserve(_renderList._visibleMeshes.capacity());
       for (const auto& smr : _staticMeshRenderables) {
         renderables.push_back(smr.get());
@@ -434,6 +436,7 @@ namespace fly
     std::shared_ptr<Camera> _camera;
     std::shared_ptr<DirectionalLight> _directionalLight;
     std::shared_ptr<Camera> _debugCamera;
+    std::shared_ptr<Camera>* _cullCamera = &_camera;
     GraphicsSettings * const _gs;
     std::unique_ptr<typename API::RTT> _lightingBuffer;
     std::unique_ptr<typename API::RTT> _lightingBufferCopy;
@@ -450,6 +453,7 @@ namespace fly
     bool _shadowMapping;
     float _acc = 0.f;
     float _dt = 1.f / 30.f;
+    bool _multiThreadedCulling;
 #if RENDERER_STATS
     RendererStats _stats;
 #endif
@@ -458,11 +462,12 @@ namespace fly
     std::vector<std::shared_ptr<StaticInstancedMeshRenderable<API, BV>>> _staticInstancedMeshRenderables;
     std::vector<std::shared_ptr<StaticMeshRenderableLod<API, BV>>> _staticMeshRenderablesLod;
     std::shared_ptr<SkydomeRenderable<API, BV>> _skydomeRenderable;
-    CullResult<IMeshRenderable<API, BV>*> _cullResult;
-    CullResult<IMeshRenderable<API, BV>*> _cullResultAsync;
-    typename IMeshRenderable<API, BV>::RenderList _renderList;
-    typename IMeshRenderable<API, BV>::RenderList _renderListAsync;
-    std::map<ShaderDesc<API>*, std::map<MaterialDesc<API>*, StackPOD<IMeshRenderable<API, BV>*>>> _displayList;
+    CullResult<MeshRenderable*> _cullResult;
+    CullResult<MeshRenderable*> _cullResultAsync;
+    typename MeshRenderable::RenderList _renderList;
+    typename MeshRenderable::RenderList _renderListAsync;
+    typename MeshRenderable::RenderList* _renderListScene;
+    std::map<ShaderDesc<API>*, std::map<MaterialDesc<API>*, StackPOD<MeshRenderable*>>> _displayList;
     BV _sceneBounds;
     std::unique_ptr<BVH> _bvhStatic;
     SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
@@ -487,24 +492,23 @@ namespace fly
     }
     void renderObjectBVs()
     {
-      const auto& renderlist = _gs->getMultithreadedCulling() && _shadowMapping ? _renderListAsync : _renderList;
-      if (renderlist._visibleMeshes.size()) {
+      if (_renderListScene->_visibleMeshes.size()) {
         _api.setDepthWriteEnabled<true>();
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
         StackPOD<BV const *> bvs;
-        bvs.reserve(renderlist._visibleMeshes.size());
-        for (auto m : renderlist._visibleMeshes) {
+        bvs.reserve(_renderListScene->_visibleMeshes.size());
+        for (auto m : _renderListScene->_visibleMeshes) {
           bvs.push_back(&m->getBV());
         }
         _api.renderBVs(bvs, _vpScene, Vec3f(0.f, 1.f, 0.f));
       }
     }
-    void renderScene(const StackPOD<IMeshRenderable<API, BV>*>& visible_meshes)
+    void renderScene()
     {
 #if RENDERER_STATS
       Timing timing;
 #endif
-      groupMeshes(visible_meshes);
+      groupMeshes(_renderListScene->_visibleMeshes);
 #if RENDERER_STATS
       _stats._sceneMeshGroupingMicroSeconds = timing.duration<std::chrono::microseconds>();
       timing.start();
@@ -518,8 +522,7 @@ namespace fly
     }
     void renderShadowMap()
     {
-      _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees,
-        _debugCamera ? inverse(_debugCamera->updateViewMatrix()) : inverse(_gsp._viewMatrix),
+      _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees, inverse((*_cullCamera)->getViewMatrix()),
         static_cast<float>(_gs->getShadowMapSize()), _gs->getFrustumSplits(), _api.getZNearMapping(), _gsp._worldToLight, _vpLightVolume);
       _api.setDepthClampEnabled<true>();
       _api.enablePolygonOffset(_gs->getShadowPolygonOffsetFactor(), _gs->getShadowPolygonOffsetUnits());
@@ -529,8 +532,8 @@ namespace fly
 #if RENDERER_STATS
         Timing timing;
 #endif
-        cullMeshes(_vpLightVolume[i], _debugCamera ? *_debugCamera : *_camera, _renderList, _cullResult);
-        cullGPU(_renderList, _debugCamera ? *_debugCamera : *_camera, _vpLightVolume[i]);
+        cullMeshes(_vpLightVolume[i], **_cullCamera, _renderList, _cullResult);
+        cullGPU(_renderList, **_cullCamera, _vpLightVolume[i]);
 #if RENDERER_STATS
         _stats._cullingShadowMapMicroSeconds += timing.duration<std::chrono::microseconds>();
 #endif
@@ -569,7 +572,7 @@ namespace fly
       return static_cast<unsigned>(std::ceil(static_cast<float>(num_elements) / static_cast<float>(num_threads)));
     }
     inline void cullMeshes(const Mat4f& view_projection_matrix, Camera camera,
-      typename IMeshRenderable<API, BV>::RenderList& renderlist, CullResult<IMeshRenderable<API, BV>*>& cull_result)
+      typename MeshRenderable::RenderList& renderlist, CullResult<MeshRenderable*>& cull_result)
     {
       camera.extractFrustumPlanes(view_projection_matrix, _api.getZNearMapping());
       renderlist.clear();
@@ -580,14 +583,14 @@ namespace fly
       unsigned num_meshes = static_cast<unsigned>(cull_result._fullyVisibleObjects.size());
       auto elements_per_thread = elementsPerThread(num_meshes, num_threads);
       if (_gs->getMultithreadedDetailCulling() && elements_per_thread >= 256) {
-        std::vector<std::future<typename IMeshRenderable<API, BV>::RenderList>> futures;
+        std::vector<std::future<typename MeshRenderable::RenderList>> futures;
         futures.reserve(num_threads);
         unsigned j = 0;
         const auto& meshes_to_cull = cull_result._fullyVisibleObjects;
         for (unsigned i = 0; i < num_threads; i++) {
           unsigned max_index = std::min(j + elements_per_thread, num_meshes);
           futures.push_back(std::async(std::launch::async, [j, max_index, cp, &meshes_to_cull]() {
-            typename IMeshRenderable<API, BV>::RenderList renderlist;
+            typename MeshRenderable::RenderList renderlist;
             renderlist.reserve(max_index - j);
             for (unsigned i = j; i < max_index; i++) {
               meshes_to_cull[i]->cull(cp, renderlist);
@@ -611,7 +614,7 @@ namespace fly
         m->cullAndIntersect(cp, renderlist);
       }
     }
-    inline void cullGPU(const typename IMeshRenderable<API, BV>::RenderList& renderlist, Camera camera, const Mat4f& view_projection_matrix)
+    inline void cullGPU(const typename MeshRenderable::RenderList& renderlist, Camera camera, const Mat4f& view_projection_matrix)
     {
       if (renderlist._gpuCullList.size()) {
         camera.extractFrustumPlanes(view_projection_matrix, _api.getZNearMapping());
@@ -624,7 +627,7 @@ namespace fly
       }
     }
     template<bool depth = false>
-    inline void groupMeshes(const StackPOD<IMeshRenderable<API, BV>*>& visible_meshes)
+    inline void groupMeshes(const StackPOD<MeshRenderable*>& visible_meshes)
     {
       for (const auto& m : visible_meshes) {
         _displayList[depth ? m->getShaderDescDepth()->get() : m->getShaderDesc()->get()][m->getMaterialDesc()].push_back_secure(m);
