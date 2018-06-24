@@ -33,8 +33,8 @@ void GLWidget::initializeGL()
   _renderer = std::make_shared<fly::Renderer<API, BV>>(&_graphicsSettings);
   _graphicsSettings.addListener(_renderer);
   _engine.addSystem(_renderer);
-  auto cam_speed_system = std::make_shared<fly::CamSpeedSystem<API, BV>>(*_renderer, _physicsCC);
-  _engine.addSystem(cam_speed_system);
+  _camSpeedSytem = std::make_shared<fly::CamSpeedSystem<API, BV>>(*_renderer, _physicsCC);
+  _engine.addSystem(_camSpeedSytem);
 
 #if PHYSICS
   _physicsSystem = std::make_shared<fly::Bullet3PhysicsSystem>();
@@ -67,7 +67,7 @@ void GLWidget::initializeGL()
   timer->start(100);
 #endif
   auto settings_bar = TwNewBar("Settings");
-  _antWrapper =  std::make_unique<AntWrapper>(settings_bar, &_graphicsSettings, _renderer->getApi(), _camController.get(), _skydome, 
+  _antWrapper = std::make_unique<AntWrapper>(settings_bar, &_graphicsSettings, _renderer->getApi(), _camController.get(), _skydome,
     _engine.getGameTimer(), this, _camera, _dl.get(), _renderer.get());
   TwSetTopBar(_bar);
 }
@@ -144,7 +144,7 @@ void GLWidget::keyPressEvent(QKeyEvent * e)
 {
   _keysPressed.insert(e->key());
   if (e->key() == Qt::Key::Key_I) {
-  //  _renderer->getApi()->writeShadersToDisk();
+    //  _renderer->getApi()->writeShadersToDisk();
   }
 }
 
@@ -152,10 +152,10 @@ void GLWidget::keyReleaseEvent(QKeyEvent * e)
 {
   _keysPressed.erase(e->key());
   if (e->key() == Qt::Key::Key_Shift) {
- //   _camController->accelerateReleased();
+    //   _camController->accelerateReleased();
   }
   if (e->key() == Qt::Key::Key_Control) {
-  //  _camController->decelerateReleased();
+    //  _camController->decelerateReleased();
   }
   if (e->key() == Qt::Key::Key_M) {
     if (_camController->getCamera() == _camera) {
@@ -177,7 +177,7 @@ void GLWidget::mousePressEvent(QMouseEvent * e)
       _camController->mousePress(fly::Vec3f(static_cast<float>(e->localPos().x()), static_cast<float>(e->localPos().y()), 0.f));
     }
   }
-  else if (e->button() == Qt::MouseButton::RightButton || e->button() == Qt::MouseButton::MiddleButton ) {
+  else if (e->button() == Qt::MouseButton::RightButton || e->button() == Qt::MouseButton::MiddleButton) {
 #if PHYSICS
     _camController->mousePress(fly::Vec3f(static_cast<float>(e->localPos().x()), static_cast<float>(e->localPos().y()), 0.f));
     _selectedRigidBody = nullptr;
@@ -342,9 +342,9 @@ void GLWidget::initGame()
 #if SPONZA_MANY
   num_renderables *= NUM_OBJECTS * NUM_OBJECTS;
 #endif
- // std::vector<std::shared_ptr<fly::Entity>> entities;
+  // std::vector<std::shared_ptr<fly::Entity>> entities;
   std::vector<std::shared_ptr<fly::StaticMeshRenderable<API, BV>>> smrs;
- // entities.reserve(num_renderables);
+  // entities.reserve(num_renderables);
   smrs.reserve(num_renderables);
 
 #endif
@@ -353,9 +353,9 @@ void GLWidget::initGame()
   unsigned ent_index = 0;
   for (int x = -NUM_OBJECTS / 2; x < NUM_OBJECTS / 2; x++) {
     for (int y = -NUM_OBJECTS / 2; y < NUM_OBJECTS / 2; y++) {
-      fly::Transform transform (fly::Vec3f(x * 60.f, -sponza_model->getAABB().getMin()[1] * sponza_scale[1], y * 60.f), fly::Vec3f(sponza_scale));
+      fly::Transform transform(fly::Vec3f(x * 60.f, -sponza_model->getAABB().getMin()[1] * sponza_scale[1], y * 60.f), fly::Vec3f(sponza_scale));
 #else
-  fly::Transform transform (fly::Vec3f(0.f), sponza_scale);
+  fly::Transform transform(fly::Vec3f(0.f), sponza_scale);
 #endif
 #if TOWERS && SPONZA_MANY
   fly::AABB sponza_aabb_world(sponza_model->getAABB(), model_matrix);
@@ -375,7 +375,7 @@ void GLWidget::initGame()
       //auto entity = _engine.getEntityManager()->createEntity();
       bool has_wind = index >= 44 && index <= 61;
       if (has_wind) {
-       // std::cout << mesh->getMaterial()->getDiffusePath() << " " << index << std::endl;
+        // std::cout << mesh->getMaterial()->getDiffusePath() << " " << index << std::endl;
       }
       fly::Vec3f aabb_offset = has_wind ? fly::Vec3f(0.f, 0.f, 0.25f) : fly::Vec3f(0.f);
       //fly::Vec3f translation(0.f);
@@ -389,7 +389,7 @@ void GLWidget::initGame()
 #endif
       fly::AABB aabb_world(mesh->getAABB(), transform.getModelMatrix());
       aabb_world.expand(aabb_offset);
-     // entities.push_back(_engine.getEntityManager()->createEntity());
+      // entities.push_back(_engine.getEntityManager()->createEntity());
       if (has_wind) {
         auto smr = std::make_shared<fly::StaticMeshRenderableWind<API, BV>>(*_renderer, mesh,
 #if SPONZA_MANY
@@ -421,8 +421,8 @@ void GLWidget::initGame()
 #if SPONZA
   _renderer->addStaticMeshRenderables(smrs);
 #if PHYSICS
-    const auto& model_matrix = smrs[i]->getModelMatrix();
-    entities[i]->addComponent(std::make_shared<fly::RigidBody>(model_matrix[3].xyz(), 0.f, _sponzaShapes[i], 0.1f));
+  const auto& model_matrix = smrs[i]->getModelMatrix();
+  entities[i]->addComponent(std::make_shared<fly::RigidBody>(model_matrix[3].xyz(), 0.f, _sponzaShapes[i], 0.1f));
 #endif
 #endif
 #endif
@@ -438,7 +438,7 @@ void GLWidget::initGame()
   _renderer->setSkydome(_skydome);
 #endif
 #if PHYSICS
- // _graphicsSettings.setDebugObjectAABBs(true);
+  // _graphicsSettings.setDebugObjectAABBs(true);
   std::mt19937 gen;
   std::uniform_real_distribution<float> col_dist(0.f, 2.f);
   std::uniform_real_distribution<float> scale_dist(0.3f, 0.55f);
@@ -489,7 +489,7 @@ void GLWidget::initGame()
   for (const auto& m : plane_model->getMaterials()) {
     m->setTexturePath(fly::Material::TextureKey::NORMAL, "assets/ground_normals.png");
     m->setDiffuseColor(fly::Vec3f(0.870f, 0.768f, 0.329f) * 1.5f);
-   // m->setIsReflective(true);
+    // m->setIsReflective(true);
   }
   for (const auto& m : plane_model->getMeshes()) {
     std::vector<fly::Vertex> vertices_new;
@@ -508,9 +508,21 @@ void GLWidget::initGame()
     _renderer->addStaticMeshRenderable(std::make_shared<fly::StaticMeshRenderable<API, BV>>(*_renderer, m, plane_model->getMaterials()[m->getMaterialIndex()], transform));
   }
 #endif
+
+  _camera = std::make_shared<fly::Camera>(glm::vec3(4.f, 2.f, 0.f), glm::vec3(glm::radians(270.f), 0.f, 0.f));
+  _dl = std::make_shared<fly::DirectionalLight>(fly::Vec3f(1.f), fly::Vec3f(0.5f, -1.f, 0.5f));
+  _renderer->setCamera(_camera);
+  _renderer->setDirectionalLight(_dl);
+
+  _debugCamera = std::make_shared<fly::Camera>(fly::Vec3f(0.f), fly::Vec3f(0.f));
+  //_renderer->setDebugCamera(_debugCamera);
 #if TINY_RENDERER_MODELS
+  _dl->setMaxShadowCastDistance(80.f);
+  _dl->setDirection(fly::Vec3f(-0.5f, -1.f, -0.5f));
+  _graphicsSettings.setDofNear(-1.f);
+  _engine.removeSystem(_camSpeedSytem);
   float spec = 128.f;
-  auto model = importer->loadModel("../tinyrenderer/obj/african_head/african_head.obj");
+  /*auto model = importer->loadModel("../tinyrenderer/obj/african_head/african_head.obj");
   std::vector<std::shared_ptr<fly::StaticMeshRenderable<fly::OpenGLAPI, fly::AABB>>> tiny_meshes;
   for (const auto& m : model->getMaterials()) {
     m->setSpecularExponent(spec);
@@ -519,7 +531,7 @@ void GLWidget::initGame()
   }
   for (const auto& m : model->getMeshes()) {
     tiny_meshes.push_back(std::make_shared<fly::StaticMeshRenderable<fly::OpenGLAPI, fly::AABB>>(*_renderer, m, m->getMaterial(), fly::Transform()));
-   // _renderer->addStaticMeshRenderable(tiny_meshes.back());
+    _renderer->addStaticMeshRenderable(tiny_meshes.back());
   }
   model = importer->loadModel("../tinyrenderer/obj/african_head/african_head_eye_inner.obj");
   for (const auto& m : model->getMaterials()) {
@@ -529,41 +541,38 @@ void GLWidget::initGame()
   }
   for (const auto& m : model->getMeshes()) {
     tiny_meshes.push_back(std::make_shared<fly::StaticMeshRenderable<fly::OpenGLAPI, fly::AABB>>(*_renderer, m, m->getMaterial(), fly::Transform()));
-   // _renderer->addStaticMeshRenderable(tiny_meshes.back());
+    _renderer->addStaticMeshRenderable(tiny_meshes.back());
+  }*/
+  std::vector<std::shared_ptr<fly::Mesh>> diablo_meshes;
+  for (unsigned i = 0; i < 6; i++) {
+    std::string path = "assets/tinyrenderer/diablo3_pose/diablo3_pose";
+    path += (i == 0 ? "" : ("_lod" + std::to_string(i))) + ".obj";
+    diablo_meshes.push_back(importer->loadModel(path)->getMeshes().front());
   }
-  model = importer->loadModel("../tinyrenderer/obj/diablo3_pose/diablo3_pose.obj");
-  for (const auto& m : model->getMaterials()) {
-    m->setSpecularExponent(spec);
-    m->setTexturePath(fly::Material::TextureKey::ALBEDO, "../tinyrenderer/obj/diablo3_pose/diablo3_pose_diffuse.tga");
-    m->setTexturePath(fly::Material::TextureKey::NORMAL, "../tinyrenderer/obj/diablo3_pose/diablo3_pose_nm_tangent.tga");
+  auto diablo_material = diablo_meshes[0]->getMaterial();
+  diablo_material->setSpecularExponent(spec);
+  diablo_material->setTexturePath(fly::Material::TextureKey::ALBEDO, "assets/tinyrenderer/diablo3_pose/diablo3_pose_diffuse.tga");
+  diablo_material->setTexturePath(fly::Material::TextureKey::NORMAL, "assets/tinyrenderer/diablo3_pose/diablo3_pose_nm_tangent.tga");
+  fly::AABB diablo_aabb;
+  for (const auto& m : diablo_meshes) {
+    diablo_aabb = diablo_aabb.getUnion(m->getAABB());
   }
   std::mt19937 gen;
   float translation_dist = 2.f;
   std::uniform_real_distribution<float> dist(-translation_dist, translation_dist);
-  for (const auto& m : model->getMeshes()) {
-    unsigned meshes_per_dir = 128;
-    float spacing = 6.f;
-    for (unsigned x = 0; x < meshes_per_dir; x++) {
-      for (unsigned y = 0; y < meshes_per_dir; y++) {
-        for (unsigned z = 0; z < meshes_per_dir; z++) {
-          fly::Vec3f vec(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z));
-          vec *= spacing;
-          vec += fly::Vec3f(dist(gen), dist(gen), dist(gen));
-          tiny_meshes.push_back(std::make_shared<fly::StaticMeshRenderable<fly::OpenGLAPI, fly::AABB>>(*_renderer, m, m->getMaterial(), fly::Transform((m->getAABB().getMax() - m->getAABB().getMin()) * vec)));
-          _renderer->addStaticMeshRenderable(tiny_meshes.back());
-        }
+  unsigned meshes_per_dir = 192;
+  float spacing = 6.f;
+  for (unsigned x = 0; x < meshes_per_dir; x++) {
+    for (unsigned y = 0; y < meshes_per_dir; y++) {
+      for (unsigned z = 0; z < meshes_per_dir; z++) {
+        fly::Vec3f vec(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z));
+        vec *= spacing;
+        vec += fly::Vec3f(dist(gen), dist(gen), dist(gen));
+        _renderer->addStaticMeshRenderable(std::make_shared<fly::StaticMeshRenderableLod<fly::OpenGLAPI, fly::AABB>>(*_renderer, diablo_meshes, diablo_material, fly::Transform((diablo_aabb.getMax() - diablo_aabb.getMin()) * vec)));
       }
     }
   }
 #endif
-
-  _camera = std::make_shared<fly::Camera>(glm::vec3(4.f, 2.f, 0.f), glm::vec3(glm::radians(270.f), 0.f, 0.f));
-  _dl = std::make_shared<fly::DirectionalLight>(fly::Vec3f(1.f), fly::Vec3f(0.5f, -1.f, 0.5f));
-  _renderer->setCamera(_camera);
-  _renderer->setDirectionalLight(_dl);
-
-  _debugCamera = std::make_shared<fly::Camera>(fly::Vec3f(0.f), fly::Vec3f(0.f));
-  //_renderer->setDebugCamera(_debugCamera);
 
 #if INSTANCED_MESHES
 //  _graphicsSettings.setShadowMapSize(8192);
@@ -600,7 +609,7 @@ void GLWidget::initGame()
         for (int z = 0; z < num_meshes[1]; z++) {
           fly::StaticInstancedMeshRenderable<API, BV>::InstanceData data;
           data._modelMatrix = fly::Transform(fly::Vec3f(static_cast<float>(x) * sphere_lods[0]->getAABB().size() + dist(gen) + cell_x * cell_size - total_size[0] * 0.5f,
-            1.2f + dist(gen) * 5.f, 
+            1.2f + dist(gen) * 5.f,
             static_cast<float>(z) * sphere_lods[0]->getAABB().size() + dist(gen) + cell_z * cell_size - total_size[1] * 0.5f)).getModelMatrix();
           data._index = dist_uint(gen);
           data._modelMatrixInverse = inverse(data._modelMatrix);
@@ -609,7 +618,7 @@ void GLWidget::initGame()
       }
       auto instanced_renderable = std::make_shared<fly::StaticInstancedMeshRenderable<API, BV>>(*_renderer, sphere_lods, material, instance_data);
       _renderer->addStaticMeshRenderable(instanced_renderable);
-    //  instanced_renderable->clear();
+      //  instanced_renderable->clear();
       total_meshes += instance_data.size();
     }
   }
@@ -617,7 +626,7 @@ void GLWidget::initGame()
 #endif
 
 #if SINGLE_SPHERE
- // auto sphere_entity = _engine.getEntityManager()->createEntity();
+  // auto sphere_entity = _engine.getEntityManager()->createEntity();
   _renderer->addStaticMeshRenderable(std::make_shared<fly::StaticMeshRenderable<API, BV>>(*_renderer, sphere_model->getMeshes().front(), sphere_model->getMeshes().front()->getMaterial(),
     fly::Transform(fly::Vec3f(5.f, 0.f, 0.f), fly::Vec3f(5.f, 1.5f, 2.f))));
 #endif

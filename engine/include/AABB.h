@@ -64,6 +64,11 @@ namespace fly
     {
       return isLargeEnough(cam_pos, error_tresh, size2());
     }
+    inline bool largeEnough(const Vec3f& cam_pos, float error_tresh, float& ratio) const
+    {
+      ratio = size2() / distance2(closestPoint(cam_pos), cam_pos);
+      return ratio > error_tresh;
+    }
     inline Vec3f closestPoint(const Vec3f& point) const
     {
       return clamp(point, _bbMin, _bbMax);

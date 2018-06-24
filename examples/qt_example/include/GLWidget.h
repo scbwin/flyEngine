@@ -26,7 +26,7 @@
 #define NUM_CELLS 64
 #define ITEMS_PER_CELL 64
 #define SINGLE_SPHERE 0
-#define TINY_RENDERER_MODELS 0
+#define TINY_RENDERER_MODELS 1 && !SPONZA
 
 class btTriangleMesh;
 
@@ -37,6 +37,8 @@ namespace fly
   class Renderer;
   template<typename API, typename BV>
   class SkydomeRenderable;
+  template<typename API, typename BV>
+  class CamSpeedSystem;
   class GameTimer;
   class CameraController;
   class PhysicsCameraController;
@@ -83,6 +85,7 @@ private:
   std::shared_ptr<fly::SkydomeRenderable<fly::OpenGLAPI, fly::AABB>> _skydome;
   std::shared_ptr<fly::Camera> _camera;
   std::shared_ptr<fly::Camera> _debugCamera;
+  std::shared_ptr<fly::CamSpeedSystem<fly::OpenGLAPI, fly::AABB>> _camSpeedSytem;
   std::unique_ptr<AntWrapper> _antWrapper;
   float _camAccelerationDefault = 200.f;
   float _camAccelerationHigh = 400.f;

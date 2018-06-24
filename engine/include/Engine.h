@@ -15,6 +15,7 @@ namespace fly
   public:
     Engine();
     void addSystem(const std::shared_ptr<System>& system);
+    void removeSystem(const std::shared_ptr<System>& system);
     void update();
     GameTimer * getGameTimer();
   private:

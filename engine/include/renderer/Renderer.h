@@ -180,6 +180,18 @@ namespace fly
         _sceneBounds = _sceneBounds.getUnion(simr->getBV());
       }
     }
+    void addStaticMeshRenderable(const std::shared_ptr<StaticMeshRenderableLod<API, BV>>& smr) 
+    {
+      _staticMeshRenderablesLod.push_back(smr);
+      _sceneBounds = _sceneBounds.getUnion(smr->getBV());
+    }
+    void addStaticMeshRenderables(const std::vector<std::shared_ptr<StaticMeshRenderableLod<API, BV>>>& smrs)
+    {
+      _staticMeshRenderablesLod.insert(_staticMeshRenderablesLod.begin(), smrs.begin(), smrs.end());
+      for (const auto& smr : smrs) {
+        _sceneBounds = _sceneBounds.getUnion(smr->getBV());
+      }
+    }
     void setSkydome(const std::shared_ptr<SkydomeRenderable<API, BV>>& sdr)
     {
       _skydomeRenderable = sdr;
@@ -386,23 +398,27 @@ namespace fly
     }
     void buildBVH()
     {
-      _visibleMeshes.reserve(_staticMeshRenderables.size() + _staticInstancedMeshRenderables.size());
+      _visibleMeshes.reserve(_staticMeshRenderables.size() + _staticInstancedMeshRenderables.size() + _staticMeshRenderablesLod.size());
       _visibleMeshesAsync = _visibleMeshes;
       _cullResult.reserve(_visibleMeshes.capacity());
       _cullResultAsync.reserve(_visibleMeshes.capacity());
       std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
       std::cout << "Static instanced mesh renderables: " << _staticInstancedMeshRenderables.size() << std::endl;
+      std::cout << "Static mesh renderables lod: " << _staticMeshRenderablesLod.size() << std::endl;
       if (_visibleMeshes.capacity() == 0) {
         throw std::exception("No meshes were added to the renderer.");
       }
       Timing timing;
       std::vector<IMeshRenderable<API, BV>*> renderables;
-      renderables.reserve(_staticMeshRenderables.size() + _staticInstancedMeshRenderables.size());
+      renderables.reserve(_visibleMeshes.capacity());
       for (const auto& smr : _staticMeshRenderables) {
         renderables.push_back(smr.get());
       }
       for (const auto& simr : _staticInstancedMeshRenderables) {
         renderables.push_back(simr.get());
+      }
+      for (const auto& smr : _staticMeshRenderablesLod) {
+        renderables.push_back(smr.get());
       }
       _bvhStatic = std::make_unique<BVH>(renderables);
       std::cout << "BVH construction took " << timing.duration<std::chrono::milliseconds>() << " milliseconds." << std::endl;
@@ -439,6 +455,7 @@ namespace fly
     typename API::MeshGeometryStorage _meshGeometryStorage;
     std::vector<std::shared_ptr<StaticMeshRenderable<API, BV>>> _staticMeshRenderables;
     std::vector<std::shared_ptr<StaticInstancedMeshRenderable<API, BV>>> _staticInstancedMeshRenderables;
+    std::vector<std::shared_ptr<StaticMeshRenderableLod<API, BV>>> _staticMeshRenderablesLod;
     std::shared_ptr<SkydomeRenderable<API, BV>> _skydomeRenderable;
     CullResult<IMeshRenderable<API, BV>*> _cullResult;
     CullResult<IMeshRenderable<API, BV>*> _cullResultAsync;
@@ -573,9 +590,7 @@ namespace fly
             StackPOD<IMeshRenderable<API, BV>*> meshes;
             meshes.reserve(max_index - j);
             for (unsigned i = j; i < max_index; i++) {
-              if (meshes_to_cull[i]->cull(cp)) {
-                meshes.push_back(meshes_to_cull[i]);
-              }
+              meshes_to_cull[i]->cull(cp, meshes);
             }
             return meshes;
           }));
@@ -587,15 +602,11 @@ namespace fly
       }
       else {
         for (const auto& m : cull_result._fullyVisibleObjects) {
-          if (m->cull(cp)) {
-            visible_meshes.push_back(m);
-          }
+          m->cull(cp, visible_meshes);
         }
       }
       for (const auto& m : cull_result._intersectedObjects) { // No need to multithread intersected meshes, because the amount is usually much smaller compared to fully visible meshes.
-        if (m->cullAndIntersect(cp)) {
-          visible_meshes.push_back(m);
-        }
+        m->cullAndIntersect(cp, visible_meshes);
       }
       if (_staticInstancedMeshRenderables.size()) {
         _api.endCulling();

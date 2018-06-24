@@ -29,13 +29,17 @@ namespace fly
     virtual void renderDepth(API const & api) = 0;
     virtual void render(API const & api) = 0;
     inline const BV& getBV() const { return _bv; }
-    virtual bool cull(const Camera::CullingParams& cp) // Fine-grained distance culling, called if the object is fully visible from the camera's point of view.
+    virtual void cull(const Camera::CullingParams& cp, StackPOD<IMeshRenderable*>& visible_meshes) // Fine-grained distance culling, called if the object is fully visible from the camera's point of view.
     {
-      return _bv.isLargeEnough(cp._camPos, cp._thresh);
+      if (_bv.isLargeEnough(cp._camPos, cp._thresh)) {
+        visible_meshes.push_back(this);
+      }
     }
-    virtual bool cullAndIntersect(const Camera::CullingParams& cp) // Fine-grained culling, only called if the bounding box of the node the object is in intersects the view frustum.
+    virtual void cullAndIntersect(const Camera::CullingParams& cp, StackPOD<IMeshRenderable*>& visible_meshes) // Fine-grained culling, only called if the bounding box of the node the object is in intersects the view frustum.
     {
-      return _bv.isLargeEnough(cp._camPos, cp._thresh) && IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes) != IntersectionResult::OUTSIDE;
+      if (_bv.isLargeEnough(cp._camPos, cp._thresh) && IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes) != IntersectionResult::OUTSIDE) {
+        visible_meshes.push_back(this);
+      }
     }
     virtual float getLargestObjectBVSize() const
     {
@@ -208,18 +212,19 @@ namespace fly
     {
       return _largestBVSize;
     }
-    virtual bool cull(const Camera::CullingParams& cp) override
+    virtual void cull(const Camera::CullingParams& cp, StackPOD<IMeshRenderable*>& visible_meshes) override
     {
       if (_bv.isLargeEnough(cp._camPos, cp._thresh, _largestBVSize)) {
         _api.cullInstances(_aabbBuffer, _numInstances, _visibleInstances, _indirectBuffer,
           _indirectInfo, _lodMultiplier, cp._thresh);
-        return true;
+        visible_meshes.push_back(this);
       }
-      return false;
     }
-    virtual bool cullAndIntersect(const Camera::CullingParams& cp) override
+    virtual void cullAndIntersect(const Camera::CullingParams& cp, StackPOD<IMeshRenderable*>& visible_meshes) override
     {
-      return IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes) != IntersectionResult::OUTSIDE && cull(cp);
+      if (IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes) != IntersectionResult::OUTSIDE) {
+        cull(cp, visible_meshes);
+      }
     }
     virtual unsigned numTriangles() const override
     {
@@ -240,6 +245,68 @@ namespace fly
     unsigned _numInstances;
     API const & _api;
     float _lodMultiplier = 0.1f;
+  };
+  template<typename API, typename BV>
+  class StaticMeshRenderableLod : public IMeshRenderable<API, BV>
+  {
+  public:
+    StaticMeshRenderableLod(Renderer<API, BV>& renderer, const std::vector<std::shared_ptr<Mesh>>& meshes,
+      const std::shared_ptr<Material>& material, const Transform& transform) :
+      _modelMatrix(transform.getModelMatrix()),
+      _modelMatrixInverse(inverse(glm::mat3(transform.getModelMatrix())))
+    {
+      _materialDesc = renderer.createMaterialDesc(material).get();
+      _shaderDesc = &_materialDesc->getMeshShaderDesc();
+      _shaderDescDepth = &_materialDesc->getMeshShaderDescDepth();
+      BV bv;
+      _meshData.reserve(meshes.size());
+      for (const auto& m : meshes) {
+        createBV(*m, transform, bv);
+        _bv = _bv.getUnion(bv);
+        _meshData.push_back(renderer.addMesh(m));
+      }
+    }
+    virtual ~StaticMeshRenderableLod() = default;
+    virtual void render(API const & api) override
+    {
+      api.renderMesh(_meshData[_lod], _modelMatrix, _modelMatrixInverse);
+    }
+    virtual void renderDepth(API const & api) override
+    {
+      api.renderMesh(_meshData[_lod], _modelMatrix);
+    }
+    virtual unsigned numTriangles() const override
+    {
+      return _meshData[_lod].numTriangles();
+    }
+    virtual void cull(const Camera::CullingParams& cp, StackPOD<IMeshRenderable*>& visible_meshes) override // Fine-grained distance culling, called if the object is fully visible from the camera's point of view.
+    {
+      float ratio;
+      if (_bv.largeEnough(cp._camPos, cp._thresh, ratio)) {
+        selectLod(cp, ratio);
+        visible_meshes.push_back(this);
+      }
+    }
+    virtual void cullAndIntersect(const Camera::CullingParams& cp, StackPOD<IMeshRenderable*>& visible_meshes) override // Fine-grained culling, only called if the bounding box of the node the object is in intersects the view frustum.
+    {
+      float ratio;
+      if (_bv.largeEnough(cp._camPos, cp._thresh, ratio) 
+        && IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes) != IntersectionResult::OUTSIDE) {
+        selectLod(cp, ratio);
+        visible_meshes.push_back(this);
+      }
+    }
+    inline void selectLod(const Camera::CullingParams& cp, float ratio)
+    {
+      float upper_limit = cp._thresh * 128.f;
+      float alpha = 1.f - std::min((ratio - cp._thresh) / (upper_limit - cp._thresh), 1.f);
+      _lod = static_cast<unsigned>(std::roundf(alpha * (_meshData.size() - 1u)));
+    }
+  protected:
+    std::vector<typename API::MeshData> _meshData;
+    Mat4f _modelMatrix;
+    Mat3f _modelMatrixInverse;
+    unsigned _lod = 2;
   };
 }
 

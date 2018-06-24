@@ -11,6 +11,15 @@ namespace fly
     system->setGameTimer(&_gameTimer);
     _systems.push_back(system);
   }
+  void Engine::removeSystem(const std::shared_ptr<System>& system)
+  {
+    for (unsigned i = 0; i < _systems.size(); i++) {
+      if (_systems[i] == system) {
+        _systems.erase(_systems.begin() + i);
+        return;
+      }
+    }
+  }
   void Engine::update()
   {
     _gameTimer.tick();
