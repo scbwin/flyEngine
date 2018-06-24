@@ -599,6 +599,7 @@ namespace fly
         for (auto& f : futures) {
           auto result = f.get();
           renderlist._visibleMeshes.append(result._visibleMeshes);
+          renderlist._gpuCullList.append(result._gpuCullList);
         }
       }
       else {

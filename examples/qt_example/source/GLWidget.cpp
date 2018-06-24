@@ -587,7 +587,6 @@ void GLWidget::initGame()
   fly::Vec2i num_meshes(ITEMS_PER_CELL);
   float cell_size = sphere_lods[0]->getAABB().size() * ITEMS_PER_CELL;
   fly::Vec2i total_size = num_cells * static_cast<int>(cell_size);
-  std::cout << "Instanced meshes total extents: " << total_size << std::endl;
   size_t total_meshes = 0;
 #if !PHYSICS
   std::mt19937 gen;
