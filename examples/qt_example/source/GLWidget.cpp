@@ -508,6 +508,54 @@ void GLWidget::initGame()
     _renderer->addStaticMeshRenderable(std::make_shared<fly::StaticMeshRenderable<API, BV>>(*_renderer, m, plane_model->getMaterials()[m->getMaterialIndex()], transform));
   }
 #endif
+#if TINY_RENDERER_MODELS
+  float spec = 128.f;
+  auto model = importer->loadModel("../tinyrenderer/obj/african_head/african_head.obj");
+  std::vector<std::shared_ptr<fly::StaticMeshRenderable<fly::OpenGLAPI, fly::AABB>>> tiny_meshes;
+  for (const auto& m : model->getMaterials()) {
+    m->setSpecularExponent(spec);
+    m->setTexturePath(fly::Material::TextureKey::ALBEDO, "../tinyrenderer/obj/african_head/african_head_diffuse.tga");
+    m->setTexturePath(fly::Material::TextureKey::NORMAL, "../tinyrenderer/obj/african_head/african_head_nm_tangent.tga");
+  }
+  for (const auto& m : model->getMeshes()) {
+    tiny_meshes.push_back(std::make_shared<fly::StaticMeshRenderable<fly::OpenGLAPI, fly::AABB>>(*_renderer, m, m->getMaterial(), fly::Transform()));
+   // _renderer->addStaticMeshRenderable(tiny_meshes.back());
+  }
+  model = importer->loadModel("../tinyrenderer/obj/african_head/african_head_eye_inner.obj");
+  for (const auto& m : model->getMaterials()) {
+    m->setSpecularExponent(spec);
+    m->setTexturePath(fly::Material::TextureKey::ALBEDO, "../tinyrenderer/obj/african_head/african_head_eye_inner_diffuse.tga");
+    m->setTexturePath(fly::Material::TextureKey::NORMAL, "../tinyrenderer/obj/african_head/african_head_eye_inner_nm_tangent.tga");
+  }
+  for (const auto& m : model->getMeshes()) {
+    tiny_meshes.push_back(std::make_shared<fly::StaticMeshRenderable<fly::OpenGLAPI, fly::AABB>>(*_renderer, m, m->getMaterial(), fly::Transform()));
+   // _renderer->addStaticMeshRenderable(tiny_meshes.back());
+  }
+  model = importer->loadModel("../tinyrenderer/obj/diablo3_pose/diablo3_pose.obj");
+  for (const auto& m : model->getMaterials()) {
+    m->setSpecularExponent(spec);
+    m->setTexturePath(fly::Material::TextureKey::ALBEDO, "../tinyrenderer/obj/diablo3_pose/diablo3_pose_diffuse.tga");
+    m->setTexturePath(fly::Material::TextureKey::NORMAL, "../tinyrenderer/obj/diablo3_pose/diablo3_pose_nm_tangent.tga");
+  }
+  std::mt19937 gen;
+  float translation_dist = 2.f;
+  std::uniform_real_distribution<float> dist(-translation_dist, translation_dist);
+  for (const auto& m : model->getMeshes()) {
+    unsigned meshes_per_dir = 128;
+    float spacing = 6.f;
+    for (unsigned x = 0; x < meshes_per_dir; x++) {
+      for (unsigned y = 0; y < meshes_per_dir; y++) {
+        for (unsigned z = 0; z < meshes_per_dir; z++) {
+          fly::Vec3f vec(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z));
+          vec *= spacing;
+          vec += fly::Vec3f(dist(gen), dist(gen), dist(gen));
+          tiny_meshes.push_back(std::make_shared<fly::StaticMeshRenderable<fly::OpenGLAPI, fly::AABB>>(*_renderer, m, m->getMaterial(), fly::Transform((m->getAABB().getMax() - m->getAABB().getMin()) * vec)));
+          _renderer->addStaticMeshRenderable(tiny_meshes.back());
+        }
+      }
+    }
+  }
+#endif
 
   _camera = std::make_shared<fly::Camera>(glm::vec3(4.f, 2.f, 0.f), glm::vec3(glm::radians(270.f), 0.f, 0.f));
   _dl = std::make_shared<fly::DirectionalLight>(fly::Vec3f(1.f), fly::Vec3f(0.5f, -1.f, 0.5f));

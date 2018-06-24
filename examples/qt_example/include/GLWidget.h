@@ -26,6 +26,7 @@
 #define NUM_CELLS 64
 #define ITEMS_PER_CELL 64
 #define SINGLE_SPHERE 0
+#define TINY_RENDERER_MODELS 0
 
 class btTriangleMesh;
 

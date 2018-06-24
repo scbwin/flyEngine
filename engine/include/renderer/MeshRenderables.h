@@ -102,6 +102,16 @@ namespace fly
     {
       return _meshData.numTriangles();
     }
+    void setTransform(const Transform& transform, const std::shared_ptr<Mesh>& mesh)
+    {
+      _modelMatrix = transform.getModelMatrix();
+      _modelMatrixInverse = inverse(glm::mat3(transform.getModelMatrix()));
+      createBV(*mesh, transform, _bv);
+    }
+    const Mat4f& getModelMatrix() const
+    {
+      return _modelMatrix;
+    }
   protected:
     typename API::MeshData _meshData;
     Mat4f _modelMatrix;
