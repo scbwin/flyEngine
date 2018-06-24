@@ -560,11 +560,10 @@ void GLWidget::initGame()
   std::mt19937 gen;
   float translation_dist = 2.f;
   std::uniform_real_distribution<float> dist(-translation_dist, translation_dist);
-  unsigned meshes_per_dir = 192;
   float spacing = 6.f;
-  for (unsigned x = 0; x < meshes_per_dir; x++) {
-    for (unsigned y = 0; y < meshes_per_dir; y++) {
-      for (unsigned z = 0; z < meshes_per_dir; z++) {
+  for (unsigned x = 0; x < TINY_MESHES_PER_DIR; x++) {
+    for (unsigned y = 0; y < TINY_MESHES_PER_DIR; y++) {
+      for (unsigned z = 0; z < TINY_MESHES_PER_DIR; z++) {
         fly::Vec3f vec(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z));
         vec *= spacing;
         vec += fly::Vec3f(dist(gen), dist(gen), dist(gen));

@@ -33,11 +33,14 @@ namespace fly
     const std::array<Vec4f, 6>& getFrustumPlanes() const;
     float getDetailCullingThreshold() const;
     void setDetailCullingThreshold(float threshold);
+    float getLodRangeMultiplier() const;
+    void setLodRangeMultiplier(float multiplier);
     struct CullingParams
     {
       Vec3f _camPos;
       float _thresh;
       std::array<Vec4f, 6> _frustumPlanes;
+      float _lodRange;
     };
     CullingParams getCullingParams() const;
   private:
@@ -50,6 +53,7 @@ namespace fly
     Mat4f _viewMatrix;
     bool _isActive = true;
     float _detailCullingThreshold = 0.000175f;
+    float _lodRangeMultiplier = 128.f;
   };
 }
 

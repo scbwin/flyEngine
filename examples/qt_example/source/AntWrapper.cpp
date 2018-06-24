@@ -43,6 +43,7 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "Debug BVH", TwType::TW_TYPE_BOOLCPP, setDebugBVH, getDebugBVH, gs, nullptr);
   TwAddVarCB(bar, "Debug object AABBs", TwType::TW_TYPE_BOOLCPP, setDebugAABBs, getDebugAABBs, gs, nullptr);
   TwAddVarCB(bar, "Detail culling threshold", TwType::TW_TYPE_FLOAT, setDetailCullingThreshold, getDetailCullingThreshold, camera_controller, "step=0.0000005f");
+  TwAddVarCB(bar, "Lod range multiplier", TwType::TW_TYPE_FLOAT, setLodRangeMultiplier, getLodRangeMultiplier, camera_controller, "step=0.1f");
   TwAddVarCB(bar, "Camera speed", TwType::TW_TYPE_FLOAT, setCamSpeed, getCamSpeed, camera_controller, "step=0.1f");
   TwAddVarCB(bar, "Skydome", TwType::TW_TYPE_BOOLCPP, setSkydome, getSkydome, &_skydomeData, nullptr);
   TwAddVarCB(bar, "Depth of Field", TwType::TW_TYPE_BOOLCPP, setDepthOfField, getDepthOfField, gs, nullptr);
@@ -258,6 +259,16 @@ void AntWrapper::setDetailCullingThreshold(const void * value, void * client_dat
 void AntWrapper::getDetailCullingThreshold(void * value, void * client_data)
 {
   *cast<float>(value) = cast<fly::CameraController>(client_data)->getCamera()->getDetailCullingThreshold();
+}
+
+void AntWrapper::setLodRangeMultiplier(const void * value, void * client_data)
+{
+  cast<fly::CameraController>(client_data)->getCamera()->setLodRangeMultiplier(*cast<float>(value));
+}
+
+void AntWrapper::getLodRangeMultiplier(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::CameraController>(client_data)->getCamera()->getLodRangeMultiplier();
 }
 
 void AntWrapper::setCamSpeed(const void * value, void * client_data)

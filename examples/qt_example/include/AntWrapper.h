@@ -78,6 +78,8 @@ private:
   static void getDebugAABBs(void* value, void* client_data);
   static void setDetailCullingThreshold(const void* value, void* client_data);
   static void getDetailCullingThreshold(void* value, void* client_data);
+  static void setLodRangeMultiplier(const void* value, void* client_data);
+  static void getLodRangeMultiplier(void* value, void* client_data);
   static void setCamSpeed(const void* value, void* client_data);
   static void getCamSpeed(void* value, void* client_data);
   static void setSkydome(const void* value, void* client_data);

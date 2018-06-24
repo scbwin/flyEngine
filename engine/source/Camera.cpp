@@ -94,10 +94,18 @@ namespace fly
   }
   void Camera::setDetailCullingThreshold(float threshold)
   {
-    _detailCullingThreshold = std::max(0.f, threshold);
+    _detailCullingThreshold = std::max(0.000005f, threshold);
+  }
+  float Camera::getLodRangeMultiplier() const
+  {
+    return _lodRangeMultiplier;
+  }
+  void Camera::setLodRangeMultiplier(float multiplier)
+  {
+    _lodRangeMultiplier = std::max(multiplier, 1.f);
   }
   Camera::CullingParams Camera::getCullingParams() const
   {
-    return { _pos, _detailCullingThreshold, _frustumPlanes };
+    return { _pos, _detailCullingThreshold, _frustumPlanes, (_detailCullingThreshold * _lodRangeMultiplier) - _detailCullingThreshold };
   }
 }

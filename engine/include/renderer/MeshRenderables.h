@@ -304,7 +304,8 @@ namespace fly
     {
       return _meshData[_lod].numTriangles();
     }
-    virtual void cull(const Camera::CullingParams& cp, RenderList& renderlist) override // Fine-grained distance culling, called if the object is fully visible from the camera's point of view.
+    // TODO: Method is not threadsafe, use const
+    virtual void cull(const Camera::CullingParams& cp, RenderList& renderlist) override
     {
       float ratio;
       if (_bv.largeEnough(cp._camPos, cp._thresh, ratio)) {
@@ -312,7 +313,8 @@ namespace fly
         renderlist._visibleMeshes.push_back(this);
       }
     }
-    virtual void cullAndIntersect(const Camera::CullingParams& cp, RenderList& renderlist) override // Fine-grained culling, only called if the bounding box of the node the object is in intersects the view frustum.
+    // TODO: Method is not threadsafe, use const
+    virtual void cullAndIntersect(const Camera::CullingParams& cp, RenderList& renderlist) override
     {
       float ratio;
       if (_bv.largeEnough(cp._camPos, cp._thresh, ratio) 
@@ -323,8 +325,7 @@ namespace fly
     }
     inline void selectLod(const Camera::CullingParams& cp, float ratio)
     {
-      float upper_limit = cp._thresh * 128.f;
-      float alpha = 1.f - std::min((ratio - cp._thresh) / (upper_limit - cp._thresh), 1.f);
+      float alpha = 1.f - std::min((ratio - cp._thresh) / cp._lodRange, 1.f);
       _lod = static_cast<unsigned>(std::roundf(alpha * (_meshData.size() - 1u)));
     }
   protected:
