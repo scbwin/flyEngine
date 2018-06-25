@@ -41,7 +41,7 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "Gamma", TwType::TW_TYPE_FLOAT, setGamma, getGamma, gs, "step = 0.01f");
   TwAddVarCB(bar, "Gamma enabled", TwType::TW_TYPE_BOOLCPP, setGammaEnabled, getGammaEnabled, gs, nullptr);
   TwAddVarCB(bar, "Debug BVH", TwType::TW_TYPE_BOOLCPP, setDebugBVH, getDebugBVH, gs, nullptr);
-  TwAddVarCB(bar, "Debug object AABBs", TwType::TW_TYPE_BOOLCPP, setDebugAABBs, getDebugAABBs, gs, nullptr);
+  TwAddVarCB(bar, "Debug object BVs", TwType::TW_TYPE_BOOLCPP, setDebugAABBs, getDebugAABBs, gs, nullptr);
   TwAddVarCB(bar, "Detail culling threshold", TwType::TW_TYPE_FLOAT, setDetailCullingThreshold, getDetailCullingThreshold, camera_controller, "step=0.0000005f");
   TwAddVarCB(bar, "Lod range multiplier", TwType::TW_TYPE_FLOAT, setLodRangeMultiplier, getLodRangeMultiplier, camera_controller, "step=0.1f");
   TwAddVarCB(bar, "Camera speed", TwType::TW_TYPE_FLOAT, setCamSpeed, getCamSpeed, camera_controller, "step=0.1f");

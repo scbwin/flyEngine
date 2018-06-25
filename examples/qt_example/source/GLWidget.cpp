@@ -558,32 +558,71 @@ void GLWidget::initGame()
   for (const auto& m : diablo_meshes) {
     diablo_aabb = diablo_aabb.getUnion(m->getAABB());
   }
-  float translation_dist = 2.f;
+  float translation_dist = 1.f;
   std::uniform_real_distribution<float> trans_dist(-translation_dist, translation_dist);
+#if TINY_RENDERER_INSTANCED
+  {
+    unsigned cells_per_dir = 16;
+    unsigned items_per_cell = 16;
+    float item_spacing = 6.f;
+    auto aabb_size = diablo_aabb.getMax() - diablo_aabb.getMin();
+    aabb_size *= item_spacing;
+    auto cell_size = aabb_size * static_cast<float>(cells_per_dir);
+    for (unsigned cell_x = 0; cell_x < cells_per_dir; cell_x++) {
+      for (unsigned cell_y = 0; cell_y < cells_per_dir; cell_y++) {
+        for (unsigned cell_z = 0; cell_z < cells_per_dir; cell_z++) {
+          fly::Vec3f cell(static_cast<float>(cell_x), static_cast<float>(cell_y), static_cast<float>(cell_z));
+          std::vector<fly::StaticInstancedMeshRenderable<API, BV>::InstanceData> instance_data;
+          instance_data.reserve(items_per_cell * items_per_cell * items_per_cell);
+          for (unsigned x = 0; x < items_per_cell; x++) {
+            for (unsigned y = 0; y < items_per_cell; y++) {
+              for (unsigned z = 0; z < items_per_cell; z++) {
+                fly::Vec3f rand(trans_dist(gen), trans_dist(gen), trans_dist(gen));
+                auto pos = fly::Vec3f(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)) * (aabb_size + rand) + cell * cell_size;
+                pos += fly::Vec3f(trans_dist(gen), trans_dist(gen), trans_dist(gen));
+                auto model_matrix = fly::Transform(pos).getModelMatrix();
+                fly::StaticInstancedMeshRenderable<API, BV>::InstanceData data;
+                data._modelMatrix = model_matrix;
+                data._modelMatrixInverse = inverse(model_matrix);
+                instance_data.push_back(data);
+              }
+            }
+          }
+          _renderer->addStaticMeshRenderable(std::make_shared<fly::StaticInstancedMeshRenderable<fly::OpenGLAPI, fly::AABB>>(*_renderer, diablo_meshes, diablo_material, instance_data));
+        }
+      }
+    }
+  }
+
+#else
   float spacing = 6.f;
   for (unsigned x = 0; x < TINY_MESHES_PER_DIR; x++) {
     for (unsigned y = 0; y < TINY_MESHES_PER_DIR; y++) {
       for (unsigned z = 0; z < TINY_MESHES_PER_DIR; z++) {
         fly::Vec3f vec(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z));
         vec *= spacing;
-        vec += fly::Vec3f(trans_dist(gen), trans_dist(gen), trans_dist(gen));
-        _renderer->addStaticMeshRenderable(std::make_shared<fly::StaticMeshRenderableLod<fly::OpenGLAPI, fly::AABB>>(*_renderer, diablo_meshes, diablo_material, 
+        vec += fly::Vec3f(trans_dist(gen), trans_dist(gen), trans_dist(gen)) * 2.f;
+        _renderer->addStaticMeshRenderable(std::make_shared<fly::StaticMeshRenderableLod<fly::OpenGLAPI, fly::AABB>>(*_renderer, diablo_meshes, diablo_material,
           fly::Transform((diablo_aabb.getMax() - diablo_aabb.getMin()) * vec)));
       }
     }
+}
+#endif
+  unsigned non_instanced_per_dir = 8;
+  std::uniform_real_distribution<float> scale_dist(100.f, 200.f);
+  for (unsigned x = 0; x < non_instanced_per_dir; x++) {
+    for (unsigned z = 0; z < non_instanced_per_dir; z++) {
+      float scale = scale_dist(gen);
+      _renderer->addStaticMeshRenderable(std::make_shared<fly::StaticMeshRenderableLod<fly::OpenGLAPI, fly::AABB>>(*_renderer, diablo_meshes, diablo_material,
+        fly::Transform(fly::Vec3f(-300.f * x, scale, -300.f * z), fly::Vec3f(scale))));
+    }
   }
-  _renderer->addStaticMeshRenderable(std::make_shared<fly::StaticMeshRenderableLod<fly::OpenGLAPI, fly::AABB>>(*_renderer, diablo_meshes, diablo_material,
-    fly::Transform(fly::Vec3f(-300.f, 100.f, 300.f), fly::Vec3f(100.f))));
-  _renderer->addStaticMeshRenderable(std::make_shared<fly::StaticMeshRenderableLod<fly::OpenGLAPI, fly::AABB>>(*_renderer, diablo_meshes, diablo_material,
-    fly::Transform(fly::Vec3f(300.f, 100.f, -300.f), fly::Vec3f(100.f))));
-  _renderer->addStaticMeshRenderable(std::make_shared<fly::StaticMeshRenderableLod<fly::OpenGLAPI, fly::AABB>>(*_renderer, diablo_meshes, diablo_material,
-    fly::Transform(fly::Vec3f(-300.f, 100.f, -300.f), fly::Vec3f(100.f))));
   _graphicsSettings.setDebugBVH(true);
 #endif
 
 #if INSTANCED_MESHES
-//  _graphicsSettings.setShadowMapSize(8192);
- // _graphicsSettings.setDebugObjectBVs(true);
+  //  _graphicsSettings.setShadowMapSize(8192);
+   // _graphicsSettings.setDebugObjectBVs(true);
   _camera->setDetailCullingThreshold(0.000005f);
   _debugCamera->setDetailCullingThreshold(_camera->getDetailCullingThreshold());
   _camera->setLodRangeMultiplier(1024.f);
