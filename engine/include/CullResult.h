@@ -20,6 +20,14 @@ namespace fly
       _fullyVisibleObjects.clear();
       _intersectedObjects.clear();
     }
+    inline size_t capacity()
+    {
+      return _fullyVisibleObjects.capacity() + _intersectedObjects.capacity();
+    }
+    inline size_t size()
+    {
+      return _fullyVisibleObjects.size() + _intersectedObjects.size();
+    }
   };
 }
 

@@ -21,11 +21,10 @@ namespace fly
   class IMeshRenderable
   {
   public:
-    struct RenderList
+    class RenderList
     {
-      StackPOD<IMeshRenderable*> _visibleMeshes;
-      StackPOD<IMeshRenderable*> _gpuCullList;
-      StackPOD<IMeshRenderable*> _gpuLodList;
+      using Stack = StackPOD<IMeshRenderable*>;
+    public:
       inline void reserve(size_t size)
       {
         _visibleMeshes.reserve(size);
@@ -38,6 +37,24 @@ namespace fly
         _gpuCullList.clear();
         _gpuLodList.clear();
       }
+      inline size_t size() { return _visibleMeshes.size() + _gpuCullList.size() + _gpuLodList.size(); }
+      inline size_t capacity() { return _visibleMeshes.capacity() + _gpuCullList.capacity() + _gpuLodList.capacity(); }
+      inline const Stack& getVisibleMeshes() const { return _visibleMeshes; }
+      inline const Stack& getGPUCullList() const { return _gpuCullList; }
+      inline const Stack& getGPULodList() const { return _gpuLodList; }
+      inline void append(const RenderList& other)
+      {
+        _visibleMeshes.append(other._visibleMeshes);
+        _gpuCullList.append(other._gpuCullList);
+        _gpuLodList.append(other._gpuLodList);
+      }
+      inline void addVisibleMesh(IMeshRenderable* mesh) { _visibleMeshes.push_back(mesh); }
+      inline void addToGPUCullList(IMeshRenderable* mesh) { _gpuCullList.push_back(mesh); }
+      inline void addToGPULodList(IMeshRenderable* mesh) { _gpuLodList.push_back(mesh); }
+    private:
+      Stack _visibleMeshes;
+      Stack _gpuCullList;
+      Stack _gpuLodList;
     };
     virtual ~IMeshRenderable() = default;
     IMeshRenderable() = default;
@@ -53,7 +70,7 @@ namespace fly
     virtual void cull(const Camera::CullingParams& cp, RenderList& renderlist)
     {
       if (_bv.isLargeEnough(cp._camPos, cp._thresh)) {
-        renderlist._visibleMeshes.push_back(this);
+        renderlist.addVisibleMesh(this);
       }
     }
     /**
@@ -62,7 +79,7 @@ namespace fly
     virtual void cullAndIntersect(const Camera::CullingParams& cp, RenderList& renderlist)
     {
       if (_bv.isLargeEnough(cp._camPos, cp._thresh) && IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes) != IntersectionResult::OUTSIDE) {
-        renderlist._visibleMeshes.push_back(this);
+        renderlist.addVisibleMesh(this);
       }
     }
     virtual float getLargestObjectBVSize() const
@@ -242,8 +259,8 @@ namespace fly
     virtual void cull(const Camera::CullingParams& cp, RenderList& renderlist) override
     {
       if (_bv.isLargeEnough(cp._camPos, cp._thresh, _largestBVSize)) {
-        renderlist._visibleMeshes.push_back(this);
-        renderlist._gpuLodList.push_back(this);
+        renderlist.addVisibleMesh(this);
+        renderlist.addToGPULodList(this);
       }
     }
     virtual void cullAndIntersect(const Camera::CullingParams& cp, RenderList& renderlist) override
@@ -251,8 +268,8 @@ namespace fly
       if (_bv.isLargeEnough(cp._camPos, cp._thresh, _largestBVSize)) {
         auto result = IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes);
         if (result != IntersectionResult::OUTSIDE) {
-          renderlist._visibleMeshes.push_back(this);
-          result == IntersectionResult::INSIDE ? renderlist._gpuLodList.push_back(this) : renderlist._gpuCullList.push_back(this);
+          renderlist.addVisibleMesh(this);
+          result == IntersectionResult::INSIDE ? renderlist.addToGPULodList(this) : renderlist.addToGPUCullList(this);
         }
       }
     }
@@ -313,23 +330,23 @@ namespace fly
     {
       return _meshData[_lod].numTriangles();
     }
-    // TODO: Method is not threadsafe, use const
+    // TODO: Method is not threadsafe, use const, write to CPU (!) lod list
     virtual void cull(const Camera::CullingParams& cp, RenderList& renderlist) override
     {
       float ratio;
       if (_bv.largeEnough(cp._camPos, cp._thresh, ratio)) {
         selectLod(cp, ratio);
-        renderlist._visibleMeshes.push_back(this);
+        renderlist.addVisibleMesh(this);
       }
     }
-    // TODO: Method is not threadsafe, use const
+    // TODO: Method is not threadsafe, use const, write to CPU (!) lod list
     virtual void cullAndIntersect(const Camera::CullingParams& cp, RenderList& renderlist) override
     {
       float ratio;
       if (_bv.largeEnough(cp._camPos, cp._thresh, ratio) 
         && IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes) != IntersectionResult::OUTSIDE) {
         selectLod(cp, ratio);
-        renderlist._visibleMeshes.push_back(this);
+        renderlist.addVisibleMesh(this);
       }
     }
     inline void selectLod(const Camera::CullingParams& cp, float ratio)
@@ -341,7 +358,7 @@ namespace fly
     std::vector<typename API::MeshData> _meshData;
     Mat4f _modelMatrix;
     Mat3f _modelMatrixInverse;
-    unsigned _lod = 2;
+    unsigned _lod;
   };
 }
 

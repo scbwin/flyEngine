@@ -277,7 +277,7 @@ namespace fly
         _renderTargets.clear();
         _api.setRendertargets(_renderTargets, _depthBuffer.get());
         _api.clearRendertarget(false, true, false);
-        groupMeshes<true>(_renderListScene->_visibleMeshes);
+        groupMeshes<true>(_renderListScene->getVisibleMeshes());
         renderMeshes<true>();
         _api.setDepthWriteEnabled<false>();
         _api.setDepthFunc<API::DepthFunc::EQUAL>();
@@ -401,19 +401,17 @@ namespace fly
     }
     void buildBVH()
     {
-      _renderList.reserve(_staticMeshRenderables.size() + _staticInstancedMeshRenderables.size() + _staticMeshRenderablesLod.size());
-      _renderListAsync.reserve(_renderList._visibleMeshes.capacity());
-      _cullResult.reserve(_renderList._visibleMeshes.capacity());
-      _cullResultAsync.reserve(_renderList._visibleMeshes.capacity());
+      _cullResult.reserve(_staticMeshRenderables.size() + _staticInstancedMeshRenderables.size() + _staticMeshRenderablesLod.size());
+      _cullResultAsync.reserve(_cullResult.capacity());
       std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
       std::cout << "Static instanced mesh renderables: " << _staticInstancedMeshRenderables.size() << std::endl;
       std::cout << "Static mesh renderables lod: " << _staticMeshRenderablesLod.size() << std::endl;
-      if (_renderList._visibleMeshes.capacity() == 0) {
+      if (!_cullResult.capacity()) {
         throw std::exception("No meshes were added to the renderer.");
       }
       Timing timing;
       std::vector<MeshRenderable*> renderables;
-      renderables.reserve(_renderList._visibleMeshes.capacity());
+      renderables.reserve(_cullResult.size());
       for (const auto& smr : _staticMeshRenderables) {
         renderables.push_back(smr.get());
       }
@@ -492,12 +490,12 @@ namespace fly
     }
     void renderObjectBVs()
     {
-      if (_renderListScene->_visibleMeshes.size()) {
+      if (_renderListScene->getVisibleMeshes().size()) {
         _api.setDepthWriteEnabled<true>();
         _api.setDepthFunc<API::DepthFunc::LEQUAL>();
         StackPOD<BV const *> bvs;
-        bvs.reserve(_renderListScene->_visibleMeshes.size());
-        for (auto m : _renderListScene->_visibleMeshes) {
+        bvs.reserve(_renderListScene->getVisibleMeshes().size());
+        for (auto m : _renderListScene->getVisibleMeshes()) {
           bvs.push_back(&m->getBV());
         }
         _api.renderBVs(bvs, _vpScene, Vec3f(0.f, 1.f, 0.f));
@@ -508,7 +506,7 @@ namespace fly
 #if RENDERER_STATS
       Timing timing;
 #endif
-      groupMeshes(_renderListScene->_visibleMeshes);
+      groupMeshes(_renderListScene->getVisibleMeshes());
 #if RENDERER_STATS
       _stats._sceneMeshGroupingMicroSeconds = timing.duration<std::chrono::microseconds>();
       timing.start();
@@ -540,7 +538,7 @@ namespace fly
 #if RENDERER_STATS
         timing.start();
 #endif
-        groupMeshes<true>(_renderList._visibleMeshes);
+        groupMeshes<true>(_renderList.getVisibleMeshes());
 #if RENDERER_STATS
         _stats._shadowMapGroupingMicroSeconds += timing.duration<std::chrono::microseconds>();
         timing.start();
@@ -579,6 +577,7 @@ namespace fly
       cull_result.clear();
       auto cp = camera.getCullingParams();
       _bvhStatic->cullVisibleObjects(cp, cull_result);
+      renderlist.reserve(cull_result.size());
       auto num_threads = std::thread::hardware_concurrency();
       unsigned num_meshes = static_cast<unsigned>(cull_result._fullyVisibleObjects.size());
       auto elements_per_thread = elementsPerThread(num_meshes, num_threads);
@@ -600,9 +599,7 @@ namespace fly
           j += elements_per_thread;
         }
         for (auto& f : futures) {
-          auto result = f.get();
-          renderlist._visibleMeshes.append(result._visibleMeshes);
-          renderlist._gpuCullList.append(result._gpuCullList);
+          renderlist.append(f.get());
         }
       }
       else {
@@ -616,18 +613,18 @@ namespace fly
     }
     inline void cullGPU(const typename MeshRenderable::RenderList& renderlist, Camera camera, const Mat4f& view_projection_matrix)
     {
-      if (renderlist._gpuCullList.size() || renderlist._gpuLodList.size()) {
+      if (renderlist.getGPUCullList().size() || renderlist.getGPULodList().size()) {
         camera.extractFrustumPlanes(view_projection_matrix, _api.getZNearMapping());
         auto cp = camera.getCullingParams();
-        if (renderlist._gpuCullList.size()) {
+        if (renderlist.getGPUCullList().size()) {
           _api.prepareCulling(cp._frustumPlanes, cp._camPos, cp._lodRange, cp._thresh);
-          for (const auto& m : renderlist._gpuCullList) {
+          for (const auto& m : renderlist.getGPUCullList()) {
             m->cullGPU();
           }
         }
-        if (renderlist._gpuLodList.size()) {
+        if (renderlist.getGPULodList().size()) {
           _api.prepareLod(cp._camPos, cp._lodRange, cp._thresh);
-          for (const auto& m : renderlist._gpuLodList) {
+          for (const auto& m : renderlist.getGPULodList()) {
             m->cullGPU();
           }
         }
