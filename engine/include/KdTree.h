@@ -10,7 +10,10 @@
 
 namespace fly
 {
-  template<typename T, typename BV>
+  /**
+  * TODO: Make this class even more generic. E.g. one could also store indices instead of pointers
+  */
+  template<typename T, typename BV, T invalid_value = nullptr>
   class KdTree
   {
   public:
@@ -58,7 +61,7 @@ namespace fly
         : Node(begin, end, depth, objects)
       {
         _left = objects[begin];
-        _right = end - begin > 1 ? objects[begin + 1] : nullptr;
+        _right = end - begin > 1 ? objects[begin + 1] : invalid_value;
       }
       virtual void cullVisibleObjects(const Camera::CullingParams& cp, CullResult<T>& cull_result) const override
       {
@@ -85,10 +88,10 @@ namespace fly
       virtual void intersectObjects(const BV& bv, StackPOD<T>& objects) const override
       {
         if (bv.intersects(_bv)) {
-          if (_left && bv.intersects(_left->getBV())) {
+          if (isValid(_left) && bv.intersects(_left->getBV())) {
             objects.push_back_secure(_left);
           }
-          if (_right && bv.intersects(_right->getBV())) {
+          if (isValid(_right) && bv.intersects(_right->getBV())) {
             objects.push_back_secure(_right);
           }
         }
@@ -110,13 +113,14 @@ namespace fly
       T _right;
       inline void add(StackPOD<T>& objects) const
       {
-        if (_left) {
+        if (isValid(_left)) {
           objects.push_back(_left);
         }
-        if (_right) {
+        if (isValid(_right)) {
           objects.push_back(_right);
         }
       }
+      inline bool isValid(const T& t) const { return t != invalid_value; }
     };
     class InternalNode : public Node
     {

@@ -61,8 +61,8 @@ namespace fly
     inline std::shared_ptr<ShaderDesc<API>> const * getShaderDesc() { return _shaderDesc; }
     inline std::shared_ptr<ShaderDesc<API>> const * getShaderDescDepth() { return _shaderDescDepth; }
     inline MaterialDesc<API> * getMaterialDesc() { return _materialDesc; }
-    virtual void renderDepth(API const & api) = 0;
-    virtual void render(API const & api) = 0;
+    virtual void renderDepth(API const & api) const = 0;
+    virtual void render(API const & api) const = 0;
     inline const BV& getBV() const { return _bv; }
     /**
     * Called for fully visible meshes.
@@ -138,11 +138,11 @@ namespace fly
       createBV(*mesh, transform, _bv);
     }
     virtual ~StaticMeshRenderable() = default;
-    virtual void render(API const & api) override
+    virtual void render(API const & api) const override
     {
       api.renderMesh(_meshData, _modelMatrix, _modelMatrixInverse);
     }
-    virtual void renderDepth(API const & api) override
+    virtual void renderDepth(API const & api) const override
     {
       api.renderMesh(_meshData, _modelMatrix);
     }
@@ -179,11 +179,11 @@ namespace fly
       _windParams._pivotWorld = _bv.getMax()[1];
       _windParams._bendFactorExponent = 2.5f;
     }
-    virtual void render(API const & api) override
+    virtual void render(API const & api) const override
     {
       api.renderMesh(_meshData, _modelMatrix, _modelMatrixInverse, _windParams, _bv);
     }
-    virtual void renderDepth(API const & api) override
+    virtual void renderDepth(API const & api) const override
     {
       api.renderMesh(_meshData, _modelMatrix, _windParams, _bv);
     }
@@ -244,11 +244,11 @@ namespace fly
     }
     virtual ~StaticInstancedMeshRenderable() = default;
 
-    virtual void render(API const & api) override
+    virtual void render(API const & api) const override
     {
       api.renderInstances(_visibleInstances, _indirectBuffer, _instanceData, _indirectInfo, _numInstances);
     }
-    virtual void renderDepth(API const & api) override
+    virtual void renderDepth(API const & api) const override
     {
       api.renderInstances(_visibleInstances, _indirectBuffer, _instanceData, _indirectInfo, _numInstances);
     }
@@ -318,11 +318,11 @@ namespace fly
       }
     }
     virtual ~StaticMeshRenderableLod() = default;
-    virtual void render(API const & api) override
+    virtual void render(API const & api) const override
     {
       api.renderMesh(_meshData[_lod], _modelMatrix, _modelMatrixInverse);
     }
-    virtual void renderDepth(API const & api) override
+    virtual void renderDepth(API const & api) const override
     {
       api.renderMesh(_meshData[_lod], _modelMatrix);
     }
