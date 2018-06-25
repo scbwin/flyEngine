@@ -38,8 +38,8 @@ uniform uint ni; // num_instances
 uniform vec4 fp [6]; // frustum planes
 uniform vec3 cp_w; // camera pos world
 uniform uint ml; // max lod
-uniform float lm; // lod multiplier
 uniform float de; // detail culling error thresh
+uniform float lr; // lod range
 
 
 #define ID gl_GlobalInvocationID.x
@@ -66,14 +66,16 @@ bool intersectFrustumAABB(vec3 diag)
 void main()
 {
   if (ID < ni) {
-	vec3 nearest_point = clamp(cp_w,  aabbs[ID].bb_min.xyz, aabbs[ID].bb_max.xyz);
-	vec3 to_cam = cp_w - nearest_point;
-	float dist2 = dot(to_cam, to_cam);
-	vec3 diag = aabbs[ID].bb_max.xyz - aabbs[ID].bb_min.xyz;
-	float size2 = dot(diag, diag);
-    if (size2 / dist2 > de && intersectFrustumAABB(diag)) {
-	  uint lod = min(uint(distance(cp_w, nearest_point) * lm), ml);
-	  visible_instances[lod * ni + atomicAdd(indirect_info[lod]._primCount, 1u)] = ID;
-	}
+    vec3 nearest_point = clamp(cp_w,  aabbs[ID].bb_min.xyz, aabbs[ID].bb_max.xyz);
+    vec3 to_cam = cp_w - nearest_point;
+    float dist2 = dot(to_cam, to_cam);
+    vec3 diag = aabbs[ID].bb_max.xyz - aabbs[ID].bb_min.xyz;
+    float size2 = dot(diag, diag);
+    float ratio = size2 / dist2;
+    if (ratio > de && intersectFrustumAABB(diag)) {
+      float alpha = 1.f - min((ratio - de) / lr, 1.f);
+      uint lod = uint(round(alpha * ml));
+      visible_instances[lod * ni + atomicAdd(indirect_info[lod]._primCount, 1u)] = ID;
+    }
   }
 }

@@ -14,7 +14,7 @@
 #include <AntWrapper.h>
 
 #define SPONZA 1
-#define SPONZA_MANY 1 && SPONZA
+#define SPONZA_MANY 0 && SPONZA
 #define TOWERS 0
 #define TREE_SCENE 0
 #define PHYSICS 0
@@ -22,7 +22,7 @@
 #define NUM_OBJECTS 100
 #define NUM_TOWERS 15
 #define DELETE_CURTAIN 1
-#define INSTANCED_MESHES 0 && !SPONZA
+#define INSTANCED_MESHES 1 && !SPONZA
 #define NUM_CELLS 64
 #define ITEMS_PER_CELL NUM_CELLS
 #define SINGLE_SPHERE 0

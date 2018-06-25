@@ -258,7 +258,7 @@ namespace fly
     virtual void cullGPU(const Camera::CullingParams& cp) override
     {
       _api.cullInstances(_aabbBuffer, _numInstances, _visibleInstances, _indirectBuffer,
-        _indirectInfo, _lodMultiplier, cp._thresh);
+        _indirectInfo, cp._lodRange, cp._thresh);
     }
   protected:
     std::vector<typename API::IndirectInfo> _indirectInfo;

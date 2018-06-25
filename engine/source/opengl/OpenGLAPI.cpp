@@ -169,7 +169,7 @@ namespace fly
   }
   void OpenGLAPI::cullInstances(const StorageBuffer& aabb_buffer, unsigned num_instances,
     const StorageBuffer& visible_instances, const IndirectBuffer& indirect_draw_buffer,
-    std::vector<IndirectInfo>& info, float lod_multiplier, float detail_culling_thresh) const
+    std::vector<IndirectInfo>& info, float lod_range, float detail_culling_thresh) const
   {
     for (auto& i : info) {
       i._primCount = 0;
@@ -185,7 +185,7 @@ namespace fly
 
     setScalar(_activeShader->uniformLocation("ni"), num_instances);
     setScalar(_activeShader->uniformLocation("ml"), static_cast<unsigned>(info.size() - 1));
-    setScalar(_activeShader->uniformLocation("lm"), lod_multiplier);
+    setScalar(_activeShader->uniformLocation("lr"), lod_range);
     setScalar(_activeShader->uniformLocation("de"), detail_culling_thresh);
 
     GL_CHECK(glDispatchCompute(num_groups, 1, 1));

@@ -578,6 +578,7 @@ void GLWidget::initGame()
   _graphicsSettings.setDebugObjectBVs(true);
   _camera->setDetailCullingThreshold(0.000005f);
   _debugCamera->setDetailCullingThreshold(_camera->getDetailCullingThreshold());
+  _camera->setLodRangeMultiplier(1024.f);
   std::vector<std::shared_ptr<fly::Mesh>> sphere_lods;
   for (unsigned i = 0; i < 5; i++) {
     sphere_lods.push_back(importer->loadModel("assets/sphere_lod" + std::to_string(i) + ".obj")->getMeshes()[0]);
