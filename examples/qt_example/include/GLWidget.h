@@ -27,7 +27,7 @@
 #define ITEMS_PER_CELL NUM_CELLS
 #define SINGLE_SPHERE 0
 #define TINY_MESHES_PER_DIR 128
-#define TINY_RENDERER_MODELS 1 && !SPONZA
+#define TINY_RENDERER_MODELS 0 && !SPONZA
 
 class btTriangleMesh;
 

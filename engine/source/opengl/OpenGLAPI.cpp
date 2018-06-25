@@ -27,6 +27,7 @@ namespace fly
     _boxShader(std::move(*createShader(GLShaderSource("assets/opengl/vs_box.glsl", GL_VERTEX_SHADER), 
       GLShaderSource("assets/opengl/fs_box.glsl", GL_FRAGMENT_SHADER), GLShaderSource("assets/opengl/gs_box.glsl", GL_GEOMETRY_SHADER)))),
     _cullingShader(createComputeShader(GLShaderSource("assets/opengl/cs_culling.glsl", GL_COMPUTE_SHADER))),
+    _lodShader(createComputeShader(GLShaderSource("assets/opengl/cs_lod.glsl", GL_COMPUTE_SHADER))),
     _debugFrustumShader(std::move(*createShader(GLShaderSource("assets/opengl/vs_debug_frustum.glsl", GL_VERTEX_SHADER), GLShaderSource("assets/opengl/fs_debug_frustum.glsl", GL_FRAGMENT_SHADER)))),
     _skydomeShader(std::move(*createShader(GLShaderSource("assets/opengl/vs_skybox.glsl", GL_VERTEX_SHADER), GLShaderSource("assets/opengl/fs_skydome_new.glsl", GL_FRAGMENT_SHADER))))
   {
@@ -157,11 +158,20 @@ namespace fly
     GL_CHECK(glDrawElements(GL_LINES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_SHORT, nullptr));
     GL_CHECK(glLineWidth(1.f));
   }
-  void OpenGLAPI::prepareCulling(const std::array<Vec4f, 6>& frustum_planes, const Vec3f& cam_pos_world)
+  void OpenGLAPI::prepareCulling(const std::array<Vec4f, 6>& frustum_planes, const Vec3f& cam_pos_world, float lod_range, float thresh)
   {
     bindShader(&_cullingShader);
     setVectorArray(_activeShader->uniformLocation("fp"), frustum_planes.front(), static_cast<unsigned>(frustum_planes.size()));
     setVector(_activeShader->uniformLocation("cp_w"), cam_pos_world);
+    setScalar(_activeShader->uniformLocation("lr"), lod_range);
+    setScalar(_activeShader->uniformLocation("de"), thresh);
+  }
+  void OpenGLAPI::prepareLod(const Vec3f & cam_pos_world, float lod_range, float thresh)
+  {
+    bindShader(&_lodShader);
+    setVector(_activeShader->uniformLocation("cp_w"), cam_pos_world);
+    setScalar(_activeShader->uniformLocation("lr"), lod_range);
+    setScalar(_activeShader->uniformLocation("de"), thresh);
   }
   void OpenGLAPI::endCulling() const
   {
@@ -169,7 +179,7 @@ namespace fly
   }
   void OpenGLAPI::cullInstances(const StorageBuffer& aabb_buffer, unsigned num_instances,
     const StorageBuffer& visible_instances, const IndirectBuffer& indirect_draw_buffer,
-    std::vector<IndirectInfo>& info, float lod_range, float detail_culling_thresh) const
+    std::vector<IndirectInfo>& info) const
   {
     for (auto& i : info) {
       i._primCount = 0;
@@ -185,8 +195,6 @@ namespace fly
 
     setScalar(_activeShader->uniformLocation("ni"), num_instances);
     setScalar(_activeShader->uniformLocation("ml"), static_cast<unsigned>(info.size() - 1));
-    setScalar(_activeShader->uniformLocation("lr"), lod_range);
-    setScalar(_activeShader->uniformLocation("de"), detail_culling_thresh);
 
     GL_CHECK(glDispatchCompute(num_groups, 1, 1));
     

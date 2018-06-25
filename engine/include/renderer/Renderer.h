@@ -616,12 +616,20 @@ namespace fly
     }
     inline void cullGPU(const typename MeshRenderable::RenderList& renderlist, Camera camera, const Mat4f& view_projection_matrix)
     {
-      if (renderlist._gpuCullList.size()) {
+      if (renderlist._gpuCullList.size() || renderlist._gpuLodList.size()) {
         camera.extractFrustumPlanes(view_projection_matrix, _api.getZNearMapping());
         auto cp = camera.getCullingParams();
-        _api.prepareCulling(cp._frustumPlanes, cp._camPos);
-        for (const auto& m : renderlist._gpuCullList) {
-          m->cullGPU(cp);
+        if (renderlist._gpuCullList.size()) {
+          _api.prepareCulling(cp._frustumPlanes, cp._camPos, cp._lodRange, cp._thresh);
+          for (const auto& m : renderlist._gpuCullList) {
+            m->cullGPU();
+          }
+        }
+        if (renderlist._gpuLodList.size()) {
+          _api.prepareLod(cp._camPos, cp._lodRange, cp._thresh);
+          for (const auto& m : renderlist._gpuLodList) {
+            m->cullGPU();
+          }
         }
         _api.endCulling();
       }
