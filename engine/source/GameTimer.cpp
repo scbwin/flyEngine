@@ -34,9 +34,7 @@ namespace fly
     if (_stopped) {
       return (_stopTime - _baseTime - _pausedTime).count() / 1000000000.f;
     }
-    else {
-      return (_currTime - _baseTime - _pausedTime).count() / 1000000000.f;
-    }
+    return (_currTime - _baseTime - _pausedTime).count() / 1000000000.f;
   }
   float GameTimer::getDeltaTimeSeconds() const
   {

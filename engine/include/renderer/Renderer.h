@@ -159,36 +159,12 @@ namespace fly
       graphicsSettingsChanged();
       compositingChanged(gs);
     }
-    void addStaticMeshRenderable(const std::shared_ptr<StaticMeshRenderable<API, BV>>& smr) {
-      _staticMeshRenderables.push_back(smr);
-      _sceneBounds = _sceneBounds.getUnion(smr->getBV());
+    void addStaticMeshRenderable(const std::shared_ptr<MeshRenderable>& smr) {
+      addStaticMeshRenderables({ smr });
     }
-    void addStaticMeshRenderables(const std::vector<std::shared_ptr<StaticMeshRenderable<API, BV>>>& smrs)
+    void addStaticMeshRenderables(const std::vector<std::shared_ptr<MeshRenderable>>& smrs)
     {
-      _staticMeshRenderables.insert(_staticMeshRenderables.begin(), smrs.begin(), smrs.end());
-      for (const auto& smr : smrs) {
-        _sceneBounds = _sceneBounds.getUnion(smr->getBV());
-      }
-    }
-    void addStaticMeshRenderable(const std::shared_ptr<StaticInstancedMeshRenderable<API, BV>>& simr) {
-      _staticInstancedMeshRenderables.push_back(simr);
-      _sceneBounds = _sceneBounds.getUnion(simr->getBV());
-    }
-    void addStaticMeshRenderables(const std::vector<std::shared_ptr<StaticInstancedMeshRenderable<API, BV>>>& simrs)
-    {
-      _staticInstancedMeshRenderables.insert(_staticInstancedMeshRenderables.begin(), simrs.begin(), simrs.end());
-      for (const auto& simr : simrs) {
-        _sceneBounds = _sceneBounds.getUnion(simr->getBV());
-      }
-    }
-    void addStaticMeshRenderable(const std::shared_ptr<StaticMeshRenderableLod<API, BV>>& smr) 
-    {
-      _staticMeshRenderablesLod.push_back(smr);
-      _sceneBounds = _sceneBounds.getUnion(smr->getBV());
-    }
-    void addStaticMeshRenderables(const std::vector<std::shared_ptr<StaticMeshRenderableLod<API, BV>>>& smrs)
-    {
-      _staticMeshRenderablesLod.insert(_staticMeshRenderablesLod.begin(), smrs.begin(), smrs.end());
+      _meshRenderables.insert(_meshRenderables.end(), smrs.begin(), smrs.end());
       for (const auto& smr : smrs) {
         _sceneBounds = _sceneBounds.getUnion(smr->getBV());
       }
@@ -258,8 +234,13 @@ namespace fly
         async.get();
 #if RENDERER_STATS
         _stats._rendererIdleTimeMicroSeconds = timing.duration<std::chrono::microseconds>();
+        timing.start();
 #endif
         cullGPU(*_renderListScene, **_cullCamera, cull_vp);
+        selectLod(*_renderListScene, **_cullCamera);
+#if RENDERER_STATS
+        _stats._cullingMicroSeconds += timing.duration<std::chrono::microseconds>();
+#endif
       }
       else {
 #if RENDERER_STATS
@@ -267,6 +248,7 @@ namespace fly
 #endif
         cullMeshes(cull_vp, **_cullCamera, *_renderListScene, _cullResult);
         cullGPU(*_renderListScene, **_cullCamera, cull_vp);
+        selectLod(*_renderListScene, **_cullCamera);
 #if RENDERER_STATS
         _stats._cullingMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
@@ -401,25 +383,17 @@ namespace fly
     }
     void buildBVH()
     {
-      _cullResult.reserve(_staticMeshRenderables.size() + _staticInstancedMeshRenderables.size() + _staticMeshRenderablesLod.size());
+      _cullResult.reserve(_meshRenderables.size());
       _cullResultAsync.reserve(_cullResult.capacity());
-      std::cout << "Static mesh renderables: " << _staticMeshRenderables.size() << std::endl;
-      std::cout << "Static instanced mesh renderables: " << _staticInstancedMeshRenderables.size() << std::endl;
-      std::cout << "Static mesh renderables lod: " << _staticMeshRenderablesLod.size() << std::endl;
+      std::cout << "Mesh renderables:" << _meshRenderables.size() << std::endl;
       if (!_cullResult.capacity()) {
         throw std::exception("No meshes were added to the renderer.");
       }
       Timing timing;
       std::vector<MeshRenderable*> renderables;
       renderables.reserve(_cullResult.size());
-      for (const auto& smr : _staticMeshRenderables) {
-        renderables.push_back(smr.get());
-      }
-      for (const auto& simr : _staticInstancedMeshRenderables) {
-        renderables.push_back(simr.get());
-      }
-      for (const auto& smr : _staticMeshRenderablesLod) {
-        renderables.push_back(smr.get());
+      for (const auto& mr : _meshRenderables) {
+        renderables.push_back(mr.get());
       }
       _bvhStatic = std::make_unique<BVH>(renderables);
       std::cout << "BVH construction took " << timing.duration<std::chrono::milliseconds>() << " milliseconds." << std::endl;
@@ -456,9 +430,7 @@ namespace fly
     RendererStats _stats;
 #endif
     typename API::MeshGeometryStorage _meshGeometryStorage;
-    std::vector<std::shared_ptr<StaticMeshRenderable<API, BV>>> _staticMeshRenderables;
-    std::vector<std::shared_ptr<StaticInstancedMeshRenderable<API, BV>>> _staticInstancedMeshRenderables;
-    std::vector<std::shared_ptr<StaticMeshRenderableLod<API, BV>>> _staticMeshRenderablesLod;
+    std::vector<std::shared_ptr<MeshRenderable>> _meshRenderables;
     std::shared_ptr<SkydomeRenderable<API, BV>> _skydomeRenderable;
     CullResult<MeshRenderable*> _cullResult;
     CullResult<MeshRenderable*> _cullResultAsync;
@@ -532,6 +504,7 @@ namespace fly
 #endif
         cullMeshes(_vpLightVolume[i], **_cullCamera, _renderList, _cullResult);
         cullGPU(_renderList, **_cullCamera, _vpLightVolume[i]);
+        selectLod(_renderList, **_cullCamera);
 #if RENDERER_STATS
         _stats._cullingShadowMapMicroSeconds += timing.duration<std::chrono::microseconds>();
 #endif
@@ -584,19 +557,19 @@ namespace fly
       if (_gs->getMultithreadedDetailCulling() && elements_per_thread >= 256) {
         std::vector<std::future<typename MeshRenderable::RenderList>> futures;
         futures.reserve(num_threads);
-        unsigned j = 0;
+        unsigned start = 0;
         const auto& meshes_to_cull = cull_result._fullyVisibleObjects;
         for (unsigned i = 0; i < num_threads; i++) {
-          unsigned max_index = std::min(j + elements_per_thread, num_meshes);
-          futures.push_back(std::async(std::launch::async, [j, max_index, cp, &meshes_to_cull]() {
+          unsigned end = std::min(start + elements_per_thread, num_meshes);
+          futures.push_back(std::async(std::launch::async, [start, end, cp, &meshes_to_cull]() {
             typename MeshRenderable::RenderList renderlist;
-            renderlist.reserve(max_index - j);
-            for (unsigned i = j; i < max_index; i++) {
+            renderlist.reserve(end - start);
+            for (unsigned i = start; i < end; i++) {
               meshes_to_cull[i]->cull(cp, renderlist);
             }
             return renderlist;
           }));
-          j += elements_per_thread;
+          start += elements_per_thread;
         }
         for (auto& f : futures) {
           renderlist.append(f.get());
@@ -629,6 +602,16 @@ namespace fly
           }
         }
         _api.endCulling();
+      }
+    }
+    inline void selectLod(const typename MeshRenderable::RenderList& renderlist, const Camera& camera)
+    {
+      if (!renderlist.getCPULodList().size()) {
+        return;
+      }
+      auto cp = camera.getCullingParams();
+      for (const auto& m : renderlist.getCPULodList()) {
+        m->selectLod(cp);
       }
     }
     template<bool depth = false>

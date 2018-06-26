@@ -30,31 +30,37 @@ namespace fly
         _visibleMeshes.reserve(size);
         _gpuCullList.reserve(size);
         _gpuLodList.reserve(size);
+        _cpuLodList.reserve(size);
       }
       inline void clear()
       {
         _visibleMeshes.clear();
         _gpuCullList.clear();
         _gpuLodList.clear();
+        _cpuLodList.clear();
       }
-      inline size_t size() { return _visibleMeshes.size() + _gpuCullList.size() + _gpuLodList.size(); }
-      inline size_t capacity() { return _visibleMeshes.capacity() + _gpuCullList.capacity() + _gpuLodList.capacity(); }
+      inline size_t size() { return _visibleMeshes.size() + _gpuCullList.size() + _gpuLodList.size() + _cpuLodList.size(); }
+      inline size_t capacity() { return _visibleMeshes.capacity() + _gpuCullList.capacity() + _gpuLodList.capacity() + _cpuLodList.capacity(); }
       inline const Stack& getVisibleMeshes() const { return _visibleMeshes; }
       inline const Stack& getGPUCullList() const { return _gpuCullList; }
       inline const Stack& getGPULodList() const { return _gpuLodList; }
+      inline const Stack& getCPULodList() const { return _cpuLodList; }
       inline void append(const RenderList& other)
       {
         _visibleMeshes.append(other._visibleMeshes);
         _gpuCullList.append(other._gpuCullList);
         _gpuLodList.append(other._gpuLodList);
+        _cpuLodList.append(other._cpuLodList);
       }
       inline void addVisibleMesh(IMeshRenderable* mesh) { _visibleMeshes.push_back(mesh); }
       inline void addToGPUCullList(IMeshRenderable* mesh) { _gpuCullList.push_back(mesh); }
       inline void addToGPULodList(IMeshRenderable* mesh) { _gpuLodList.push_back(mesh); }
+      inline void addToCPULodList(IMeshRenderable* mesh) { _cpuLodList.push_back(mesh); }
     private:
       Stack _visibleMeshes;
       Stack _gpuCullList;
       Stack _gpuLodList;
+      Stack _cpuLodList;
     };
     virtual ~IMeshRenderable() = default;
     IMeshRenderable() = default;
@@ -69,7 +75,7 @@ namespace fly
     */
     virtual void cull(const Camera::CullingParams& cp, RenderList& renderlist)
     {
-      if (_bv.isLargeEnough(cp._camPos, cp._thresh)) {
+      if (largeEnough(cp)) {
         renderlist.addVisibleMesh(this);
       }
     }
@@ -78,7 +84,7 @@ namespace fly
     */
     virtual void cullAndIntersect(const Camera::CullingParams& cp, RenderList& renderlist)
     {
-      if (_bv.isLargeEnough(cp._camPos, cp._thresh) && IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes) != IntersectionResult::OUTSIDE) {
+      if (largeEnough(cp) && IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes) != IntersectionResult::OUTSIDE) {
         renderlist.addVisibleMesh(this);
       }
     }
@@ -91,9 +97,8 @@ namespace fly
       return 1;
     }
     virtual unsigned numTriangles() const = 0;
-    virtual void cullGPU()
-    {
-    }
+    virtual void cullGPU() {}
+    virtual void selectLod(const Camera::CullingParams& cp) {}
   protected:
     MaterialDesc<API> * _materialDesc;
     std::shared_ptr<ShaderDesc<API>> const * _shaderDesc;
@@ -107,6 +112,7 @@ namespace fly
     {
       result = AABB(mesh.getAABB(), transform.getModelMatrix());
     }
+    inline bool largeEnough(const Camera::CullingParams& cp) const { return _bv.isLargeEnough(cp._camPos, cp._thresh); }
   };
   template<typename API, typename BV>
   class SkydomeRenderable
@@ -330,27 +336,24 @@ namespace fly
     {
       return _meshData[_lod].numTriangles();
     }
-    // TODO: Method is not threadsafe, use const, write to CPU (!) lod list
     virtual void cull(const Camera::CullingParams& cp, RenderList& renderlist) override
     {
-      float ratio;
-      if (_bv.largeEnough(cp._camPos, cp._thresh, ratio)) {
-        selectLod(cp, ratio);
+      if (largeEnough(cp)) {
         renderlist.addVisibleMesh(this);
+        renderlist.addToCPULodList(this);
       }
     }
-    // TODO: Method is not threadsafe, use const, write to CPU (!) lod list
     virtual void cullAndIntersect(const Camera::CullingParams& cp, RenderList& renderlist) override
     {
-      float ratio;
-      if (_bv.largeEnough(cp._camPos, cp._thresh, ratio) 
+      if (largeEnough(cp)
         && IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes) != IntersectionResult::OUTSIDE) {
-        selectLod(cp, ratio);
         renderlist.addVisibleMesh(this);
+        renderlist.addToCPULodList(this);
       }
     }
-    inline void selectLod(const Camera::CullingParams& cp, float ratio)
+    virtual void selectLod(const Camera::CullingParams& cp) override
     {
+      float ratio = _bv.size2() / distance2(_bv.closestPoint(cp._camPos), cp._camPos);
       float alpha = 1.f - std::min((ratio - cp._thresh) / cp._lodRange, 1.f);
       _lod = static_cast<unsigned>(std::roundf(alpha * (_meshData.size() - 1u)));
     }

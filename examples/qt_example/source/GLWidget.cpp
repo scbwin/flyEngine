@@ -344,7 +344,7 @@ void GLWidget::initGame()
   num_renderables *= NUM_OBJECTS * NUM_OBJECTS;
 #endif
   // std::vector<std::shared_ptr<fly::Entity>> entities;
-  std::vector<std::shared_ptr<fly::StaticMeshRenderable<API, BV>>> smrs;
+  std::vector<std::shared_ptr<fly::IMeshRenderable<API, BV>>> smrs;
   // entities.reserve(num_renderables);
   smrs.reserve(num_renderables);
 
@@ -521,6 +521,8 @@ void GLWidget::initGame()
   _dl->setMaxShadowCastDistance(80.f);
   _dl->setDirection(fly::Vec3f(-0.5f, -1.f, -0.5f));
   _graphicsSettings.setDofNear(-1.f);
+  _graphicsSettings.setMultithreadedCulling(true);
+  _graphicsSettings.setMultithreadedDetailCulling(true);
   _engine.removeSystem(_camSpeedSytem);
   float spec = 128.f;
   /*auto model = importer->loadModel("../tinyrenderer/obj/african_head/african_head.obj");
@@ -554,6 +556,7 @@ void GLWidget::initGame()
   diablo_material->setSpecularExponent(spec);
   diablo_material->setTexturePath(fly::Material::TextureKey::ALBEDO, "assets/tinyrenderer/diablo3_pose/diablo3_pose_diffuse.tga");
   diablo_material->setTexturePath(fly::Material::TextureKey::NORMAL, "assets/tinyrenderer/diablo3_pose/diablo3_pose_nm_tangent.tga");
+  diablo_material->setKs(5.f);
   fly::AABB diablo_aabb;
   for (const auto& m : diablo_meshes) {
     diablo_aabb = diablo_aabb.getUnion(m->getAABB());
