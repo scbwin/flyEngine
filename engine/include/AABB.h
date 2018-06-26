@@ -42,6 +42,10 @@ namespace fly
     {
       return (_bbMin + _bbMax) * 0.5f;
     }
+    inline float center(unsigned char axis) const
+    {
+      return (_bbMin[axis] + _bbMax[axis]) * 0.5f;
+    }
     inline float size() const
     {
       return distance(_bbMin, _bbMax);
@@ -79,21 +83,18 @@ namespace fly
         index & 1 ? _bbMin[2] : _bbMax[2]);
     }
 
-    inline unsigned getLongestAxis(unsigned depth) const
+    inline unsigned char getLongestAxis(unsigned depth) const
     {
       auto vec = _bbMax - _bbMin;
-      float longest_axis = std::max(vec[0], std::max(vec[1], vec[2]));
-      unsigned index;
-      if (longest_axis == vec[0]) {
-        index = 0;
+      unsigned char axis = 0;
+      float longest = vec[0];
+      for (unsigned char i = 1; i <= 2; i++) {
+        if (vec[i] > longest) {
+          longest = vec[i];
+          axis = i;
+        }
       }
-      else if (longest_axis == vec[1]) {
-        index = 1;
-      }
-      else {
-        index = 2;
-      }
-      return index;
+      return axis;
     }
 
     friend std::ostream& operator << (std::ostream& os, const AABB& aabb)

@@ -148,6 +148,24 @@ namespace fly
     /**
     * Comparison operators
     */
+    inline bool operator == (const Vector& b) const
+    {
+      for (unsigned i = 0; i < Dim; i++) {
+        if (_data[i] != b[i]) {
+          return false;
+        }
+      }
+      return true;
+    }
+    inline bool operator != (const Vector& b) const
+    {
+      for (unsigned i = 0; i < Dim; i++) {
+        if (_data[i] != b[i]) {
+          return true;
+        }
+      }
+      return false;
+    }
     inline bool operator < (const Vector& b) const
     {
       for (unsigned i = 0; i < Dim; i++) {

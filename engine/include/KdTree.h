@@ -26,16 +26,13 @@ namespace fly
           _bv = _bv.getUnion(objects[i]->getBV());
           _largestBVSize = std::max(_largestBVSize, objects[i]->getLargestObjectBVSize());
         }
-        unsigned index = _bv.getLongestAxis(depth);
-        std::sort(objects.begin() + begin, objects.begin() + end, [index](const T o1, const T o2) {
-          return o1->getBV().center()[index] > o2->getBV().center()[index];
+        auto index = _bv.getLongestAxis(depth);
+        std::sort(&objects.front() + begin, &objects.front() + end, [&index](const T& o1, const T& o2) {
+          return o1->getBV().center(index) > o2->getBV().center(index);
         });
       }
       virtual ~Node() = default;
-      const BV& getBV() const
-      {
-        return _bv;
-      }
+      const BV& getBV() const { return _bv; }
       virtual void cullVisibleObjects(const Camera::CullingParams& cp, CullResult<T>& cull_result) const = 0;
       virtual void cullAllObjects(const Camera::CullingParams& cp, StackPOD<T>& objects) const = 0;
       virtual void getSizeInBytes(size_t& bytes) const = 0;
@@ -208,7 +205,7 @@ namespace fly
     }
     void intersectObjects(const BV& bv, StackPOD<T>& intersected_objects) const
     {
-       _root->intersectObjects(bv, intersected_objects);
+      _root->intersectObjects(bv, intersected_objects);
     }
     void cullVisibleNodes(const Camera::CullingParams& cp, StackPOD<Node const *>& nodes)
     {
