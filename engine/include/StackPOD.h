@@ -86,14 +86,14 @@ namespace fly
       _end = _begin;
     }
     /**
-    * Adds a new element to the end of the stack. No range check is performed.
+    * Adds the element to the end of the stack. No range check is performed.
     */
     inline void push_back(const T& element)
     {
       *_end++ = element;
     }
     /**
-    * Adds a new element to the end of the stack. If the current capacity is not sufficient,
+    * Adds the element to the end of the stack. If the current capacity is not sufficient,
     * a reallocation is performed that may invalidate all references and iterators.
     */
     inline void push_back_secure(const T& element)
