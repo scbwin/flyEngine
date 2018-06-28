@@ -36,7 +36,7 @@ namespace fly
       virtual void cullVisibleObjects(const Camera::CullingParams& cp, CullResult<T>& cull_result) const = 0;
       virtual void cullAllObjects(const Camera::CullingParams& cp, StackPOD<T>& objects) const = 0;
       virtual void getSizeInBytes(size_t& bytes) const = 0;
-      virtual void intersectObjects(const BV& bv, StackPOD<T>& stack) const = 0;
+      virtual void intersectObjects(const BV& bv, StackPOD<T>& intersected_objects) const = 0;
       virtual void cullVisibleNodes(const Camera::CullingParams& cp, StackPOD<Node const *>& nodes) const = 0;
       virtual void cullAllNodes(const Camera::CullingParams& cp, StackPOD<Node const *>& nodes) const = 0;
     protected:
@@ -82,10 +82,10 @@ namespace fly
       {
         bytes += sizeof(*this);
       }
-      virtual void intersectObjects(const BV& bv, StackPOD<T>& objects) const override
+      virtual void intersectObjects(const BV& bv, StackPOD<T>& intersected_objects) const override
       {
         if (bv.intersects(_left->getBV())) {
-          objects.push_back_secure(_left);
+          intersected_objects.push_back_secure(_left);
         }
       }
       virtual void cullVisibleNodes(const Camera::CullingParams& cp, StackPOD<Node const *>& nodes) const override
@@ -119,14 +119,14 @@ namespace fly
       {
         bytes += sizeof(*this);
       }
-      virtual void intersectObjects(const BV& bv, StackPOD<T>& objects) const override
+      virtual void intersectObjects(const BV& bv, StackPOD<T>& intersected_objects) const override
       {
         if (bv.intersects(_bv)) {
           if (bv.intersects(_left->getBV())) {
-            objects.push_back_secure(_left);
+            intersected_objects.push_back_secure(_left);
           }
           if (bv.intersects(_right->getBV())) {
-            objects.push_back_secure(_right);
+            intersected_objects.push_back_secure(_right);
           }
         }
       }
@@ -179,27 +179,26 @@ namespace fly
         _left->getSizeInBytes(bytes);
         _right->getSizeInBytes(bytes);
       }
-      virtual void intersectObjects(const BV& bv, StackPOD<T>& objects) const override
+      virtual void intersectObjects(const BV& bv, StackPOD<T>& intersected_objects) const override
       {
         if (bv.intersects(_bv)) {
-          _left->intersectObjects(bv, objects);
-          _right->intersectObjects(bv, objects);
+          _left->intersectObjects(bv, intersected_objects);
+          _right->intersectObjects(bv, intersected_objects);
         }
       }
       virtual void cullVisibleNodes(const Camera::CullingParams& cp, StackPOD<Node const *>& nodes) const override
       {
         if (isLargeEnough(cp)) {
           auto result = intersectFrustum(cp);
-          if (result != IntersectionResult::OUTSIDE) {
+          if (result == IntersectionResult::INSIDE) {
             nodes.push_back_secure(this);
-            if (result == IntersectionResult::INSIDE) {
-              _left->cullAllNodes(cp, nodes);
-              _right->cullAllNodes(cp, nodes);
-            }
-            else {
-              _left->cullVisibleNodes(cp, nodes);
-              _right->cullVisibleNodes(cp, nodes);
-            }
+            _left->cullAllNodes(cp, nodes);
+            _right->cullAllNodes(cp, nodes);
+          }
+          else if (result == IntersectionResult::INTERSECTING) {
+            nodes.push_back_secure(this);
+            _left->cullVisibleNodes(cp, nodes);
+            _right->cullVisibleNodes(cp, nodes);
           }
         }
       }
@@ -246,10 +245,14 @@ namespace fly
     static std::unique_ptr<Node> createNode(unsigned num_objects, unsigned begin, unsigned end, unsigned depth, std::vector<T>& objects)
     {
       assert(num_objects);
-      if (num_objects <= 2) {
-        return num_objects == 1 ? std::make_unique<LeafNodeSingle>(begin, end, depth, objects) : std::make_unique<LeafNode>(begin, end, depth, objects);
+      switch (num_objects) {
+      case 2:
+        return std::make_unique<LeafNode>(begin, end, depth, objects);
+      case 1:
+        return std::make_unique<LeafNodeSingle>(begin, end, depth, objects);
+      default:
+        return std::make_unique<InternalNode>(begin, end, depth, objects);
       }
-      return std::make_unique<InternalNode>(begin, end, depth, objects);
     }
   };
 }

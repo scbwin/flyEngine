@@ -9,17 +9,6 @@ namespace fly
     _bbMax(std::numeric_limits<float>::lowest())
   {
   }
-  AABB::AABB(const AABB & other) :
-    _bbMin(other._bbMin),
-    _bbMax(other._bbMax)
-  {
-  }
-  AABB& AABB::operator=(const AABB & other)
-  {
-    _bbMin = other._bbMin;
-    _bbMax = other._bbMax;
-    return *this;
-  }
   AABB::AABB(const Vec3f & bb_min, const Vec3f & bb_max) :
     _bbMin(bb_min),
     _bbMax(bb_max)

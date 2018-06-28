@@ -140,7 +140,7 @@ namespace fly
   }
   void GraphicsSettings::setGamma(float gamma)
   {
-    _gamma = std::max(gamma, 0.f);
+    _gamma = std::max(gamma, std::numeric_limits<float>::epsilon());
     notifyCompositingChanged();
   }
   bool GraphicsSettings::getDebugBVH() const
@@ -372,7 +372,7 @@ namespace fly
   }
   void GraphicsSettings::setGodRaySteps(float steps)
   {
-    _godRaySteps = steps;
+    _godRaySteps = std::max(steps, 1.f);
     notifiyListeners([this](const std::shared_ptr<Listener>& l) {
       l->godRaysChanged(this);
     });

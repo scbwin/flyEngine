@@ -5,6 +5,7 @@
 #include <array>
 #include <vector>
 #include <iostream>
+#include <limits>
 
 namespace fly
 {
@@ -16,8 +17,6 @@ namespace fly
   {
   public:
     AABB();
-    AABB(const AABB& other);
-    AABB& operator= (const AABB& other);
     AABB(const Vec3f& bb_min, const Vec3f& bb_max);
     AABB(const AABB& other, const Mat4f& transform);
     AABB(const Model& model);
@@ -60,13 +59,14 @@ namespace fly
     AABB getIntersection(const AABB& other) const;
     std::array<Vec3f, 8> getVertices() const;
     void expand(const Vec3f& amount);
-    inline bool isLargeEnough(const Vec3f& cam_pos, float tresh, float size) const
+    static_assert(std::numeric_limits<float>::is_iec559, "Division by zero not supported on this platform.");
+    inline bool isLargeEnough(const Vec3f& cam_pos, float thresh, float size2) const
     {
-      return (size / distance2(closestPoint(cam_pos), cam_pos)) > tresh;
+      return (size2 / distance2(closestPoint(cam_pos), cam_pos)) > thresh;
     }
-    inline bool isLargeEnough(const Vec3f& cam_pos, float error_tresh) const
+    inline bool isLargeEnough(const Vec3f& cam_pos, float thresh) const
     {
-      return isLargeEnough(cam_pos, error_tresh, size2());
+      return isLargeEnough(cam_pos, thresh, size2());
     }
     inline Vec3f closestPoint(const Vec3f& point) const
     {
