@@ -73,7 +73,7 @@ namespace fly
     /**
     * Called for fully visible meshes.
     */
-    virtual void cull(const Camera::CullingParams& cp, RenderList& renderlist)
+    virtual void addIfLargeEnough(const Camera::CullingParams& cp, RenderList& renderlist)
     {
       if (largeEnough(cp)) {
         renderlist.addVisibleMesh(this);
@@ -82,7 +82,7 @@ namespace fly
     /**
     * Called for potentially visible meshes, i.e. the BVH node intersects the view frustum, but is not fully inside it.
     */
-    virtual void cullAndIntersect(const Camera::CullingParams& cp, RenderList& renderlist)
+    virtual void addIfLargeEnoughAndVisible(const Camera::CullingParams& cp, RenderList& renderlist)
     {
       if (largeEnough(cp) && IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes) != IntersectionResult::OUTSIDE) {
         renderlist.addVisibleMesh(this);
@@ -262,14 +262,14 @@ namespace fly
     {
       return _largestBVSize;
     }
-    virtual void cull(const Camera::CullingParams& cp, RenderList& renderlist) override
+    virtual void addIfLargeEnough(const Camera::CullingParams& cp, RenderList& renderlist) override
     {
       if (_bv.isLargeEnough(cp._camPos, cp._thresh, _largestBVSize)) {
         renderlist.addVisibleMesh(this);
         renderlist.addToGPULodList(this);
       }
     }
-    virtual void cullAndIntersect(const Camera::CullingParams& cp, RenderList& renderlist) override
+    virtual void addIfLargeEnoughAndVisible(const Camera::CullingParams& cp, RenderList& renderlist) override
     {
       if (_bv.isLargeEnough(cp._camPos, cp._thresh, _largestBVSize)) {
         auto result = IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes);
@@ -336,14 +336,14 @@ namespace fly
     {
       return _meshData[_lod].numTriangles();
     }
-    virtual void cull(const Camera::CullingParams& cp, RenderList& renderlist) override
+    virtual void addIfLargeEnough(const Camera::CullingParams& cp, RenderList& renderlist) override
     {
       if (largeEnough(cp)) {
         renderlist.addVisibleMesh(this);
         renderlist.addToCPULodList(this);
       }
     }
-    virtual void cullAndIntersect(const Camera::CullingParams& cp, RenderList& renderlist) override
+    virtual void addIfLargeEnoughAndVisible(const Camera::CullingParams& cp, RenderList& renderlist) override
     {
       if (largeEnough(cp)
         && IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes) != IntersectionResult::OUTSIDE) {

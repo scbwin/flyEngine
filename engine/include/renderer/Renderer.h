@@ -569,7 +569,7 @@ namespace fly
             typename MeshRenderable::RenderList renderlist;
             renderlist.reserve(end - start);
             for (unsigned i = start; i < end; i++) {
-              meshes_to_cull[i]->cull(cp, renderlist);
+              meshes_to_cull[i]->addIfLargeEnough(cp, renderlist);
             }
             return renderlist;
           }));
@@ -581,11 +581,11 @@ namespace fly
       }
       else {
         for (const auto& m : cull_result._fullyVisibleObjects) {
-          m->cull(cp, renderlist);
+          m->addIfLargeEnough(cp, renderlist);
         }
       }
-      for (const auto& m : cull_result._intersectedObjects) { // No need to multithread intersected meshes, because the amount is usually much smaller compared to fully visible meshes.
-        m->cullAndIntersect(cp, renderlist);
+      for (const auto& m : cull_result._probablyVisibleObjects) { // No need to multithread probably visible meshes, because the amount is usually much smaller compared to fully visible meshes.
+        m->addIfLargeEnoughAndVisible(cp, renderlist);
       }
 #if RENDERER_STATS
       stats._fineCullingMicroSeconds = timing.duration<std::chrono::microseconds>();

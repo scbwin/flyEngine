@@ -62,21 +62,11 @@ namespace fly
       virtual ~LeafNodeSingle() = default;
       virtual void cullVisibleObjects(const Camera::CullingParams& cp, CullResult<T>& cull_result) const override
       {
-        if (isLargeEnough(cp)) {
-          auto result = intersectFrustum(cp);
-          if (result == IntersectionResult::INSIDE) {
-            add(cull_result._fullyVisibleObjects);
-          }
-          else if (result == IntersectionResult::INTERSECTING) {
-            add(cull_result._intersectedObjects);
-          }
-        }
+        cull_result._probablyVisibleObjects.push_back(_left);
       }
       virtual void cullAllObjects(const Camera::CullingParams& cp, StackPOD<T>& objects) const override
       {
-        if (isLargeEnough(cp)) {
-          add(objects);
-        }
+        objects.push_back(_left);
       }
       virtual void getSizeInBytes(size_t& bytes) const override
       {
@@ -102,10 +92,6 @@ namespace fly
       }
     protected:
       T _left;
-      virtual void add(StackPOD<T>& objects) const
-      {
-        objects.push_back(_left);
-      }
     };
     class LeafNode : public LeafNodeSingle
     {
@@ -119,6 +105,24 @@ namespace fly
       {
         bytes += sizeof(*this);
       }
+      virtual void cullVisibleObjects(const Camera::CullingParams& cp, CullResult<T>& cull_result) const override
+      {
+        if (isLargeEnough(cp)) {
+          auto result = intersectFrustum(cp);
+          if (result == IntersectionResult::INSIDE) {
+            add(cull_result._fullyVisibleObjects);
+          }
+          else if (result == IntersectionResult::INTERSECTING) {
+            add(cull_result._probablyVisibleObjects);
+          }
+        }
+      }
+      virtual void cullAllObjects(const Camera::CullingParams& cp, StackPOD<T>& objects) const override
+      {
+        if (isLargeEnough(cp)) {
+          add(objects);
+        }
+      }
       virtual void intersectObjects(const BV& bv, StackPOD<T>& intersected_objects) const override
       {
         if (bv.intersects(_bv)) {
@@ -130,13 +134,12 @@ namespace fly
           }
         }
       }
-    protected:
-      virtual void add(StackPOD<T>& objects) const override
+    private:
+      inline void add(StackPOD<T>& objects) const
       {
         objects.push_back(_left);
         objects.push_back(_right);
       }
-    private:
       T _right;
     };
     class InternalNode : public Node
