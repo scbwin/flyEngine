@@ -372,7 +372,7 @@ namespace fly
   }
   void GraphicsSettings::setGodRaySteps(float steps)
   {
-    _godRaySteps = std::max(steps, 1.f);
+    _godRaySteps = std::max(steps, 2.f);
     notifiyListeners([this](const std::shared_ptr<Listener>& l) {
       l->godRaysChanged(this);
     });
