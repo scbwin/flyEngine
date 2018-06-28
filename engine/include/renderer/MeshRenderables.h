@@ -84,7 +84,7 @@ namespace fly
     */
     virtual void addIfLargeEnoughAndVisible(const Camera::CullingParams& cp, RenderList& renderlist)
     {
-      if (largeEnough(cp) && IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes) != IntersectionResult::OUTSIDE) {
+      if (largeEnough(cp) && intersectFrustum(cp) != IntersectionResult::OUTSIDE) {
         renderlist.addVisibleMesh(this);
       }
     }
@@ -112,7 +112,14 @@ namespace fly
     {
       result = AABB(mesh.getAABB(), transform.getModelMatrix());
     }
-    inline bool largeEnough(const Camera::CullingParams& cp) const { return _bv.isLargeEnough(cp._camPos, cp._thresh); }
+    inline bool largeEnough(const Camera::CullingParams& cp) const
+    {
+      return _bv.isLargeEnough(cp._camPos, cp._thresh);
+    }
+    inline IntersectionResult intersectFrustum(const Camera::CullingParams& cp) const
+    {
+      return IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes);
+    }
   };
   template<typename API, typename BV>
   class SkydomeRenderable
@@ -272,7 +279,7 @@ namespace fly
     virtual void addIfLargeEnoughAndVisible(const Camera::CullingParams& cp, RenderList& renderlist) override
     {
       if (_bv.isLargeEnough(cp._camPos, cp._thresh, _largestBVSize)) {
-        auto result = IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes);
+        auto result = intersectFrustum(cp);
         if (result != IntersectionResult::OUTSIDE) {
           renderlist.addVisibleMesh(this);
           result == IntersectionResult::INSIDE ? renderlist.addToGPULodList(this) : renderlist.addToGPUCullList(this);
@@ -345,8 +352,7 @@ namespace fly
     }
     virtual void addIfLargeEnoughAndVisible(const Camera::CullingParams& cp, RenderList& renderlist) override
     {
-      if (largeEnough(cp)
-        && IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes) != IntersectionResult::OUTSIDE) {
+      if (largeEnough(cp) && intersectFrustum(cp)) {
         renderlist.addVisibleMesh(this);
         renderlist.addToCPULodList(this);
       }
