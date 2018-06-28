@@ -39,14 +39,19 @@ namespace fly
   public:
     using MeshRenderable = IMeshRenderable<API, BV>;
 #if RENDERER_STATS
+    struct CullingStats
+    {
+      unsigned _bvhTraversalMicroSeconds;
+      unsigned _fineCullingMicroSeconds;
+    };
     struct RendererStats
     {
       unsigned _renderedTriangles;
       unsigned _renderedTrianglesShadow;
       unsigned _renderedMeshes;
       unsigned _renderedMeshesShadow;
-      unsigned _cullingMicroSeconds;
-      unsigned _cullingShadowMapMicroSeconds;
+      CullingStats _cullStats;
+      CullingStats _cullStatsSM;
       unsigned _sceneRenderingCPUMicroSeconds;
       unsigned _shadowMapRenderCPUMicroSeconds;
       unsigned _sceneMeshGroupingMicroSeconds;
@@ -54,6 +59,7 @@ namespace fly
       unsigned _rendererTotalCPUMicroSeconds;
       unsigned _rendererIdleTimeMicroSeconds;
     };
+
     const RendererStats& getStats() const { return _stats; }
 #endif
     Renderer(GraphicsSettings * gs) : _api(Vec4f(0.149f, 0.509f, 0.929f, 1.f)), _gs(gs),
@@ -215,43 +221,29 @@ namespace fly
       auto cull_vp = _gsp._projectionMatrix * (*_cullCamera)->getViewMatrix();
       if (_multiThreadedCulling) {
         async = std::async(std::launch::async, [this, cull_vp]() {
-#if RENDERER_STATS
-          Timing timing;
-#endif
-          cullMeshes(cull_vp, **_cullCamera, *_renderListScene, _cullResultAsync);
-#if RENDERER_STATS
-          _stats._cullingMicroSeconds = timing.duration<std::chrono::microseconds>();
-#endif
+        _stats._cullStats = cullMeshes(cull_vp, **_cullCamera, *_renderListScene, _cullResultAsync);
         });
       }
       if (_shadowMapping) {
         renderShadowMap();
       }
       if (_multiThreadedCulling) {
+        {
 #if RENDERER_STATS
-        Timing timing;
+          Timing timing;
 #endif
-        async.get();
+          async.get();
 #if RENDERER_STATS
-        _stats._rendererIdleTimeMicroSeconds = timing.duration<std::chrono::microseconds>();
-        timing.start();
+          _stats._rendererIdleTimeMicroSeconds = timing.duration<std::chrono::microseconds>();
 #endif
+        }
         cullGPU(*_renderListScene, **_cullCamera, cull_vp);
         selectLod(*_renderListScene, **_cullCamera);
-#if RENDERER_STATS
-        _stats._cullingMicroSeconds += timing.duration<std::chrono::microseconds>();
-#endif
       }
       else {
-#if RENDERER_STATS
-        Timing timing;
-#endif
-        cullMeshes(cull_vp, **_cullCamera, *_renderListScene, _cullResult);
+        _stats._cullStats = cullMeshes(cull_vp, **_cullCamera, *_renderListScene, _cullResult);
         cullGPU(*_renderListScene, **_cullCamera, cull_vp);
         selectLod(*_renderListScene, **_cullCamera);
-#if RENDERER_STATS
-        _stats._cullingMicroSeconds = timing.duration<std::chrono::microseconds>();
-#endif
       }
       _api.setViewport(_viewPortSize);
       _gsp._VP = &_vpScene;
@@ -499,17 +491,17 @@ namespace fly
       _api.setViewport(Vec2u(_gs->getShadowMapSize()));
       _renderTargets.clear();
       for (unsigned i = 0; i < _gs->getFrustumSplits().size(); i++) {
+        {
+          auto stats = cullMeshes(_vpLightVolume[i], **_cullCamera, _renderList, _cullResult);
+#if RENDERER_STATS
+          _stats._cullStatsSM._bvhTraversalMicroSeconds += stats._bvhTraversalMicroSeconds;
+          _stats._cullStatsSM._fineCullingMicroSeconds += stats._fineCullingMicroSeconds;
+#endif
+          cullGPU(_renderList, **_cullCamera, _vpLightVolume[i]);
+          selectLod(_renderList, **_cullCamera);
+        }
 #if RENDERER_STATS
         Timing timing;
-#endif
-        cullMeshes(_vpLightVolume[i], **_cullCamera, _renderList, _cullResult);
-        cullGPU(_renderList, **_cullCamera, _vpLightVolume[i]);
-        selectLod(_renderList, **_cullCamera);
-#if RENDERER_STATS
-        _stats._cullingShadowMapMicroSeconds += timing.duration<std::chrono::microseconds>();
-#endif
-#if RENDERER_STATS
-        timing.start();
 #endif
         groupMeshes<true>(_renderList.getVisibleMeshes());
 #if RENDERER_STATS
@@ -542,14 +534,26 @@ namespace fly
     {
       return static_cast<unsigned>(std::ceil(static_cast<float>(num_elements) / static_cast<float>(num_threads)));
     }
-    inline void cullMeshes(const Mat4f& view_projection_matrix, Camera camera,
+    inline CullingStats cullMeshes(const Mat4f& view_projection_matrix, Camera camera,
       typename MeshRenderable::RenderList& renderlist, CullResult<MeshRenderable*>& cull_result)
     {
       camera.extractFrustumPlanes(view_projection_matrix, _api.getZNearMapping());
       renderlist.clear();
       cull_result.clear();
       auto cp = camera.getCullingParams();
-      _bvhStatic->cullVisibleObjects(cp, cull_result);
+      CullingStats stats;
+      {
+#if RENDERER_STATS
+        Timing timing;
+#endif
+        _bvhStatic->cullVisibleObjects(cp, cull_result);
+#if RENDERER_STATS
+        stats._bvhTraversalMicroSeconds = timing.duration<std::chrono::microseconds>();
+#endif
+      }
+#if RENDERER_STATS
+      Timing timing;
+#endif
       renderlist.reserve(cull_result.size());
       auto num_threads = std::thread::hardware_concurrency();
       unsigned num_meshes = static_cast<unsigned>(cull_result._fullyVisibleObjects.size());
@@ -583,6 +587,10 @@ namespace fly
       for (const auto& m : cull_result._intersectedObjects) { // No need to multithread intersected meshes, because the amount is usually much smaller compared to fully visible meshes.
         m->cullAndIntersect(cp, renderlist);
       }
+#if RENDERER_STATS
+      stats._fineCullingMicroSeconds = timing.duration<std::chrono::microseconds>();
+#endif
+      return stats;
     }
     inline void cullGPU(const typename MeshRenderable::RenderList& renderlist, Camera camera, const Mat4f& view_projection_matrix)
     {

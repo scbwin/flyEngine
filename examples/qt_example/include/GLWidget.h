@@ -14,7 +14,7 @@
 #include <AntWrapper.h>
 
 #define SPONZA 1
-#define SPONZA_MANY 0 && SPONZA
+#define SPONZA_MANY 1 && SPONZA
 #define TOWERS 0
 #define TREE_SCENE 0
 #define PHYSICS 0
@@ -114,12 +114,14 @@ private:
   const char* _renderedTrianglesShadowName = "Triangles shadow";
   const char* _renderedMeshesName = "Meshes";
   const char* _renderedMeshesShadowName = "Meshes shadow";
-  const char* _cullingName = "Culling microseconds";
-  const char* _cullingShadowMapName = "Culling shadow map microseconds";
+  const char* _bvhTraversalName = "BVH traversal";
+  const char* _bvhTraversalSMName = "BVH traversal SM";
+  const char* _fineCullName = "Fine cull";
+  const char* _fineCullSMName = "Fine cull SM";
   const char* _sceneRenderingCPUName = "CPU scene rendering time";
   const char* _smRenderingCPUName = "CPU shadow map rendering time";
-  const char* _sceneMeshGroupingUName = "Scene mesh grouping time";
-  const char* _shadowMapGroupingUName = "Shadow map grouping time";
+  const char* _sceneMeshGroupingName = "Scene mesh grouping time";
+  const char* _shadowMapGroupingName = "Shadow map grouping time";
   const char* _rendererIdleTimeName = "Renderer idle time";
 
   std::string formatNumber(unsigned number);

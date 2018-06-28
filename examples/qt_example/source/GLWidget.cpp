@@ -51,17 +51,21 @@ void GLWidget::initializeGL()
   TwAddButton(_bar, _fpsButtonName, nullptr, nullptr, nullptr);
 #if RENDERER_STATS
   TwAddButton(_bar, _rendererCPUTimeName, nullptr, nullptr, nullptr);
-  TwAddButton(_bar, _renderedMeshesName, nullptr, nullptr, nullptr);
-  TwAddButton(_bar, _renderedMeshesShadowName, nullptr, nullptr, nullptr);
-  TwAddButton(_bar, _renderedTrianglesName, nullptr, nullptr, nullptr);
-  TwAddButton(_bar, _renderedTrianglesShadowName, nullptr, nullptr, nullptr);
-  TwAddButton(_bar, _cullingName, nullptr, nullptr, nullptr);
-  TwAddButton(_bar, _cullingShadowMapName, nullptr, nullptr, nullptr);
-  TwAddButton(_bar, _sceneMeshGroupingUName, nullptr, nullptr, nullptr);
-  TwAddButton(_bar, _shadowMapGroupingUName, nullptr, nullptr, nullptr);
-  TwAddButton(_bar, _sceneRenderingCPUName, nullptr, nullptr, nullptr);
-  TwAddButton(_bar, _smRenderingCPUName, nullptr, nullptr, nullptr);
   TwAddButton(_bar, _rendererIdleTimeName, nullptr, nullptr, nullptr);
+  TwAddSeparator(_bar, "Shadow stats", nullptr);
+  TwAddButton(_bar, _renderedMeshesShadowName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _renderedTrianglesShadowName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _bvhTraversalSMName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _fineCullSMName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _shadowMapGroupingName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _smRenderingCPUName, nullptr, nullptr, nullptr);
+  TwAddSeparator(_bar, "Scene stats", nullptr);
+  TwAddButton(_bar, _renderedMeshesName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _renderedTrianglesName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _bvhTraversalName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _fineCullName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _sceneMeshGroupingName, nullptr, nullptr, nullptr);
+  TwAddButton(_bar, _sceneRenderingCPUName, nullptr, nullptr, nullptr);
   auto timer = new QTimer(this);
   QObject::connect(timer, &QTimer::timeout, this, static_cast<void(GLWidget::*)()>(&GLWidget::updateStats));
   timer->start(100);
@@ -256,18 +260,23 @@ void GLWidget::updateStats()
 {
 #if RENDERER_STATS
   const auto& stats = _renderer->getStats();
-  TwSetParam(_bar, _rendererCPUTimeName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Renderer total CPU microseconds:" + formatNumber(stats._rendererTotalCPUMicroSeconds)).c_str());
-  TwSetParam(_bar, _renderedMeshesName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Meshes:" + formatNumber(stats._renderedMeshes)).c_str());
+  TwSetParam(_bar, _rendererCPUTimeName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Renderer total CPU:" + formatNumber(stats._rendererTotalCPUMicroSeconds)).c_str());
+
   TwSetParam(_bar, _renderedMeshesShadowName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Meshes SM:" + formatNumber(stats._renderedMeshesShadow)).c_str());
-  TwSetParam(_bar, _renderedTrianglesName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Triangles:" + formatNumber(stats._renderedTriangles)).c_str());
   TwSetParam(_bar, _renderedTrianglesShadowName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Triangles SM:" + formatNumber(stats._renderedTrianglesShadow)).c_str());
-  TwSetParam(_bar, _cullingName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Culling microseconds:" + formatNumber(stats._cullingMicroSeconds)).c_str());
-  TwSetParam(_bar, _cullingShadowMapName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Culling shadow map microseconds:" + formatNumber(stats._cullingShadowMapMicroSeconds)).c_str());
-  TwSetParam(_bar, _sceneRenderingCPUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Scene render CPU microseconds:" + formatNumber(stats._sceneRenderingCPUMicroSeconds)).c_str());
-  TwSetParam(_bar, _smRenderingCPUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Shadow map render CPU microseconds:" + formatNumber(stats._shadowMapRenderCPUMicroSeconds)).c_str());
-  TwSetParam(_bar, _sceneMeshGroupingUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Scene mesh grouping microseconds:" + formatNumber(stats._sceneMeshGroupingMicroSeconds)).c_str());
-  TwSetParam(_bar, _shadowMapGroupingUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Shadow map grouping microseconds:" + formatNumber(stats._shadowMapGroupingMicroSeconds)).c_str());
-  TwSetParam(_bar, _rendererIdleTimeName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Renderer idle time microseconds:" + formatNumber(stats._rendererIdleTimeMicroSeconds)).c_str());
+  TwSetParam(_bar, _bvhTraversalSMName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("BVH traversal shadow:" + formatNumber(stats._cullStatsSM._bvhTraversalMicroSeconds)).c_str());
+  TwSetParam(_bar, _fineCullSMName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Fine culling shadow:" + formatNumber(stats._cullStatsSM._fineCullingMicroSeconds)).c_str());
+  TwSetParam(_bar, _smRenderingCPUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Shadow map render CPU:" + formatNumber(stats._shadowMapRenderCPUMicroSeconds)).c_str());
+  TwSetParam(_bar, _shadowMapGroupingName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Shadow map grouping:" + formatNumber(stats._shadowMapGroupingMicroSeconds)).c_str());
+
+  TwSetParam(_bar, _renderedMeshesName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Meshes:" + formatNumber(stats._renderedMeshes)).c_str());
+  TwSetParam(_bar, _renderedTrianglesName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Triangles:" + formatNumber(stats._renderedTriangles)).c_str());
+  TwSetParam(_bar, _bvhTraversalName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("BVH traversal:" + formatNumber(stats._cullStats._bvhTraversalMicroSeconds)).c_str());
+  TwSetParam(_bar, _fineCullName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Fine culling:" + formatNumber(stats._cullStats._fineCullingMicroSeconds)).c_str());
+  TwSetParam(_bar, _sceneRenderingCPUName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Scene render CPU:" + formatNumber(stats._sceneRenderingCPUMicroSeconds)).c_str());
+  TwSetParam(_bar, _sceneMeshGroupingName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Scene mesh grouping:" + formatNumber(stats._sceneMeshGroupingMicroSeconds)).c_str());
+
+  TwSetParam(_bar, _rendererIdleTimeName, "label", TwParamValueType::TW_PARAM_CSTRING, 1, ("Renderer idle:" + formatNumber(stats._rendererIdleTimeMicroSeconds)).c_str());
 #endif
 }
 
