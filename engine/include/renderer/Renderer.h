@@ -28,6 +28,7 @@
 #include <GlobalShaderParams.h>
 #include <future>
 #include <KdTree.h>
+#include <RenderList.h>
 
 #define RENDERER_STATS 1
 
@@ -38,6 +39,7 @@ namespace fly
   {
   public:
     using MeshRenderable = IMeshRenderable<API, BV>;
+    using RenderList = RenderList<API, BV>;
 #if RENDERER_STATS
     struct CullingStats
     {
@@ -165,14 +167,17 @@ namespace fly
       graphicsSettingsChanged();
       compositingChanged(gs);
     }
-    void addStaticMeshRenderable(const std::shared_ptr<MeshRenderable>& smr) {
-      addStaticMeshRenderables({ smr });
-    }
-    void addStaticMeshRenderables(const std::vector<std::shared_ptr<MeshRenderable>>& smrs)
+    void addStaticMeshRenderable(std::unique_ptr<MeshRenderable>&& smr) 
     {
-      _meshRenderables.insert(_meshRenderables.end(), smrs.begin(), smrs.end());
-      for (const auto& smr : smrs) {
+      _sceneBounds = _sceneBounds.getUnion(smr->getBV());
+      _meshRenderables.push_back(std::move(smr));
+    }
+    void addStaticMeshRenderables(std::vector<std::unique_ptr<MeshRenderable>>& smrs)
+    {
+      _meshRenderables.reserve(_meshRenderables.size() + smrs.size());
+      for (auto& smr : smrs) {
         _sceneBounds = _sceneBounds.getUnion(smr->getBV());
+        _meshRenderables.push_back(std::move(smr));
       }
     }
     void setSkydome(const std::shared_ptr<SkydomeRenderable<API, BV>>& sdr)
@@ -221,7 +226,7 @@ namespace fly
       auto cull_vp = _gsp._projectionMatrix * (*_cullCamera)->getViewMatrix();
       if (_multiThreadedCulling) {
         async = std::async(std::launch::async, [this, cull_vp]() {
-        _stats._cullStats = cullMeshes(cull_vp, **_cullCamera, *_renderListScene, _cullResultAsync);
+          _stats._cullStats = cullMeshes(cull_vp, **_cullCamera, *_renderListScene, _cullResultAsync);
         });
       }
       if (_shadowMapping) {
@@ -422,13 +427,13 @@ namespace fly
     RendererStats _stats;
 #endif
     typename API::MeshGeometryStorage _meshGeometryStorage;
-    std::vector<std::shared_ptr<MeshRenderable>> _meshRenderables;
+    std::vector<std::unique_ptr<MeshRenderable>> _meshRenderables;
     std::shared_ptr<SkydomeRenderable<API, BV>> _skydomeRenderable;
     CullResult<MeshRenderable*> _cullResult;
     CullResult<MeshRenderable*> _cullResultAsync;
-    typename MeshRenderable::RenderList _renderList;
-    typename MeshRenderable::RenderList _renderListAsync;
-    typename MeshRenderable::RenderList* _renderListScene;
+    RenderList _renderList;
+    RenderList _renderListAsync;
+    RenderList* _renderListScene;
     std::map<ShaderDesc<API>*, std::map<MaterialDesc<API>*, StackPOD<MeshRenderable*>>> _displayList;
     BV _sceneBounds;
     std::unique_ptr<BVH> _bvhStatic;
@@ -535,7 +540,7 @@ namespace fly
       return static_cast<unsigned>(std::ceil(static_cast<float>(num_elements) / static_cast<float>(num_threads)));
     }
     inline CullingStats cullMeshes(const Mat4f& view_projection_matrix, Camera camera,
-      typename MeshRenderable::RenderList& renderlist, CullResult<MeshRenderable*>& cull_result)
+      RenderList& renderlist, CullResult<MeshRenderable*>& cull_result)
     {
       camera.extractFrustumPlanes(view_projection_matrix, _api.getZNearMapping());
       renderlist.clear();
@@ -559,14 +564,14 @@ namespace fly
       unsigned num_meshes = static_cast<unsigned>(cull_result._fullyVisibleObjects.size());
       auto elements_per_thread = elementsPerThread(num_meshes, num_threads);
       if (_gs->getMultithreadedDetailCulling() && elements_per_thread >= 256) {
-        std::vector<std::future<typename MeshRenderable::RenderList>> futures;
+        std::vector<std::future<RenderList>> futures;
         futures.reserve(num_threads);
         unsigned start = 0;
         const auto& meshes_to_cull = cull_result._fullyVisibleObjects;
         for (unsigned i = 0; i < num_threads; i++) {
           unsigned end = std::min(start + elements_per_thread, num_meshes);
           futures.push_back(std::async(std::launch::async, [start, end, cp, &meshes_to_cull]() {
-            typename MeshRenderable::RenderList renderlist;
+            RenderList renderlist;
             renderlist.reserve(end - start);
             for (unsigned i = start; i < end; i++) {
               meshes_to_cull[i]->addIfLargeEnough(cp, renderlist);
@@ -592,7 +597,7 @@ namespace fly
 #endif
       return stats;
     }
-    inline void cullGPU(const typename MeshRenderable::RenderList& renderlist, Camera camera, const Mat4f& view_projection_matrix)
+    inline void cullGPU(const RenderList& renderlist, Camera camera, const Mat4f& view_projection_matrix)
     {
       if (renderlist.getGPUCullList().size() || renderlist.getGPULodList().size()) {
         camera.extractFrustumPlanes(view_projection_matrix, _api.getZNearMapping());
@@ -612,7 +617,7 @@ namespace fly
         _api.endCulling();
       }
     }
-    inline void selectLod(const typename MeshRenderable::RenderList& renderlist, const Camera& camera)
+    inline void selectLod(const RenderList& renderlist, const Camera& camera)
     {
       if (!renderlist.getCPULodList().size()) {
         return;

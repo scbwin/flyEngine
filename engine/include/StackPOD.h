@@ -99,7 +99,7 @@ namespace fly
     inline void push_back_secure(const T& element)
     {
       if (size() == _capacity) {
-        allocate(_capacity == 0 ? 1 : _capacity * 2);
+        allocate(_capacity ? _capacity * 2u : 1u);
       }
       push_back(element);
     }

@@ -353,7 +353,7 @@ void GLWidget::initGame()
   num_renderables *= NUM_OBJECTS * NUM_OBJECTS;
 #endif
   // std::vector<std::shared_ptr<fly::Entity>> entities;
-  std::vector<std::shared_ptr<fly::IMeshRenderable<API, BV>>> smrs;
+  std::vector<std::unique_ptr<fly::IMeshRenderable<API, BV>>> smrs;
   // entities.reserve(num_renderables);
   smrs.reserve(num_renderables);
 
@@ -401,17 +401,17 @@ void GLWidget::initGame()
       aabb_world.expand(aabb_offset);
       // entities.push_back(_engine.getEntityManager()->createEntity());
       if (has_wind) {
-        auto smr = std::make_shared<fly::StaticMeshRenderableWind<API, BV>>(*_renderer, mesh,
+        auto smr = std::make_unique<fly::StaticMeshRenderableWind<API, BV>>(*_renderer, mesh,
 #if SPONZA_MANY
           mesh->getMaterial(), transform);
 #else
           mesh->getMaterial(), transform);
 #endif
         smr->expandAABB(aabb_offset);
-        smrs.push_back(smr);
+        smrs.push_back(std::move(smr));
       }
       else {
-        smrs.push_back(std::make_shared<fly::StaticMeshRenderable<API, BV>>(*_renderer, mesh,
+        smrs.push_back(std::make_unique<fly::StaticMeshRenderable<API, BV>>(*_renderer, mesh,
 #if SPONZA_MANY
           mesh->getMaterial(), transform));
 #else
@@ -515,7 +515,7 @@ void GLWidget::initGame()
     scale[1] = 1.f;
     auto translation = _renderer->getSceneBounds().getMin();
     fly::Transform transform(translation, scale);
-    _renderer->addStaticMeshRenderable(std::make_shared<fly::StaticMeshRenderable<API, BV>>(*_renderer, m, plane_model->getMaterials()[m->getMaterialIndex()], transform));
+    _renderer->addStaticMeshRenderable(std::make_unique<fly::StaticMeshRenderable<API, BV>>(*_renderer, m, plane_model->getMaterials()[m->getMaterialIndex()], transform));
   }
 #endif
 
@@ -615,7 +615,7 @@ void GLWidget::initGame()
           fly::Vec3f vec(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z));
           vec *= spacing;
           vec += fly::Vec3f(trans_dist(gen), trans_dist(gen), trans_dist(gen)) * 2.f;
-          _renderer->addStaticMeshRenderable(std::make_shared<fly::StaticMeshRenderableLod<fly::OpenGLAPI, fly::AABB>>(*_renderer, diablo_meshes, diablo_material,
+          _renderer->addStaticMeshRenderable(std::make_unique<fly::StaticMeshRenderableLod<fly::OpenGLAPI, fly::AABB>>(*_renderer, diablo_meshes, diablo_material,
             fly::Transform((diablo_aabb.getMax() - diablo_aabb.getMin()) * vec)));
         }
       }
@@ -626,7 +626,7 @@ void GLWidget::initGame()
     for (unsigned x = 0; x < non_instanced_per_dir; x++) {
       for (unsigned z = 0; z < non_instanced_per_dir; z++) {
         float scale = scale_dist(gen);
-        _renderer->addStaticMeshRenderable(std::make_shared<fly::StaticMeshRenderableLod<fly::OpenGLAPI, fly::AABB>>(*_renderer, diablo_meshes, diablo_material,
+        _renderer->addStaticMeshRenderable(std::make_unique<fly::StaticMeshRenderableLod<fly::OpenGLAPI, fly::AABB>>(*_renderer, diablo_meshes, diablo_material,
           fly::Transform(fly::Vec3f(-300.f * x, scale, -300.f * z), fly::Vec3f(scale))));
       }
     }
@@ -705,8 +705,8 @@ void GLWidget::initGame()
           vec += fly::Vec3f(trans_dist(gen), trans_dist(gen), trans_dist(gen)) * 2.f;
           vec[0] -= 2500.f;
           fly::Transform transform((aabb.getMax() - aabb.getMin()) * vec);
-          _renderer->addStaticMeshRenderable(std::make_shared<fly::StaticMeshRenderableLod<fly::OpenGLAPI, fly::AABB>>(*_renderer, african_meshes, material, transform));
-          _renderer->addStaticMeshRenderable(std::make_shared<fly::StaticMeshRenderableLod<fly::OpenGLAPI, fly::AABB>>(*_renderer, eye_meshes, eye_material, transform));
+          _renderer->addStaticMeshRenderable(std::make_unique<fly::StaticMeshRenderableLod<fly::OpenGLAPI, fly::AABB>>(*_renderer, african_meshes, material, transform));
+          _renderer->addStaticMeshRenderable(std::make_unique<fly::StaticMeshRenderableLod<fly::OpenGLAPI, fly::AABB>>(*_renderer, eye_meshes, eye_material, transform));
         }
       }
     }
@@ -717,8 +717,8 @@ void GLWidget::initGame()
       for (unsigned z = 0; z < non_instanced_per_dir; z++) {
         float scale = scale_dist(gen);
         fly::Transform transform(fly::Vec3f(-300.f * x, scale, -300.f * z + 3500.f), fly::Vec3f(scale), fly::Vec3f(0.f, 180.f, 0.f));
-        _renderer->addStaticMeshRenderable(std::make_shared<fly::StaticMeshRenderableLod<fly::OpenGLAPI, fly::AABB>>(*_renderer, african_meshes, material, transform));
-        _renderer->addStaticMeshRenderable(std::make_shared<fly::StaticMeshRenderableLod<fly::OpenGLAPI, fly::AABB>>(*_renderer, eye_meshes, eye_material, transform));
+        _renderer->addStaticMeshRenderable(std::make_unique<fly::StaticMeshRenderableLod<fly::OpenGLAPI, fly::AABB>>(*_renderer, african_meshes, material, transform));
+        _renderer->addStaticMeshRenderable(std::make_unique<fly::StaticMeshRenderableLod<fly::OpenGLAPI, fly::AABB>>(*_renderer, eye_meshes, eye_material, transform));
       }
     }
     _graphicsSettings.setDebugBVH(true);
@@ -765,8 +765,8 @@ void GLWidget::initGame()
           instance_data.push_back(data);
         }
       }
-      auto instanced_renderable = std::make_shared<fly::StaticInstancedMeshRenderable<API, BV>>(*_renderer, sphere_lods, material, instance_data);
-      _renderer->addStaticMeshRenderable(instanced_renderable);
+      auto instanced_renderable = std::make_unique<fly::StaticInstancedMeshRenderable<API, BV>>(*_renderer, sphere_lods, material, instance_data);
+      _renderer->addStaticMeshRenderable(std::move(instanced_renderable));
       //  instanced_renderable->clear();
       total_meshes += instance_data.size();
     }

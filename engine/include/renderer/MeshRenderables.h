@@ -11,57 +11,19 @@
 #include <Transform.h>
 #include <Sphere.h>
 #include <IntersectionTests.h>
+#include <Camera.h>
 
 namespace fly
 {
   template<typename API, typename BV>
   class Renderer;
+  template<typename API, typename BV>
+  class RenderList;
 
   template<typename API, typename BV>
   class IMeshRenderable
   {
   public:
-    class RenderList
-    {
-      using Stack = StackPOD<IMeshRenderable*>;
-    public:
-      inline void reserve(size_t size)
-      {
-        _visibleMeshes.reserve(size);
-        _gpuCullList.reserve(size);
-        _gpuLodList.reserve(size);
-        _cpuLodList.reserve(size);
-      }
-      inline void clear()
-      {
-        _visibleMeshes.clear();
-        _gpuCullList.clear();
-        _gpuLodList.clear();
-        _cpuLodList.clear();
-      }
-      inline size_t size() { return _visibleMeshes.size() + _gpuCullList.size() + _gpuLodList.size() + _cpuLodList.size(); }
-      inline size_t capacity() { return _visibleMeshes.capacity() + _gpuCullList.capacity() + _gpuLodList.capacity() + _cpuLodList.capacity(); }
-      inline const Stack& getVisibleMeshes() const { return _visibleMeshes; }
-      inline const Stack& getGPUCullList() const { return _gpuCullList; }
-      inline const Stack& getGPULodList() const { return _gpuLodList; }
-      inline const Stack& getCPULodList() const { return _cpuLodList; }
-      inline void append(const RenderList& other)
-      {
-        _visibleMeshes.append(other._visibleMeshes);
-        _gpuCullList.append(other._gpuCullList);
-        _gpuLodList.append(other._gpuLodList);
-        _cpuLodList.append(other._cpuLodList);
-      }
-      inline void addVisibleMesh(IMeshRenderable* mesh) { _visibleMeshes.push_back(mesh); }
-      inline void addToGPUCullList(IMeshRenderable* mesh) { _gpuCullList.push_back(mesh); }
-      inline void addToGPULodList(IMeshRenderable* mesh) { _gpuLodList.push_back(mesh); }
-      inline void addToCPULodList(IMeshRenderable* mesh) { _cpuLodList.push_back(mesh); }
-    private:
-      Stack _visibleMeshes;
-      Stack _gpuCullList;
-      Stack _gpuLodList;
-      Stack _cpuLodList;
-    };
     virtual ~IMeshRenderable() = default;
     IMeshRenderable() = default;
     inline std::shared_ptr<ShaderDesc<API>> const * getShaderDesc() { return _shaderDesc; }
@@ -73,7 +35,7 @@ namespace fly
     /**
     * Called for fully visible meshes.
     */
-    virtual void addIfLargeEnough(const Camera::CullingParams& cp, RenderList& renderlist)
+    virtual void addIfLargeEnough(const Camera::CullingParams& cp, RenderList<API, BV>& renderlist)
     {
       if (largeEnough(cp)) {
         renderlist.addVisibleMesh(this);
@@ -82,7 +44,7 @@ namespace fly
     /**
     * Called for potentially visible meshes, i.e. the BVH node intersects the view frustum, but is not fully inside it.
     */
-    virtual void addIfLargeEnoughAndVisible(const Camera::CullingParams& cp, RenderList& renderlist)
+    virtual void addIfLargeEnoughAndVisible(const Camera::CullingParams& cp, RenderList<API, BV>& renderlist)
     {
       if (largeEnough(cp) && intersectFrustum(cp) != IntersectionResult::OUTSIDE) {
         renderlist.addVisibleMesh(this);
@@ -269,14 +231,14 @@ namespace fly
     {
       return _largestBVSize;
     }
-    virtual void addIfLargeEnough(const Camera::CullingParams& cp, RenderList& renderlist) override
+    virtual void addIfLargeEnough(const Camera::CullingParams& cp, RenderList<API, BV>& renderlist) override
     {
       if (_bv.isLargeEnough(cp._camPos, cp._thresh, _largestBVSize)) {
         renderlist.addVisibleMesh(this);
         renderlist.addToGPULodList(this);
       }
     }
-    virtual void addIfLargeEnoughAndVisible(const Camera::CullingParams& cp, RenderList& renderlist) override
+    virtual void addIfLargeEnoughAndVisible(const Camera::CullingParams& cp, RenderList<API, BV>& renderlist) override
     {
       if (_bv.isLargeEnough(cp._camPos, cp._thresh, _largestBVSize)) {
         auto result = intersectFrustum(cp);
@@ -343,16 +305,16 @@ namespace fly
     {
       return _meshData[_lod].numTriangles();
     }
-    virtual void addIfLargeEnough(const Camera::CullingParams& cp, RenderList& renderlist) override
+    virtual void addIfLargeEnough(const Camera::CullingParams& cp, RenderList<API, BV>& renderlist) override
     {
       if (largeEnough(cp)) {
         renderlist.addVisibleMesh(this);
         renderlist.addToCPULodList(this);
       }
     }
-    virtual void addIfLargeEnoughAndVisible(const Camera::CullingParams& cp, RenderList& renderlist) override
+    virtual void addIfLargeEnoughAndVisible(const Camera::CullingParams& cp, RenderList<API, BV>& renderlist) override
     {
-      if (largeEnough(cp) && intersectFrustum(cp)) {
+      if (largeEnough(cp) && intersectFrustum(cp) != IntersectionResult::OUTSIDE) {
         renderlist.addVisibleMesh(this);
         renderlist.addToCPULodList(this);
       }
