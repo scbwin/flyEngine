@@ -7,6 +7,9 @@
 #include <StackPOD.h>
 #include <IntersectionTests.h>
 #include <CullResult.h>
+#include <boost/pool/object_pool.hpp>
+
+#define KD_TREE_USE_BOOST 1
 
 namespace fly
 {
@@ -142,17 +145,33 @@ namespace fly
       }
       T _right;
     };
+#if KD_TREE_USE_BOOST
+    class NodePool; // Forward declare NodePool class.
+    using NodePtr = Node * ;
+#define POOL_ARG , NodePool& node_pool
+#define POOL_PARAM , node_pool
+#define POOL_OBJECT node_pool.
+#define POOL_MEMBER , _nodePool
+#define POOL_MEMBER_OBJECT _nodePool.
+#else
+    using NodePtr = std::unique_ptr<Node>;
+#define POOL_ARG
+#define POOL_PARAM
+#define POOL_OBJECT
+#define POOL_MEMBER
+#define POOL_MEMBER_OBJECT
+#endif
     class InternalNode : public Node
     {
     public:
-      InternalNode(unsigned begin, unsigned end, unsigned depth, std::vector<T>& objects)
+      InternalNode(unsigned begin, unsigned end, unsigned depth, std::vector<T>& objects POOL_ARG)
         : Node(begin, end, depth, objects)
       {
         unsigned num_objects = end - begin;
         unsigned num_objects_left = num_objects / 2;
         unsigned num_objects_right = num_objects - num_objects_left;
-        _left = createNode(num_objects_left, begin, begin + num_objects_left, depth + 1, objects);
-        _right = createNode(num_objects_right, begin + num_objects_left, end, depth + 1, objects);
+        _left = POOL_OBJECT createNode(num_objects_left, begin, begin + num_objects_left, depth + 1, objects POOL_PARAM);
+        _right = POOL_OBJECT createNode(num_objects_right, begin + num_objects_left, end, depth + 1, objects POOL_PARAM);
       }
       virtual ~InternalNode() = default;
       virtual void cullVisibleObjects(const Camera::CullingParams& cp, CullResult<T>& cull_result) const override
@@ -214,11 +233,10 @@ namespace fly
         }
       }
     private:
-      std::unique_ptr<Node> _left;
-      std::unique_ptr<Node> _right;
+      NodePtr _left, _right;
     };
     KdTree(std::vector<T>& objects) :
-      _root(createNode(static_cast<unsigned>(objects.size()), 0, static_cast<unsigned>(objects.size()), 0, objects))
+       _root(POOL_MEMBER_OBJECT createNode(static_cast<unsigned>(objects.size()), 0, static_cast<unsigned>(objects.size()), 0, objects POOL_MEMBER))
     {
     }
     void cullVisibleObjects(const Camera::CullingParams& cp, CullResult<T>& cull_result) const
@@ -244,7 +262,33 @@ namespace fly
       return _root->getBV();
     }
   private:
-    std::unique_ptr<Node> _root;
+#if KD_TREE_USE_BOOST
+    NodePool _nodePool;
+    class NodePool
+    {
+    public:
+      NodePool() = default;
+      NodePool(const NodePool& other) = delete;
+      NodePool& operator=(const NodePool& other) = delete;
+      NodePool(NodePool&& other) = delete;
+      NodePool& operator=(NodePool&& other) = delete;
+      NodePtr createNode(unsigned num_objects, unsigned begin, unsigned end, unsigned depth, std::vector<T>& objects, NodePool& node_pool)
+      {
+        switch (num_objects) {
+        case 2:
+          return ::new(_leafNodePool.malloc()) LeafNode(begin, end, depth, objects);
+        case 1:
+          return ::new(_leafNodeSinglePool.malloc()) LeafNodeSingle(begin, end, depth, objects);
+        default:
+          return ::new(_internalNodePool.malloc()) InternalNode(begin, end, depth, objects, *this);
+        }
+      }
+    private:
+      boost::object_pool<InternalNode> _internalNodePool;
+      boost::object_pool<LeafNode> _leafNodePool;
+      boost::object_pool<LeafNodeSingle> _leafNodeSinglePool;
+    };
+#else
     static std::unique_ptr<Node> createNode(unsigned num_objects, unsigned begin, unsigned end, unsigned depth, std::vector<T>& objects)
     {
       assert(num_objects);
@@ -257,6 +301,8 @@ namespace fly
         return std::make_unique<InternalNode>(begin, end, depth, objects);
       }
     }
+#endif
+    NodePtr _root;
   };
 }
 

@@ -11,6 +11,7 @@ You have to download/clone and build the dependencies by yourself. Use CMake to 
 * Visual Studio 2017 Community Edition 64 Bit (2015 should work as well)
 * CMake
 ### Library Dependencies
+* [BOOST](https://www.boost.org/) (Header-only)
 * [GLM](https://glm.g-truc.net/0.9.9/index.html)
 * [Assimp](https://github.com/assimp/assimp)
 * [SOIL](https://github.com/kbranigan/Simple-OpenGL-Image-Library)
