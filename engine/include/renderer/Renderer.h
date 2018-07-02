@@ -434,7 +434,7 @@ namespace fly
     RenderList _renderList;
     RenderList _renderListAsync;
     RenderList* _renderListScene;
-    std::map<ShaderDesc<API>*, std::map<MaterialDesc<API>*, StackPOD<MeshRenderable*>>> _displayList;
+    std::map<ShaderDesc<API> const *, std::map<MaterialDesc<API> const *, StackPOD<MeshRenderable const*>>> _displayList;
     BV _sceneBounds;
     std::unique_ptr<BVH> _bvhStatic;
     SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
@@ -605,13 +605,13 @@ namespace fly
         if (renderlist.getGPUCullList().size()) {
           _api.prepareCulling(cp._frustumPlanes, cp._camPos, cp._lodRange, cp._thresh);
           for (const auto& m : renderlist.getGPUCullList()) {
-            m->cullGPU();
+            m->cullGPU(_api);
           }
         }
         if (renderlist.getGPULodList().size()) {
           _api.prepareLod(cp._camPos, cp._lodRange, cp._thresh);
           for (const auto& m : renderlist.getGPULodList()) {
-            m->cullGPU();
+            m->cullGPU(_api);
           }
         }
         _api.endCulling();
@@ -628,7 +628,7 @@ namespace fly
       }
     }
     template<bool depth = false>
-    inline void groupMeshes(const StackPOD<MeshRenderable*>& visible_meshes)
+    inline void groupMeshes(const StackPOD<MeshRenderable const *>& visible_meshes)
     {
       for (const auto& m : visible_meshes) {
         _displayList[depth ? m->getShaderDescDepth()->get() : m->getShaderDesc()->get()][m->getMaterialDesc()].push_back_secure(m);

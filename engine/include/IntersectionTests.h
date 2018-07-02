@@ -5,17 +5,15 @@
 #include <Sphere.h>
 #include <array>
 
-enum class IntersectionResult
-{
-  OUTSIDE, INSIDE, INTERSECTING
-};
-
 namespace fly
 {
-  class IntersectionTests
+  enum class IntersectionResult
   {
-  public:
-    IntersectionTests() = delete;
+    OUTSIDE, INSIDE, INTERSECTING
+  };
+
+  namespace IntersectionTests
+  {
     static inline IntersectionResult planeIntersectsAABB(const Vec4f& plane, const Vec3f& half_diagonal, const Vec4f& center)
     {
       auto e = dot(half_diagonal, abs(plane.xyz()));
@@ -32,6 +30,23 @@ namespace fly
         return IntersectionResult::OUTSIDE;
       }
       return dist < -sphere.radius() ? IntersectionResult::INSIDE : IntersectionResult::INTERSECTING;
+    }
+    static inline bool aabbOutsideFrustum(const Vec4f& plane, const Vec3f& half_diagonal, const Vec4f& center)
+    {
+      auto e = dot(half_diagonal, abs(plane.xyz()));
+      auto s = dot(center, plane);
+      return s - e > 0.f;
+    }
+    static inline bool boundingVolumeOutsideFrustum(const AABB& aabb, const std::array<Vec4f, 6>& frustum_planes)
+    {
+      auto half_diagonal = (aabb.getMax() - aabb.getMin()) * 0.5f;
+      Vec4f center(aabb.center(), 1.f);
+      for (const auto& p : frustum_planes) {
+        if (aabbOutsideFrustum(p, half_diagonal, center)) {
+          return true;
+        }
+      }
+      return false;
     }
     static inline IntersectionResult frustumIntersectsBoundingVolume(const AABB& aabb, const std::array<Vec4f, 6>& frustum_planes)
     {
@@ -63,7 +78,7 @@ namespace fly
       }
       return intersecting ? IntersectionResult::INTERSECTING : IntersectionResult::INSIDE;
     }
-  };
+  }
 }
 
 #endif // !INTERSECTIONTESTS_H

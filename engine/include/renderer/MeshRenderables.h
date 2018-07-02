@@ -20,15 +20,31 @@ namespace fly
   template<typename API, typename BV>
   class RenderList;
 
+  class LodRenderable
+  {
+  public:
+    LodRenderable() = default;
+    virtual ~LodRenderable() = default;
+    virtual void selectLod(const Camera::CullingParams& cp) = 0;
+  };
+  template<typename API>
+  class GPURenderable
+  {
+  public:
+    GPURenderable() = default;
+    virtual ~GPURenderable() = default;
+    virtual void cullGPU(const API& api) = 0;
+  };
+
   template<typename API, typename BV>
   class IMeshRenderable
   {
   public:
     virtual ~IMeshRenderable() = default;
     IMeshRenderable() = default;
-    inline std::shared_ptr<ShaderDesc<API>> const * getShaderDesc() { return _shaderDesc; }
-    inline std::shared_ptr<ShaderDesc<API>> const * getShaderDescDepth() { return _shaderDescDepth; }
-    inline MaterialDesc<API> * getMaterialDesc() { return _materialDesc; }
+    inline std::shared_ptr<ShaderDesc<API>> const * getShaderDesc() const { return _shaderDesc; }
+    inline std::shared_ptr<ShaderDesc<API>> const * getShaderDescDepth() const { return _shaderDescDepth; }
+    inline MaterialDesc<API> * getMaterialDesc() const { return _materialDesc; }
     virtual void renderDepth(API const & api) const = 0;
     virtual void render(API const & api) const = 0;
     inline const BV& getBV() const { return _bv; }
@@ -46,7 +62,7 @@ namespace fly
     */
     virtual void addIfLargeEnoughAndVisible(const Camera::CullingParams& cp, RenderList<API, BV>& renderlist)
     {
-      if (largeEnough(cp) && intersectFrustum(cp) != IntersectionResult::OUTSIDE) {
+      if (largeEnough(cp) && intersectFrustum(cp)) {
         renderlist.addVisibleMesh(this);
       }
     }
@@ -59,8 +75,6 @@ namespace fly
       return 1;
     }
     virtual unsigned numTriangles() const = 0;
-    virtual void cullGPU() {}
-    virtual void selectLod(const Camera::CullingParams& cp) {}
   protected:
     MaterialDesc<API> * _materialDesc;
     std::shared_ptr<ShaderDesc<API>> const * _shaderDesc;
@@ -78,9 +92,9 @@ namespace fly
     {
       return _bv.isLargeEnough(cp._camPos, cp._thresh);
     }
-    inline IntersectionResult intersectFrustum(const Camera::CullingParams& cp) const
+    inline bool intersectFrustum(const Camera::CullingParams& cp) const
     {
-      return IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes);
+      return !IntersectionTests::boundingVolumeOutsideFrustum(_bv, cp._frustumPlanes);
     }
   };
   template<typename API, typename BV>
@@ -174,7 +188,7 @@ namespace fly
     WindParamsLocal _windParams;
   };
   template<typename API, typename BV>
-  class StaticInstancedMeshRenderable : public IMeshRenderable<API, BV>
+  class StaticInstancedMeshRenderable : public IMeshRenderable<API, BV>, public GPURenderable<API>
   {
   public:
     struct InstanceData
@@ -188,8 +202,7 @@ namespace fly
       const std::shared_ptr<Material>& material, const std::vector<InstanceData>& instance_data) :
       _visibleInstances(renderer.getApi()->createStorageBuffer<unsigned>(nullptr, instance_data.size() * lods.size())),
       _instanceData(renderer.getApi()->createStorageBuffer<InstanceData>(instance_data.data(), instance_data.size())),
-      _numInstances(static_cast<unsigned>(instance_data.size())),
-      _api(*renderer.getApi())
+      _numInstances(static_cast<unsigned>(instance_data.size()))
     {
       _materialDesc = renderer.createMaterialDesc(material).get();
       _shaderDesc = &_materialDesc->getMeshShaderDescInstanced();
@@ -241,7 +254,7 @@ namespace fly
     virtual void addIfLargeEnoughAndVisible(const Camera::CullingParams& cp, RenderList<API, BV>& renderlist) override
     {
       if (_bv.isLargeEnough(cp._camPos, cp._thresh, _largestBVSize)) {
-        auto result = intersectFrustum(cp);
+        auto result = IntersectionTests::frustumIntersectsBoundingVolume(_bv, cp._frustumPlanes);
         if (result != IntersectionResult::OUTSIDE) {
           renderlist.addVisibleMesh(this);
           result == IntersectionResult::INSIDE ? renderlist.addToGPULodList(this) : renderlist.addToGPUCullList(this);
@@ -257,9 +270,9 @@ namespace fly
     {
       return _numInstances;
     }
-    virtual void cullGPU() override
+    virtual void cullGPU(const API& api) override
     {
-      _api.cullInstances(_aabbBuffer, _numInstances, _visibleInstances, _indirectBuffer,
+      api.cullInstances(_aabbBuffer, _numInstances, _visibleInstances, _indirectBuffer,
         _indirectInfo);
     }
   protected:
@@ -270,10 +283,9 @@ namespace fly
     typename API::StorageBuffer _instanceData;
     typename API::IndirectBuffer _indirectBuffer;
     unsigned _numInstances;
-    API const & _api;
   };
   template<typename API, typename BV>
-  class StaticMeshRenderableLod : public IMeshRenderable<API, BV>
+  class StaticMeshRenderableLod : public IMeshRenderable<API, BV>, public LodRenderable
   {
   public:
     StaticMeshRenderableLod(Renderer<API, BV>& renderer, const std::vector<std::shared_ptr<Mesh>>& meshes,
@@ -314,7 +326,7 @@ namespace fly
     }
     virtual void addIfLargeEnoughAndVisible(const Camera::CullingParams& cp, RenderList<API, BV>& renderlist) override
     {
-      if (largeEnough(cp) && intersectFrustum(cp) != IntersectionResult::OUTSIDE) {
+      if (largeEnough(cp) && intersectFrustum(cp)) {
         renderlist.addVisibleMesh(this);
         renderlist.addToCPULodList(this);
       }

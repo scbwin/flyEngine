@@ -99,7 +99,7 @@ namespace fly
 
     friend std::ostream& operator << (std::ostream& os, const AABB& aabb)
     {
-      os << "AABB [ " << aabb.getMin() << " " << aabb.getMax() << " ]" << std::endl;
+      os << "AABB [ " << aabb.getMin() << " " << aabb.getMax() << " ]";
       return os;
     }
   private:

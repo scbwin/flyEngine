@@ -9,8 +9,11 @@ namespace fly
   template<typename API, typename BV>
   class RenderList
   {
-    using MeshRenderable = IMeshRenderable<API, BV>;
+    using MeshRenderable = IMeshRenderable<API, BV> const;
+    using GPURenderable = GPURenderable<API>;
     using Stack = StackPOD<MeshRenderable*>;
+    using StackLod = StackPOD<LodRenderable*>;
+    using StackGPU = StackPOD<GPURenderable*>;
   public:
     inline void reserve(size_t size)
     {
@@ -29,9 +32,9 @@ namespace fly
     inline size_t size() { return _visibleMeshes.size() + _gpuCullList.size() + _gpuLodList.size() + _cpuLodList.size(); }
     inline size_t capacity() { return _visibleMeshes.capacity() + _gpuCullList.capacity() + _gpuLodList.capacity() + _cpuLodList.capacity(); }
     inline const Stack& getVisibleMeshes() const { return _visibleMeshes; }
-    inline const Stack& getGPUCullList() const { return _gpuCullList; }
-    inline const Stack& getGPULodList() const { return _gpuLodList; }
-    inline const Stack& getCPULodList() const { return _cpuLodList; }
+    inline const StackGPU& getGPUCullList() const { return _gpuCullList; }
+    inline const StackGPU& getGPULodList() const { return _gpuLodList; }
+    inline const StackLod& getCPULodList() const { return _cpuLodList; }
     inline void append(const RenderList& other)
     {
       _visibleMeshes.append(other._visibleMeshes);
@@ -39,15 +42,15 @@ namespace fly
       _gpuLodList.append(other._gpuLodList);
       _cpuLodList.append(other._cpuLodList);
     }
-    inline void addVisibleMesh(MeshRenderable* mesh) { _visibleMeshes.push_back(mesh); }
-    inline void addToGPUCullList(MeshRenderable* mesh) { _gpuCullList.push_back(mesh); }
-    inline void addToGPULodList(MeshRenderable* mesh) { _gpuLodList.push_back(mesh); }
-    inline void addToCPULodList(MeshRenderable* mesh) { _cpuLodList.push_back(mesh); }
+    inline void addVisibleMesh(MeshRenderable* renderable) { _visibleMeshes.push_back(renderable); }
+    inline void addToGPUCullList(GPURenderable* renderable) { _gpuCullList.push_back(renderable); }
+    inline void addToGPULodList(GPURenderable* renderable) { _gpuLodList.push_back(renderable); }
+    inline void addToCPULodList(LodRenderable* renderable) { _cpuLodList.push_back(renderable); }
   private:
     Stack _visibleMeshes;
-    Stack _gpuCullList;
-    Stack _gpuLodList;
-    Stack _cpuLodList;
+    StackGPU _gpuCullList;
+    StackGPU _gpuLodList;
+    StackLod _cpuLodList;
   };
 }
 
