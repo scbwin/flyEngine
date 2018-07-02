@@ -12,6 +12,7 @@
 #include <Sphere.h>
 #include <IntersectionTests.h>
 #include <Camera.h>
+#include <boost/pool/object_pool.hpp>
 
 namespace fly
 {
@@ -187,17 +188,17 @@ namespace fly
   protected:
     WindParamsLocal _windParams;
   };
+  struct InstanceData
+  {
+    Mat4f _modelMatrix;
+    Mat4f _modelMatrixInverse;
+    unsigned _index; // Currently an index into a color array
+    unsigned _padding[3];
+  };
   template<typename API, typename BV>
   class StaticInstancedMeshRenderable : public IMeshRenderable<API, BV>, public GPURenderable<API>
   {
   public:
-    struct InstanceData
-    {
-      Mat4f _modelMatrix;
-      Mat4f _modelMatrixInverse;
-      unsigned _index; // Can be an index into a color array or an index into a texture array
-      unsigned _padding[3];
-    };
     StaticInstancedMeshRenderable(Renderer<API, BV>& renderer, const std::vector<std::shared_ptr<Mesh>>& lods,
       const std::shared_ptr<Material>& material, const std::vector<InstanceData>& instance_data) :
       _visibleInstances(renderer.getApi()->createStorageBuffer<unsigned>(nullptr, instance_data.size() * lods.size())),
@@ -342,6 +343,43 @@ namespace fly
     Mat4f _modelMatrix;
     Mat3f _modelMatrixInverse;
     unsigned _lod;
+  };
+
+  template<typename API, typename BV>
+  class MeshRenderablePool
+  {
+    using StaticMeshRenderable = StaticMeshRenderable<API, BV>;
+    using StaticMeshRenderableWind = StaticMeshRenderableWind<API, BV>;
+    using StaticMeshRenderableLod = StaticMeshRenderableLod<API, BV>;
+    using StaticInstancedMeshRenderable = StaticInstancedMeshRenderable<API, BV>;
+    using Renderer = Renderer<API, BV>;
+  public:
+    MeshRenderablePool() = default;
+    inline auto* createStaticMeshRenderable(Renderer& renderer, const std::shared_ptr<Mesh>& mesh,
+      const std::shared_ptr<Material>& material, const Transform& transform)
+    {
+      return ::new(_poolSmr.malloc()) StaticMeshRenderable(renderer, mesh, material, transform);
+    }
+    inline auto* createStaticMeshRenderableWind(Renderer& renderer, const std::shared_ptr<Mesh>& mesh,
+      const std::shared_ptr<Material>& material, const Transform& transform)
+    {
+      return ::new(_poolSmrWind.malloc()) StaticMeshRenderableWind(renderer, mesh, material, transform);
+    }
+    inline auto* createStaticMeshRenderableLod(Renderer& renderer, const std::vector<std::shared_ptr<Mesh>>& meshes,
+      const std::shared_ptr<Material>& material, const Transform& transform)
+    {
+      return ::new(_poolSmrLod.malloc()) StaticMeshRenderableLod(renderer, meshes, material, transform);
+    }
+    inline auto* createStaticInstancedMeshRenderable(Renderer& renderer, const std::vector<std::shared_ptr<Mesh>>& lods,
+      const std::shared_ptr<Material>& material, const std::vector<InstanceData>& instance_data)
+    {
+      return ::new(_poolSmrInstanced.malloc()) StaticInstancedMeshRenderable(renderer, lods, material, instance_data);
+    }
+  private:
+    boost::object_pool<StaticMeshRenderable> _poolSmr;
+    boost::object_pool<StaticMeshRenderableWind> _poolSmrWind;
+    boost::object_pool<StaticMeshRenderableLod> _poolSmrLod;
+    boost::object_pool<StaticInstancedMeshRenderable> _poolSmrInstanced;
   };
 }
 

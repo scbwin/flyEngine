@@ -40,6 +40,7 @@ namespace fly
   public:
     using MeshRenderable = IMeshRenderable<API, BV>;
     using RenderList = RenderList<API, BV>;
+    using MeshRenderablePtr = MeshRenderable * ;
 #if RENDERER_STATS
     struct CullingStats
     {
@@ -167,17 +168,16 @@ namespace fly
       graphicsSettingsChanged();
       compositingChanged(gs);
     }
-    void addStaticMeshRenderable(std::unique_ptr<MeshRenderable>&& smr) 
+    void addStaticMeshRenderable(MeshRenderablePtr smr) 
     {
+      _meshRenderables.push_back(smr);
       _sceneBounds = _sceneBounds.getUnion(smr->getBV());
-      _meshRenderables.push_back(std::move(smr));
     }
-    void addStaticMeshRenderables(std::vector<std::unique_ptr<MeshRenderable>>& smrs)
+    void addStaticMeshRenderables(const std::vector<MeshRenderablePtr>& smrs)
     {
-      _meshRenderables.reserve(_meshRenderables.size() + smrs.size());
-      for (auto& smr : smrs) {
+      _meshRenderables.insert(_meshRenderables.end(), smrs.begin(), smrs.end());
+      for (const auto& smr : smrs) {
         _sceneBounds = _sceneBounds.getUnion(smr->getBV());
-        _meshRenderables.push_back(std::move(smr));
       }
     }
     void setSkydome(const std::shared_ptr<SkydomeRenderable<API, BV>>& sdr)
@@ -387,12 +387,12 @@ namespace fly
         throw std::exception("No meshes were added to the renderer.");
       }
       Timing timing;
-      std::vector<MeshRenderable*> renderables;
+    /*  std::vector<MeshRenderablePtr> renderables;
       renderables.reserve(_cullResult.size());
       for (const auto& mr : _meshRenderables) {
         renderables.push_back(mr.get());
-      }
-      _bvhStatic = std::make_unique<BVH>(renderables);
+      }*/
+      _bvhStatic = std::make_unique<BVH>(_meshRenderables);
       std::cout << "BVH construction took " << timing.duration<std::chrono::milliseconds>() << " milliseconds." << std::endl;
       std::cout << "BVH takes " << static_cast<float>(_bvhStatic->getSizeInBytes()) / 1024.f / 1024.f << " MB memory" << std::endl;
       std::cout << "Scene bounds:" << _bvhStatic->getBV() << std::endl;
@@ -423,11 +423,12 @@ namespace fly
     float _acc = 0.f;
     float _dt = 1.f / 30.f;
     bool _multiThreadedCulling;
+    BV _sceneBounds;
 #if RENDERER_STATS
     RendererStats _stats;
 #endif
     typename API::MeshGeometryStorage _meshGeometryStorage;
-    std::vector<std::unique_ptr<MeshRenderable>> _meshRenderables;
+    std::vector<MeshRenderablePtr> _meshRenderables;
     std::shared_ptr<SkydomeRenderable<API, BV>> _skydomeRenderable;
     CullResult<MeshRenderable*> _cullResult;
     CullResult<MeshRenderable*> _cullResultAsync;
@@ -435,7 +436,6 @@ namespace fly
     RenderList _renderListAsync;
     RenderList* _renderListScene;
     std::map<ShaderDesc<API> const *, std::map<MaterialDesc<API> const *, StackPOD<MeshRenderable const*>>> _displayList;
-    BV _sceneBounds;
     std::unique_ptr<BVH> _bvhStatic;
     SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
     SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&> _shaderDescCache;

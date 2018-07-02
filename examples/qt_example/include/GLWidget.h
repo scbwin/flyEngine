@@ -12,6 +12,7 @@
 #include <GraphicsSettings.h>
 #include <math/FlyMath.h>
 #include <AntWrapper.h>
+#include <renderer/MeshRenderables.h>
 
 #define SPONZA 1
 #define SPONZA_MANY 1 && SPONZA
@@ -93,6 +94,7 @@ private:
   float _camAccelerationHigh = 400.f;
   float _camAccelerationLow = 100.f;
   void updateStats();
+  fly::MeshRenderablePool<fly::OpenGLAPI, fly::AABB> _meshRenderablePool;
 #if PHYSICS
   std::shared_ptr<fly::Bullet3PhysicsSystem> _physicsSystem;
   std::vector<std::shared_ptr<btTriangleMesh>> _triangleMeshes;
