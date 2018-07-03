@@ -9,12 +9,26 @@
 #include <CullResult.h>
 #include <boost/pool/object_pool.hpp>
 
+/** 
+* Using boost object pools should be used in general. It ensures that
+* BVH nodes are placed in contiguous memory chunks. This significantly
+* reduces memory fragmentation which leads to improved cache locality and
+* better performance.
+*/
 #define KD_TREE_USE_BOOST 1
 
 namespace fly
 {
   /**
-  * TODO: Make this class even more generic. E.g. one could also store indices instead of pointers
+  * kd-tree implementation that doesn't store points, but objects associated with bounding volumes.
+  * It is a special case of binary space partitioning (BSP) trees, where the splitting planes are 
+  * always parallel to one of main coordinate axes. It is used for Hierarchical View Frustum Culling and Detail Culling
+  * (see cullVisibleObjects()) and for coarse collision detection algorithms (see intersectObjects()). The
+  * tree is built once in the constructor by passing a number of objects of type T (pointer type), associated with a bounding
+  * volume of type BV. Dynamic node insertion/removal is currently not supported, because this type of tree can easily become
+  * unbalanced.
+  * TODO: Make this class even more generic. E.g. one could also store indices instead of pointers.
+  * TODO: Support for asynchronous streaming of nodes and individual objects from disk / database.
   */
   template<typename T, typename BV>
   class KdTree
@@ -151,31 +165,20 @@ namespace fly
       T _right;
     };
 #if KD_TREE_USE_BOOST
-    class NodePool; // Forward declare NodePool class.
     using NodePtr = Node * ;
-#define POOL_ARG , NodePool& node_pool
-#define POOL_PARAM , node_pool
-#define POOL_OBJECT node_pool.
-#define POOL_MEMBER , _nodePool
-#define POOL_MEMBER_OBJECT _nodePool.
 #else
     using NodePtr = std::unique_ptr<Node>;
-#define POOL_ARG
-#define POOL_PARAM
-#define POOL_OBJECT
-#define POOL_MEMBER
-#define POOL_MEMBER_OBJECT
 #endif
     class InternalNode : public Node
     {
     public:
-      InternalNode(unsigned begin, unsigned end, std::vector<T>& objects POOL_ARG)
+      InternalNode(unsigned begin, unsigned end, std::vector<T>& objects, KdTree& kd_tree)
         : Node(begin, end, objects)
       {
         unsigned num_objects = end - begin;
         unsigned num_objects_left = num_objects / 2u;
-        _left = POOL_OBJECT createNode(begin, begin + num_objects_left, objects POOL_PARAM);
-        _right = POOL_OBJECT createNode(begin + num_objects_left, end, objects POOL_PARAM);
+        _left = kd_tree.createNode(begin, begin + num_objects_left, objects);
+        _right = kd_tree.createNode(begin + num_objects_left, end, objects);
       }
       virtual ~InternalNode() = default;
       virtual void cullVisibleObjects(const Camera::CullingParams& cp, CullResult<T>& cull_result) const override
@@ -249,7 +252,7 @@ namespace fly
 #if KD_TREE_USE_BOOST
       _nodePool(static_cast<unsigned>(objects.size())),
 #endif
-       _root(POOL_MEMBER_OBJECT createNode(0, static_cast<unsigned>(objects.size()), objects POOL_MEMBER))
+       _root(createNode(0, static_cast<unsigned>(objects.size()), objects))
     {
     }
     void cullVisibleObjects(const Camera::CullingParams& cp, CullResult<T>& cull_result) const
@@ -282,7 +285,6 @@ namespace fly
     }
   private:
 #if KD_TREE_USE_BOOST
-    NodePool _nodePool;
     class NodePool
     {
     public:
@@ -300,7 +302,7 @@ namespace fly
       NodePool& operator=(const NodePool& other) = delete;
       NodePool(NodePool&& other) = delete;
       NodePool& operator=(NodePool&& other) = delete;
-      NodePtr createNode(unsigned begin, unsigned end, std::vector<T>& objects, NodePool& node_pool)
+      NodePtr createNode(unsigned begin, unsigned end, std::vector<T>& objects, KdTree& kd_tree)
       {
         auto num_objects = end - begin;
         switch (num_objects) {
@@ -309,7 +311,7 @@ namespace fly
         case 1:
           return ::new(_leafNodeSinglePool.malloc()) LeafNodeSingle(begin, end, objects);
         default:
-          return ::new(_internalNodePool.malloc()) InternalNode(begin, end, objects, *this);
+          return ::new(_internalNodePool.malloc()) InternalNode(begin, end, objects, kd_tree);
         }
       }
     private:
@@ -321,8 +323,13 @@ namespace fly
       boost::object_pool<LeafNode> _leafNodePool;
       boost::object_pool<LeafNodeSingle> _leafNodeSinglePool;
     };
+    NodePool _nodePool;
+    inline NodePtr createNode(unsigned begin, unsigned end, std::vector<T>& objects)
+    {
+      return _nodePool.createNode(begin, end, objects, *this);
+    }
 #else
-    static std::unique_ptr<Node> createNode(unsigned begin, unsigned end, std::vector<T>& objects)
+    inline NodePtr createNode(unsigned begin, unsigned end, std::vector<T>& objects)
     {
       auto num_objects = end - begin;
       switch (num_objects) {
@@ -331,7 +338,7 @@ namespace fly
       case 1:
         return std::make_unique<LeafNodeSingle>(begin, end, objects);
       default:
-        return std::make_unique<InternalNode>(begin, end, objects);
+        return std::make_unique<InternalNode>(begin, end, objects, *this);
       }
     }
 #endif
