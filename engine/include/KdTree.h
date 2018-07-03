@@ -1,13 +1,11 @@
 #ifndef KDTREE_H
 #define KDTREE_H
 
-#include <memory>
 #include <Camera.h>
 #include <vector>
 #include <StackPOD.h>
 #include <IntersectionTests.h>
 #include <CullResult.h>
-#include <boost/pool/object_pool.hpp>
 
 /** 
 * Using boost object pools should be used in general. It ensures that
@@ -17,8 +15,32 @@
 */
 #define KD_TREE_USE_BOOST 1
 
+#if KD_TREE_USE_BOOST
+#include <boost/pool/object_pool.hpp>
+#else
+#include <memory>
+#endif
+
 namespace fly
 {
+  template<typename T, typename BV>
+  struct DefaultGetBoundingVolume
+  {
+    inline const BV& operator()(const T& t) const
+    {
+      return t->getBV();
+    }
+  };
+
+  template<typename T>
+  struct DefaultGetLargestBVSize
+  {
+    inline float operator()(const T& t) const
+    {
+      return t->getLargestObjectBVSize();
+    }
+  };
+
   /**
   * kd-tree implementation that doesn't store points, but objects associated with bounding volumes.
   * It is a special case of binary space partitioning (BSP) trees, where the splitting planes are 
@@ -27,10 +49,9 @@ namespace fly
   * tree is built once in the constructor by passing a number of objects of type T (pointer type), associated with a bounding
   * volume of type BV. Dynamic node insertion/removal is currently not supported, because this type of tree can easily become
   * unbalanced.
-  * TODO: Make this class even more generic. E.g. one could also store indices instead of pointers.
   * TODO: Support for asynchronous streaming of nodes and individual objects from disk / database.
   */
-  template<typename T, typename BV>
+  template<typename T, typename BV, typename GetBoundingVolume = DefaultGetBoundingVolume<T, BV>, typename GetLargestBVSize = DefaultGetLargestBVSize<T>>
   class KdTree
   {
   public:
@@ -40,12 +61,12 @@ namespace fly
       Node(unsigned begin, unsigned end, std::vector<T>& objects)
       {
         for (unsigned i = begin; i < end; i++) {
-          _bv = _bv.getUnion(objects[i]->getBV());
-          _largestBVSize = std::max(_largestBVSize, objects[i]->getLargestObjectBVSize());
+          _bv = _bv.getUnion(GetBoundingVolume()(objects[i]));
+          _largestBVSize = std::max(_largestBVSize, GetLargestBVSize()(objects[i]));
         }
         auto axis = _bv.getLongestAxis();
         std::sort(&objects.front() + begin, &objects.front() + end, [&axis](const T& o1, const T& o2) {
-          return o1->getBV().center(axis) > o2->getBV().center(axis);
+          return GetBoundingVolume()(o1).center(axis) > GetBoundingVolume()(o2).center(axis);
         });
       }
       virtual ~Node() = default;
@@ -92,7 +113,7 @@ namespace fly
       }
       virtual void intersectObjects(const BV& bv, StackPOD<T>& intersected_objects) const override
       {
-        if (bv.intersects(_left->getBV())) {
+        if (bv.intersects(GetBoundingVolume()(_left))) {
           intersected_objects.push_back_secure(_left);
         }
       }
@@ -148,10 +169,10 @@ namespace fly
       virtual void intersectObjects(const BV& bv, StackPOD<T>& intersected_objects) const override
       {
         if (bv.intersects(_bv)) {
-          if (bv.intersects(_left->getBV())) {
+          if (bv.intersects(GetBoundingVolume()(_left))) {
             intersected_objects.push_back_secure(_left);
           }
-          if (bv.intersects(_right->getBV())) {
+          if (bv.intersects(GetBoundingVolume()(_right))) {
             intersected_objects.push_back_secure(_right);
           }
         }

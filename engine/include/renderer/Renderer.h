@@ -3,7 +3,6 @@
 
 #include <math/MathHelpers.h>
 #include <System.h>
-#include <renderer/ProjectionParams.h>
 #include <math/FlyMath.h>
 #include <glm/gtx/quaternion.hpp>
 #include <map>
