@@ -5,7 +5,10 @@
 
 namespace fly
 {
-  Camera::Camera(const Vec3f& pos, const Vec3f& euler_angles) : _pos(pos), _eulerAngles(euler_angles)
+  Camera::Camera(const Vec3f& pos, const Vec3f& euler_angles) : 
+    _pos(pos), 
+    _eulerAngles(euler_angles),
+    _params{0.1f, 10000.f, 45.f}
   {
   }
 
@@ -107,5 +110,13 @@ namespace fly
   Camera::CullingParams Camera::getCullingParams() const
   {
     return { _pos, _detailCullingThreshold, _frustumPlanes, (_detailCullingThreshold * _lodRangeMultiplier) - _detailCullingThreshold };
+  }
+  const Camera::Params & Camera::getParams() const
+  {
+    return _params;
+  }
+  void Camera::setParams(const Params & params)
+  {
+    _params = params;
   }
 }

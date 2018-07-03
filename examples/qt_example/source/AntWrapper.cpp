@@ -44,6 +44,9 @@ AntWrapper::AntWrapper(TwBar* bar, fly::GraphicsSettings* gs, fly::OpenGLAPI* ap
   TwAddVarCB(bar, "Debug object BVs", TwType::TW_TYPE_BOOLCPP, setDebugAABBs, getDebugAABBs, gs, nullptr);
   TwAddVarCB(bar, "Detail culling threshold", TwType::TW_TYPE_FLOAT, setDetailCullingThreshold, getDetailCullingThreshold, camera_controller, "step=0.0000005f");
   TwAddVarCB(bar, "Lod range multiplier", TwType::TW_TYPE_FLOAT, setLodRangeMultiplier, getLodRangeMultiplier, camera_controller, "step=0.1f");
+  TwAddVarCB(bar, "Field of view", TwType::TW_TYPE_FLOAT, setFOV, getFOV, camera_controller, "step=1.f");
+  TwAddVarCB(bar, "Near", TwType::TW_TYPE_FLOAT, setNear, getNear, camera_controller, "step=0.01f");
+  TwAddVarCB(bar, "Far", TwType::TW_TYPE_FLOAT, setFar, getFar, camera_controller, "step=1.f");
   TwAddVarCB(bar, "Camera speed", TwType::TW_TYPE_FLOAT, setCamSpeed, getCamSpeed, camera_controller, "step=0.1f");
   TwAddVarCB(bar, "Skydome", TwType::TW_TYPE_BOOLCPP, setSkydome, getSkydome, &_skydomeData, nullptr);
   TwAddVarCB(bar, "Depth of Field", TwType::TW_TYPE_BOOLCPP, setDepthOfField, getDepthOfField, gs, nullptr);
@@ -270,7 +273,38 @@ void AntWrapper::getLodRangeMultiplier(void * value, void * client_data)
 {
   *cast<float>(value) = cast<fly::CameraController>(client_data)->getCamera()->getLodRangeMultiplier();
 }
+void AntWrapper::setFOV(const void * value, void * client_data)
+{
+  auto params = cast<fly::CameraController>(client_data)->getCamera()->getParams();
+  params._fovDegrees = *cast<float>(value);
+  cast<fly::CameraController>(client_data)->getCamera()->setParams(params);
+}
+void AntWrapper::getFOV(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::CameraController>(client_data)->getCamera()->getParams()._fovDegrees;
+}
+void AntWrapper::setNear(const void * value, void * client_data)
+{
+  auto params = cast<fly::CameraController>(client_data)->getCamera()->getParams();
+  params._near = *cast<float>(value);
+  cast<fly::CameraController>(client_data)->getCamera()->setParams(params);
+}
 
+void AntWrapper::getNear(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::CameraController>(client_data)->getCamera()->getParams()._near;
+}
+void AntWrapper::setFar(const void * value, void * client_data)
+{
+  auto params = cast<fly::CameraController>(client_data)->getCamera()->getParams();
+  params._far = *cast<float>(value);
+  cast<fly::CameraController>(client_data)->getCamera()->setParams(params);
+}
+
+void AntWrapper::getFar(void * value, void * client_data)
+{
+  *cast<float>(value) = cast<fly::CameraController>(client_data)->getCamera()->getParams()._far;
+}
 void AntWrapper::setCamSpeed(const void * value, void * client_data)
 {
   cast<fly::CameraController>(client_data)->setSpeed(*cast<float>(value));

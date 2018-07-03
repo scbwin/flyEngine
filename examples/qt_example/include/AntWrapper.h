@@ -80,6 +80,12 @@ private:
   static void getDetailCullingThreshold(void* value, void* client_data);
   static void setLodRangeMultiplier(const void* value, void* client_data);
   static void getLodRangeMultiplier(void* value, void* client_data);
+  static void setFOV(const void* value, void* client_data);
+  static void getFOV(void* value, void* client_data);
+  static void setNear(const void* value, void* client_data);
+  static void getNear(void* value, void* client_data);
+  static void setFar(const void* value, void* client_data);
+  static void getFar(void* value, void* client_data);
   static void setCamSpeed(const void* value, void* client_data);
   static void getCamSpeed(void* value, void* client_data);
   static void setSkydome(const void* value, void* client_data);

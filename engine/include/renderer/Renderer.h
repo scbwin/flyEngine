@@ -84,9 +84,6 @@ namespace fly
       return _api.createShader(vs, fs, gs);
     }))
     {
-      _pp._near = 0.1f;
-      _pp._far = 10000.f;
-      _pp._fieldOfViewDegrees = 45.f;
       _renderTargets.reserve(_api._maxRendertargets);
     }
     virtual ~Renderer() {}
@@ -208,6 +205,7 @@ namespace fly
       _api.beginFrame();
       _gsp._camPosworld = _camera->getPosition();
       _gsp._viewMatrix = _camera->updateViewMatrix();
+      _gsp._projectionMatrix = MathHelpers::getProjectionMatrixPerspective(_camera->getParams()._fovDegrees, _viewPortSize[0] / _viewPortSize[1], _camera->getParams()._near, _camera->getParams()._far, _api.getZNearMapping());
       (*_cullCamera)->updateViewMatrix();
       _gsp._viewMatrixInverse = _camera->getViewMatrixInverse();
       _vpScene = _gsp._projectionMatrix * _gsp._viewMatrix;
@@ -310,7 +308,7 @@ namespace fly
       }
       Vec3f god_ray_intensity(0.f);
       if (_gs->getGodRays()) {
-        auto light_pos_world = _gsp._camPosworld + *_gsp._lightDirWorld * -_pp._far;
+        auto light_pos_world = _gsp._camPosworld + *_gsp._lightDirWorld * -_camera->getParams()._far;
         auto light_pos_h = _vpScene * Vec4f(light_pos_world, 1.f);
         auto light_pos_ndc = light_pos_h.xy() / light_pos_h[3];
         if (light_pos_ndc >= -1.f && light_pos_ndc <= 1.f) {
@@ -341,7 +339,6 @@ namespace fly
     void onResize(const Vec2u& window_size)
     {
       _viewPortSize = window_size;
-      _gsp._projectionMatrix = MathHelpers::getProjectionMatrixPerspective(_pp._fieldOfViewDegrees, _viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._far, _api.getZNearMapping());
       godRaysChanged(_gs);
       depthOfFieldChanged(_gs);
     }
@@ -398,7 +395,6 @@ namespace fly
     }
   private:
     API _api;
-    ProjectionParams _pp;
     GlobalShaderParams _gsp;
     Vec2f _viewPortSize = Vec2f(1.f);
     std::shared_ptr<Camera> _camera;
@@ -488,7 +484,7 @@ namespace fly
     }
     void renderShadowMap()
     {
-      _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], _pp._near, _pp._fieldOfViewDegrees, inverse((*_cullCamera)->getViewMatrix()),
+      _directionalLight->getViewProjectionMatrices(_viewPortSize[0] / _viewPortSize[1], (*_cullCamera)->getParams()._near, (*_cullCamera)->getParams()._fovDegrees, inverse((*_cullCamera)->getViewMatrix()),
         static_cast<float>(_gs->getShadowMapSize()), _gs->getFrustumSplits(), _api.getZNearMapping(), _gsp._worldToLight, _vpLightVolume);
       _api.setDepthClampEnabled<true>();
       _api.enablePolygonOffset(_gs->getShadowPolygonOffsetFactor(), _gs->getShadowPolygonOffsetUnits());

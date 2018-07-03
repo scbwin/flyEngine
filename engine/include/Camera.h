@@ -14,8 +14,7 @@ namespace fly
   {
   public:
     Camera(const Vec3f& pos, const Vec3f& euler_angles);
-    Camera(const Camera& other) = default;
-    virtual ~Camera();
+    ~Camera();
     const Mat4f& updateViewMatrix();
     const Mat4f& updateViewMatrix(const Vec3f& pos, const Vec3f& euler_angles);
     const Mat4f& getViewMatrix();
@@ -35,6 +34,7 @@ namespace fly
     void setDetailCullingThreshold(float threshold);
     float getLodRangeMultiplier() const;
     void setLodRangeMultiplier(float multiplier);
+    
     struct CullingParams
     {
       Vec3f _camPos;
@@ -43,6 +43,14 @@ namespace fly
       float _lodRange;
     };
     CullingParams getCullingParams() const;
+    struct Params
+    {
+      float _near;
+      float _far;
+      float _fovDegrees;
+    };
+    const Params& getParams() const;
+    void setParams(const Params& params);
   private:
     Vec3f _pos;
     Vec3f _eulerAngles;
@@ -54,6 +62,7 @@ namespace fly
     bool _isActive = true;
     float _detailCullingThreshold = 0.000175f;
     float _lodRangeMultiplier = 128.f;
+    Params _params;
   };
 }
 
