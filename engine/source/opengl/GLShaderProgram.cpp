@@ -23,12 +23,14 @@ namespace fly
   }
   GLShaderProgram & GLShaderProgram::operator=(GLShaderProgram && other)
   {
-    cleanup();
-    _id = other._id;
-    _sources = std::move(other._sources);
-    _uniformLocations = std::move(other._uniformLocations);
-    _uniformNames = std::move(other._uniformNames);
-    other._id = 0;
+    if (this != &other) {
+      cleanup();
+      _id = other._id;
+      _sources = std::move(other._sources);
+      _uniformLocations = std::move(other._uniformLocations);
+      _uniformNames = std::move(other._uniformNames);
+      other._id = 0;
+    }
     return *this;
   }
   void GLShaderProgram::add(GLShaderSource& source)

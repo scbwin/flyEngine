@@ -83,7 +83,7 @@ namespace fly
         index & 1 ? _bbMin[2] : _bbMax[2]);
     }
 
-    inline unsigned char getLongestAxis(unsigned depth) const
+    inline unsigned char getLongestAxis() const
     {
       auto vec = _bbMax - _bbMin;
       unsigned char axis = 0;

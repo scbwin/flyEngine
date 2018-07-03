@@ -165,15 +165,15 @@ namespace fly
     };
     std::vector<IndirectInfo> indirectFromMeshData(const std::vector<MeshData>& mesh_data) const;
     // Texture unit bindings
-    static constexpr const int diffuseTexUnit() { return 0; }
-    static constexpr const int alphaTexUnit() { return 1; }
-    static constexpr const int normalTexUnit() { return 2; }
-    static constexpr const int heightTexUnit() { return 3; }
-    static constexpr const int miscTexUnit0() { return 4; }
-    static constexpr const int miscTexUnit1() { return 5; }
-    static constexpr const int miscTexUnit2() { return 6; }
-    static constexpr const int miscTexUnit3() { return 7; }
-    static constexpr const int miscTexUnit4() { return 8; }
+    static constexpr const int diffuseTexUnit = 0;
+    static constexpr const int alphaTexUnit = 1;
+    static constexpr const int normalTexUnit = 2;
+    static constexpr const int heightTexUnit = 3;
+    static constexpr const int miscTexUnit0 = 4;
+    static constexpr const int miscTexUnit1 = 5;
+    static constexpr const int miscTexUnit2 = 6;
+    static constexpr const int miscTexUnit3 = 7;
+    static constexpr const int miscTexUnit4 = 8;
     void beginFrame() const;
     void bindShader(GLShaderProgram const * shader);
     void bindShadowmap(const Shadowmap& shadowmap) const;

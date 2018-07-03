@@ -387,15 +387,14 @@ namespace fly
         throw std::exception("No meshes were added to the renderer.");
       }
       Timing timing;
-    /*  std::vector<MeshRenderablePtr> renderables;
-      renderables.reserve(_cullResult.size());
-      for (const auto& mr : _meshRenderables) {
-        renderables.push_back(mr.get());
-      }*/
       _bvhStatic = std::make_unique<BVH>(_meshRenderables);
       std::cout << "BVH construction took " << timing.duration<std::chrono::milliseconds>() << " milliseconds." << std::endl;
       std::cout << "BVH takes " << static_cast<float>(_bvhStatic->getSizeInBytes()) / 1024.f / 1024.f << " MB memory" << std::endl;
       std::cout << "Scene bounds:" << _bvhStatic->getBV() << std::endl;
+      unsigned internal_nodes, leaf_nodes;
+      _bvhStatic->countNodes(internal_nodes, leaf_nodes);
+      std::cout << "BVH internal nodes:" << internal_nodes << std::endl;
+      std::cout << "BVH leaf nodes:" << leaf_nodes << std::endl;
     }
   private:
     API _api;

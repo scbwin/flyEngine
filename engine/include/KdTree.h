@@ -23,13 +23,13 @@ namespace fly
     class Node
     {
     public:
-      Node(unsigned begin, unsigned end, unsigned depth, std::vector<T>& objects)
+      Node(unsigned begin, unsigned end, std::vector<T>& objects)
       {
         for (unsigned i = begin; i < end; i++) {
           _bv = _bv.getUnion(objects[i]->getBV());
           _largestBVSize = std::max(_largestBVSize, objects[i]->getLargestObjectBVSize());
         }
-        auto axis = _bv.getLongestAxis(depth);
+        auto axis = _bv.getLongestAxis();
         std::sort(&objects.front() + begin, &objects.front() + end, [&axis](const T& o1, const T& o2) {
           return o1->getBV().center(axis) > o2->getBV().center(axis);
         });
@@ -42,6 +42,7 @@ namespace fly
       virtual void intersectObjects(const BV& bv, StackPOD<T>& intersected_objects) const = 0;
       virtual void cullVisibleNodes(const Camera::CullingParams& cp, StackPOD<Node const *>& nodes) const = 0;
       virtual void cullAllNodes(const Camera::CullingParams& cp, StackPOD<Node const *>& nodes) const = 0;
+      virtual void countNodes(unsigned& internal_nodes, unsigned& leaf_nodes) const = 0;
     protected:
       BV _bv;
       float _largestBVSize = 0.f;
@@ -57,8 +58,8 @@ namespace fly
     class LeafNodeSingle : public Node
     {
     public:
-      LeafNodeSingle(unsigned begin, unsigned end, unsigned depth, std::vector<T>& objects)
-        : Node(begin, end, depth, objects)
+      LeafNodeSingle(unsigned begin, unsigned end, std::vector<T>& objects)
+        : Node(begin, end, objects)
       {
         _left = objects[begin];
       }
@@ -93,14 +94,18 @@ namespace fly
           nodes.push_back_secure(this);
         }
       }
+      virtual void countNodes(unsigned& internal_nodes, unsigned& leaf_nodes) const override
+      {
+        leaf_nodes += 1;
+      }
     protected:
       T _left;
     };
     class LeafNode : public LeafNodeSingle
     {
     public:
-      LeafNode(unsigned begin, unsigned end, unsigned depth, std::vector<T>& objects)
-        : LeafNodeSingle(begin, end, depth, objects)
+      LeafNode(unsigned begin, unsigned end, std::vector<T>& objects)
+        : LeafNodeSingle(begin, end, objects)
       {
         _right = objects[begin + 1];
       }
@@ -164,14 +169,13 @@ namespace fly
     class InternalNode : public Node
     {
     public:
-      InternalNode(unsigned begin, unsigned end, unsigned depth, std::vector<T>& objects POOL_ARG)
-        : Node(begin, end, depth, objects)
+      InternalNode(unsigned begin, unsigned end, std::vector<T>& objects POOL_ARG)
+        : Node(begin, end, objects)
       {
         unsigned num_objects = end - begin;
-        unsigned num_objects_left = num_objects / 2;
-        unsigned num_objects_right = num_objects - num_objects_left;
-        _left = POOL_OBJECT createNode(num_objects_left, begin, begin + num_objects_left, depth + 1, objects POOL_PARAM);
-        _right = POOL_OBJECT createNode(num_objects_right, begin + num_objects_left, end, depth + 1, objects POOL_PARAM);
+        unsigned num_objects_left = num_objects / 2u;
+        _left = POOL_OBJECT createNode(begin, begin + num_objects_left, objects POOL_PARAM);
+        _right = POOL_OBJECT createNode(begin + num_objects_left, end, objects POOL_PARAM);
       }
       virtual ~InternalNode() = default;
       virtual void cullVisibleObjects(const Camera::CullingParams& cp, CullResult<T>& cull_result) const override
@@ -232,11 +236,20 @@ namespace fly
           _right->cullAllNodes(cp, nodes);
         }
       }
+      virtual void countNodes(unsigned& internal_nodes, unsigned& leaf_nodes) const override
+      {
+        internal_nodes += 1;
+        _left->countNodes(internal_nodes, leaf_nodes);
+        _right->countNodes(internal_nodes, leaf_nodes);
+      }
     private:
       NodePtr _left, _right;
     };
     KdTree(std::vector<T>& objects) :
-       _root(POOL_MEMBER_OBJECT createNode(static_cast<unsigned>(objects.size()), 0, static_cast<unsigned>(objects.size()), 0, objects POOL_MEMBER))
+#if KD_TREE_USE_BOOST
+      _nodePool(static_cast<unsigned>(objects.size())),
+#endif
+       _root(POOL_MEMBER_OBJECT createNode(0, static_cast<unsigned>(objects.size()), objects POOL_MEMBER))
     {
     }
     void cullVisibleObjects(const Camera::CullingParams& cp, CullResult<T>& cull_result) const
@@ -261,44 +274,64 @@ namespace fly
     {
       return _root->getBV();
     }
+    void countNodes(unsigned& internal_nodes, unsigned& leaf_nodes) const
+    {
+      internal_nodes = 0;
+      leaf_nodes = 0;
+      _root->countNodes(internal_nodes, leaf_nodes);
+    }
   private:
 #if KD_TREE_USE_BOOST
     NodePool _nodePool;
     class NodePool
     {
     public:
-      NodePool() = default;
+      NodePool(unsigned num_objects) :
+        _height(static_cast<unsigned>(std::floor(log2(static_cast<double>(num_objects))))),
+        _numNodes(static_cast<unsigned>(std::pow(2.0, static_cast<double>(_height) + 1.0) - 1.0)),
+        _numLeafNodes(static_cast<unsigned>(std::pow(2.0, static_cast<double>(_height)))),
+        _numInternalNodes(_numNodes - _numLeafNodes),
+        _internalNodePool(_numInternalNodes),
+        _leafNodePool(std::max(_numLeafNodes / 2u, 1u)),
+        _leafNodeSinglePool(std::max(_numLeafNodes / 2u, 1u))
+      {
+      }
       NodePool(const NodePool& other) = delete;
       NodePool& operator=(const NodePool& other) = delete;
       NodePool(NodePool&& other) = delete;
       NodePool& operator=(NodePool&& other) = delete;
-      NodePtr createNode(unsigned num_objects, unsigned begin, unsigned end, unsigned depth, std::vector<T>& objects, NodePool& node_pool)
+      NodePtr createNode(unsigned begin, unsigned end, std::vector<T>& objects, NodePool& node_pool)
       {
+        auto num_objects = end - begin;
         switch (num_objects) {
         case 2:
-          return ::new(_leafNodePool.malloc()) LeafNode(begin, end, depth, objects);
+          return ::new(_leafNodePool.malloc()) LeafNode(begin, end, objects);
         case 1:
-          return ::new(_leafNodeSinglePool.malloc()) LeafNodeSingle(begin, end, depth, objects);
+          return ::new(_leafNodeSinglePool.malloc()) LeafNodeSingle(begin, end, objects);
         default:
-          return ::new(_internalNodePool.malloc()) InternalNode(begin, end, depth, objects, *this);
+          return ::new(_internalNodePool.malloc()) InternalNode(begin, end, objects, *this);
         }
       }
     private:
+      unsigned _height;
+      unsigned _numNodes;
+      unsigned _numLeafNodes;
+      unsigned _numInternalNodes;
       boost::object_pool<InternalNode> _internalNodePool;
       boost::object_pool<LeafNode> _leafNodePool;
       boost::object_pool<LeafNodeSingle> _leafNodeSinglePool;
     };
 #else
-    static std::unique_ptr<Node> createNode(unsigned num_objects, unsigned begin, unsigned end, unsigned depth, std::vector<T>& objects)
+    static std::unique_ptr<Node> createNode(unsigned begin, unsigned end, std::vector<T>& objects)
     {
-      assert(num_objects);
+      auto num_objects = end - begin;
       switch (num_objects) {
       case 2:
-        return std::make_unique<LeafNode>(begin, end, depth, objects);
+        return std::make_unique<LeafNode>(begin, end, objects);
       case 1:
-        return std::make_unique<LeafNodeSingle>(begin, end, depth, objects);
+        return std::make_unique<LeafNodeSingle>(begin, end, objects);
       default:
-        return std::make_unique<InternalNode>(begin, end, depth, objects);
+        return std::make_unique<InternalNode>(begin, end, objects);
       }
     }
 #endif

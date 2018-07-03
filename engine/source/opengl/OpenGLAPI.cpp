@@ -66,7 +66,7 @@ namespace fly
   }
   void OpenGLAPI::beginFrame() const
   {
-      for (unsigned i = 0; _anisotropy > 1 && i <= static_cast<unsigned>(heightTexUnit()); i++) {
+      for (unsigned i = 0; _anisotropy > 1 && i <= static_cast<unsigned>(heightTexUnit); i++) {
         _samplerAnisotropic.bind(i);
       }
   }
@@ -77,7 +77,7 @@ namespace fly
   }
   void OpenGLAPI::bindShadowmap(const Shadowmap & shadowmap) const
   {
-    GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit0()));
+    GL_CHECK(glActiveTexture(GL_TEXTURE0 + miscTexUnit0));
     shadowmap.bind();
   }
   void OpenGLAPI::renderMesh(const MeshData & mesh_data) const
@@ -86,25 +86,25 @@ namespace fly
   }
   void OpenGLAPI::renderMesh(const MeshData & mesh_data, const Mat4f & model_matrix) const
   {
-    setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::modelMatrix()), model_matrix);
+    setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::modelMatrix), model_matrix);
     renderMesh(mesh_data);
   }
   void OpenGLAPI::renderMesh(const MeshData& mesh_data, const Mat4f& model_matrix, const Mat3f& model_matrix_inverse) const
   {
-    setMatrixTranspose(_activeShader->uniformLocation(GLSLShaderGenerator::modelMatrixInverse()), model_matrix_inverse);
+    setMatrixTranspose(_activeShader->uniformLocation(GLSLShaderGenerator::modelMatrixInverse), model_matrix_inverse);
     renderMesh(mesh_data, model_matrix);
   }
   void OpenGLAPI::renderMesh(const MeshData & mesh_data, const Mat4f & model_matrix, const WindParamsLocal & params, const AABB & aabb) const
   {
-    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::windPivot()), params._pivotWorld);
-    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::windExponent()), params._bendFactorExponent);
-    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::bbMin()), aabb.getMin());
-    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::bbMax()), aabb.getMax());
+    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::windPivot), params._pivotWorld);
+    setScalar(_activeShader->uniformLocation(GLSLShaderGenerator::windExponent), params._bendFactorExponent);
+    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::bbMin), aabb.getMin());
+    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::bbMax), aabb.getMax());
     renderMesh(mesh_data, model_matrix);
   }
   void OpenGLAPI::renderMesh(const MeshData & mesh_data, const Mat4f & model_matrix, const Mat3f & model_matrix_inverse, const WindParamsLocal& params, const AABB& aabb) const
   {
-    setMatrixTranspose(_activeShader->uniformLocation(GLSLShaderGenerator::modelMatrixInverse()), model_matrix_inverse);
+    setMatrixTranspose(_activeShader->uniformLocation(GLSLShaderGenerator::modelMatrixInverse), model_matrix_inverse);
     renderMesh(mesh_data, model_matrix, params, aabb);
   }
   void OpenGLAPI::renderMesh(const MeshData & mesh_data, const Mat4f & model_matrix, const WindParamsLocal & wind_params, const Sphere & sphere) const
@@ -117,14 +117,14 @@ namespace fly
   }
   void OpenGLAPI::renderMeshMVP(const MeshData & mesh_data, const Mat4f & mvp) const
   {
-    setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::modelViewProjectionMatrix()), mvp);
+    setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::modelViewProjectionMatrix), mvp);
     renderMesh(mesh_data);
   }
   void OpenGLAPI::renderBVs(const StackPOD<AABB const *>& aabbs, const Mat4f& transform, const Vec3f& col)
   {
     _vaoAABB.bind();
     bindShader(&_boxShader);
-    setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::viewProjectionMatrix()), transform);
+    setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::viewProjectionMatrix), transform);
     setVector(_activeShader->uniformLocation("c"), col);
     StackPOD<Vec3f> bb_buffer;
     bb_buffer.reserve(aabbs.size() * 2u);
@@ -189,9 +189,9 @@ namespace fly
     unsigned group_size = 1024; // TODO: remove hard-coded value
     unsigned num_groups = static_cast<unsigned>(std::ceil(static_cast<float>(num_instances) / static_cast<float>(group_size)));
 
-    aabb_buffer.bindBase(GLSLShaderGenerator::bufferBindingAABB());
-    visible_instances.bindBase(GLSLShaderGenerator::bufferBindingVisibleInstances());
-    indirect_draw_buffer.bindBase(GL_SHADER_STORAGE_BUFFER, GLSLShaderGenerator::bufferBindingIndirectInfo());
+    aabb_buffer.bindBase(GLSLShaderGenerator::bufferBindingAABB);
+    visible_instances.bindBase(GLSLShaderGenerator::bufferBindingVisibleInstances);
+    indirect_draw_buffer.bindBase(GL_SHADER_STORAGE_BUFFER, GLSLShaderGenerator::bufferBindingIndirectInfo);
 
     setScalar(_activeShader->uniformLocation("ni"), num_instances);
     setScalar(_activeShader->uniformLocation("ml"), static_cast<unsigned>(info.size() - 1));
@@ -210,8 +210,8 @@ namespace fly
   void OpenGLAPI::renderInstances(const StorageBuffer & visible_instances, const IndirectBuffer & indirect_draw_buffer,
     const StorageBuffer & instance_data, const std::vector<IndirectInfo>& info, unsigned num_instances) const
   {
-    instance_data.bindBase(GLSLShaderGenerator::bufferBindingInstanceData());
-    visible_instances.bindBase(GLSLShaderGenerator::bufferBindingVisibleInstances());
+    instance_data.bindBase(GLSLShaderGenerator::bufferBindingInstanceData);
+    visible_instances.bindBase(GLSLShaderGenerator::bufferBindingVisibleInstances);
     indirect_draw_buffer.bind(GL_DRAW_INDIRECT_BUFFER);
     for (unsigned i = 0; i < info.size(); i++) {
       setScalar(_activeShader->uniformLocation("offs"), num_instances * i);
@@ -246,14 +246,14 @@ namespace fly
     GL_CHECK(glBlendColor(blend_weight[0], blend_weight[1], blend_weight[2], blend_weight[3]));
     GL_CHECK(glBlendFunc(GL_CONSTANT_COLOR, GL_ONE_MINUS_CONSTANT_COLOR));
     bindShader(&_ssrShader);
-    activateTexture(view_space_normals, GLSLShaderGenerator::viewSpaceNormalsSampler(), miscTexUnit0());
-    activateTexture(lighting_buffer_copy, GLSLShaderGenerator::lightingSampler(), miscTexUnit1());
-    activateTexture(depth_buffer, GLSLShaderGenerator::depthSampler(), miscTexUnit2());
-    setMatrix(_ssrShader.uniformLocation(GLSLShaderGenerator::projectionMatrix()), projection_matrix);
+    activateTexture(view_space_normals, GLSLShaderGenerator::viewSpaceNormalsSampler, miscTexUnit0);
+    activateTexture(lighting_buffer_copy, GLSLShaderGenerator::lightingSampler, miscTexUnit1);
+    activateTexture(depth_buffer, GLSLShaderGenerator::depthSampler, miscTexUnit2);
+    setMatrix(_ssrShader.uniformLocation(GLSLShaderGenerator::projectionMatrix), projection_matrix);
     auto p_inverse = inverse(projection_matrix);
-    setMatrix(_ssrShader.uniformLocation(GLSLShaderGenerator::projectionMatrixInverse()), p_inverse);
-    setVector(_ssrShader.uniformLocation(GLSLShaderGenerator::projectionMatrixInverseThirdRow()), p_inverse.row(2));
-    setVector(_ssrShader.uniformLocation(GLSLShaderGenerator::projectionMatrixInverseFourthRow()), p_inverse.row(3));
+    setMatrix(_ssrShader.uniformLocation(GLSLShaderGenerator::projectionMatrixInverse), p_inverse);
+    setVector(_ssrShader.uniformLocation(GLSLShaderGenerator::projectionMatrixInverseThirdRow), p_inverse.row(2));
+    setVector(_ssrShader.uniformLocation(GLSLShaderGenerator::projectionMatrixInverseFourthRow), p_inverse.row(3));
     GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
     GL_CHECK(glDisable(GL_BLEND));
     depth_buffer.param(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -269,8 +269,8 @@ namespace fly
       rtt_stack.push_back_secure(out[!i].get());
       setRendertargets(rtt_stack, nullptr);
       Vec2f texel_size(1.f / out[0]->width() * i, 1.f / out[0]->height() * !i);
-      setVector(_activeShader->uniformLocation(GLSLShaderGenerator::texelSize()), texel_size);
-      activateTexture(i ? *out[1] : in, GLSLShaderGenerator::toBlurSampler(), miscTexUnit1());
+      setVector(_activeShader->uniformLocation(GLSLShaderGenerator::texelSize), texel_size);
+      activateTexture(i ? *out[1] : in, GLSLShaderGenerator::toBlurSampler, miscTexUnit1);
       GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
     }
     in.param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -279,27 +279,27 @@ namespace fly
   {
     bindShader(&_godRayShader);
     depth_buffer.param(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    activateTexture(depth_buffer, GLSLShaderGenerator::depthSampler(), miscTexUnit0());
-    activateTexture(lighting_buffer, GLSLShaderGenerator::lightingSampler(), miscTexUnit1());
-    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::lightPosUV()), light_pos_uv);
+    activateTexture(depth_buffer, GLSLShaderGenerator::depthSampler, miscTexUnit0);
+    activateTexture(lighting_buffer, GLSLShaderGenerator::lightingSampler, miscTexUnit1);
+    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::lightPosUV), light_pos_uv);
     GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
     depth_buffer.param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   }
   void OpenGLAPI::composite(const RTT& lighting_buffer, const GlobalShaderParams& params)
   {
     bindShader(&_compositeShader);
-    activateTexture(lighting_buffer, GLSLShaderGenerator::lightingSampler(), miscTexUnit1());
+    activateTexture(lighting_buffer, GLSLShaderGenerator::lightingSampler, miscTexUnit1);
     GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
   }
   void OpenGLAPI::composite(const RTT & lighting_buffer, const GlobalShaderParams & params, const RTT & dof_buffer, const Depthbuffer& depth_buffer)
   {
     bindShader(&_compositeShader);
     auto p_inverse = inverse(params._projectionMatrix);
-    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverseThirdRow()), p_inverse.row(2));
-    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverseFourthRow()), p_inverse.row(3));
-    activateTexture(lighting_buffer, GLSLShaderGenerator::lightingSampler(), miscTexUnit1());
-    activateTexture(dof_buffer, GLSLShaderGenerator::dofSampler(), miscTexUnit2());
-    activateTexture(depth_buffer, GLSLShaderGenerator::depthSampler(), miscTexUnit3());
+    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverseThirdRow), p_inverse.row(2));
+    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverseFourthRow), p_inverse.row(3));
+    activateTexture(lighting_buffer, GLSLShaderGenerator::lightingSampler, miscTexUnit1);
+    activateTexture(dof_buffer, GLSLShaderGenerator::dofSampler, miscTexUnit2);
+    activateTexture(depth_buffer, GLSLShaderGenerator::depthSampler, miscTexUnit3);
     GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
   }
   void OpenGLAPI::composite(const RTT & lighting_buffer, const GlobalShaderParams & params, const RTT & dof_buffer, 
@@ -307,18 +307,18 @@ namespace fly
   {
     bindShader(&_compositeShader);
     auto p_inverse = inverse(params._projectionMatrix);
-    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverseThirdRow()), p_inverse.row(2));
-    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverseFourthRow()), p_inverse.row(3));
-    activateTexture(lighting_buffer, GLSLShaderGenerator::lightingSampler(), miscTexUnit1());
-    activateTexture(dof_buffer, GLSLShaderGenerator::dofSampler(), miscTexUnit2());
-    activateTexture(depth_buffer, GLSLShaderGenerator::depthSampler(), miscTexUnit3());
-    activateTexture(god_ray_buffer, GLSLShaderGenerator::godRaySampler(), miscTexUnit4());
+    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverseThirdRow), p_inverse.row(2));
+    setVector(_activeShader->uniformLocation(GLSLShaderGenerator::projectionMatrixInverseFourthRow), p_inverse.row(3));
+    activateTexture(lighting_buffer, GLSLShaderGenerator::lightingSampler, miscTexUnit1);
+    activateTexture(dof_buffer, GLSLShaderGenerator::dofSampler, miscTexUnit2);
+    activateTexture(depth_buffer, GLSLShaderGenerator::depthSampler, miscTexUnit3);
+    activateTexture(god_ray_buffer, GLSLShaderGenerator::godRaySampler, miscTexUnit4);
     setVector(_activeShader->uniformLocation(GLSLShaderGenerator::godRayIntensity), god_ray_intensity);
     GL_CHECK(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
   }
   void OpenGLAPI::endFrame() const
   {
-    for (unsigned i = 0; i <= static_cast<unsigned>(heightTexUnit()); i++) {
+    for (unsigned i = 0; i <= static_cast<unsigned>(heightTexUnit); i++) {
       _samplerAnisotropic.unbind(i);
     }
   }
@@ -343,7 +343,7 @@ namespace fly
   void OpenGLAPI::renderSkydome(const Mat4f & view_projection_matrix, const MeshData& mesh_data)
   {
     bindShader(&_skydomeShader);
-    setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::viewProjectionMatrix()), view_projection_matrix);
+    setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::viewProjectionMatrix), view_projection_matrix);
     renderMesh(mesh_data);
   }
   std::shared_ptr<OpenGLAPI::Texture> OpenGLAPI::createTexture(const std::string & path)
