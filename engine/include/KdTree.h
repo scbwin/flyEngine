@@ -328,11 +328,11 @@ namespace fly
         auto num_objects = end - begin;
         switch (num_objects) {
         case 2:
-          return ::new(_leafNodePool.malloc()) LeafNode(begin, end, objects);
+          return new(_leafNodePool.malloc()) LeafNode(begin, end, objects);
         case 1:
-          return ::new(_leafNodeSinglePool.malloc()) LeafNodeSingle(begin, end, objects);
+          return new(_leafNodeSinglePool.malloc()) LeafNodeSingle(begin, end, objects);
         default:
-          return ::new(_internalNodePool.malloc()) InternalNode(begin, end, objects, kd_tree);
+          return new(_internalNodePool.malloc()) InternalNode(begin, end, objects, kd_tree);
         }
       }
     private:

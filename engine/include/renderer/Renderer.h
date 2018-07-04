@@ -28,6 +28,7 @@
 #include <future>
 #include <KdTree.h>
 #include <RenderList.h>
+#include <PtrCache.h>
 
 #define RENDERER_STATS 1
 
@@ -40,6 +41,8 @@ namespace fly
     using MeshRenderable = IMeshRenderable<API, BV>;
     using RenderList = RenderList<API, BV>;
     using MeshRenderablePtr = MeshRenderable * ;
+    using MaterialDescCache = PtrCache<std::shared_ptr<Material>, MaterialDesc<API>, const std::shared_ptr<Material>&, const GraphicsSettings&>;
+    using ShaderSource = typename API::ShaderSource;
 #if RENDERER_STATS
     struct CullingStats
     {
@@ -65,27 +68,33 @@ namespace fly
     const RendererStats& getStats() const { return _stats; }
 #endif
     Renderer(GraphicsSettings * gs) : _api(Vec4f(0.149f, 0.509f, 0.929f, 1.f)), _gs(gs),
-      _matDescCache(SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&>(
-        [this, gs](const std::shared_ptr<Material>& material, const GraphicsSettings&  settings) {
-      auto desc = std::make_shared<MaterialDesc<API>>(material, _api, settings, _textureCache, _shaderDescCache, _shaderCache);
-      gs->addListener(desc);
-      return desc;
-    })),
-      _shaderDescCache(SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&>(
-        [this](const std::shared_ptr<typename API::Shader>& shader, unsigned flags, API& api) {
-      return std::make_shared<ShaderDesc<API>>(shader, flags, api);
-    })),
-      _textureCache(SoftwareCache<std::string, std::shared_ptr<typename API::Texture>, const std::string&>([this](const std::string& path) {
-      return _api.createTexture(path);
-    })),
-      _shaderCache(SoftwareCache<std::string, std::shared_ptr<typename API::Shader>, typename API::ShaderSource&,
-        typename API::ShaderSource&, typename API::ShaderSource& >([this](typename API::ShaderSource& vs, typename API::ShaderSource& fs, typename API::ShaderSource& gs) {
-      return _api.createShader(vs, fs, gs);
-    }))
+      _materialDescCache([this](const std::shared_ptr<Material>& material, const GraphicsSettings& gs) {
+      return new MaterialDesc<API>(material, _api, gs, &_textureCache, &_shaderDescCache, &_shaderCache);
+    }),
+      _shaderDescCache([](const std::shared_ptr<typename API::Shader>& shader, unsigned flags, API& api) {
+      return new ShaderDesc<API>(shader, flags, api);
+    }),
+      _textureCache([](const std::string& path) {
+      return API::createTexture(path);
+    }),
+      _shaderCache([](ShaderSource& vertex_source, ShaderSource& fragment_source, ShaderSource& geometry_source) {
+      return API::createShader(vertex_source, fragment_source, geometry_source);
+    })
     {
       _renderTargets.reserve(_api._maxRendertargets);
     }
-    virtual ~Renderer() {}
+    virtual ~Renderer() 
+    {
+      std::cout << "~Renderer()" << std::endl;
+      if (_shaderCache.size() || _shaderDescCache.size() || _materialDescCache.size() || _textureCache.size()) {
+        std::cout << "Error: Potential space leak detected!" << std::endl;
+        std::cout << "Num shader descriptions:" << _shaderDescCache.size() << std::endl;
+        std::cout << "Num material descriptions:" << _materialDescCache.size() << std::endl;
+        std::cout << "Num shaders:" << _shaderCache.size() << std::endl;
+        std::cout << "Num textures:" << _textureCache.size() << std::endl;
+        abort();
+      }
+    }
     virtual void normalMappingChanged(GraphicsSettings const * gs) override
     {
       graphicsSettingsChanged();
@@ -357,9 +366,13 @@ namespace fly
     {
       return _sceneBounds;
     }
-    const std::shared_ptr<MaterialDesc<API>> & createMaterialDesc(const std::shared_ptr<Material>& material)
+    std::shared_ptr<MaterialDesc<API>> createMaterialDesc(const std::shared_ptr<Material>& material)
     {
-      return _matDescCache.getOrCreate(material, material, *_gs);
+      std::shared_ptr<MaterialDesc<API>> ret;
+      if (!_materialDescCache.getOrCreate(material, ret, material, *_gs)) {
+        _gs->addListener(ret);
+      }
+      return ret;
     }
     typename API::MeshData addMesh(const std::shared_ptr<Mesh>& mesh)
     {
@@ -414,8 +427,6 @@ namespace fly
     Mat4f _vpScene;
     bool _offScreenRendering;
     bool _shadowMapping;
-    float _acc = 0.f;
-    float _dt = 1.f / 30.f;
     bool _multiThreadedCulling;
     BV _sceneBounds;
 #if RENDERER_STATS
@@ -431,10 +442,10 @@ namespace fly
     RenderList* _renderListScene;
     std::map<ShaderDesc<API> const *, std::map<MaterialDesc<API> const *, StackPOD<MeshRenderable const*>>> _displayList;
     std::unique_ptr<BVH> _bvhStatic;
-    SoftwareCache<std::shared_ptr<Material>, std::shared_ptr<MaterialDesc<API>>, const std::shared_ptr<Material>&, const GraphicsSettings&> _matDescCache;
-    SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&> _shaderDescCache;
-    SoftwareCache<std::string, std::shared_ptr<typename API::Shader>, typename API::ShaderSource&, typename API::ShaderSource&, typename API::ShaderSource&> _shaderCache;
-    SoftwareCache<std::string, std::shared_ptr<typename API::Texture>, const std::string&> _textureCache;
+    typename MaterialDesc<API>::TextureCache _textureCache;
+    typename MaterialDesc<API>::ShaderCache _shaderCache;
+    typename MaterialDesc<API>::ShaderDescCache _shaderDescCache;
+    MaterialDescCache _materialDescCache;
     void renderBVHNodes(Camera render_cam, Camera cull_cam)
     {
       cull_cam.extractFrustumPlanes(_gsp._projectionMatrix * cull_cam.getViewMatrix(), _api.getZNearMapping());

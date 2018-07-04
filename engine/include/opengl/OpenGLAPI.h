@@ -10,7 +10,6 @@
 #include <unordered_map>
 #include <functional>
 #include <opengl/GLTexture.h>
-#include <SoftwareCache.h>
 #include <opengl/GLVertexArray.h>
 #include <opengl/GLByteBufferStack.h>
 #include <opengl/GLShaderSource.h>
@@ -25,6 +24,7 @@
 #include <cstdint>
 #include <opengl/GLShaderInterface.h>
 #include <opengl/GLMaterialSetup.h>
+#include <SoftwareCache.h>
 
 namespace fly
 {
@@ -209,8 +209,8 @@ namespace fly
     void enablePolygonOffset(float factor, float units) const;
     void disablePolygonOffset() const;
     void renderSkydome(const Mat4f& view_projection_matrix, const MeshData& mesh_data);
-    std::shared_ptr<Texture> createTexture(const std::string& path);
-    std::shared_ptr<Shader> createShader(ShaderSource& vs, ShaderSource& fs, ShaderSource& gs = ShaderSource());
+    static Texture* createTexture(const std::string& path);
+    static Shader* createShader(ShaderSource& vs, ShaderSource& fs, ShaderSource& gs = ShaderSource());
     Shader createComputeShader(ShaderSource& source);
     std::unique_ptr<RTT> createRenderToTexture(const Vec2u& size, TexFilter filter);
     std::unique_ptr<Depthbuffer> createDepthbuffer(const Vec2u& size);
@@ -263,7 +263,7 @@ namespace fly
       texture.bind();
       setScalar(_activeShader->uniformLocation(key), tex_unit);
     }
-    Shader createMiscShader(GLShaderSource& vs, GLShaderSource& fs) const;
+    Shader createMiscShader(ShaderSource& vs, ShaderSource& fs, ShaderSource& gs = ShaderSource()) const;
   };
 }
 

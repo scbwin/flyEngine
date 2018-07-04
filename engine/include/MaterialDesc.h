@@ -9,6 +9,7 @@
 #include <StackPOD.h>
 #include <ShaderDesc.h>
 //#include <renderer/MeshRenderables.h>
+#include <PtrCache.h>
 
 namespace fly
 {
@@ -24,10 +25,13 @@ namespace fly
   class MaterialDesc : public GraphicsSettings::Listener
   {
   public:
+    using TextureCache = PtrCache<std::string, typename API::Texture, const std::string&>;
+    using ShaderCache = PtrCache<std::string, typename API::Shader, typename API::ShaderSource&, typename API::ShaderSource&, typename API::ShaderSource&>;
+    using ShaderDescCache = PtrCache<std::shared_ptr<typename API::Shader>, ShaderDesc<API>, const std::shared_ptr<typename API::Shader>&, unsigned, API&>;
     MaterialDesc(const std::shared_ptr<Material>& material, API& api, const GraphicsSettings& settings,
-      SoftwareCache<std::string, std::shared_ptr<typename API::Texture>, const std::string&>& texture_cache,
-      SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&>& shader_desc_cache,
-      SoftwareCache<std::string, std::shared_ptr<typename API::Shader>, typename API::ShaderSource&, typename API::ShaderSource&, typename API::ShaderSource&>& shader_cache) :
+      TextureCache* texture_cache,
+      ShaderDescCache* shader_desc_cache,
+      ShaderCache* shader_cache) :
       _api(api),
       _material(material),
       _activeShader(api.getActiveShader()),
@@ -35,7 +39,7 @@ namespace fly
       _shaderCache(shader_cache)
     {
       for (const auto& e : material->getTexturePaths()) {
-        _textures[e.first] = texture_cache.getOrCreate(e.second, e.second);
+         texture_cache->getOrCreate(e.second, _textures[e.first], e.second);
       }
       create(settings);
     }
@@ -133,13 +137,18 @@ namespace fly
     {
       return _meshShaderDescDepthInstanced;
     }
-    inline std::shared_ptr<ShaderDesc<API>> createShaderDesc(const std::shared_ptr<typename API::Shader>& shader, unsigned flags, API& _api)
+    inline std::shared_ptr<ShaderDesc<API>> createShaderDesc(const std::shared_ptr<typename API::Shader>& shader, unsigned flags, API& api)
     {
-      return _shaderDescCache.getOrCreate(shader, shader, flags, _api);
+      std::shared_ptr<ShaderDesc<API>> ret;
+      _shaderDescCache->getOrCreate(shader, ret, shader, flags, api);
+      return ret;
     }
     inline std::shared_ptr<typename API::Shader> createShader(typename API::ShaderSource& vs, typename API::ShaderSource& fs, typename API::ShaderSource& gs = typename API::ShaderSource())
     {
-      return _shaderCache.getOrCreate(vs._key + fs._key + gs._key, vs, fs, gs);
+      std::shared_ptr<typename API::Shader> shader;
+      auto key = vs._key + fs._key + gs._key;
+      _shaderCache->getOrCreate(key, shader, vs, fs, gs);
+      return shader;
     }
     inline const typename API::StorageBuffer& getDiffuseColorBuffer() const
     {
@@ -154,7 +163,7 @@ namespace fly
     virtual void gammaChanged(GraphicsSettings const * gs) override { create(*gs); }
     virtual void screenSpaceReflectionsChanged(GraphicsSettings const * gs) override { create(*gs); }
     virtual void godRaysChanged(GraphicsSettings const * gs) override { create(*gs); }
-    inline const std::shared_ptr<typename API::Texture>& getTexture(Material::TextureKey key) const
+    inline const std::shared_ptr<typename API::Texture>& getTexture(Material::TextureKey key) const noexcept
     {
       return _textures.at(key);
     }
@@ -172,8 +181,8 @@ namespace fly
     std::shared_ptr<ShaderDesc<API>> _meshShaderDescDepthInstanced;
     std::map<Material::TextureKey, std::shared_ptr<typename API::Texture>> _textures;
     typename API::StorageBuffer _diffuseColorBuffer;
-    SoftwareCache<std::shared_ptr<typename API::Shader>, std::shared_ptr<ShaderDesc<API>>, const std::shared_ptr<typename API::Shader>&, unsigned, API&>& _shaderDescCache;
-    SoftwareCache<std::string, std::shared_ptr<typename API::Shader>, typename API::ShaderSource&, typename API::ShaderSource&, typename API::ShaderSource&>& _shaderCache;
+    ShaderDescCache* const _shaderDescCache;
+    ShaderCache* const _shaderCache;
   };
 }
 

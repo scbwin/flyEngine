@@ -24,12 +24,12 @@ namespace fly
 {
   OpenGLAPI::OpenGLAPI(const Vec4f& clear_color) :
     _vboAABB(GL_ARRAY_BUFFER),
-    _boxShader(std::move(*createShader(GLShaderSource("assets/opengl/vs_box.glsl", GL_VERTEX_SHADER), 
-      GLShaderSource("assets/opengl/fs_box.glsl", GL_FRAGMENT_SHADER), GLShaderSource("assets/opengl/gs_box.glsl", GL_GEOMETRY_SHADER)))),
+    _boxShader(createMiscShader(GLShaderSource("assets/opengl/vs_box.glsl", GL_VERTEX_SHADER), 
+      GLShaderSource("assets/opengl/fs_box.glsl", GL_FRAGMENT_SHADER), GLShaderSource("assets/opengl/gs_box.glsl", GL_GEOMETRY_SHADER))),
     _cullingShader(createComputeShader(GLShaderSource("assets/opengl/cs_culling.glsl", GL_COMPUTE_SHADER))),
     _lodShader(createComputeShader(GLShaderSource("assets/opengl/cs_lod.glsl", GL_COMPUTE_SHADER))),
-    _debugFrustumShader(std::move(*createShader(GLShaderSource("assets/opengl/vs_debug_frustum.glsl", GL_VERTEX_SHADER), GLShaderSource("assets/opengl/fs_debug_frustum.glsl", GL_FRAGMENT_SHADER)))),
-    _skydomeShader(std::move(*createShader(GLShaderSource("assets/opengl/vs_skybox.glsl", GL_VERTEX_SHADER), GLShaderSource("assets/opengl/fs_skydome_new.glsl", GL_FRAGMENT_SHADER))))
+    _debugFrustumShader(createMiscShader(GLShaderSource("assets/opengl/vs_debug_frustum.glsl", GL_VERTEX_SHADER), GLShaderSource("assets/opengl/fs_debug_frustum.glsl", GL_FRAGMENT_SHADER))),
+    _skydomeShader(createMiscShader(GLShaderSource("assets/opengl/vs_skybox.glsl", GL_VERTEX_SHADER), GLShaderSource("assets/opengl/fs_skydome_new.glsl", GL_FRAGMENT_SHADER)))
   {
     GL_CHECK(glGetIntegerv(GL_MAJOR_VERSION, &_glVersionMajor));
     GL_CHECK(glGetIntegerv(GL_MINOR_VERSION, &_glVersionMinor));
@@ -346,14 +346,20 @@ namespace fly
     setMatrix(_activeShader->uniformLocation(GLSLShaderGenerator::viewProjectionMatrix), view_projection_matrix);
     renderMesh(mesh_data);
   }
-  std::shared_ptr<OpenGLAPI::Texture> OpenGLAPI::createTexture(const std::string & path)
+  OpenGLAPI::Texture* OpenGLAPI::createTexture(const std::string & path)
   {
     auto tex = SOIL_load_OGL_texture(path.c_str(), SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_TEXTURE_REPEATS | SOIL_FLAG_COMPRESS_TO_DXT);
-    return tex != 0 ? std::make_shared<OpenGLAPI::Texture>(tex, GL_TEXTURE_2D) : nullptr;
+    if (tex) {
+      return new OpenGLAPI::Texture(tex, GL_TEXTURE_2D);
+    }
+    else {
+      throw std::exception((std::string("Could not create texture ") + path).c_str());
+      return nullptr;
+    }
   }
-  std::shared_ptr<OpenGLAPI::Shader> OpenGLAPI::createShader(OpenGLAPI::ShaderSource& vs, OpenGLAPI::ShaderSource& fs, OpenGLAPI::ShaderSource& gs)
+  OpenGLAPI::Shader* OpenGLAPI::createShader(OpenGLAPI::ShaderSource& vs, OpenGLAPI::ShaderSource& fs, OpenGLAPI::ShaderSource& gs)
   {
-    auto ret = std::make_shared<GLShaderProgram>();
+    auto ret = new Shader();
     ret->add(vs);
     if (gs._key != "") { ret->add(gs); }
     ret->add(fs);
@@ -482,10 +488,13 @@ namespace fly
     }
     GL_CHECK(glDrawBuffers(static_cast<GLsizei>(_drawBuffers.size()), _drawBuffers.begin()));
   }
-  OpenGLAPI::Shader OpenGLAPI::createMiscShader(GLShaderSource & vs, GLShaderSource & fs) const
+  OpenGLAPI::Shader OpenGLAPI::createMiscShader(OpenGLAPI::ShaderSource & vs, OpenGLAPI::ShaderSource & fs, OpenGLAPI::ShaderSource& gs) const
   {
     Shader shader;
     shader.add(vs);
+    if (gs._key != "") {
+      shader.add(gs);
+    }
     shader.add(fs);
     shader.link();
     return shader;

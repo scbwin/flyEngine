@@ -45,7 +45,7 @@ namespace fly
     IMeshRenderable() = default;
     inline std::shared_ptr<ShaderDesc<API>> const * getShaderDesc() const { return _shaderDesc; }
     inline std::shared_ptr<ShaderDesc<API>> const * getShaderDescDepth() const { return _shaderDescDepth; }
-    inline MaterialDesc<API> * getMaterialDesc() const { return _materialDesc; }
+    inline MaterialDesc<API> * getMaterialDesc() const { return _materialDesc.get(); }
     virtual void renderDepth(API const & api) const = 0;
     virtual void render(API const & api) const = 0;
     inline const BV& getBV() const { return _bv; }
@@ -77,7 +77,7 @@ namespace fly
     }
     virtual unsigned numTriangles() const = 0;
   protected:
-    MaterialDesc<API> * _materialDesc;
+    std::shared_ptr<MaterialDesc<API>> _materialDesc;
     std::shared_ptr<ShaderDesc<API>> const * _shaderDesc;
     std::shared_ptr<ShaderDesc<API>> const * _shaderDescDepth;
     BV _bv;
@@ -122,7 +122,7 @@ namespace fly
       _modelMatrix(transform.getModelMatrix()),
       _modelMatrixInverse(inverse(glm::mat3(transform.getModelMatrix())))
     {
-      _materialDesc = renderer.createMaterialDesc(material).get();
+      _materialDesc = renderer.createMaterialDesc(material);
       _shaderDesc = &_materialDesc->getMeshShaderDesc();
       _shaderDescDepth = &_materialDesc->getMeshShaderDescDepth();
       createBV(*mesh, transform, _bv);
@@ -163,7 +163,7 @@ namespace fly
       const std::shared_ptr<Material>& material, const Transform& transform) :
       StaticMeshRenderable<API, BV>(renderer, mesh, material, transform)
     {
-      _materialDesc = renderer.createMaterialDesc(material).get();
+      _materialDesc = renderer.createMaterialDesc(material);
       _shaderDesc = &_materialDesc->getMeshShaderDescWind();
       _shaderDescDepth = &_materialDesc->getMeshShaderDescDepthWind();
       _windParams._pivotWorld = _bv.getMax()[1];
@@ -205,7 +205,7 @@ namespace fly
       _instanceData(renderer.getApi()->createStorageBuffer<InstanceData>(instance_data.data(), instance_data.size())),
       _numInstances(static_cast<unsigned>(instance_data.size()))
     {
-      _materialDesc = renderer.createMaterialDesc(material).get();
+      _materialDesc = renderer.createMaterialDesc(material);
       _shaderDesc = &_materialDesc->getMeshShaderDescInstanced();
       _shaderDescDepth = &_materialDesc->getMeshShaderDescDepthInstanced();
       std::vector<typename API::MeshData> mesh_data;
@@ -294,7 +294,7 @@ namespace fly
       _modelMatrix(transform.getModelMatrix()),
       _modelMatrixInverse(inverse(glm::mat3(transform.getModelMatrix())))
     {
-      _materialDesc = renderer.createMaterialDesc(material).get();
+      _materialDesc = renderer.createMaterialDesc(material);
       _shaderDesc = &_materialDesc->getMeshShaderDesc();
       _shaderDescDepth = &_materialDesc->getMeshShaderDescDepth();
       BV bv;
@@ -358,22 +358,22 @@ namespace fly
     inline auto* createStaticMeshRenderable(Renderer& renderer, const std::shared_ptr<Mesh>& mesh,
       const std::shared_ptr<Material>& material, const Transform& transform)
     {
-      return ::new(_poolSmr.malloc()) StaticMeshRenderable(renderer, mesh, material, transform);
+      return new(_poolSmr.malloc()) StaticMeshRenderable(renderer, mesh, material, transform);
     }
     inline auto* createStaticMeshRenderableWind(Renderer& renderer, const std::shared_ptr<Mesh>& mesh,
       const std::shared_ptr<Material>& material, const Transform& transform)
     {
-      return ::new(_poolSmrWind.malloc()) StaticMeshRenderableWind(renderer, mesh, material, transform);
+      return new(_poolSmrWind.malloc()) StaticMeshRenderableWind(renderer, mesh, material, transform);
     }
     inline auto* createStaticMeshRenderableLod(Renderer& renderer, const std::vector<std::shared_ptr<Mesh>>& meshes,
       const std::shared_ptr<Material>& material, const Transform& transform)
     {
-      return ::new(_poolSmrLod.malloc()) StaticMeshRenderableLod(renderer, meshes, material, transform);
+      return new(_poolSmrLod.malloc()) StaticMeshRenderableLod(renderer, meshes, material, transform);
     }
     inline auto* createStaticInstancedMeshRenderable(Renderer& renderer, const std::vector<std::shared_ptr<Mesh>>& lods,
       const std::shared_ptr<Material>& material, const std::vector<InstanceData>& instance_data)
     {
-      return ::new(_poolSmrInstanced.malloc()) StaticInstancedMeshRenderable(renderer, lods, material, instance_data);
+      return new(_poolSmrInstanced.malloc()) StaticInstancedMeshRenderable(renderer, lods, material, instance_data);
     }
   private:
     boost::object_pool<StaticMeshRenderable> _poolSmr;

@@ -80,8 +80,8 @@ protected:
   }
 private:
   fly::Engine _engine;
-  fly::GraphicsSettings _graphicsSettings;
   std::shared_ptr<fly::Renderer<fly::OpenGLAPI, fly::AABB>> _renderer;
+  fly::GraphicsSettings _graphicsSettings;
   std::unique_ptr<fly::CameraController> _camController;
   std::shared_ptr<fly::PhysicsCameraController> _physicsCC;
   std::shared_ptr<fly::DirectionalLight> _dl;
